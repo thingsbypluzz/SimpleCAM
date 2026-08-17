@@ -12,7 +12,7 @@ const Scene3D = lazy(() =>
   import('./components/preview3d/Scene3D').then((m) => ({ default: m.Scene3D })),
 )
 import { BitIcon, CheckIcon, DepthIcon, DiameterIcon, FeedIcon, StepdownIcon } from './components/icons'
-import { OPERATION_META } from './config/operationMeta'
+import { OPERATION_LIST, OPERATION_META } from './config/operationMeta'
 import { isStepdownValid, isToolDiameterValid } from './lib/validation'
 import { DEFAULT_WIZARD_PARAMS, type GeometryParams, type WizardParams } from './types/wizard'
 
@@ -188,12 +188,24 @@ function App() {
                 className="flex w-20 shrink-0 flex-col items-center gap-3 border-r border-slate-200 py-4 hover:bg-slate-50 dark:border-slate-800 dark:hover:bg-slate-900"
               >
                 {step.id === 1 && (
-                  <>
-                    <activeOperation.Icon className="h-6 w-6 text-indigo-600 dark:text-indigo-400" />
+                  <div className="flex flex-col items-center gap-3">
+                    {OPERATION_LIST.map((op) => {
+                      const isActive = op.value === params.operation
+                      return (
+                        <op.Icon
+                          key={op.value}
+                          className={
+                            isActive
+                              ? 'h-6 w-6 text-indigo-600 dark:text-indigo-400'
+                              : 'h-6 w-6 text-slate-300 opacity-50 dark:text-slate-600'
+                          }
+                        />
+                      )
+                    })}
                     <span className="text-[10px] font-medium text-slate-500 dark:text-slate-400">
                       {activeOperation.shortLabel}
                     </span>
-                  </>
+                  </div>
                 )}
 
                 {step.id === 2 && (

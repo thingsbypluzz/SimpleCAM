@@ -5,6 +5,18 @@ Format bazuje na [Keep a Changelog](https://keepachangelog.com/), wersjonowanie
 zgodne z [SemVer](https://semver.org/). Projekt nie korzysta z gita — ten plik
 jest jedynym źródłem historii zmian.
 
+## [Unreleased] — Step 1 dual operation summary
+
+### Zmieniono
+
+- **Collapsed pasek Kroku 1 pokazuje teraz obie operacje (Helix + Standard),
+  nie tylko aktywną.** Wcześniej pasek renderował samo `activeOperation.Icon`;
+  teraz iteruje po `OPERATION_LIST` (`src/config/operationMeta.ts`) i rysuje
+  obie ikony jedną nad drugą (pionowo, wąski 80px pasek) — aktywna operacja w
+  pełnym kolorze indigo, nieaktywna wyszarzona/przygaszona (`opacity-50`,
+  szary zamiast indigo). `activeOperation` bez zmian — nadal używana do
+  `generate`/`stepdown.shortLabel` — `src/App.tsx`.
+
 ## [0.6.10] — 2026-08-17
 
 ### Zmieniono
