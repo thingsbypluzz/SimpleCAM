@@ -12,6 +12,7 @@ const POSITIONING_OPTIONS: { value: PositioningMode; label: string }[] = [
   { value: 'single', label: 'Single (0,0)' },
   { value: 'grid', label: 'Rectangular Grid' },
   { value: 'gridCentered', label: 'Rectangular Grid (Centered)' },
+  { value: 'circle', label: 'N-Holes on Circle' },
   { value: 'custom', label: 'Custom List' },
 ]
 
@@ -157,6 +158,43 @@ export function Step2Geometry({ params, onChange }: Step2GeometryProps) {
               className={inputClass}
               value={geometry.gridY}
               onChange={(e) => updateGeometry({ gridY: Number(e.target.value) })}
+            />
+          </FieldRow>
+        </div>
+      )}
+
+      {geometry.positioning === 'circle' && (
+        <div className="flex flex-col gap-4">
+          <p className="text-sm text-slate-500 dark:text-slate-400">
+            Holes evenly spaced around a circle centered at (0, 0), starting at
+            Start Angle and going counter-clockwise.
+          </p>
+          <FieldRow label="Hole Count">
+            <input
+              type="number"
+              step="1"
+              min="0"
+              className={inputClass}
+              value={geometry.circleHoleCount}
+              onChange={(e) => updateGeometry({ circleHoleCount: Number(e.target.value) })}
+            />
+          </FieldRow>
+          <FieldRow label="Circle Diameter [mm]">
+            <input
+              type="number"
+              step="0.1"
+              className={inputClass}
+              value={geometry.circleDiameter}
+              onChange={(e) => updateGeometry({ circleDiameter: Number(e.target.value) })}
+            />
+          </FieldRow>
+          <FieldRow label="Start Angle [deg]">
+            <input
+              type="number"
+              step="1"
+              className={inputClass}
+              value={geometry.circleStartAngle}
+              onChange={(e) => updateGeometry({ circleStartAngle: Number(e.target.value) })}
             />
           </FieldRow>
         </div>

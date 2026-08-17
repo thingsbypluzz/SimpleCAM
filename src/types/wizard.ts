@@ -1,6 +1,6 @@
 export type OperationType = 'helix' | 'standard'
 
-export type PositioningMode = 'single' | 'grid' | 'gridCentered' | 'custom'
+export type PositioningMode = 'single' | 'grid' | 'gridCentered' | 'circle' | 'custom'
 
 export type InterpolationMode = 'arc' | 'linear'
 
@@ -16,6 +16,9 @@ export interface GeometryParams {
   positioning: PositioningMode
   gridX: number
   gridY: number
+  circleHoleCount: number
+  circleDiameter: number
+  circleStartAngle: number
   customPoints: Point2D[]
   offsetX: number
   offsetY: number
@@ -55,6 +58,9 @@ export const DEFAULT_WIZARD_PARAMS: WizardParams = {
     positioning: 'single',
     gridX: 50,
     gridY: 50,
+    circleHoleCount: 5,
+    circleDiameter: 45,
+    circleStartAngle: 0,
     customPoints: [{ x: 10, y: 10 }],
     offsetX: 0,
     offsetY: 0,

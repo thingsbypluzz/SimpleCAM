@@ -18,6 +18,18 @@ function rawPoints(geometry: GeometryParams): Point2D[] {
         { x: geometry.gridX / 2, y: geometry.gridY / 2 },
         { x: -geometry.gridX / 2, y: geometry.gridY / 2 },
       ]
+    case 'circle': {
+      // Guarded against fractional/negative hole counts (same defensive
+      // pattern as the toolRadius clamp in buildScene.ts) — 0 holes just
+      // returns an empty pattern, same as an empty Custom List.
+      const count = Math.max(0, Math.round(geometry.circleHoleCount))
+      const radius = geometry.circleDiameter / 2
+      const startRad = (geometry.circleStartAngle * Math.PI) / 180
+      return Array.from({ length: count }, (_, i) => {
+        const angle = startRad + (2 * Math.PI * i) / count
+        return { x: radius * Math.cos(angle), y: radius * Math.sin(angle) }
+      })
+    }
     case 'custom':
       return geometry.customPoints
   }

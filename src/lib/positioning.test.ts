@@ -9,9 +9,20 @@ const base: GeometryParams = {
   positioning: 'single',
   gridX: 50,
   gridY: 30,
+  circleHoleCount: 5,
+  circleDiameter: 45,
+  circleStartAngle: 0,
   customPoints: [],
   offsetX: 0,
   offsetY: 0,
+}
+
+// cos/sin at non-trivial angles (e.g. 90°) leave floating-point epsilon
+// residue in JS (Math.cos(Math.PI/2) !== 0 exactly), so circle points are
+// checked with tolerance rather than exact equality.
+function expectPointClose(actual: { x: number; y: number }, x: number, y: number) {
+  expect(actual.x).toBeCloseTo(x, 9)
+  expect(actual.y).toBeCloseTo(y, 9)
 }
 
 describe('resolvePoints', () => {
@@ -35,6 +46,60 @@ describe('resolvePoints', () => {
       { x: 25, y: 15 },
       { x: -25, y: 15 },
     ])
+  })
+
+  it('circle places the first point exactly at start angle 0 (radius, 0)', () => {
+    const points = resolvePoints({
+      ...base,
+      positioning: 'circle',
+      circleHoleCount: 4,
+      circleDiameter: 20,
+      circleStartAngle: 0,
+    })
+    expect(points).toHaveLength(4)
+    expectPointClose(points[0], 10, 0)
+  })
+
+  it('circle distributes points evenly, counter-clockwise from +X', () => {
+    const points = resolvePoints({
+      ...base,
+      positioning: 'circle',
+      circleHoleCount: 4,
+      circleDiameter: 20,
+      circleStartAngle: 0,
+    })
+    // 90° apart, going counter-clockwise: (10,0) -> (0,10) -> (-10,0) -> (0,-10)
+    expectPointClose(points[1], 0, 10)
+    expectPointClose(points[2], -10, 0)
+    expectPointClose(points[3], 0, -10)
+  })
+
+  it('circle honors a non-zero start angle', () => {
+    const points = resolvePoints({
+      ...base,
+      positioning: 'circle',
+      circleHoleCount: 1,
+      circleDiameter: 20,
+      circleStartAngle: 90,
+    })
+    expectPointClose(points[0], 0, 10)
+  })
+
+  it('circle with 0 holes returns an empty pattern', () => {
+    expect(resolvePoints({ ...base, positioning: 'circle', circleHoleCount: 0 })).toEqual([])
+  })
+
+  it('offset shifts every circle point uniformly', () => {
+    const points = resolvePoints({
+      ...base,
+      positioning: 'circle',
+      circleHoleCount: 1,
+      circleDiameter: 20,
+      circleStartAngle: 0,
+      offsetX: 5,
+      offsetY: -3,
+    })
+    expectPointClose(points[0], 15, -3)
   })
 
   it('custom returns the provided points as-is', () => {
