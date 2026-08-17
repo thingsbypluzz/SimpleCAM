@@ -323,7 +323,20 @@ src/
     format.ts                 — formatowanie liczb w G-code (4 miejsca po
                                  przecinku, bez zbędnych zer, bez "-0")
     positioning.ts             — resolvePoints(geometry) → Point2D[]
-                                 (single/grid/custom)
+                                 (single/grid/custom), plus globalny offset
+                                 X/Y (`geometry.offsetX/offsetY`, Krok 2,
+                                 na samym dole) doliczany jednym krokiem
+                                 post-processingu na końcu funkcji —
+                                 działa automatycznie dla każdego trybu,
+                                 obecnego i przyszłego, bo silnik G-code
+                                 oraz 2D/3D Preview wołają `resolvePoints()`
+                                 bezpośrednio. Fizyczny origin/osie w
+                                 podglądach się nie przesuwają — offset
+                                 rusza tylko otwory. Kolor "meta" (amber,
+                                 `#d97706`/`#fbbf24`) rezerwowany dla tego
+                                 typu adnotacji (przesunięcie układu), inny
+                                 niż fizyczne osie (czerwień/zieleń) czy
+                                 origin (indigo) — patrz CHANGELOG 0.6.13.
     circle.ts                  — fullCircleMove() — wspólna logika pełnego
                                  okręgu (płaskiego lub helikalnego) w obu
                                  trybach interpolacji (G2/G3 vs G1), używana
