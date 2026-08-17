@@ -106,23 +106,27 @@ Projekt budowany etapami z checkpointami do akceptacji. Aktualny stan:
         co Offset X/Y). Okrąg wyśrodkowany na `(0,0)`. Jak Grid Centered:
         jedyna zmiana to nowy `case` w `resolvePoints()`, silnik G-code
         i podglądy 2D/3D zadziałały bez zmian. Pasek: `CIRCLE N×⌀D`.
+      - [x] **Ikony w podsumowaniu Kroku 2** (zwinięty pasek), plus
+        opisowy tekst zamiast skróconego kodu — `SINGLE HOLE` /
+        `RECTANGLE (X×Y)` / `RECTANGLE CENTERED (X×Y)` /
+        `N-HOLES CIRCLE (R…)` / `CUSTOM POINTS (N)`, rozbity na kilka
+        linijek (`positioningLines()` w `src/App.tsx`, wąska 80px kolumna
+        nie mieści dłuższego tekstu w jednej linii). Nowe komponenty SVG
+        w `src/components/icons.tsx`: `SingleIcon` (crosshair + kropka na
+        origin), `RectangleIcon` (4 punkty w prostokąt, większy w lewym
+        dolnym rogu — tam jest 0,0), `RectangleCenteredIcon` (te same
+        4 punkty, większy w środku), `CircleHolesIcon` (okrąg + kropki po
+        obwodzie, większa kropka w środku), `CustomPointsIcon` (delikatne
+        osie X/Y + kropka w ćwiartce +X/+Y). Dobór ikony/tekstu przez
+        `positioningIcon()`/`positioningLines()`, exhaustive switch po
+        `PositioningMode` jak wszędzie indziej.
 
       Pozostało:
-      - **Ikony w podsumowaniu Kroku 2** (zwinięty pasek) zamiast/obok
-        samego tekstu (`0,0` / `RECT X×Y` / `RECT X×Y (C)` / `CIRCLE N×⌀D`
-        / `Custom (N)`) — nowe komponenty SVG w stylu
-        `src/components/icons.tsx`:
-        - **Single (0,0):** crosshair (celownik) + etykieta "0,0".
-        - **Rectangle, origin w rogu (Grid):** 4 punkty połączone lekką
-          kreską w prostokąt, punkt w lewym dolnym rogu narysowany
-          wyraźnie większy (tam jest 0,0).
-        - **Rectangle, origin w środku (Grid Centered):** te same
-          4 punkty/kreski, ale większy punkt w **środku** prostokąta.
-        - **Circle (N-Holes on Circle):** okrąg (obrys) z kilkoma
-          kropkami rozmieszczonymi po obwodzie, większy punkt w środku
-          (`0,0`).
-        - **Custom:** delikatne osie X/Y (kartezjańskie), z pojedynczą
-          kropką gdzieś w ćwiartce +X/+Y (symbol dowolnego punktu).
+      - **localStorage** (persystencja parametrów wizarda między sesjami)
+        — część oryginalnego zakresu Etapu 5 (patrz opis etapu wyżej: "walidacje,
+        localStorage, polish"), nigdy nieruszona, brak dotąd rozbicia na
+        konkretne decyzje projektowe (co zapisywać, kiedy czyścić, wersja
+        schematu). Rozważyć `/grill-me` przed startem.
 
 ## Pomysły na przyszłość (poza MVP, poza Etapem 5)
 

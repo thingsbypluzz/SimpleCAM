@@ -89,6 +89,77 @@ export function OffsetIcon({ className }: IconProps) {
   )
 }
 
+// Positioning-mode badges for the Step 2 collapsed bar — one per
+// PositioningMode, each a small pictogram of the point layout rather than
+// generic text (see CLAUDE.md "Ikony w podsumowaniu Kroku 2").
+
+// Single (0,0): crosshair through a filled center dot — the classic
+// "one point at the origin" symbol.
+export function SingleIcon({ className }: IconProps) {
+  return (
+    <svg {...base} className={className}>
+      <path d="M12 3v5M12 16v5M3 12h5M16 12h5" />
+      <circle cx="12" cy="12" r="1.6" fill="currentColor" stroke="none" />
+    </svg>
+  )
+}
+
+// Rectangular Grid: 4 corner points connected by a thin outline, with the
+// bottom-left corner (the origin, (0,0)) drawn larger than the other three.
+export function RectangleIcon({ className }: IconProps) {
+  return (
+    <svg {...base} className={className}>
+      <path d="M6 18h12M18 18V6M18 6H6M6 6v12" strokeWidth={1} />
+      <circle cx="18" cy="6" r="1.3" fill="currentColor" stroke="none" />
+      <circle cx="18" cy="18" r="1.3" fill="currentColor" stroke="none" />
+      <circle cx="6" cy="6" r="1.3" fill="currentColor" stroke="none" />
+      <circle cx="6" cy="18" r="2.2" fill="currentColor" stroke="none" />
+    </svg>
+  )
+}
+
+// Rectangular Grid (Centered): same 4-corner outline, but the origin has
+// moved to the rectangle's center, so the larger point moves there too.
+export function RectangleCenteredIcon({ className }: IconProps) {
+  return (
+    <svg {...base} className={className}>
+      <path d="M6 18h12M18 18V6M18 6H6M6 6v12" strokeWidth={1} />
+      <circle cx="18" cy="6" r="1.3" fill="currentColor" stroke="none" />
+      <circle cx="18" cy="18" r="1.3" fill="currentColor" stroke="none" />
+      <circle cx="6" cy="6" r="1.3" fill="currentColor" stroke="none" />
+      <circle cx="6" cy="18" r="1.3" fill="currentColor" stroke="none" />
+      <circle cx="12" cy="12" r="2.2" fill="currentColor" stroke="none" />
+    </svg>
+  )
+}
+
+// N-Holes on Circle: circle outline with a few dots around the
+// circumference (the holes) and a larger dot at the center (the origin).
+export function CircleHolesIcon({ className }: IconProps) {
+  return (
+    <svg {...base} className={className}>
+      <circle cx="12" cy="12" r="8" strokeWidth={1} />
+      <circle cx="12" cy="4" r="1.1" fill="currentColor" stroke="none" />
+      <circle cx="19.1" cy="8.5" r="1.1" fill="currentColor" stroke="none" />
+      <circle cx="16.3" cy="19" r="1.1" fill="currentColor" stroke="none" />
+      <circle cx="7.7" cy="19" r="1.1" fill="currentColor" stroke="none" />
+      <circle cx="4.9" cy="8.5" r="1.1" fill="currentColor" stroke="none" />
+      <circle cx="12" cy="12" r="1.8" fill="currentColor" stroke="none" />
+    </svg>
+  )
+}
+
+// Custom List: faint cartesian axes with a single dot in quadrant I
+// (+X/+Y) — a generic "arbitrary point" symbol.
+export function CustomPointsIcon({ className }: IconProps) {
+  return (
+    <svg {...base} className={className}>
+      <path d="M5 19h14M5 19V5" strokeWidth={1} opacity={0.5} />
+      <circle cx="14" cy="10" r="1.6" fill="currentColor" stroke="none" />
+    </svg>
+  )
+}
+
 export function CheckIcon({ className }: IconProps) {
   return (
     <svg {...base} className={className}>

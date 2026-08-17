@@ -14,16 +14,26 @@ const Scene3D = lazy(() =>
 import {
   BitIcon,
   CheckIcon,
+  CircleHolesIcon,
+  CustomPointsIcon,
   DepthIcon,
   DiameterIcon,
   FeedIcon,
   OffsetIcon,
+  RectangleCenteredIcon,
+  RectangleIcon,
+  SingleIcon,
   StepdownIcon,
 } from './components/icons'
 import { OPERATION_LIST, OPERATION_META } from './config/operationMeta'
 import { fmt } from './lib/format'
 import { isStartZValid, isStepdownValid, isToolDiameterValid } from './lib/validation'
-import { DEFAULT_WIZARD_PARAMS, type GeometryParams, type WizardParams } from './types/wizard'
+import {
+  DEFAULT_WIZARD_PARAMS,
+  type GeometryParams,
+  type PositioningMode,
+  type WizardParams,
+} from './types/wizard'
 
 const TOTAL_STEPS = 4
 
@@ -45,18 +55,42 @@ function offsetSummary(geometry: GeometryParams): string | null {
   return `(${fmt(geometry.offsetX)};${fmt(geometry.offsetY)})mm`
 }
 
-function positioningSummary(geometry: GeometryParams): string {
+// Short lines stacked in the narrow (80px) Step 2 collapsed-bar badge —
+// broken up rather than one long string so each line stays readable at
+// the tiny font size the column allows.
+function positioningLines(geometry: GeometryParams): string[] {
   switch (geometry.positioning) {
     case 'single':
-      return '0,0'
+      return ['SINGLE', 'HOLE']
     case 'grid':
-      return `RECT ${geometry.gridX}×${geometry.gridY}`
+      return ['RECTANGLE', `(${fmt(geometry.gridX)}×${fmt(geometry.gridY)})`]
     case 'gridCentered':
-      return `RECT ${geometry.gridX}×${geometry.gridY} (C)`
-    case 'circle':
-      return `CIRCLE ${geometry.circleHoleCount}×⌀${geometry.circleDiameter}`
+      return ['RECTANGLE', 'CENTERED', `(${fmt(geometry.gridX)}×${fmt(geometry.gridY)})`]
+    case 'circle': {
+      const radius = geometry.circleDiameter / 2
+      return [`${Math.round(geometry.circleHoleCount)}-HOLES`, 'CIRCLE', `(R${fmt(radius)})`]
+    }
     case 'custom':
-      return `Custom (${geometry.customPoints.length})`
+      return ['CUSTOM', 'POINTS', `(${geometry.customPoints.length})`]
+  }
+}
+
+function positioningSummary(geometry: GeometryParams): string {
+  return positioningLines(geometry).join(' ')
+}
+
+function positioningIcon(mode: PositioningMode) {
+  switch (mode) {
+    case 'single':
+      return SingleIcon
+    case 'grid':
+      return RectangleIcon
+    case 'gridCentered':
+      return RectangleCenteredIcon
+    case 'circle':
+      return CircleHolesIcon
+    case 'custom':
+      return CustomPointsIcon
   }
 }
 
@@ -241,9 +275,27 @@ function App() {
 
                 {step.id === 2 && (
                   <div className="flex flex-col items-center gap-4">
-                    <span className="rounded-full bg-slate-100 px-2 py-0.5 text-center text-[9px] font-semibold whitespace-nowrap text-slate-600 dark:bg-slate-800 dark:text-slate-300">
-                      {positioningSummary(params.geometry)}
-                    </span>
+                    <div
+                      className="flex flex-col items-center gap-1"
+                      title={`Positioning: ${positioningSummary(params.geometry)}`}
+                    >
+                      {(() => {
+                        const PositioningIcon = positioningIcon(params.geometry.positioning)
+                        return (
+                          <PositioningIcon className="h-6 w-6 text-slate-500 dark:text-slate-400" />
+                        )
+                      })()}
+                      <div className="flex flex-col items-center">
+                        {positioningLines(params.geometry).map((line, i) => (
+                          <span
+                            key={i}
+                            className="text-center text-[9px] leading-tight font-semibold whitespace-nowrap text-slate-600 dark:text-slate-300"
+                          >
+                            {line}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
                     {offset && (
                       <MiniStat
                         icon={<OffsetIcon className="h-6 w-6" />}

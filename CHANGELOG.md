@@ -7,6 +7,24 @@ zgodne z [SemVer](https://semver.org/). Ten plik pozostaje głównym, czytelnym
 thingsbypluzz/SimpleCAM), ale to infrastruktura pod izolację pracy
 (branch/worktree per zadanie), nie zamiennik tego changeloga.
 
+## [0.6.19] — 2026-08-18
+
+### Zmieniono
+
+- **Podsumowanie Positioning w zwiniętym pasku Kroku 2** — opisowy tekst
+  zamiast skróconego kodu: `SINGLE HOLE` / `RECTANGLE (X×Y)` /
+  `RECTANGLE CENTERED (X×Y)` / `N-HOLES CIRCLE (R…)` / `CUSTOM POINTS (N)`,
+  rozbity na kilka linijek (`positioningLines()` w `src/App.tsx`) zamiast
+  jednej linii pill-a — wąska (80px) kolumna paska nie mieściła dłuższego
+  tekstu w jednej linii. Circle pokazuje promień (`R`), nie średnicę —
+  konwencja inna niż `circleDiameter` w danych, celowo pod czytelność
+  ikony/etykiety.
+- **Ikony trybu pozycjonowania** — dodano `SingleIcon`, `RectangleIcon`,
+  `RectangleCenteredIcon`, `CircleHolesIcon`, `CustomPointsIcon`
+  (`src/components/icons.tsx`), każda ilustrująca układ punktów danego
+  trybu (patrz opis w `CLAUDE.md`), wyświetlana nad opisem w pasku Kroku 2
+  — dokańcza ostatnią pozycję z listy "Pozostało" w Etapie 5.
+
 ## [0.6.18] — 2026-08-17
 
 ### Dodano
