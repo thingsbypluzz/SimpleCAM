@@ -7,6 +7,15 @@ zgodne z [SemVer](https://semver.org/). Ten plik pozostaje głównym, czytelnym
 thingsbypluzz/SimpleCAM), ale to infrastruktura pod izolację pracy
 (branch/worktree per zadanie), nie zamiennik tego changeloga.
 
+## [0.6.16] — 2026-08-17
+
+### Zmieniono
+
+- **Adnotacja offsetu w Kroku 2 dostała etykietę "OFFSET"**, tak jak
+  BIT/HOLE/DEPTH — dla spójności wizualnej ręcznie sklejany blok w
+  `App.tsx` zastąpiony bezpośrednim użyciem współdzielonego komponentu
+  `MiniStat` (ten sam, którego już używają pozostałe statystyki paska).
+
 ## [0.6.15] — 2026-08-17
 
 ### Zmieniono

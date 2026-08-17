@@ -241,14 +241,12 @@ function App() {
                       {positioningSummary(params.geometry)}
                     </span>
                     {offset && (
-                      <div className="flex flex-col items-center gap-1" title={`Offset: ${offset}`}>
-                        <span className="text-slate-500 dark:text-slate-400">
-                          <OffsetIcon className="h-6 w-6" />
-                        </span>
-                        <span className="whitespace-nowrap text-[10px] leading-none font-medium text-slate-700 dark:text-slate-300">
-                          {offset}
-                        </span>
-                      </div>
+                      <MiniStat
+                        icon={<OffsetIcon className="h-6 w-6" />}
+                        label="OFFSET"
+                        value={offset}
+                        title={`Offset: ${offset}`}
+                      />
                     )}
                     <MiniStat
                       icon={<BitIcon className="h-6 w-6" />}
