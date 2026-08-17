@@ -11,6 +11,7 @@ interface Step2GeometryProps {
 const POSITIONING_OPTIONS: { value: PositioningMode; label: string }[] = [
   { value: 'single', label: 'Single (0,0)' },
   { value: 'grid', label: 'Rectangular Grid' },
+  { value: 'gridCentered', label: 'Rectangular Grid (Centered)' },
   { value: 'custom', label: 'Custom List' },
 ]
 
@@ -133,8 +134,13 @@ export function Step2Geometry({ params, onChange }: Step2GeometryProps) {
         </p>
       )}
 
-      {geometry.positioning === 'grid' && (
+      {(geometry.positioning === 'grid' || geometry.positioning === 'gridCentered') && (
         <div className="flex flex-col gap-4">
+          {geometry.positioning === 'gridCentered' && (
+            <p className="text-sm text-slate-500 dark:text-slate-400">
+              Corners at (±X/2, ±Y/2) — zero the machine at the pattern center.
+            </p>
+          )}
           <FieldRow label="X [mm]">
             <input
               type="number"

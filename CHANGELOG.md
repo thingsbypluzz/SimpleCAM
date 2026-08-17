@@ -7,6 +7,23 @@ zgodne z [SemVer](https://semver.org/). Ten plik pozostaje głównym, czytelnym
 thingsbypluzz/SimpleCAM), ale to infrastruktura pod izolację pracy
 (branch/worktree per zadanie), nie zamiennik tego changeloga.
 
+## [Unreleased] — Rectangular Grid (Centered)
+
+### Dodano
+
+- **Nowy wariant pozycjonowania: "Rectangular Grid (Centered)"** — obok
+  Single/Rectangular Grid/Custom List w Kroku 2, tuż po zwykłym Grid.
+  Osobna wartość `PositioningMode` (`'gridCentered'`), nie toggle
+  wewnątrz Grid — reużywa te same pola `gridX`/`gridY` (te same X/Y
+  inputy w UI, wspólny blok warunkowy z Grid), tylko liczy rogi
+  wyśrodkowane: `(±gridX/2, ±gridY/2)` zamiast `(0,0)…(gridX,gridY)`,
+  w tej samej kolejności co Grid (przeciwnie do wskazówek zegara od
+  lewego-dolnego rogu). Nowy `case` w `resolvePoints()`
+  (`src/lib/positioning.ts`) — automatycznie działa z offsetem X/Y,
+  silnikiem G-code i 2D/3D Preview bez dodatkowych zmian (ten sam
+  mechanizm co przy dodawaniu Offsetu w 0.6.13). Podsumowanie w
+  zwiniętym pasku Kroku 2: `RECT X×Y (C)`.
+
 ## [0.6.16] — 2026-08-17
 
 ### Zmieniono

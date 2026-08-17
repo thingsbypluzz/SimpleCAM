@@ -11,6 +11,13 @@ function rawPoints(geometry: GeometryParams): Point2D[] {
         { x: geometry.gridX, y: geometry.gridY },
         { x: 0, y: geometry.gridY },
       ]
+    case 'gridCentered':
+      return [
+        { x: -geometry.gridX / 2, y: -geometry.gridY / 2 },
+        { x: geometry.gridX / 2, y: -geometry.gridY / 2 },
+        { x: geometry.gridX / 2, y: geometry.gridY / 2 },
+        { x: -geometry.gridX / 2, y: geometry.gridY / 2 },
+      ]
     case 'custom':
       return geometry.customPoints
   }
