@@ -1,6 +1,6 @@
 export type OperationType = 'helix' | 'standard'
 
-export type PositioningMode = 'single' | 'grid' | 'custom'
+export type PositioningMode = 'single' | 'grid' | 'gridCentered' | 'custom'
 
 export type InterpolationMode = 'arc' | 'linear'
 

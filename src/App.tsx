@@ -51,6 +51,8 @@ function positioningSummary(geometry: GeometryParams): string {
       return '0,0'
     case 'grid':
       return `RECT ${geometry.gridX}×${geometry.gridY}`
+    case 'gridCentered':
+      return `RECT ${geometry.gridX}×${geometry.gridY} (C)`
     case 'custom':
       return `Custom (${geometry.customPoints.length})`
   }

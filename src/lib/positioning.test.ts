@@ -28,6 +28,15 @@ describe('resolvePoints', () => {
     ])
   })
 
+  it('gridCentered returns the 4 corners centered on (0,0), same order as grid', () => {
+    expect(resolvePoints({ ...base, positioning: 'gridCentered' })).toEqual([
+      { x: -25, y: -15 },
+      { x: 25, y: -15 },
+      { x: 25, y: 15 },
+      { x: -25, y: 15 },
+    ])
+  })
+
   it('custom returns the provided points as-is', () => {
     const customPoints = [
       { x: 10, y: 10 },
@@ -48,6 +57,17 @@ describe('resolvePoints', () => {
       { x: 55, y: 10 },
       { x: 55, y: 40 },
       { x: 5, y: 40 },
+    ])
+  })
+
+  it('offset shifts every gridCentered corner uniformly', () => {
+    expect(
+      resolvePoints({ ...base, positioning: 'gridCentered', offsetX: 5, offsetY: 10 }),
+    ).toEqual([
+      { x: -20, y: -5 },
+      { x: 30, y: -5 },
+      { x: 30, y: 25 },
+      { x: -20, y: 25 },
     ])
   })
 
