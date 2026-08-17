@@ -189,23 +189,30 @@ function App() {
                 className="flex w-20 shrink-0 flex-col items-center gap-3 border-r border-slate-200 py-4 hover:bg-slate-50 dark:border-slate-800 dark:hover:bg-slate-900"
               >
                 {step.id === 1 && (
-                  <div className="flex flex-col items-center gap-3">
+                  <div className="flex flex-col items-center gap-2">
                     {OPERATION_LIST.map((op) => {
                       const isActive = op.value === params.operation
                       return (
-                        <op.Icon
-                          key={op.value}
-                          className={
-                            isActive
-                              ? 'h-6 w-6 text-indigo-600 dark:text-indigo-400'
-                              : 'h-6 w-6 text-slate-300 opacity-50 dark:text-slate-600'
-                          }
-                        />
+                        <div key={op.value} className="flex flex-col items-center gap-0.5">
+                          <op.Icon
+                            className={
+                              isActive
+                                ? 'h-6 w-6 text-indigo-600 dark:text-indigo-400'
+                                : 'h-6 w-6 text-slate-300 opacity-50 dark:text-slate-600'
+                            }
+                          />
+                          <span
+                            className={
+                              isActive
+                                ? 'text-[10px] font-medium text-slate-500 dark:text-slate-400'
+                                : 'text-[10px] font-medium text-slate-300 opacity-50 dark:text-slate-600'
+                            }
+                          >
+                            {op.shortLabel}
+                          </span>
+                        </div>
                       )
                     })}
-                    <span className="text-[10px] font-medium text-slate-500 dark:text-slate-400">
-                      {activeOperation.shortLabel}
-                    </span>
                   </div>
                 )}
 
