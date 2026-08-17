@@ -40,7 +40,7 @@ thingsbypluzz/SimpleCAM), ale to infrastruktura pod izolację pracy
   pominięte przy tej zmianie (kosmetyka podglądu, nie wpływa na generowany
   G-code). Do ewentualnego dociągnięcia osobno.
 
-## [Unreleased] — Step 1 dual operation summary
+## [0.6.12] — 2026-08-17
 
 ### Zmieniono
 
