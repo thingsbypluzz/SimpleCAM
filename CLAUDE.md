@@ -333,10 +333,16 @@ src/
                                  bezpośrednio. Fizyczny origin/osie w
                                  podglądach się nie przesuwają — offset
                                  rusza tylko otwory. Kolor "meta" (amber,
-                                 `#d97706`/`#fbbf24`) rezerwowany dla tego
-                                 typu adnotacji (przesunięcie układu), inny
-                                 niż fizyczne osie (czerwień/zieleń) czy
-                                 origin (indigo) — patrz CHANGELOG 0.6.13.
+                                 `#d97706`/`#fbbf24`) rezerwowany dla wektora
+                                 offsetu w 2D/3D Preview, inny niż fizyczne
+                                 osie (czerwień/zieleń) czy origin (indigo)
+                                 — patrz CHANGELOG 0.6.13. Ikona `OffsetIcon`
+                                 w zwiniętym pasku Kroku 2 jest natomiast
+                                 statyczna (nie obraca się pod realny kąt) i
+                                 w kolorze pozostałych ikon paska, nie amber
+                                 — to tylko subtelny znacznik "offset
+                                 ustawiony", nie druga wizualizacja kierunku
+                                 (patrz CHANGELOG 0.6.14).
     circle.ts                  — fullCircleMove() — wspólna logika pełnego
                                  okręgu (płaskiego lub helikalnego) w obu
                                  trybach interpolacji (G2/G3 vs G1), używana

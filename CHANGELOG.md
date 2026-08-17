@@ -7,6 +7,20 @@ zgodne z [SemVer](https://semver.org/). Ten plik pozostaje głównym, czytelnym
 thingsbypluzz/SimpleCAM), ale to infrastruktura pod izolację pracy
 (branch/worktree per zadanie), nie zamiennik tego changeloga.
 
+## [0.6.14] — 2026-08-17
+
+### Zmieniono
+
+- **Ikona offsetu w zwiniętym pasku Kroku 2 uproszczona — statyczna,
+  nie obraca się.** Poprzednia wersja (0.6.13) dynamicznie obracała
+  `OffsetIcon` pod rzeczywisty kąt offsetu (`atan2`) — okazało się to
+  nadinterpretacją: to ma być subtelny, stały znacznik "offset jest
+  ustawiony", nie druga wizualizacja kierunku (od tego jest wektor w
+  2D/3D Preview, bez zmian). Ikona zawsze wskazuje w prawy górny róg
+  (ćwiartka I), w kolorze pozostałych ikon paska (`slate-500`/`slate-400`,
+  jak `BitIcon`/`DiameterIcon`/`DepthIcon`) zamiast amber. `offsetSummary()`
+  w `App.tsx` uproszczone z `{angleDeg, label}` na samo `string | null`.
+
 ## [0.6.13] — 2026-08-17
 
 ### Dodano

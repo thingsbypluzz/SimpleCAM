@@ -40,12 +40,9 @@ const STEPS_WITH_NEXT_BUTTON = new Set([2, 3])
 
 // null when there's no offset to show — the collapsed-bar annotation is
 // hidden entirely at the (0,0) default, not just zeroed out.
-function offsetSummary(geometry: GeometryParams): { angleDeg: number; label: string } | null {
+function offsetSummary(geometry: GeometryParams): string | null {
   if (geometry.offsetX === 0 && geometry.offsetY === 0) return null
-  return {
-    angleDeg: (Math.atan2(geometry.offsetY, geometry.offsetX) * 180) / Math.PI,
-    label: `(${fmt(geometry.offsetX)};${fmt(geometry.offsetY)})mm`,
-  }
+  return `(${fmt(geometry.offsetX)};${fmt(geometry.offsetY)})mm`
 }
 
 function positioningSummary(geometry: GeometryParams): string {
@@ -65,7 +62,7 @@ function collapsedStepTitle(stepId: number, params: WizardParams): string {
       return `Operation: ${OPERATION_META[params.operation].title}`
     case 2: {
       const offset = offsetSummary(params.geometry)
-      return `Geometry — ${positioningSummary(params.geometry)}${offset ? ` — Offset ${offset.label}` : ''} — Tool ⌀${params.geometry.toolDiameter}mm, Hole ⌀${params.geometry.holeDiameter}mm, Depth ${params.geometry.totalDepth}mm`
+      return `Geometry — ${positioningSummary(params.geometry)}${offset ? ` — Offset ${offset}` : ''} — Tool ⌀${params.geometry.toolDiameter}mm, Hole ⌀${params.geometry.holeDiameter}mm, Depth ${params.geometry.totalDepth}mm`
     }
     case 3:
       return `Feeds & Speeds — Feed ${params.feeds.feedrateXY} mm/min, Stepdown ${params.feeds.stepdown} mm`
@@ -244,18 +241,12 @@ function App() {
                       {positioningSummary(params.geometry)}
                     </span>
                     {offset && (
-                      <div
-                        className="flex flex-col items-center gap-1"
-                        title={`Offset: ${offset.label}`}
-                      >
-                        <span
-                          className="inline-flex text-amber-600 dark:text-amber-400"
-                          style={{ transform: `rotate(${offset.angleDeg - 45}deg)` }}
-                        >
+                      <div className="flex flex-col items-center gap-1" title={`Offset: ${offset}`}>
+                        <span className="text-slate-500 dark:text-slate-400">
                           <OffsetIcon className="h-6 w-6" />
                         </span>
                         <span className="whitespace-nowrap text-[10px] leading-none font-medium text-slate-700 dark:text-slate-300">
-                          {offset.label}
+                          {offset}
                         </span>
                       </div>
                     )}

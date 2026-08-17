@@ -74,9 +74,11 @@ export function StepdownIcon({ className }: IconProps) {
   )
 }
 
-// Crosshair + arrow, drawn at rest pointing into quadrant I (up-right, 45°)
-// — callers that need it to reflect a real direction should wrap it and
-// apply `rotate(realAngleDeg - 45deg)` so the drawn 45° baseline lines up.
+// Crosshair + arrow toward quadrant I (up-right, 45°) — a static, generic
+// "offset" symbol (Step 2 collapsed-bar annotation). Deliberately doesn't
+// rotate to match the real offset direction — that's what the amber vector
+// in the 2D/3D previews is for; this icon is just a subtle marker that an
+// offset is set.
 export function OffsetIcon({ className }: IconProps) {
   return (
     <svg {...base} className={className}>
