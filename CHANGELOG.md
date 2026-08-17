@@ -2,10 +2,12 @@
 
 Wszystkie znaczące zmiany w projekcie SimpleCAM są odnotowywane w tym pliku.
 Format bazuje na [Keep a Changelog](https://keepachangelog.com/), wersjonowanie
-zgodne z [SemVer](https://semver.org/). Projekt nie korzysta z gita — ten plik
-jest jedynym źródłem historii zmian.
+zgodne z [SemVer](https://semver.org/). Ten plik pozostaje głównym, czytelnym
+źródłem historii zmian — projekt ma teraz repo git (GitHub:
+thingsbypluzz/SimpleCAM), ale to infrastruktura pod izolację pracy
+(branch/worktree per zadanie), nie zamiennik tego changeloga.
 
-## [Unreleased] — Start Z + domyślna interpolacja G1
+## [0.6.11] — 2026-08-17
 
 ### Dodano
 
@@ -30,17 +32,13 @@ jest jedynym źródłem historii zmian.
   (segmented)** — `DEFAULT_WIZARD_PARAMS.output.interpolation` w
   `src/types/wizard.ts`.
 
-### Uwaga dla mergującego
+### Znane ograniczenie
 
-- Zmiana domyślnej interpolacji złamała 6 istniejących testów, które
-  niejawnie polegały na starym domyślnym trybie ('arc') zamiast go jawnie
-  ustawiać — naprawione przez dodanie `output: { interpolation: 'arc' }`
-  do tych testów (testują generowanie łuków, nie domyślne wartości).
 - 3D Preview (`buildScene.ts`) nadal rysuje pełny odcinek Safe Z → Z0 jako
   przerywaną linię (rapid), niezależnie od `startZ` — wizualnie
-  niedokładne, gdy `startZ = 0` (bo to teraz `G1`, nie `G0`), ale
-  celowo pominięte w tej gałęzi (poza uzgodnionym zakresem, czysto
-  kosmetyczne w 3D Preview, nie wpływa na generowany G-code).
+  niedokładne przy `startZ = 0` (bo to teraz `G1`, nie `G0`), ale świadomie
+  pominięte przy tej zmianie (kosmetyka podglądu, nie wpływa na generowany
+  G-code). Do ewentualnego dociągnięcia osobno.
 
 ## [0.6.10] — 2026-08-17
 
