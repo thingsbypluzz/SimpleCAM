@@ -77,14 +77,23 @@ Projekt budowany etapami z checkpointami do akceptacji. Aktualny stan:
         positioning: `0,0` (Single), `RECT X×Y` (Grid), `Custom (N)`
         (Custom List) — `positioningSummary()` w `App.tsx`, użyte też w
         tooltipie paska.
+      - [x] **Start Z** (obie operacje, nie tylko Helix) — pole `startZ`
+        w `FeedsParams` (Krok 3, pod Plunge Rate), zawsze ≥0, domyślnie
+        `0`. Semantyka: "powiększa" obrabiany element — materiał wyższy
+        o `startZ` (góra cięcia w `Z=+startZ`), dno zawsze na
+        `-totalDepth`. Wspólna `rapidToTop()` w `src/lib/program.ts`
+        (zawsze `G0 Z<startZ>` — przy `startZ=0` identyczne z G-code
+        sprzed tej funkcji). Oba silniki i 3D Preview
+        (`buildScene.ts` — bryła otworu, linia zjazdu) w pełni spójne.
+        Walidacja `isStartZValid()` (`startZ ≤ safeZ`).
+      - [x] **Krok 1 (STEP 1 SUMMARY):** zwinięty pasek pokazuje obie
+        opcje operacji (Helix + Standard), każda z własną etykietą —
+        aktywna w pełnym kolorze, nieaktywna wyszarzona/przygaszona.
+        Iteruje po `OPERATION_LIST` w `App.tsx`.
+      - [x] **Domyślna interpolacja okręgów: G1 (segmented)** zamiast
+        G2/G3 (arc) — `DEFAULT_WIZARD_PARAMS.output.interpolation`.
 
       Pozostało:
-      - **Helix: opcja "Start from Z"** — spirala ma zaczynać schodzenie nie
-        zawsze od `Z0` (powierzchnia materiału), tylko od skonfigurowanej
-        wysokości startowej (np. `Z0.5`, czyli tuż nad powierzchnią).
-        Dotyczy `helixToolpath()` w `src/lib/helix.ts` (obecnie zahardkodowane
-        `G0 Z0` przed pierwszym obrotem spirali) — nowe pole w `FeedsParams`
-        albo dedykowane dla Helix, do ustalenia przy implementacji.
       - **Krok 2: nowy wariant pozycjonowania "N-holes on circle"** — obok
         Single/Grid/Custom. Parametry: liczba otworów (np. 5), średnica
         okręgu na którym są rozmieszczone (np. 45mm), oraz start angle —
@@ -114,15 +123,6 @@ Projekt budowany etapami z checkpointami do akceptacji. Aktualny stan:
           4 punkty/kreski, ale większy punkt w **środku** prostokąta.
         - **Custom:** delikatne osie X/Y (kartezjańskie), z pojedynczą
           kropką gdzieś w ćwiartce +X/+Y (symbol dowolnego punktu).
-      - **Krok 1 (STEP 1 SUMMARY):** zwinięty pasek ma pokazywać **obie**
-        opcje operacji (Helix + Standard), nie tylko wybraną — wybrana w
-        pełnym kolorze, niewybrana wyszarzona/przygaszona (niższa
-        widoczność). Obecnie pasek renderuje tylko
-        `activeOperation.Icon` — trzeba iterować po `OPERATION_LIST` i
-        różnicować styl per `op.value === params.operation`.
-      - **Domyślna interpolacja okręgów: G1 (segmented) zamiast G2/G3
-        (arc).** Zmiana `DEFAULT_WIZARD_PARAMS.output.interpolation` w
-        `src/types/wizard.ts` z `'arc'` na `'linear'`.
 
 ## Pomysły na przyszłość (poza MVP, poza Etapem 5)
 
