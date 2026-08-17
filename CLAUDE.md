@@ -92,34 +92,35 @@ Projekt budowany etapami z checkpointami do akceptacji. Aktualny stan:
         Iteruje po `OPERATION_LIST` w `App.tsx`.
       - [x] **Domyślna interpolacja okręgów: G1 (segmented)** zamiast
         G2/G3 (arc) — `DEFAULT_WIZARD_PARAMS.output.interpolation`.
+      - [x] **Rectangular Grid (Centered)** — nowy, osobny wariant
+        `PositioningMode` (`'gridCentered'`, nie toggle wewnątrz Grid),
+        zaraz po zwykłym Grid w Kroku 2. Reużywa `gridX`/`gridY` i te
+        same pola UI; rogi wyśrodkowane `(±gridX/2, ±gridY/2)` zamiast
+        `(0,0)…(gridX,gridY)`, ten sam porządek co Grid. Automatycznie
+        działa z offsetem X/Y i podglądami (nowy `case` w
+        `resolvePoints()`, zero innych zmian). Pasek: `RECT X×Y (C)`.
 
       Pozostało:
       - **Krok 2: nowy wariant pozycjonowania "N-holes on circle"** — obok
-        Single/Grid/Custom. Parametry: liczba otworów (np. 5), średnica
-        okręgu na którym są rozmieszczone (np. 45mm), oraz start angle —
-        kąt (względem osi +X, czyli 0°) pod którym leży pierwszy punkt,
-        pozostałe rozłożone równomiernie po obwodzie. Wymaga: nowej wartości
-        `PositioningMode` (`'circle'`), nowych pól w `GeometryParams`
-        (np. `circleHoleCount`, `circleDiameter`, `circleStartAngle`),
-        rozszerzenia `resolvePoints()` w `src/lib/positioning.ts`, nowej
-        sekcji w `Step2Geometry.tsx` i dopasowania podsumowania w pasku
-        Kroku 2 (`App.tsx`) oraz podglądu 2D (już powinien zadziałać bez
-        zmian, bo rysuje na podstawie `resolvePoints()`).
-      - **Rectangular Grid: opcja "centered at 0,0"** — obok obecnego
-        zachowania (0,0 w rogu prostokąta), dodać wariant gdzie 0,0 jest w
-        **środku** prostokąta (rogi w `±gridX/2, ±gridY/2`). Prawdopodobnie
-        dodatkowy toggle/radio w sekcji Grid w `Step2Geometry.tsx` (nie
-        osobny `PositioningMode` — to wariant tego samego Grid), do
-        ustalenia przy implementacji czy to osobne pole w `GeometryParams`
-        (np. `gridOrigin: 'corner' | 'center'`).
+        Single/Grid/Grid Centered/Custom. Parametry: liczba otworów
+        (np. 5), średnica okręgu na którym są rozmieszczone (np. 45mm),
+        oraz start angle — kąt (względem osi +X, czyli 0°) pod którym
+        leży pierwszy punkt, pozostałe rozłożone równomiernie po
+        obwodzie. Wymaga: nowej wartości `PositioningMode` (`'circle'`),
+        nowych pól w `GeometryParams` (np. `circleHoleCount`,
+        `circleDiameter`, `circleStartAngle`), rozszerzenia
+        `resolvePoints()` w `src/lib/positioning.ts`, nowej sekcji w
+        `Step2Geometry.tsx` i dopasowania podsumowania w pasku Kroku 2
+        (`App.tsx`) oraz podglądu 2D (już powinien zadziałać bez zmian,
+        bo rysuje na podstawie `resolvePoints()`).
       - **Ikony w podsumowaniu Kroku 2** (zwinięty pasek) zamiast/obok
-        samego tekstu (`0,0` / `RECT X×Y` / `Custom (N)`) — nowe komponenty
-        SVG w stylu `src/components/icons.tsx`:
+        samego tekstu (`0,0` / `RECT X×Y` / `RECT X×Y (C)` / `Custom (N)`)
+        — nowe komponenty SVG w stylu `src/components/icons.tsx`:
         - **Single (0,0):** crosshair (celownik) + etykieta "0,0".
-        - **Rectangle, origin w rogu:** 4 punkty połączone lekką kreską w
-          prostokąt, punkt w lewym dolnym rogu narysowany wyraźnie większy
-          (tam jest 0,0).
-        - **Rectangle, origin w środku** (po dodaniu opcji wyżej): te same
+        - **Rectangle, origin w rogu (Grid):** 4 punkty połączone lekką
+          kreską w prostokąt, punkt w lewym dolnym rogu narysowany
+          wyraźnie większy (tam jest 0,0).
+        - **Rectangle, origin w środku (Grid Centered):** te same
           4 punkty/kreski, ale większy punkt w **środku** prostokąta.
         - **Custom:** delikatne osie X/Y (kartezjańskie), z pojedynczą
           kropką gdzieś w ćwiartce +X/+Y (symbol dowolnego punktu).

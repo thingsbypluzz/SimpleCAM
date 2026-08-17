@@ -7,7 +7,7 @@ zgodne z [SemVer](https://semver.org/). Ten plik pozostaje głównym, czytelnym
 thingsbypluzz/SimpleCAM), ale to infrastruktura pod izolację pracy
 (branch/worktree per zadanie), nie zamiennik tego changeloga.
 
-## [Unreleased] — Rectangular Grid (Centered)
+## [0.6.17] — 2026-08-17
 
 ### Dodano
 
