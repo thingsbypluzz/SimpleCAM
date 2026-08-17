@@ -109,7 +109,7 @@ Projekt budowany etapami z checkpointami do akceptacji. Aktualny stan:
       - [x] **Ikony w podsumowaniu Kroku 2** (zwinięty pasek), plus
         opisowy tekst zamiast skróconego kodu — `SINGLE HOLE` /
         `RECTANGLE (X×Y)` / `RECTANGLE CENTERED (X×Y)` /
-        `N-HOLES CIRCLE (R…)` / `CUSTOM POINTS (N)`, rozbity na kilka
+        `N-HOLES CIRCLE (⌀…)` / `CUSTOM POINTS (N)`, rozbity na kilka
         linijek (`positioningLines()` w `src/App.tsx`, wąska 80px kolumna
         nie mieści dłuższego tekstu w jednej linii). Nowe komponenty SVG
         w `src/components/icons.tsx`: `SingleIcon` (crosshair + kropka na

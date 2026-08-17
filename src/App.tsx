@@ -66,10 +66,8 @@ function positioningLines(geometry: GeometryParams): string[] {
       return ['RECTANGLE', `(${fmt(geometry.gridX)}×${fmt(geometry.gridY)})`]
     case 'gridCentered':
       return ['RECTANGLE', 'CENTERED', `(${fmt(geometry.gridX)}×${fmt(geometry.gridY)})`]
-    case 'circle': {
-      const radius = geometry.circleDiameter / 2
-      return [`${Math.round(geometry.circleHoleCount)}-HOLES`, 'CIRCLE', `(R${fmt(radius)})`]
-    }
+    case 'circle':
+      return [`${Math.round(geometry.circleHoleCount)}-HOLES`, 'CIRCLE', `(⌀${fmt(geometry.circleDiameter)})`]
     case 'custom':
       return ['CUSTOM', 'POINTS', `(${geometry.customPoints.length})`]
   }

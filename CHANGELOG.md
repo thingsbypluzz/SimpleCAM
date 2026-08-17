@@ -7,6 +7,15 @@ zgodne z [SemVer](https://semver.org/). Ten plik pozostaje głównym, czytelnym
 thingsbypluzz/SimpleCAM), ale to infrastruktura pod izolację pracy
 (branch/worktree per zadanie), nie zamiennik tego changeloga.
 
+## [0.6.20] — 2026-08-18
+
+### Zmieniono
+
+- **N-Holes on Circle w pasku Kroku 2:** `(R…)` (promień) → `(⌀…)`
+  (średnica) — spójne z tym, jak `circleDiameter` jest wpisywane w
+  Kroku 2 i jak Rectangle pokazuje swój wymiar (`(X×Y)`), więc badge
+  pokazuje ten sam wymiar co pole formularza, nie przeliczoną wartość.
+
 ## [0.6.19] — 2026-08-18
 
 ### Zmieniono
