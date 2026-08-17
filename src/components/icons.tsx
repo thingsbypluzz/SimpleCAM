@@ -193,3 +193,14 @@ export function CheckIcon({ className }: IconProps) {
     </svg>
   )
 }
+
+// Step 4 collapsed-bar badge when G-Code hasn't been generated yet (or a
+// param changed since the last Generate) — pairs with CheckIcon, which
+// takes over once a snapshot exists.
+export function XIcon({ className }: IconProps) {
+  return (
+    <svg {...base} className={className}>
+      <path d="M6 6l12 12M18 6 6 18" />
+    </svg>
+  )
+}

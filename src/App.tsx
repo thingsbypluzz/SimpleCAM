@@ -26,6 +26,7 @@ import {
   SingleIcon,
   StartZIcon,
   StepdownIcon,
+  XIcon,
 } from './components/icons'
 import { OPERATION_LIST, OPERATION_META } from './config/operationMeta'
 import { fmt } from './lib/format'
@@ -365,8 +366,19 @@ function App() {
 
                 {step.id === 4 && (
                   <>
-                    <span className="flex h-8 w-8 items-center justify-center rounded-full bg-indigo-100 text-indigo-700 dark:bg-indigo-950 dark:text-indigo-300">
-                      <CheckIcon className="h-4 w-4" />
+                    <span
+                      className={
+                        generatedGCode
+                          ? 'flex h-8 w-8 items-center justify-center rounded-full bg-indigo-100 text-indigo-700 dark:bg-indigo-950 dark:text-indigo-300'
+                          : 'flex h-8 w-8 items-center justify-center rounded-full bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-300'
+                      }
+                      title={generatedGCode ? 'G-Code generated' : 'G-Code not generated yet'}
+                    >
+                      {generatedGCode ? (
+                        <CheckIcon className="h-4 w-4" />
+                      ) : (
+                        <XIcon className="h-4 w-4" />
+                      )}
                     </span>
                     <span className="[writing-mode:vertical-rl] rotate-180 text-xs font-medium text-slate-500 dark:text-slate-400">
                       {step.title}

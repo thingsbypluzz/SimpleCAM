@@ -7,6 +7,17 @@ zgodne z [SemVer](https://semver.org/). Ten plik pozostaje głównym, czytelnym
 thingsbypluzz/SimpleCAM), ale to infrastruktura pod izolację pracy
 (branch/worktree per zadanie), nie zamiennik tego changeloga.
 
+## [0.6.22] — 2026-08-18
+
+### Zmieniono
+
+- **Badge Kroku 4 w zwiniętym pasku** — checkmark w indigo kółeczku
+  pokazuje się teraz tylko gdy `generatedGCode` istnieje (czyli po
+  kliknięciu Generate i zanim jakikolwiek parametr go unieważni — patrz
+  Etap 2). W przeciwnym razie X w amber kółeczku, sugerujący że coś
+  zostało do dokończenia — nowa `XIcon` (`src/components/icons.tsx`),
+  obok istniejącej `CheckIcon`.
+
 ## [0.6.21] — 2026-08-18
 
 ### Dodano

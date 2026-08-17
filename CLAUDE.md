@@ -126,6 +126,10 @@ Projekt budowany etapami z checkpointami do akceptacji. Aktualny stan:
         widoczny tylko gdy `startZ !== 0` (ten sam wzorzec co OFFSET w
         Kroku 2), `StartZIcon` — lustrzana strzałka w górę + mały "+"
         przy grocie.
+      - [x] **Badge Kroku 4** (zwinięty pasek) — indigo checkmark tylko
+        gdy `generatedGCode` istnieje (po Generate, przed unieważnieniem
+        przez zmianę parametru — patrz Etap 2); w przeciwnym razie amber
+        X (`XIcon`), sygnalizujący że trzeba kliknąć Generate.
 
       Pozostało:
       - **localStorage** (persystencja parametrów wizarda między sesjami)
