@@ -12,10 +12,14 @@ interface Theme {
   toolpath: string
   rapid: string
   text: string
+  offset: string
 }
 
 // axisX/axisY match preview3d/buildScene.ts's LIGHT_THEME/DARK_THEME exactly
 // (red X, green Y) — same visual convention in both 2D and 3D previews.
+// `offset` (amber) is deliberately a different hue family from axisX/axisY/
+// origin — it's a meta annotation (a work-offset shift), not a physical
+// axis or toolpath move.
 const LIGHT_THEME: Theme = {
   background: '#ffffff',
   grid: '#e2e8f0',
@@ -27,6 +31,7 @@ const LIGHT_THEME: Theme = {
   toolpath: '#16a34a',
   rapid: '#cbd5e1',
   text: '#64748b',
+  offset: '#d97706',
 }
 
 const DARK_THEME: Theme = {
@@ -40,6 +45,32 @@ const DARK_THEME: Theme = {
   toolpath: '#4ade80',
   rapid: '#334155',
   text: '#94a3b8',
+  offset: '#fbbf24',
+}
+
+// Arrowhead pointing along an arbitrary unit direction (dirX, dirY), tip at
+// (tipX, tipY) — unlike the X/Y axis arrowheads (always horizontal/
+// vertical, hand-coded inline), the offset vector can point any way.
+function drawArrowhead(
+  ctx: CanvasRenderingContext2D,
+  tipX: number,
+  tipY: number,
+  dirX: number,
+  dirY: number,
+  size: number,
+  color: string,
+) {
+  const perpX = -dirY
+  const perpY = dirX
+  const backX = tipX - dirX * size
+  const backY = tipY - dirY * size
+  ctx.beginPath()
+  ctx.moveTo(tipX, tipY)
+  ctx.lineTo(backX + perpX * size * 0.6, backY + perpY * size * 0.6)
+  ctx.lineTo(backX - perpX * size * 0.6, backY - perpY * size * 0.6)
+  ctx.closePath()
+  ctx.fillStyle = color
+  ctx.fill()
 }
 
 // "1-2-5" sequence — picks a round step (1, 2, 5, 10, 20, 50, 100 mm, ...)
@@ -197,6 +228,24 @@ export function drawToolpath(
     ctx.arc(px, py, 2, 0, Math.PI * 2)
     ctx.fillStyle = theme.toolpath
     ctx.fill()
+  }
+
+  // Offset vector — amber, physical origin to the shifted pattern. Hidden
+  // entirely at (0,0), same rule as the collapsed Step 2 summary annotation.
+  if (geometry.offsetX !== 0 || geometry.offsetY !== 0) {
+    const [vecTailX, vecTailY] = [originPxX, originPxY]
+    const [vecTipX, vecTipY] = toPx(geometry.offsetX, geometry.offsetY)
+    const vecDx = vecTipX - vecTailX
+    const vecDy = vecTipY - vecTailY
+    const vecLen = Math.hypot(vecDx, vecDy) || 1
+
+    ctx.strokeStyle = theme.offset
+    ctx.lineWidth = 1.5
+    ctx.beginPath()
+    ctx.moveTo(vecTailX, vecTailY)
+    ctx.lineTo(vecTipX, vecTipY)
+    ctx.stroke()
+    drawArrowhead(ctx, vecTipX, vecTipY, vecDx / vecLen, vecDy / vecLen, arrowSize, theme.offset)
   }
 
   // Origin marker

@@ -11,8 +11,17 @@ import { ToolpathCanvas } from './components/preview/ToolpathCanvas'
 const Scene3D = lazy(() =>
   import('./components/preview3d/Scene3D').then((m) => ({ default: m.Scene3D })),
 )
-import { BitIcon, CheckIcon, DepthIcon, DiameterIcon, FeedIcon, StepdownIcon } from './components/icons'
+import {
+  BitIcon,
+  CheckIcon,
+  DepthIcon,
+  DiameterIcon,
+  FeedIcon,
+  OffsetIcon,
+  StepdownIcon,
+} from './components/icons'
 import { OPERATION_LIST, OPERATION_META } from './config/operationMeta'
+import { fmt } from './lib/format'
 import { isStartZValid, isStepdownValid, isToolDiameterValid } from './lib/validation'
 import { DEFAULT_WIZARD_PARAMS, type GeometryParams, type WizardParams } from './types/wizard'
 
@@ -29,6 +38,16 @@ const STEP_META = [
 // on card click, step 4 is the last one.
 const STEPS_WITH_NEXT_BUTTON = new Set([2, 3])
 
+// null when there's no offset to show — the collapsed-bar annotation is
+// hidden entirely at the (0,0) default, not just zeroed out.
+function offsetSummary(geometry: GeometryParams): { angleDeg: number; label: string } | null {
+  if (geometry.offsetX === 0 && geometry.offsetY === 0) return null
+  return {
+    angleDeg: (Math.atan2(geometry.offsetY, geometry.offsetX) * 180) / Math.PI,
+    label: `(${fmt(geometry.offsetX)};${fmt(geometry.offsetY)})mm`,
+  }
+}
+
 function positioningSummary(geometry: GeometryParams): string {
   switch (geometry.positioning) {
     case 'single':
@@ -44,8 +63,10 @@ function collapsedStepTitle(stepId: number, params: WizardParams): string {
   switch (stepId) {
     case 1:
       return `Operation: ${OPERATION_META[params.operation].title}`
-    case 2:
-      return `Geometry — ${positioningSummary(params.geometry)} — Tool ⌀${params.geometry.toolDiameter}mm, Hole ⌀${params.geometry.holeDiameter}mm, Depth ${params.geometry.totalDepth}mm`
+    case 2: {
+      const offset = offsetSummary(params.geometry)
+      return `Geometry — ${positioningSummary(params.geometry)}${offset ? ` — Offset ${offset.label}` : ''} — Tool ⌀${params.geometry.toolDiameter}mm, Hole ⌀${params.geometry.holeDiameter}mm, Depth ${params.geometry.totalDepth}mm`
+    }
     case 3:
       return `Feeds & Speeds — Feed ${params.feeds.feedrateXY} mm/min, Stepdown ${params.feeds.stepdown} mm`
     default:
@@ -88,6 +109,7 @@ function App() {
   }
 
   const activeOperation = OPERATION_META[params.operation]
+  const offset = offsetSummary(params.geometry)
   const isGeometryValid =
     isToolDiameterValid(params.geometry) && isStepdownValid(params.feeds) && isStartZValid(params.feeds)
 
@@ -221,6 +243,22 @@ function App() {
                     <span className="rounded-full bg-slate-100 px-2 py-0.5 text-center text-[9px] font-semibold whitespace-nowrap text-slate-600 dark:bg-slate-800 dark:text-slate-300">
                       {positioningSummary(params.geometry)}
                     </span>
+                    {offset && (
+                      <div
+                        className="flex flex-col items-center gap-1"
+                        title={`Offset: ${offset.label}`}
+                      >
+                        <span
+                          className="inline-flex text-amber-600 dark:text-amber-400"
+                          style={{ transform: `rotate(${offset.angleDeg - 45}deg)` }}
+                        >
+                          <OffsetIcon className="h-6 w-6" />
+                        </span>
+                        <span className="whitespace-nowrap text-[10px] leading-none font-medium text-slate-700 dark:text-slate-300">
+                          {offset.label}
+                        </span>
+                      </div>
+                    )}
                     <MiniStat
                       icon={<BitIcon className="h-6 w-6" />}
                       label="BIT"

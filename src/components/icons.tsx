@@ -74,6 +74,19 @@ export function StepdownIcon({ className }: IconProps) {
   )
 }
 
+// Crosshair + arrow, drawn at rest pointing into quadrant I (up-right, 45°)
+// — callers that need it to reflect a real direction should wrap it and
+// apply `rotate(realAngleDeg - 45deg)` so the drawn 45° baseline lines up.
+export function OffsetIcon({ className }: IconProps) {
+  return (
+    <svg {...base} className={className}>
+      <path d="M9 12h6M12 9v6" />
+      <path d="M12 12 18 6" />
+      <path d="M14.1 6.35 18 6 17.7 9.9" />
+    </svg>
+  )
+}
+
 export function CheckIcon({ className }: IconProps) {
   return (
     <svg {...base} className={className}>

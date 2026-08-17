@@ -89,6 +89,7 @@ interface Theme {
   hole: number
   axisX: number
   axisY: number
+  offset: number
 }
 
 const LIGHT_THEME: Theme = {
@@ -101,6 +102,7 @@ const LIGHT_THEME: Theme = {
   hole: 0x64748b,
   axisX: 0xdc2626,
   axisY: 0x16a34a,
+  offset: 0xd97706,
 }
 
 const DARK_THEME: Theme = {
@@ -113,6 +115,7 @@ const DARK_THEME: Theme = {
   hole: 0x94a3b8,
   axisX: 0xf87171,
   axisY: 0x4ade80,
+  offset: 0xfbbf24,
 }
 
 // Small always-facing-camera text label rendered via a canvas texture — no
@@ -242,6 +245,20 @@ export function buildToolpathScene(params: WizardParams, isDark: boolean): Built
   const yLabel = createTextSprite('Y', theme.axisY, span * 0.09)
   yLabel.position.copy(toThree(0, axisLength + arrowSize * 1.5, 0))
   objects.push(yLabel)
+
+  // Offset vector — amber, physical origin to the shifted pattern. Hidden
+  // entirely at (0,0), same rule as the collapsed Step 2 summary annotation.
+  if (geometry.offsetX !== 0 || geometry.offsetY !== 0) {
+    const offsetTip = toThree(geometry.offsetX, geometry.offsetY, 0)
+    const offsetDir = offsetTip.clone().normalize()
+    objects.push(
+      new THREE.Line(
+        new THREE.BufferGeometry().setFromPoints([toThree(0, 0, 0), offsetTip]),
+        new THREE.LineBasicMaterial({ color: theme.offset }),
+      ),
+    )
+    objects.push(createArrowhead(theme.offset, arrowSize, offsetTip, offsetDir))
+  }
 
   // Rapid traverse between holes, at Safe Z
   if (points.length > 1) {

@@ -7,6 +7,43 @@ zgodne z [SemVer](https://semver.org/). Ten plik pozostaje głównym, czytelnym
 thingsbypluzz/SimpleCAM), ale to infrastruktura pod izolację pracy
 (branch/worktree per zadanie), nie zamiennik tego changeloga.
 
+## [Unreleased] — Geometry Offset X/Y
+
+### Dodano
+
+- **Globalny offset X/Y w Kroku 2 (Geometry)** — dwa nowe pola na samym
+  dole kroku (`offsetX`, `offsetY` w `GeometryParams`, dowolne wartości,
+  domyślnie `0`), przesuwające **cały** wzorzec otworów jednolicie,
+  niezależnie od trybu pozycjonowania (Single/Grid/Custom — i każdego
+  przyszłego trybu za darmo).
+  - Wpięty jako jeden krok post-processingu **wewnątrz** `resolvePoints()`
+    (`src/lib/positioning.ts`) — dodawany do każdego punktu tuż przed
+    `return`. Silnik G-code, 2D Preview i 3D Preview wołają
+    `resolvePoints()` bezpośrednio, więc żadne z nich nie wymagało zmian
+    poza samym dodaniem offsetu do modelu danych.
+  - Dla Custom List offset przesuwa cały zestaw punktów jednolicie
+    (traktowany jako przesunięcie punktu `0,0`).
+  - Fizyczny origin i osie X/Y w podglądach **nie** przesuwają się — to
+    stały punkt odniesienia maszyny, niezależny od tego gdzie leżą otwory
+    (ta sama zasada co przy Grid/Custom od dawna).
+- **Adnotacja offsetu w zwiniętym pasku Kroku 2** — nowa ikona
+  `OffsetIcon` (crosshair + strzałka, `src/components/icons.tsx`,
+  narysowana w spoczynku pod 45°/ćwiartka I, obracana dynamicznie o
+  `realAngle − 45°` przez `atan2(offsetY, offsetX)`) + wartość tekstowa
+  `(X;Y)mm` — widoczna **tylko gdy offset ≠ (0,0)**, jako 2. pozycja (pod
+  pigułką trybu pozycjonowania, nad BIT/HOLE/DEPTH).
+- **Wektor offsetu w 2D i 3D Preview** — linia od `(0,0)` do
+  `(offsetX,offsetY)` z grotem strzałki, w nowym kolorze **amber**
+  (`#d97706` light / `#fbbf24` dark, zgodnie z istniejącym wzorcem
+  `-600`/`-400`) — świadomie inna rodzina kolorów niż czerwona oś X /
+  zielona oś Y / indigo origin, bo to adnotacja "meta" (przesunięcie
+  układu), nie fizyczna oś czy ścieżka cięcia. Widoczna tylko gdy offset
+  ≠ (0,0). 3D Preview reużywa istniejący `createArrowhead()` (już
+  przyjmował dowolny kierunek, nie tylko osiowy — zero nowego kodu do
+  grotu). 2D Preview dostał nową, generyczną `drawArrowhead()` (poprzednie
+  groty osi X/Y były zahardkodowane pod kątem prostym, offset wymaga
+  dowolnego kąta).
+
 ## [0.6.11] — 2026-08-17
 
 ### Dodano

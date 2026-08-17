@@ -1,6 +1,6 @@
 import type { GeometryParams, Point2D } from '../types/wizard'
 
-export function resolvePoints(geometry: GeometryParams): Point2D[] {
+function rawPoints(geometry: GeometryParams): Point2D[] {
   switch (geometry.positioning) {
     case 'single':
       return [{ x: 0, y: 0 }]
@@ -14,4 +14,16 @@ export function resolvePoints(geometry: GeometryParams): Point2D[] {
     case 'custom':
       return geometry.customPoints
   }
+}
+
+// offsetX/offsetY shift the whole pattern uniformly — applied once, here,
+// after the per-mode geometry is resolved, so every mode (including future
+// ones) gets it automatically without touching the switch above. Every
+// caller (G-code engine, 2D/3D previews) goes through this function, so
+// there's nowhere else offset needs to be plumbed through.
+export function resolvePoints(geometry: GeometryParams): Point2D[] {
+  return rawPoints(geometry).map((p) => ({
+    x: p.x + geometry.offsetX,
+    y: p.y + geometry.offsetY,
+  }))
 }
