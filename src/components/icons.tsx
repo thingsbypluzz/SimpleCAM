@@ -74,17 +74,17 @@ export function StepdownIcon({ className }: IconProps) {
   )
 }
 
-// Crosshair + arrow toward quadrant I (up-right, 45°) — a static, generic
-// "offset" symbol (Step 2 collapsed-bar annotation). Deliberately doesn't
-// rotate to match the real offset direction — that's what the amber vector
-// in the 2D/3D previews is for; this icon is just a subtle marker that an
-// offset is set.
+// Cartesian axes (full cross, thin) + a bold arrow from the origin toward
+// quadrant I (up-right, 45°) — a static, generic "offset" symbol (Step 2
+// collapsed-bar annotation). Deliberately doesn't rotate to match the real
+// offset direction — that's what the amber vector in the 2D/3D previews is
+// for; this icon is just a subtle marker that an offset is set.
 export function OffsetIcon({ className }: IconProps) {
   return (
     <svg {...base} className={className}>
-      <path d="M9 12h6M12 9v6" />
-      <path d="M12 12 18 6" />
-      <path d="M14.1 6.35 18 6 17.7 9.9" />
+      <path d="M12 2v20M2 12h20" strokeWidth={1} />
+      <path d="M12 12 18 6" strokeWidth={2.4} />
+      <path d="M14.1 6.35 18 6 17.7 9.9" strokeWidth={2.4} />
     </svg>
   )
 }

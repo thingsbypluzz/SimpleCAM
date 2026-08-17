@@ -7,6 +7,16 @@ zgodne z [SemVer](https://semver.org/). Ten plik pozostaje głównym, czytelnym
 thingsbypluzz/SimpleCAM), ale to infrastruktura pod izolację pracy
 (branch/worktree per zadanie), nie zamiennik tego changeloga.
 
+## [0.6.15] — 2026-08-17
+
+### Zmieniono
+
+- **`OffsetIcon` przerysowana wg wzoru dostarczonego przez użytkownika** —
+  pełny krzyż osi (cienki, przez całą ikonę) zamiast małego "+" na środku,
+  plus wyraźnie grubsza strzałka (`strokeWidth 2.4` vs `1` dla osi) niż
+  poprzednia wersja — bliżej faktycznego symbolu układu kartezjańskiego ze
+  strzałką offsetu, o który chodziło od początku.
+
 ## [0.6.14] — 2026-08-17
 
 ### Zmieniono
