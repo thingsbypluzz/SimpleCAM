@@ -99,29 +99,28 @@ Projekt budowany etapami z checkpointami do akceptacji. Aktualny stan:
         `(0,0)…(gridX,gridY)`, ten sam porządek co Grid. Automatycznie
         działa z offsetem X/Y i podglądami (nowy `case` w
         `resolvePoints()`, zero innych zmian). Pasek: `RECT X×Y (C)`.
+      - [x] **N-Holes on Circle** — nowy wariant `PositioningMode`
+        (`'circle'`), po Grid Centered w Kroku 2. Parametry:
+        `circleHoleCount`, `circleDiameter`, `circleStartAngle` (stopnie,
+        0°=+X, rośnie przeciwnie do wskazówek zegara — ta sama konwencja
+        co Offset X/Y). Okrąg wyśrodkowany na `(0,0)`. Jak Grid Centered:
+        jedyna zmiana to nowy `case` w `resolvePoints()`, silnik G-code
+        i podglądy 2D/3D zadziałały bez zmian. Pasek: `CIRCLE N×⌀D`.
 
       Pozostało:
-      - **Krok 2: nowy wariant pozycjonowania "N-holes on circle"** — obok
-        Single/Grid/Grid Centered/Custom. Parametry: liczba otworów
-        (np. 5), średnica okręgu na którym są rozmieszczone (np. 45mm),
-        oraz start angle — kąt (względem osi +X, czyli 0°) pod którym
-        leży pierwszy punkt, pozostałe rozłożone równomiernie po
-        obwodzie. Wymaga: nowej wartości `PositioningMode` (`'circle'`),
-        nowych pól w `GeometryParams` (np. `circleHoleCount`,
-        `circleDiameter`, `circleStartAngle`), rozszerzenia
-        `resolvePoints()` w `src/lib/positioning.ts`, nowej sekcji w
-        `Step2Geometry.tsx` i dopasowania podsumowania w pasku Kroku 2
-        (`App.tsx`) oraz podglądu 2D (już powinien zadziałać bez zmian,
-        bo rysuje na podstawie `resolvePoints()`).
       - **Ikony w podsumowaniu Kroku 2** (zwinięty pasek) zamiast/obok
-        samego tekstu (`0,0` / `RECT X×Y` / `RECT X×Y (C)` / `Custom (N)`)
-        — nowe komponenty SVG w stylu `src/components/icons.tsx`:
+        samego tekstu (`0,0` / `RECT X×Y` / `RECT X×Y (C)` / `CIRCLE N×⌀D`
+        / `Custom (N)`) — nowe komponenty SVG w stylu
+        `src/components/icons.tsx`:
         - **Single (0,0):** crosshair (celownik) + etykieta "0,0".
         - **Rectangle, origin w rogu (Grid):** 4 punkty połączone lekką
           kreską w prostokąt, punkt w lewym dolnym rogu narysowany
           wyraźnie większy (tam jest 0,0).
         - **Rectangle, origin w środku (Grid Centered):** te same
           4 punkty/kreski, ale większy punkt w **środku** prostokąta.
+        - **Circle (N-Holes on Circle):** okrąg (obrys) z kilkoma
+          kropkami rozmieszczonymi po obwodzie, większy punkt w środku
+          (`0,0`).
         - **Custom:** delikatne osie X/Y (kartezjańskie), z pojedynczą
           kropką gdzieś w ćwiartce +X/+Y (symbol dowolnego punktu).
 
