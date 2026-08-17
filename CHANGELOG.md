@@ -40,6 +40,18 @@ thingsbypluzz/SimpleCAM), ale to infrastruktura pod izolację pracy
   pominięte przy tej zmianie (kosmetyka podglądu, nie wpływa na generowany
   G-code). Do ewentualnego dociągnięcia osobno.
 
+## [Unreleased] — Step 1 dual operation summary
+
+### Zmieniono
+
+- **Collapsed pasek Kroku 1 pokazuje teraz obie operacje (Helix + Standard),
+  nie tylko aktywną.** Wcześniej pasek renderował samo `activeOperation.Icon`;
+  teraz iteruje po `OPERATION_LIST` (`src/config/operationMeta.ts`) i rysuje
+  obie ikony jedną nad drugą (pionowo, wąski 80px pasek) — aktywna operacja w
+  pełnym kolorze indigo, nieaktywna wyszarzona/przygaszona (`opacity-50`,
+  szary zamiast indigo). `activeOperation` bez zmian — nadal używana do
+  `generate`/`stepdown.shortLabel` — `src/App.tsx`.
+
 ## [0.6.10] — 2026-08-17
 
 ### Zmieniono
