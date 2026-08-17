@@ -2,20 +2,14 @@ import type { FeedsParams, WizardParams } from '../types/wizard'
 import { fmt } from './format'
 import { resolvePoints } from './positioning'
 
-// Approach from Safe Z down to the material surface (Z0). `startZ` = 0 (the
-// default) feeds the whole way down at Plunge Rate — a deliberately more
-// cautious default than a straight rapid to the surface. `startZ` > 0 rapids
-// down to that hover height above the material first, then switches to a
-// feed-controlled final approach for the last bit — shared by both
-// helix.ts and standardHole.ts, which otherwise duplicated this exact
-// sequence as a hardcoded `'G0 Z0'`.
-export function descendToSurface(feeds: FeedsParams): string[] {
-  const lines: string[] = []
-  if (feeds.startZ > 0) {
-    lines.push(`G0 Z${fmt(feeds.startZ)}`)
-  }
-  lines.push(`G1 Z0 F${fmt(feeds.plungeRate)}`)
-  return lines
+// `startZ` treats the material as taller than nominal Z0 by that amount —
+// the actual top of stock sits at +startZ, cutting still ends at the usual
+// -totalDepth. Above +startZ is open air, so a rapid straight there is
+// always safe (and at the default startZ=0 this is exactly the original
+// `G0 Z0`, i.e. no behavior change at all). Shared by helix.ts and
+// standardHole.ts, which otherwise duplicated this as a hardcoded `'G0 Z0'`.
+export function rapidToTop(feeds: FeedsParams): string {
+  return `G0 Z${fmt(feeds.startZ)}`
 }
 
 export function buildHeader(params: WizardParams): string[] {

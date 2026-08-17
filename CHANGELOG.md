@@ -12,19 +12,29 @@ thingsbypluzz/SimpleCAM), ale to infrastruktura pod izolację pracy
 ### Dodano
 
 - **"Start Z" dla obu operacji (Helix i Standard Hole)** — nowe pole
-  `startZ` w `FeedsParams` (Krok 3, pod Plunge Rate), wysokość nad
-  materiałem (Z0), zawsze ≥0, domyślnie `0`. Sterowane wspólną funkcją
-  `descendToSurface()` w `src/lib/program.ts` (używaną przez oba silniki,
-  zastąpiła zduplikowane `'G0 Z0'` w `helix.ts`/`standardHole.ts`):
-  - `startZ = 0` (domyślnie): cały zjazd z Safe Z do Z0 kontrolowanym
-    Plunge Rate (`G1 Z0 F<plungeRate>`) — **świadoma zmiana domyślnego
-    zachowania** względem dotychczasowego rapidu (`G0 Z0`), bezpieczniejsze
-    domyślne podejście do materiału.
-  - `startZ > 0`: rapid do wysokości `startZ` (`G0 Z<startZ>`), potem
-    kontrolowany dojazd do Z0 (`G1 Z0 F<plungeRate>`).
+  `startZ` w `FeedsParams` (Krok 3, pod Plunge Rate), zawsze ≥0, domyślnie
+  `0`. Semantyka: `startZ` "powiększa" obrabiany element — materiał
+  traktowany jest jako wyższy o `startZ` (góra cięcia w `Z=+startZ`
+  zamiast `Z0`), a dno cięcia zostaje bez zmian na `-totalDepth`. Czysto
+  addytywne — przy `startZ=0` generowany G-code jest identyczny jak przed
+  wprowadzeniem tej funkcji.
+  - Wspólna funkcja `rapidToTop()` w `src/lib/program.ts` (używana przez
+    oba silniki, zastąpiła zduplikowane `'G0 Z0'` w
+    `helix.ts`/`standardHole.ts`) — zawsze `G0 Z<startZ>`: nad `+startZ`
+    jest tylko powietrze, więc rapid jest zawsze bezpieczny, niezależnie
+    od wartości.
+  - Oba silniki liczą przejścia jako `computeDepthPasses(totalDepth +
+    startZ, stepdown)`, startując od `currentZ = startZ` zamiast `0` —
+    spirala/przejścia realnie pokonują `startZ + totalDepth` w pionie.
+  - 3D Preview (`buildScene.ts`) w pełni odzwierciedla tę samą logikę:
+    `helixPoints3D`/`standardHolePoints3D` przyjmują `startZ`, cylinder
+    finalnego otworu rozciąga się od `+startZ` do `-totalDepth`, a
+    przerywana linia zjazdu (Safe Z → góra cięcia) kończy się na
+    `+startZ` zamiast zawsze na `Z0`.
   - Walidacja `isStartZValid()` (`startZ ≤ safeZ`) w `src/lib/validation.ts`
     — inline error w Kroku 3, blokuje **Generate** na Kroku 4 (tak samo jak
-    istniejące walidacje).
+    istniejące walidacje). Sensowne również w nowej semantyce: `safeZ`
+    musi dawać realny prześwit nad podniesionym materiałem.
 
 ### Zmieniono
 
@@ -32,25 +42,19 @@ thingsbypluzz/SimpleCAM), ale to infrastruktura pod izolację pracy
   (segmented)** — `DEFAULT_WIZARD_PARAMS.output.interpolation` w
   `src/types/wizard.ts`.
 
-### Znane ograniczenie
-
-- 3D Preview (`buildScene.ts`) nadal rysuje pełny odcinek Safe Z → Z0 jako
-  przerywaną linię (rapid), niezależnie od `startZ` — wizualnie
-  niedokładne przy `startZ = 0` (bo to teraz `G1`, nie `G0`), ale świadomie
-  pominięte przy tej zmianie (kosmetyka podglądu, nie wpływa na generowany
-  G-code). Do ewentualnego dociągnięcia osobno.
-
 ## [0.6.12] — 2026-08-17
 
 ### Zmieniono
 
 - **Collapsed pasek Kroku 1 pokazuje teraz obie operacje (Helix + Standard),
-  nie tylko aktywną.** Wcześniej pasek renderował samo `activeOperation.Icon`;
-  teraz iteruje po `OPERATION_LIST` (`src/config/operationMeta.ts`) i rysuje
-  obie ikony jedną nad drugą (pionowo, wąski 80px pasek) — aktywna operacja w
-  pełnym kolorze indigo, nieaktywna wyszarzona/przygaszona (`opacity-50`,
-  szary zamiast indigo). `activeOperation` bez zmian — nadal używana do
-  `generate`/`stepdown.shortLabel` — `src/App.tsx`.
+  nie tylko aktywną — każda z własną etykietą.** Wcześniej pasek renderował
+  samo `activeOperation.Icon` + jedną wspólną etykietę aktywnej operacji;
+  teraz iteruje po `OPERATION_LIST` (`src/config/operationMeta.ts`) i
+  rysuje obie pary ikona+etykieta (`op.shortLabel`) jedną nad drugą
+  (pionowo, wąski 80px pasek) — aktywna operacja w pełnym kolorze indigo
+  (ikona i etykieta), nieaktywna wyszarzona/przygaszona (`opacity-50`,
+  szary zamiast indigo, obie razem). `activeOperation` bez zmian — nadal
+  używana do `generate`/`stepdown.shortLabel` — `src/App.tsx`.
 
 ## [0.6.10] — 2026-08-17
 

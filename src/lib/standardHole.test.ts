@@ -84,18 +84,21 @@ describe('generateStandardHole', () => {
     expect(lines.filter((l) => l.startsWith('G1 Z-'))).toHaveLength(2)
   })
 
-  it('feeds the whole way down to the surface at Plunge Rate when startZ is 0 (default)', () => {
-    const lines = generateStandardHole(buildParams({ feeds: { startZ: 0, plungeRate: 300 } }))
-    expect(lines).toContain('G1 Z0 F300')
-    expect(lines).not.toContain('G0 Z0')
+  it('rapids straight to Z0 when startZ is 0 (default) — identical to before the feature existed', () => {
+    const lines = generateStandardHole(buildParams({ feeds: { startZ: 0 } }))
+    expect(lines).toContain('G0 Z0')
   })
 
-  it('rapids down to startZ then feeds the final approach when startZ > 0', () => {
-    const lines = generateStandardHole(buildParams({ feeds: { startZ: 0.5, plungeRate: 300 } }))
-    const startZIndex = lines.indexOf('G0 Z0.5')
-    const descendIndex = lines.indexOf('G1 Z0 F300')
-    expect(startZIndex).toBeGreaterThan(-1)
-    expect(descendIndex).toBeGreaterThan(startZIndex)
+  it('treats startZ as raising the top of the cut: passes start at +startZ, still end at -totalDepth', () => {
+    const lines = generateStandardHole(
+      buildParams({ geometry: { totalDepth: 3 }, feeds: { startZ: 0.5, stepdown: 1 } }),
+    )
+    // rapid straight to the raised top — nothing but air above it
+    expect(lines).toContain('G0 Z0.5')
+    // passes now span startZ+totalDepth = 3.5 at stepdown 1 -> 3 full + 1 partial (0.5) = 4
+    const plungeLines = lines.filter((l) => l.startsWith('G1 Z-'))
+    expect(plungeLines).toHaveLength(4)
+    expect(plungeLines[3]).toContain('Z-3')
   })
 
   it('omits M5 and origin return when disabled', () => {

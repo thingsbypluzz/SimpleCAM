@@ -27,12 +27,19 @@ const SEGMENTS_PER_TURN = 48
 // entangling tested G-code text generation with rendering-only geometry
 // isn't worth it for a ~10-line loop. Shares `computeDepthPasses()` though,
 // since that's where the actual infinite-loop guard (stepdown <= 0) lives.
-function helixPoints3D(cx: number, cy: number, radius: number, totalDepth: number, stepdown: number) {
-  const points: THREE.Vector3[] = [toThree(cx + radius, cy, 0)]
-  let currentZ = 0
+function helixPoints3D(
+  cx: number,
+  cy: number,
+  radius: number,
+  totalDepth: number,
+  stepdown: number,
+  startZ: number,
+) {
+  const points: THREE.Vector3[] = [toThree(cx + radius, cy, startZ)]
+  let currentZ = startZ
   let angle = 0
 
-  for (const turnDepth of computeDepthPasses(totalDepth, stepdown)) {
+  for (const turnDepth of computeDepthPasses(totalDepth + startZ, stepdown)) {
     for (let i = 1; i <= SEGMENTS_PER_TURN; i++) {
       const a = angle + (2 * Math.PI * i) / SEGMENTS_PER_TURN
       const z = currentZ - (turnDepth * i) / SEGMENTS_PER_TURN
@@ -50,11 +57,18 @@ function helixPoints3D(cx: number, cy: number, radius: number, totalDepth: numbe
 }
 
 // Mirrors src/lib/standardHole.ts.
-function standardHolePoints3D(cx: number, cy: number, radius: number, totalDepth: number, stepdown: number) {
-  const points: THREE.Vector3[] = [toThree(cx + radius, cy, 0)]
-  let currentZ = 0
+function standardHolePoints3D(
+  cx: number,
+  cy: number,
+  radius: number,
+  totalDepth: number,
+  stepdown: number,
+  startZ: number,
+) {
+  const points: THREE.Vector3[] = [toThree(cx + radius, cy, startZ)]
+  let currentZ = startZ
 
-  for (const passDepth of computeDepthPasses(totalDepth, stepdown)) {
+  for (const passDepth of computeDepthPasses(totalDepth + startZ, stepdown)) {
     currentZ -= passDepth
     points.push(toThree(cx + radius, cy, currentZ))
     for (let i = 1; i <= SEGMENTS_PER_TURN; i++) {
@@ -247,14 +261,15 @@ export function buildToolpathScene(params: WizardParams, isDark: boolean): Built
   for (const p of points) {
     const startX = p.x + toolRadius
 
-    // Rapid Z moves around each hole: descend from Safe Z to the material
-    // surface before cutting, then retract from full depth back to Safe Z
-    // (the actual "G0 Z5"-style moves the engine emits) — previously only
-    // the lateral travel between holes was drawn, not these.
+    // Rapid Z moves around each hole: descend from Safe Z to the top of the
+    // cut (Z0, or +startZ when the material is treated as taller), then
+    // retract from full depth back to Safe Z (the actual "G0 Z5"-style moves
+    // the engine emits) — previously only the lateral travel between holes
+    // was drawn, not these.
     const descentLine = new THREE.Line(
       new THREE.BufferGeometry().setFromPoints([
         toThree(startX, p.y, feeds.safeZ),
-        toThree(startX, p.y, 0),
+        toThree(startX, p.y, feeds.startZ),
       ]),
       rapidZMaterial(),
     )
@@ -271,9 +286,11 @@ export function buildToolpathScene(params: WizardParams, isDark: boolean): Built
     retractLine.computeLineDistances()
     objects.push(retractLine)
 
-    // Final bore (semi-transparent cylinder, top at Z=0 down to -totalDepth)
+    // Final bore (semi-transparent cylinder, top at +startZ down to
+    // -totalDepth — startZ treats the material as taller by that amount).
+    const boreHeight = geometry.totalDepth + feeds.startZ
     const hole = new THREE.Mesh(
-      new THREE.CylinderGeometry(holeRadius, holeRadius, geometry.totalDepth, 32, 1, true),
+      new THREE.CylinderGeometry(holeRadius, holeRadius, boreHeight, 32, 1, true),
       new THREE.MeshBasicMaterial({
         color: theme.hole,
         transparent: true,
@@ -281,14 +298,14 @@ export function buildToolpathScene(params: WizardParams, isDark: boolean): Built
         side: THREE.DoubleSide,
       }),
     )
-    hole.position.copy(toThree(p.x, p.y, -geometry.totalDepth / 2))
+    hole.position.copy(toThree(p.x, p.y, (feeds.startZ - geometry.totalDepth) / 2))
     objects.push(hole)
 
     // Actual tool-center toolpath
     const pathPoints =
       operation === 'helix'
-        ? helixPoints3D(p.x, p.y, toolRadius, geometry.totalDepth, feeds.stepdown)
-        : standardHolePoints3D(p.x, p.y, toolRadius, geometry.totalDepth, feeds.stepdown)
+        ? helixPoints3D(p.x, p.y, toolRadius, geometry.totalDepth, feeds.stepdown, feeds.startZ)
+        : standardHolePoints3D(p.x, p.y, toolRadius, geometry.totalDepth, feeds.stepdown, feeds.startZ)
     const pathGeometry = new THREE.BufferGeometry().setFromPoints(pathPoints)
     const pathLine = new THREE.Line(pathGeometry, new THREE.LineBasicMaterial({ color: theme.toolpath }))
     objects.push(pathLine)
