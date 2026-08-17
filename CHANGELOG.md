@@ -7,6 +7,27 @@ zgodne z [SemVer](https://semver.org/). Ten plik pozostaje głównym, czytelnym
 thingsbypluzz/SimpleCAM), ale to infrastruktura pod izolację pracy
 (branch/worktree per zadanie), nie zamiennik tego changeloga.
 
+## [Unreleased] — N-Holes on Circle
+
+### Dodano
+
+- **Nowy wariant pozycjonowania: "N-Holes on Circle"** — obok Single/
+  Rectangular Grid/Grid Centered/Custom w Kroku 2. Parametry: liczba
+  otworów (`circleHoleCount`), średnica okręgu (`circleDiameter`) i kąt
+  startowy pierwszego punktu względem osi +X (`circleStartAngle`, w
+  stopniach) — reszta rozłożona równomiernie po obwodzie, przeciwnie do
+  wskazówek zegara (ta sama konwencja kąta co przy Offset X/Y —
+  atan2/0°=+X). Okrąg wyśrodkowany na `(0,0)`, offset X/Y przesuwa go
+  jak każdy inny tryb.
+  - Nowy `case 'circle'` w `resolvePoints()` (`src/lib/positioning.ts`)
+    — jedyne miejsce z nową logiką geometryczną. Silnik G-code, 2D i 3D
+    Preview zadziałały bez żadnych zmian (wołają `resolvePoints()`
+    bezpośrednio, dokładnie jak przewidziano w `CLAUDE.md`).
+  - Zabezpieczone przed ułamkową/ujemną liczbą otworów
+    (`Math.max(0, Math.round(...))`) — `circleHoleCount: 0` daje pusty
+    wzorzec, tak samo jak pusta Custom List.
+  - Podsumowanie w zwiniętym pasku Kroku 2: `CIRCLE N×⌀D`.
+
 ## [0.6.17] — 2026-08-17
 
 ### Dodano

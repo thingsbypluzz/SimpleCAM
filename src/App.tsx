@@ -53,6 +53,8 @@ function positioningSummary(geometry: GeometryParams): string {
       return `RECT ${geometry.gridX}×${geometry.gridY}`
     case 'gridCentered':
       return `RECT ${geometry.gridX}×${geometry.gridY} (C)`
+    case 'circle':
+      return `CIRCLE ${geometry.circleHoleCount}×⌀${geometry.circleDiameter}`
     case 'custom':
       return `Custom (${geometry.customPoints.length})`
   }
