@@ -24,6 +24,7 @@ export interface FeedsParams {
   feedrateXY: number
   plungeRate: number
   safeZ: number
+  startZ: number
 }
 
 export interface OutputOptions {
@@ -59,9 +60,10 @@ export const DEFAULT_WIZARD_PARAMS: WizardParams = {
     feedrateXY: 800,
     plungeRate: 300,
     safeZ: 5,
+    startZ: 0,
   },
   output: {
-    interpolation: 'arc',
+    interpolation: 'linear',
     spindleStart: true,
     spindleSpeed: 12000,
     dwellSeconds: 3,

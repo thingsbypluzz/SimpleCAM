@@ -13,7 +13,7 @@ const Scene3D = lazy(() =>
 )
 import { BitIcon, CheckIcon, DepthIcon, DiameterIcon, FeedIcon, StepdownIcon } from './components/icons'
 import { OPERATION_META } from './config/operationMeta'
-import { isStepdownValid, isToolDiameterValid } from './lib/validation'
+import { isStartZValid, isStepdownValid, isToolDiameterValid } from './lib/validation'
 import { DEFAULT_WIZARD_PARAMS, type GeometryParams, type WizardParams } from './types/wizard'
 
 const TOTAL_STEPS = 4
@@ -88,7 +88,8 @@ function App() {
   }
 
   const activeOperation = OPERATION_META[params.operation]
-  const isGeometryValid = isToolDiameterValid(params.geometry) && isStepdownValid(params.feeds)
+  const isGeometryValid =
+    isToolDiameterValid(params.geometry) && isStepdownValid(params.feeds) && isStartZValid(params.feeds)
 
   const handleGenerate = () => setGeneratedGCode(activeOperation.generate(params))
 
