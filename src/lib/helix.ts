@@ -1,7 +1,7 @@
 import type { WizardParams } from '../types/wizard'
 import { fmt } from './format'
 import { fullCircleMove } from './circle'
-import { assembleProgram } from './program'
+import { assembleProgram, descendToSurface } from './program'
 import { computeDepthPasses } from './depthPasses'
 
 // Spiral ramping: the tool sweeps a full 360° turn while descending by
@@ -13,7 +13,7 @@ function helixToolpath(cx: number, cy: number, params: WizardParams): string[] {
   const startX = cx + radius
   const startY = cy
 
-  const lines: string[] = [`G0 X${fmt(startX)} Y${fmt(startY)}`, 'G0 Z0']
+  const lines: string[] = [`G0 X${fmt(startX)} Y${fmt(startY)}`, ...descendToSurface(feeds)]
 
   let currentZ = 0
   for (const turnDepth of computeDepthPasses(geometry.totalDepth, feeds.stepdown)) {

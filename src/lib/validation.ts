@@ -7,3 +7,7 @@ export function isToolDiameterValid(geometry: GeometryParams): boolean {
 export function isStepdownValid(feeds: FeedsParams): boolean {
   return feeds.stepdown > 0
 }
+
+export function isStartZValid(feeds: FeedsParams): boolean {
+  return feeds.startZ <= feeds.safeZ
+}

@@ -5,6 +5,43 @@ Format bazuje na [Keep a Changelog](https://keepachangelog.com/), wersjonowanie
 zgodne z [SemVer](https://semver.org/). Projekt nie korzysta z gita — ten plik
 jest jedynym źródłem historii zmian.
 
+## [Unreleased] — Start Z + domyślna interpolacja G1
+
+### Dodano
+
+- **"Start Z" dla obu operacji (Helix i Standard Hole)** — nowe pole
+  `startZ` w `FeedsParams` (Krok 3, pod Plunge Rate), wysokość nad
+  materiałem (Z0), zawsze ≥0, domyślnie `0`. Sterowane wspólną funkcją
+  `descendToSurface()` w `src/lib/program.ts` (używaną przez oba silniki,
+  zastąpiła zduplikowane `'G0 Z0'` w `helix.ts`/`standardHole.ts`):
+  - `startZ = 0` (domyślnie): cały zjazd z Safe Z do Z0 kontrolowanym
+    Plunge Rate (`G1 Z0 F<plungeRate>`) — **świadoma zmiana domyślnego
+    zachowania** względem dotychczasowego rapidu (`G0 Z0`), bezpieczniejsze
+    domyślne podejście do materiału.
+  - `startZ > 0`: rapid do wysokości `startZ` (`G0 Z<startZ>`), potem
+    kontrolowany dojazd do Z0 (`G1 Z0 F<plungeRate>`).
+  - Walidacja `isStartZValid()` (`startZ ≤ safeZ`) w `src/lib/validation.ts`
+    — inline error w Kroku 3, blokuje **Generate** na Kroku 4 (tak samo jak
+    istniejące walidacje).
+
+### Zmieniono
+
+- **Domyślna interpolacja okręgów zmieniona z G2/G3 (arc) na G1
+  (segmented)** — `DEFAULT_WIZARD_PARAMS.output.interpolation` w
+  `src/types/wizard.ts`.
+
+### Uwaga dla mergującego
+
+- Zmiana domyślnej interpolacji złamała 6 istniejących testów, które
+  niejawnie polegały na starym domyślnym trybie ('arc') zamiast go jawnie
+  ustawiać — naprawione przez dodanie `output: { interpolation: 'arc' }`
+  do tych testów (testują generowanie łuków, nie domyślne wartości).
+- 3D Preview (`buildScene.ts`) nadal rysuje pełny odcinek Safe Z → Z0 jako
+  przerywaną linię (rapid), niezależnie od `startZ` — wizualnie
+  niedokładne, gdy `startZ = 0` (bo to teraz `G1`, nie `G0`), ale
+  celowo pominięte w tej gałęzi (poza uzgodnionym zakresem, czysto
+  kosmetyczne w 3D Preview, nie wpływa na generowany G-code).
+
 ## [0.6.10] — 2026-08-17
 
 ### Zmieniono

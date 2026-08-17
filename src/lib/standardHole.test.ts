@@ -23,16 +23,20 @@ describe('generateStandardHole', () => {
 
   it('plunges once per pass, then sweeps one flat full circle per pass', () => {
     // totalDepth 3, stepdown 1 -> 3 passes
-    const lines = generateStandardHole(buildParams({ geometry: { totalDepth: 3 }, feeds: { stepdown: 1 } }))
-    const plungeLines = lines.filter((l) => l.startsWith('G1 Z'))
+    const lines = generateStandardHole(
+      buildParams({ geometry: { totalDepth: 3 }, feeds: { stepdown: 1 }, output: { interpolation: 'arc' } }),
+    )
+    const plungeLines = lines.filter((l) => l.startsWith('G1 Z-'))
     const arcLines = lines.filter((l) => l.startsWith('G3'))
     expect(plungeLines).toHaveLength(3)
     expect(arcLines).toHaveLength(3)
   })
 
   it('reaches exactly the target depth on the last pass', () => {
-    const lines = generateStandardHole(buildParams({ geometry: { totalDepth: 3 }, feeds: { stepdown: 1 } }))
-    const plungeLines = lines.filter((l) => l.startsWith('G1 Z'))
+    const lines = generateStandardHole(
+      buildParams({ geometry: { totalDepth: 3 }, feeds: { stepdown: 1 }, output: { interpolation: 'arc' } }),
+    )
+    const plungeLines = lines.filter((l) => l.startsWith('G1 Z-'))
     expect(plungeLines[plungeLines.length - 1]).toContain('Z-3')
     const arcLines = lines.filter((l) => l.startsWith('G3'))
     expect(arcLines[arcLines.length - 1]).toContain('Z-3')
@@ -41,7 +45,7 @@ describe('generateStandardHole', () => {
   it('handles a non-integer stepdown remainder on the last pass', () => {
     // totalDepth 3.5, stepdown 1 -> passes at -1, -2, -3, -3.5
     const lines = generateStandardHole(buildParams({ geometry: { totalDepth: 3.5 }, feeds: { stepdown: 1 } }))
-    const plungeLines = lines.filter((l) => l.startsWith('G1 Z'))
+    const plungeLines = lines.filter((l) => l.startsWith('G1 Z-'))
     expect(plungeLines).toHaveLength(4)
     expect(plungeLines[3]).toContain('Z-3.5')
   })
@@ -58,7 +62,7 @@ describe('generateStandardHole', () => {
     // 3 passes * 72 segments
     expect(lines.filter((l) => l.startsWith('G1 X'))).toHaveLength(216)
     // plunge lines are still distinct straight Z moves
-    expect(lines.filter((l) => l.startsWith('G1 Z'))).toHaveLength(3)
+    expect(lines.filter((l) => l.startsWith('G1 Z-'))).toHaveLength(3)
   })
 
   it('repeats the toolpath once per custom point', () => {
@@ -77,7 +81,21 @@ describe('generateStandardHole', () => {
     )
     expect(lines).toContain('G0 X10 Y10')
     expect(lines).toContain('G0 X-5 Y20')
-    expect(lines.filter((l) => l.startsWith('G1 Z'))).toHaveLength(2)
+    expect(lines.filter((l) => l.startsWith('G1 Z-'))).toHaveLength(2)
+  })
+
+  it('feeds the whole way down to the surface at Plunge Rate when startZ is 0 (default)', () => {
+    const lines = generateStandardHole(buildParams({ feeds: { startZ: 0, plungeRate: 300 } }))
+    expect(lines).toContain('G1 Z0 F300')
+    expect(lines).not.toContain('G0 Z0')
+  })
+
+  it('rapids down to startZ then feeds the final approach when startZ > 0', () => {
+    const lines = generateStandardHole(buildParams({ feeds: { startZ: 0.5, plungeRate: 300 } }))
+    const startZIndex = lines.indexOf('G0 Z0.5')
+    const descendIndex = lines.indexOf('G1 Z0 F300')
+    expect(startZIndex).toBeGreaterThan(-1)
+    expect(descendIndex).toBeGreaterThan(startZIndex)
   })
 
   it('omits M5 and origin return when disabled', () => {

@@ -37,13 +37,17 @@ describe('generateHelix', () => {
 
   it('produces one full circle per stepdown turn plus a flat finishing pass', () => {
     // totalDepth 4, stepdown 1 -> 4 spiral turns + 1 flat pass = 5 turns
-    const lines = generateHelix(buildParams({ geometry: { totalDepth: 4 }, feeds: { stepdown: 1 } }))
+    const lines = generateHelix(
+      buildParams({ geometry: { totalDepth: 4 }, feeds: { stepdown: 1 }, output: { interpolation: 'arc' } }),
+    )
     const arcLines = lines.filter((l) => l.startsWith('G3'))
     expect(arcLines).toHaveLength(5)
   })
 
   it('reaches exactly the target depth on the last spiral turn', () => {
-    const lines = generateHelix(buildParams({ geometry: { totalDepth: 4 }, feeds: { stepdown: 1 } }))
+    const lines = generateHelix(
+      buildParams({ geometry: { totalDepth: 4 }, feeds: { stepdown: 1 }, output: { interpolation: 'arc' } }),
+    )
     const arcLines = lines.filter((l) => l.startsWith('G3'))
     // last spiral turn and the flat finishing pass both sit at -4
     expect(arcLines[3]).toContain('Z-4')
@@ -52,7 +56,9 @@ describe('generateHelix', () => {
 
   it('handles a non-integer stepdown remainder on the last turn', () => {
     // totalDepth 4.5, stepdown 1 -> 4 full turns (-1..-4) + 1 partial turn (-4.5) + flat pass
-    const lines = generateHelix(buildParams({ geometry: { totalDepth: 4.5 }, feeds: { stepdown: 1 } }))
+    const lines = generateHelix(
+      buildParams({ geometry: { totalDepth: 4.5 }, feeds: { stepdown: 1 }, output: { interpolation: 'arc' } }),
+    )
     const arcLines = lines.filter((l) => l.startsWith('G3'))
     expect(arcLines).toHaveLength(6)
     expect(arcLines[4]).toContain('Z-4.5')
@@ -78,6 +84,7 @@ describe('generateHelix', () => {
       buildParams({
         geometry: { positioning: 'grid', gridX: 50, gridY: 30, totalDepth: 1 },
         feeds: { stepdown: 1 },
+        output: { interpolation: 'arc' },
       }),
     )
     expect(lines).toContain('G0 X0 Y0')
@@ -86,6 +93,20 @@ describe('generateHelix', () => {
     expect(lines).toContain('G0 X0 Y30')
     // 1 spiral turn + 1 flat pass per hole, 4 holes
     expect(lines.filter((l) => l.startsWith('G3'))).toHaveLength(8)
+  })
+
+  it('feeds the whole way down to the surface at Plunge Rate when startZ is 0 (default)', () => {
+    const lines = generateHelix(buildParams({ feeds: { startZ: 0, plungeRate: 300 } }))
+    expect(lines).toContain('G1 Z0 F300')
+    expect(lines).not.toContain('G0 Z0')
+  })
+
+  it('rapids down to startZ then feeds the final approach when startZ > 0', () => {
+    const lines = generateHelix(buildParams({ feeds: { startZ: 0.5, plungeRate: 300 } }))
+    const startZIndex = lines.indexOf('G0 Z0.5')
+    const descendIndex = lines.indexOf('G1 Z0 F300')
+    expect(startZIndex).toBeGreaterThan(-1)
+    expect(descendIndex).toBeGreaterThan(startZIndex)
   })
 
   it('appends Safe Z retract + M5 and origin return only when enabled', () => {

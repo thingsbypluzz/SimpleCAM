@@ -1,7 +1,7 @@
 import type { WizardParams } from '../types/wizard'
 import { fmt } from './format'
 import { fullCircleMove } from './circle'
-import { assembleProgram } from './program'
+import { assembleProgram, descendToSurface } from './program'
 import { computeDepthPasses } from './depthPasses'
 
 // Layered pocket: plunge straight down by `stepdown`, sweep a full flat
@@ -12,7 +12,7 @@ function standardHoleToolpath(cx: number, cy: number, params: WizardParams): str
   const startX = cx + radius
   const startY = cy
 
-  const lines: string[] = [`G0 X${fmt(startX)} Y${fmt(startY)}`, 'G0 Z0']
+  const lines: string[] = [`G0 X${fmt(startX)} Y${fmt(startY)}`, ...descendToSurface(feeds)]
 
   let currentZ = 0
   for (const passDepth of computeDepthPasses(geometry.totalDepth, feeds.stepdown)) {
