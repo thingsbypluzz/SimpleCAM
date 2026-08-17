@@ -165,6 +165,56 @@ nowa funkcjonalność. Nie zaczynać bez wyraźnego "przechodzimy do X".
     zakładają "okrąg" jako kształt operacji) w ogóle się do tego nadają
     czy potrzebują osobnej ścieżki rysowania.
 
+- **Presety operacji (zapisz/wczytaj ustawienia wizarda)** — możliwość
+  zapisania kompletu ustawień ze wszystkich 4 Kroków pod nazwanym
+  presetem i późniejszego ich wczytania. Zgłoszone przez użytkownika,
+  surowy zarys:
+  - Zapis dostępny jako opcja na **Kroku 4**.
+  - W górnym pasku (header) numerowane sloty `[1] [2] [3]…` (maks.
+    **5** zapisanych presetów) do szybkiego przełączania.
+  - Wczytanie presetu ładuje ustawienia na **wszystkich** Krokach
+    naraz, nie tylko bieżącym.
+  - **Jeden preset = jeden, niezależny zestaw parametrów wizarda**
+    (jeden `WizardParams` snapshot) — bez grupowania kilku powiązanych
+    operacji pod jednym presetem; ten pomysł rozważony i świadomie
+    odrzucony (uprościłoby przyszłą implementację, ale traciło się
+    elastyczność).
+  - Na daleką przyszłość: funkcja **Premium** (płatna/ograniczona).
+
+  **Feasibility study (2026-08-18, obserwacje, bez implementacji):**
+  - **Wysoka wykonalność, niskie ryzyko.** `WizardParams` (`params` w
+    `App.tsx`) to już dziś jeden obiekt trzymający stan wszystkich
+    4 Kroków (`useState<WizardParams>`), w pełni złożony z
+    prymitywów/tablic — `JSON.stringify`/`parse` działa bez zmian w
+    typach. Wczytanie presetu to `setParams(preset)` +
+    `setGeneratedGCode(null)` — dokładnie ten sam wzorzec, którego
+    `updateParams()` już dziś używa przy każdej zmianie parametru, więc
+    "wszystkie Kroki naraz" jest strukturalnie darmowe (jeden wspólny
+    stan, nie osobny per krok).
+  - Realny zakres pracy: schemat w `localStorage` z numerem wersji +
+    strategia dla brakujących pól gdy preset zapisany starszą wersją
+    appki wczytywany jest po dodaniu nowych pól (np. merge z
+    `DEFAULT_WIZARD_PARAMS`) — dokładnie ten sam problem co przy
+    ogólnym `localStorage` z Etapu 5 "Pozostało" wyżej (persystencja
+    *bieżącego* stanu między sesjami, bez nazwanych slotów) — warto
+    projektować oba jednym mechanizmem wersjonowania, nie dwoma
+    niezależnymi rozwiązaniami tego samego problemu.
+  - Dzięki odrzuceniu grupowania operacji, funkcja nie koliduje ze
+    stałą decyzją projektową "Jedno narzędzie na wygenerowany plik —
+    brak zmiany narzędzia" (patrz "Kluczowe decyzje projektowe" niżej)
+    — każdy preset nadal odpowiada dokładnie jednej operacji/jednemu
+    plikowi `.gcode`, jak dziś.
+  - **"Premium":** dziś appka jest świadomie zero-backend/zero-kont
+    (patrz "Stack" wyżej) — jakiekolwiek bramkowanie funkcji za
+    płatnością wymaga backendu/uwierzytelniania, czyli odejścia od tej
+    decyzji. Traktować jako marker "kiedyś, jeśli w ogóle", nie jako
+    wymóg wpływający na dzisiejszy kształt tej funkcji.
+  - **UI:** header (`App.tsx`, sekcja `<header>`) ma dziś tylko dwa
+    przyciski w prostym flex-rowie (dark mode, disabled Settings) —
+    miejsce na `[1]…[5]` sloty jest, ale wymaga small UI pass (stan
+    "pusty slot" vs "zajęty", nazwa/etykieta presetu widoczna w
+    tooltipie, potwierdzenie nadpisania zajętego slotu, usuwanie).
+
 Nie przeskakuj etapów bez pytania — każdy kończy się checkpointem do
 przeglądu przez użytkownika.
 
