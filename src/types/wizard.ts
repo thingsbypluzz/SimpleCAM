@@ -17,6 +17,8 @@ export interface GeometryParams {
   gridX: number
   gridY: number
   customPoints: Point2D[]
+  offsetX: number
+  offsetY: number
 }
 
 export interface FeedsParams {
@@ -54,6 +56,8 @@ export const DEFAULT_WIZARD_PARAMS: WizardParams = {
     gridX: 50,
     gridY: 50,
     customPoints: [{ x: 10, y: 10 }],
+    offsetX: 0,
+    offsetY: 0,
   },
   feeds: {
     stepdown: 1,

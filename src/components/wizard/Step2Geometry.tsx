@@ -165,6 +165,35 @@ export function Step2Geometry({ params, onChange }: Step2GeometryProps) {
           />
         </FieldRow>
       )}
+
+      <div>
+        <span className="mb-2 block text-sm font-medium text-slate-700 dark:text-slate-300">
+          Offset
+        </span>
+        <p className="mb-2 text-sm text-slate-500 dark:text-slate-400">
+          Shifts the whole pattern — applies on top of any positioning mode above.
+        </p>
+        <div className="flex flex-col gap-4">
+          <FieldRow label="Offset X [mm]">
+            <input
+              type="number"
+              step="0.1"
+              className={inputClass}
+              value={geometry.offsetX}
+              onChange={(e) => updateGeometry({ offsetX: Number(e.target.value) })}
+            />
+          </FieldRow>
+          <FieldRow label="Offset Y [mm]">
+            <input
+              type="number"
+              step="0.1"
+              className={inputClass}
+              value={geometry.offsetY}
+              onChange={(e) => updateGeometry({ offsetY: Number(e.target.value) })}
+            />
+          </FieldRow>
+        </div>
+      </div>
     </div>
   )
 }
