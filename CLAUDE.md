@@ -120,6 +120,12 @@ Projekt budowany etapami z checkpointami do akceptacji. Aktualny stan:
         osie X/Y + kropka w ćwiartce +X/+Y). Dobór ikony/tekstu przez
         `positioningIcon()`/`positioningLines()`, exhaustive switch po
         `PositioningMode` jak wszędzie indziej.
+      - [x] **PLUNGE i STARTZ w podsumowaniu Kroku 3** — nowe `MiniStat`
+        obok FEED/stepdown-a. PLUNGE zawsze widoczny (`plungeRate`,
+        `PlungeIcon` — strzałka w dół przez linię powierzchni). STARTZ
+        widoczny tylko gdy `startZ !== 0` (ten sam wzorzec co OFFSET w
+        Kroku 2), `StartZIcon` — lustrzana strzałka w górę + mały "+"
+        przy grocie.
 
       Pozostało:
       - **localStorage** (persystencja parametrów wizarda między sesjami)

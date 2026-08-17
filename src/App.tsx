@@ -20,9 +20,11 @@ import {
   DiameterIcon,
   FeedIcon,
   OffsetIcon,
+  PlungeIcon,
   RectangleCenteredIcon,
   RectangleIcon,
   SingleIcon,
+  StartZIcon,
   StepdownIcon,
 } from './components/icons'
 import { OPERATION_LIST, OPERATION_META } from './config/operationMeta'
@@ -335,6 +337,22 @@ function App() {
                       unit="mm/min"
                       title={`Feedrate XY: ${params.feeds.feedrateXY} mm/min`}
                     />
+                    <MiniStat
+                      icon={<PlungeIcon className="h-6 w-6" />}
+                      label="PLUNGE"
+                      value={`${params.feeds.plungeRate}`}
+                      unit="mm/min"
+                      title={`Plunge Rate: ${params.feeds.plungeRate} mm/min`}
+                    />
+                    {params.feeds.startZ !== 0 && (
+                      <MiniStat
+                        icon={<StartZIcon className="h-6 w-6" />}
+                        label="STARTZ"
+                        value={`${params.feeds.startZ}`}
+                        unit="mm"
+                        title={`Start Z: ${params.feeds.startZ} mm`}
+                      />
+                    )}
                     <MiniStat
                       icon={<StepdownIcon className="h-6 w-6" />}
                       label={activeOperation.stepdown.shortLabel}

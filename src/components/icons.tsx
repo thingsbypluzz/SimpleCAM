@@ -66,6 +66,32 @@ export function FeedIcon({ className }: IconProps) {
   )
 }
 
+// Plunge Rate: an arrow descending straight into a surface line — the Z
+// feed used while cutting down into the material. Distinct from DepthIcon
+// (measurement ticks at top, no surface) and StepdownIcon (staircase).
+export function PlungeIcon({ className }: IconProps) {
+  return (
+    <svg {...base} className={className}>
+      <path d="M12 3v13" />
+      <path d="M8 13l4 4 4-4" />
+      <path d="M4 20h16" strokeWidth={1} />
+    </svg>
+  )
+}
+
+// Start Z: mirror of PlungeIcon (arrow + surface line) but pointing up,
+// plus a small "+" mark — the workpiece's raised starting plane (+Z).
+export function StartZIcon({ className }: IconProps) {
+  return (
+    <svg {...base} className={className}>
+      <path d="M11 20V7" />
+      <path d="M7 11l4-4 4 4" />
+      <path d="M4 20h14" strokeWidth={1} />
+      <path d="M19 3v4M17 5h4" strokeWidth={1.4} />
+    </svg>
+  )
+}
+
 export function StepdownIcon({ className }: IconProps) {
   return (
     <svg {...base} className={className}>

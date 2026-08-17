@@ -7,6 +7,22 @@ zgodne z [SemVer](https://semver.org/). Ten plik pozostaje głównym, czytelnym
 thingsbypluzz/SimpleCAM), ale to infrastruktura pod izolację pracy
 (branch/worktree per zadanie), nie zamiennik tego changeloga.
 
+## [0.6.21] — 2026-08-18
+
+### Dodano
+
+- **PLUNGE i STARTZ w zwiniętym pasku Kroku 3** — dwa nowe `MiniStat` obok
+  istniejących FEED/stepdown-a:
+  - **PLUNGE** (`params.feeds.plungeRate`, mm/min) — zawsze widoczny,
+    nowa `PlungeIcon` (strzałka pionowo w dół przez linię powierzchni —
+    ruch Z podczas wcinania w materiał).
+  - **STARTZ** (`params.feeds.startZ`, mm) — widoczny tylko gdy różny od
+    domyślnego `0` (ten sam wzorzec co OFFSET w Kroku 2 —
+    `params.feeds.startZ !== 0`), nowa `StartZIcon` (lustrzane odbicie
+    PlungeIcon — strzałka w górę przez linię powierzchni — plus mały
+    znak "+" przy grocie, zgodnie z sugestią użytkownika: "+Z" jako
+    wizualny skrót "podniesionej" płaszczyzny startowej).
+
 ## [0.6.20] — 2026-08-18
 
 ### Zmieniono
