@@ -154,7 +154,7 @@ export function Scene3D({ params, isDark }: Scene3DProps) {
     'rounded-md border border-slate-300 bg-white/90 px-2.5 py-1 text-xs font-medium text-slate-600 shadow-sm hover:bg-white dark:border-slate-700 dark:bg-slate-900/90 dark:text-slate-300 dark:hover:bg-slate-900'
 
   return (
-    <div className="relative h-full w-full">
+    <div className="relative min-h-0 w-full flex-1">
       <div ref={containerRef} className="h-full w-full" />
       <div className="absolute right-3 bottom-3 flex flex-wrap items-center justify-end gap-1.5">
         {PRESET_BUTTONS.map((preset) => (

@@ -300,17 +300,37 @@ src/
                                ponownie — bez tego zoom przeglądarki
                                (Ctrl+/Ctrl-) zmienia `devicePixelRatio`,
                                ale bufor renderera zostawał przy starej
-                               wartości i canvas przestawał się poprawnie
-                               skalować (naprawione w 0.7.1, ten sam
-                               wzorzec co `ToolpathCanvas.tsx` już
-                               stosował dla 2D). Obok `ResizeObserver`
-                               (łapie resize wywołany zmianą layoutu, np.
+                               wartości (0.7.1, ten sam wzorzec co
+                               `ToolpathCanvas.tsx` już stosował dla 2D).
+                               Obok `ResizeObserver` (łapie resize
+                               wywołany zmianą layoutu, np.
                                zwinięcie/rozwinięcie panelu kroku) wisi
                                też `window.addEventListener('resize', …)`
                                jako dodatkowe zabezpieczenie na wypadek,
                                gdyby sam zoom nie ruszył
                                `clientWidth`/`clientHeight` kontenera na
                                tyle, żeby ResizeObserver się odpalił.
+                               Prawdziwą przyczyną tego, że zoom-in gubił
+                               przyciski widoku (do naprawy potrzebne było
+                               przełączenie na 2D i z powrotem), był
+                               jednak kruchy CSS, nie sam JS: korzeń
+                               komponentu (i analogicznie
+                               `ToolpathCanvas.tsx`) używał `h-full w-full`
+                               bez `flex-1` w rodzicu `flex-col`, polegając
+                               na niepewnej kombinacji `flex-basis:auto` +
+                               procentowej wysokości + domyślnego
+                               `flex-shrink`, żeby wypełnić resztę
+                               dostępnej wysokości — w przeciwieństwie do
+                               sąsiedniego panelu G-Code w `App.tsx`, który
+                               od początku poprawnie używał `flex-1`. Przy
+                               reflow wywołanym zoomem ta kombinacja
+                               czasem rozjeżdżała się (kontener chwilowo
+                               zerowej wysokości), gubiąc absolutnie
+                               pozycjonowane przyciski widoku bez
+                               samo-naprawy. Naprawione w 0.7.2: korzeń
+                               obu komponentów ma teraz `flex-1 min-h-0`
+                               zamiast `h-full w-full`, ten sam solidny
+                               wzorzec co panel G-Code.
                                Kamera auto-dopasowuje się (izometryczny fit)
                                tylko przy pierwszym zbudowaniu sceny (nie
                                przy każdej zmianie parametru — nie resetuje

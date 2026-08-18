@@ -218,7 +218,7 @@ function App() {
 
   return (
     <div className="flex h-svh flex-col bg-white text-slate-900 dark:bg-slate-950 dark:text-slate-100">
-      <header className="flex items-center justify-between border-b border-slate-200 px-6 py-4 dark:border-slate-800">
+      <header className="grid grid-cols-[1fr_auto_1fr] items-center gap-4 border-b border-slate-200 px-6 py-4 dark:border-slate-800">
         <div>
           <h1 className="text-xl font-semibold">SimpleCAM</h1>
           <p className="text-xs text-slate-500 dark:text-slate-400">
@@ -226,42 +226,42 @@ function App() {
           </p>
         </div>
 
-        <div className="flex items-center gap-2">
-          <div className="flex items-center gap-2 border-r border-slate-200 pr-3 dark:border-slate-800">
-            {PRESET_SLOT_IDS.map((id) => {
-              const preset = presetSlots[id]
-              const PresetIcon = preset ? OPERATION_META[preset.operation].Icon : null
-              return (
-                <div key={id} className="group relative">
+        <div className="flex items-center justify-self-center gap-2">
+          {PRESET_SLOT_IDS.map((id) => {
+            const preset = presetSlots[id]
+            const PresetIcon = preset ? OPERATION_META[preset.operation].Icon : null
+            return (
+              <div key={id} className="group relative">
+                <button
+                  type="button"
+                  onClick={() => handleLoadPreset(id)}
+                  disabled={!preset}
+                  title={preset ? `Load preset [${id}] — ${presetLabel(preset)}` : `Preset [${id}] — empty`}
+                  className={
+                    preset
+                      ? 'flex h-11 w-11 items-center justify-center rounded-md border border-indigo-300 text-indigo-700 hover:bg-indigo-50 dark:border-indigo-800 dark:text-indigo-300 dark:hover:bg-indigo-950/40'
+                      : 'flex h-11 w-11 cursor-default items-center justify-center rounded-md border border-slate-200 text-xs font-semibold text-slate-300 dark:border-slate-800 dark:text-slate-700'
+                  }
+                >
+                  {PresetIcon ? <PresetIcon className="h-6 w-6" /> : id}
+                </button>
+                {preset && (
                   <button
                     type="button"
-                    onClick={() => handleLoadPreset(id)}
-                    disabled={!preset}
-                    title={preset ? `Load preset [${id}] — ${presetLabel(preset)}` : `Preset [${id}] — empty`}
-                    className={
-                      preset
-                        ? 'flex h-11 w-11 items-center justify-center rounded-md border border-indigo-300 text-indigo-700 hover:bg-indigo-50 dark:border-indigo-800 dark:text-indigo-300 dark:hover:bg-indigo-950/40'
-                        : 'flex h-11 w-11 cursor-default items-center justify-center rounded-md border border-slate-200 text-xs font-semibold text-slate-300 dark:border-slate-800 dark:text-slate-700'
-                    }
+                    onClick={() => handleDeletePreset(id)}
+                    aria-label={`Delete preset ${id}`}
+                    title="Delete preset"
+                    className="absolute -top-1 -right-1 hidden h-4 w-4 items-center justify-center rounded-full bg-red-100 text-[10px] leading-none font-bold text-red-600 group-hover:flex dark:bg-red-950 dark:text-red-400"
                   >
-                    {PresetIcon ? <PresetIcon className="h-6 w-6" /> : id}
+                    ×
                   </button>
-                  {preset && (
-                    <button
-                      type="button"
-                      onClick={() => handleDeletePreset(id)}
-                      aria-label={`Delete preset ${id}`}
-                      title="Delete preset"
-                      className="absolute -top-1 -right-1 hidden h-4 w-4 items-center justify-center rounded-full bg-red-100 text-[10px] leading-none font-bold text-red-600 group-hover:flex dark:bg-red-950 dark:text-red-400"
-                    >
-                      ×
-                    </button>
-                  )}
-                </div>
-              )
-            })}
-          </div>
+                )}
+              </div>
+            )
+          })}
+        </div>
 
+        <div className="flex items-center justify-self-end gap-2">
           <button
             type="button"
             onClick={() => setIsDark((d) => !d)}

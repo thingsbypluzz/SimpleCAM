@@ -39,7 +39,7 @@ export function ToolpathCanvas({ params, isDark }: ToolpathCanvasProps) {
   }, [params, isDark])
 
   return (
-    <div ref={containerRef} className="h-full w-full">
+    <div ref={containerRef} className="min-h-0 w-full flex-1">
       <canvas ref={canvasRef} />
     </div>
   )

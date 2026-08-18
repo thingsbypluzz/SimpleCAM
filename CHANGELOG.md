@@ -7,6 +7,34 @@ zgodne z [SemVer](https://semver.org/). Ten plik pozostaje głównym, czytelnym
 thingsbypluzz/SimpleCAM), ale to infrastruktura pod izolację pracy
 (branch/worktree per zadanie), nie zamiennik tego changeloga.
 
+## [0.7.2] — 2026-08-18
+
+### Naprawiono
+
+- **Sloty presetów w headerze nie były naprawdę wyśrodkowane** — 0.7.1
+  wyśrodkowywał je tylko pionowo (`items-center`), zostawiając je
+  przyklejone do prawej krawędzi obok dark mode/Settings. Header
+  przebudowany na `grid grid-cols-[1fr_auto_1fr]`: tytuł po lewej,
+  sloty presetów w środkowej (auto-szerokość) kolumnie z
+  `justify-self-center`, dark mode/Settings po prawej z
+  `justify-self-end` — sloty teraz naprawdę na środku belki, niezależnie
+  od szerokości tytułu czy liczby przycisków po prawej.
+- **3D Preview: zoom-in gubił przyciski widoku, trzeba było przełączyć
+  się na 2D i z powrotem, żeby naprawić** — 0.7.1 poprawił tylko odczyt
+  `devicePixelRatio`, ale prawdziwą przyczyną był kruchy CSS: kontener
+  `ToolpathCanvas`/`Scene3D` używał `h-full w-full` bez `flex-1`,
+  polegając na niepewnej kombinacji `flex-basis:auto` + procentowej
+  wysokości + domyślnego `flex-shrink`, żeby wypełnić resztę wysokości
+  w rodzicu `flex-col` — w przeciwieństwie do sąsiedniego panelu
+  G-Code, który od początku poprawnie używał `flex-1`. Przy reflow
+  wywołanym zoomem ta kombinacja czasem rozjeżdżała się (kontener
+  chwilowo zerowej wysokości), co gubiło absolutnie pozycjonowane
+  przyciski widoku i nie samo-naprawiało się bez odmontowania/
+  zamontowania komponentu (przełączenie zakładki). Oba komponenty
+  (`ToolpathCanvas.tsx`, `Scene3D.tsx`) mają teraz `flex-1 min-h-0`
+  zamiast `h-full w-full` na korzeniu — ten sam solidny wzorzec co
+  panel G-Code.
+
 ## [0.7.1] — 2026-08-18
 
 ### Zmieniono
