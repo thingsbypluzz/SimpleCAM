@@ -7,6 +7,35 @@ zgodne z [SemVer](https://semver.org/). Ten plik pozostaje głównym, czytelnym
 thingsbypluzz/SimpleCAM), ale to infrastruktura pod izolację pracy
 (branch/worktree per zadanie), nie zamiennik tego changeloga.
 
+## [0.7.1] — 2026-08-18
+
+### Zmieniono
+
+- **Ikony presetów w headerze** — większe (`h-8 w-8` → `h-11 w-11`),
+  header wyśrodkowany pionowo (`items-start` → `items-center`, tak żeby
+  sloty `[1]…[5]` nie wisiały u góry obok dwuliniowego tytułu). Zajęte
+  sloty pokazują teraz ikonę operacji, którą przechowują (`HelixIcon` /
+  `StandardHoleIcon` z `OPERATION_META[preset.operation].Icon`), zamiast
+  samego numeru slotu — puste sloty nadal pokazują numer.
+- **Ikony "Save to preset" na Kroku 4** — ta sama zmiana rozmiaru
+  (`h-8 w-8` → `h-11 w-11`) co w headerze, bez zmiany ikonografii (dalej
+  numer/✓, nie ikona operacji — to sekcja zapisu, nie podglądu istniejącej
+  zawartości slotu).
+
+### Naprawiono
+
+- **3D Preview nie przeskalowywał się przy zmianie rozmiaru okna/zoomie
+  przeglądarki (Ctrl+/Ctrl-)** — `Scene3D.tsx` ustawiał
+  `renderer.setPixelRatio(window.devicePixelRatio)` tylko raz, przy
+  starcie sceny; przy zmianie zoomu `devicePixelRatio` się zmienia, ale
+  bufor renderera zostawał przy starej wartości. Poprawka: odczyt
+  `devicePixelRatio` przeniesiony do `handleResize()`, wołanego przy
+  każdym resize (ten sam wzorzec, jaki `ToolpathCanvas.tsx` już stosował
+  dla 2D Preview) — plus dodatkowy `window.addEventListener('resize', ...)`
+  obok istniejącego `ResizeObserver` jako dodatkowe zabezpieczenie na
+  wypadek, gdyby sam zoom nie zmienił `clientWidth`/`clientHeight`
+  kontenera na tyle, żeby ResizeObserver się odpalił.
+
 ## [0.7.0] — 2026-08-18
 
 ### Dodano

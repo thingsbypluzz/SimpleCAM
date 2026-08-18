@@ -134,7 +134,7 @@ export function Step4Output({
         <span className="text-xs font-medium text-slate-500 dark:text-slate-400">
           Save current settings as preset
         </span>
-        <div className="flex gap-2">
+        <div className="flex gap-3">
           {PRESET_SLOT_IDS.map((id) => {
             const existing = presetSlots[id]
             const justSaved = savedSlot === id
@@ -150,10 +150,10 @@ export function Step4Output({
                 }
                 className={
                   justSaved
-                    ? 'flex h-8 w-8 items-center justify-center rounded-md border border-green-500 bg-green-50 text-xs font-semibold text-green-700 dark:bg-green-950/40 dark:text-green-300'
+                    ? 'flex h-11 w-11 items-center justify-center rounded-md border border-green-500 bg-green-50 text-sm font-semibold text-green-700 dark:bg-green-950/40 dark:text-green-300'
                     : existing
-                      ? 'flex h-8 w-8 items-center justify-center rounded-md border border-indigo-300 bg-indigo-50 text-xs font-semibold text-indigo-700 hover:bg-indigo-100 dark:border-indigo-800 dark:bg-indigo-950/40 dark:text-indigo-300 dark:hover:bg-indigo-950'
-                      : 'flex h-8 w-8 items-center justify-center rounded-md border border-dashed border-slate-300 text-xs font-semibold text-slate-400 hover:border-slate-400 hover:text-slate-600 dark:border-slate-700 dark:text-slate-500 dark:hover:border-slate-600 dark:hover:text-slate-300'
+                      ? 'flex h-11 w-11 items-center justify-center rounded-md border border-indigo-300 bg-indigo-50 text-sm font-semibold text-indigo-700 hover:bg-indigo-100 dark:border-indigo-800 dark:bg-indigo-950/40 dark:text-indigo-300 dark:hover:bg-indigo-950'
+                      : 'flex h-11 w-11 items-center justify-center rounded-md border border-dashed border-slate-300 text-sm font-semibold text-slate-400 hover:border-slate-400 hover:text-slate-600 dark:border-slate-700 dark:text-slate-500 dark:hover:border-slate-600 dark:hover:text-slate-300'
                 }
               >
                 {justSaved ? '✓' : id}

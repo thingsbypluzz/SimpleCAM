@@ -146,9 +146,13 @@ Projekt budowany etapami z checkpointami do akceptacji. Aktualny stan:
         **Kroku 4** z subtelnym bannerem "Restored from your last
         session" (znika po pierwszej zmianie parametru albo Generate).
         Sloty `"1"`–`"5"` = nazwane presety, widoczne jako `[1]…[5]` w
-        headerze — puste wyszarzone/nieklikalne, zajęte klikalne (klik =
-        load, natychmiastowy, bez potwierdzenia — spójnie z resztą
-        appki, która nigdzie indziej nie pyta o niezapisane zmiany) i z
+        headerze — puste wyszarzone/nieklikalne (pokazują numer slotu),
+        zajęte klikalne (klik = load, natychmiastowy, bez potwierdzenia
+        — spójnie z resztą appki, która nigdzie indziej nie pyta o
+        niezapisane zmiany), pokazują ikonę operacji, którą przechowują
+        (`OPERATION_META[preset.operation].Icon` zamiast numeru — 0.7.1,
+        na życzenie użytkownika: "niech ikonki presetów na górze
+        zapisanych przyjmują obraz operacji jaką przechowują"), i z
         ikonką "×" przy hoverze do usunięcia (z potwierdzeniem). Zapis
         do slotu — nowa sekcja "Save to preset" na Kroku 4
         (`Step4Output.tsx`), przycisk na slot, z potwierdzeniem przy
@@ -289,6 +293,24 @@ src/
     Scene3D.tsx                — React wrapper: scena/kamera/renderer/
                                OrbitControls, ResizeObserver, przyciski
                                widoku (Top/Isometric/Front/Side/Fit View).
+                               `handleResize()` odczytuje
+                               `window.devicePixelRatio` na nowo przy
+                               KAŻDYM resize (nie tylko raz przy starcie
+                               sceny) i woła `renderer.setPixelRatio()`
+                               ponownie — bez tego zoom przeglądarki
+                               (Ctrl+/Ctrl-) zmienia `devicePixelRatio`,
+                               ale bufor renderera zostawał przy starej
+                               wartości i canvas przestawał się poprawnie
+                               skalować (naprawione w 0.7.1, ten sam
+                               wzorzec co `ToolpathCanvas.tsx` już
+                               stosował dla 2D). Obok `ResizeObserver`
+                               (łapie resize wywołany zmianą layoutu, np.
+                               zwinięcie/rozwinięcie panelu kroku) wisi
+                               też `window.addEventListener('resize', …)`
+                               jako dodatkowe zabezpieczenie na wypadek,
+                               gdyby sam zoom nie ruszył
+                               `clientWidth`/`clientHeight` kontenera na
+                               tyle, żeby ResizeObserver się odpalił.
                                Kamera auto-dopasowuje się (izometryczny fit)
                                tylko przy pierwszym zbudowaniu sceny (nie
                                przy każdej zmianie parametru — nie resetuje

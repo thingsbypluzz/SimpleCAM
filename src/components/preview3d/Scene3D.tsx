@@ -69,16 +69,29 @@ export function Scene3D({ params, isDark }: Scene3DProps) {
       const w = container.clientWidth
       const h = container.clientHeight
       if (w === 0 || h === 0) return
+      // Re-read devicePixelRatio on every resize, not just at setup — it
+      // changes on browser zoom (Ctrl+/Ctrl-) even when clientWidth/Height
+      // don't, and a stale ratio is what made the canvas look "stuck" at
+      // the zoom level active when the scene was first built. Same fix
+      // ToolpathCanvas already applies for the 2D preview.
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
       camera.aspect = w / h
       camera.updateProjectionMatrix()
       renderer.setSize(w, h)
     }
     const resizeObserver = new ResizeObserver(handleResize)
     resizeObserver.observe(container)
+    // Browser zoom doesn't always change container.clientWidth/Height by
+    // enough to trip the ResizeObserver, but it always fires a window
+    // resize event — belt-and-suspenders alongside the observer, which
+    // still does the heavy lifting for layout-driven resizes (e.g. the
+    // step panel expanding/collapsing) that don't touch window size.
+    window.addEventListener('resize', handleResize)
     handleResize()
 
     return () => {
       cancelAnimationFrame(frameId)
+      window.removeEventListener('resize', handleResize)
       resizeObserver.disconnect()
       disposeObject3D(contentGroup)
       controls.dispose()
