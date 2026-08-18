@@ -455,7 +455,19 @@ src/
     download.ts                  — buildFilename/downloadTextFile — efekt
                                  uboczny (Blob/URL), celowo poza czystym
                                  rdzeniem lib/
-    *.test.ts                    — testy Vitest (42 testy, `npm run test`)
+    storage.ts                   — auto-save + presety w localStorage
+                                 (Etap 5): saveSlot/loadSlot/deleteSlot/
+                                 loadPresetSlots, jeden klucz
+                                 `simplecam.storage`, sloty `"0"`–`"5"`,
+                                 merge z DEFAULT_WIZARD_PARAMS przy
+                                 wczytaniu (migracja schematu), try/catch
+                                 + `console.warn` na każdym I/O — patrz
+                                 Etap 5 wyżej po pełny opis
+    presetLabel.ts                — presetLabel(params) → auto-opis
+                                 zapisanego slotu z parametrów (operacja +
+                                 ⌀otworu + głębokość), używane w
+                                 tooltipach header/Step 4
+    *.test.ts                    — testy Vitest (71 testów, `npm run test`)
   App.tsx                    — orkiestracja stanu wizarda i nawigacji kroków
 ```
 
