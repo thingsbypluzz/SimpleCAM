@@ -30,6 +30,16 @@ import {
 } from './components/icons'
 import { OPERATION_LIST, OPERATION_META } from './config/operationMeta'
 import { fmt } from './lib/format'
+import { presetLabel } from './lib/presetLabel'
+import {
+  AUTO_SAVE_SLOT,
+  PRESET_SLOT_IDS,
+  deleteSlot,
+  loadPresetSlots,
+  loadSlot,
+  saveSlot,
+  type PresetSlotId,
+} from './lib/storage'
 import { isStartZValid, isStepdownValid, isToolDiameterValid } from './lib/validation'
 import {
   DEFAULT_WIZARD_PARAMS,
@@ -110,6 +120,16 @@ function collapsedStepTitle(stepId: number, params: WizardParams): string {
   }
 }
 
+// Computed once, at mount, from the hidden auto-save slot (see
+// src/lib/storage.ts) — if a previous session left a snapshot, the wizard
+// opens straight on Step 4 with a "restored" banner instead of Step 1.
+function loadInitialState(): { params: WizardParams; activeStep: number; restored: boolean } {
+  const restoredParams = loadSlot(AUTO_SAVE_SLOT)
+  return restoredParams
+    ? { params: restoredParams, activeStep: 4, restored: true }
+    : { params: DEFAULT_WIZARD_PARAMS, activeStep: 1, restored: false }
+}
+
 function useDarkMode() {
   // Dark mode is the default regardless of OS preference; the toggle in
   // the header still lets the user switch to light.
@@ -123,8 +143,11 @@ function useDarkMode() {
 }
 
 function App() {
-  const [activeStep, setActiveStep] = useState(1)
-  const [params, setParams] = useState<WizardParams>(DEFAULT_WIZARD_PARAMS)
+  const [initial] = useState(loadInitialState)
+  const [activeStep, setActiveStep] = useState(initial.activeStep)
+  const [params, setParams] = useState<WizardParams>(initial.params)
+  const [showRestoredBanner, setShowRestoredBanner] = useState(initial.restored)
+  const [presetSlots, setPresetSlots] = useState(loadPresetSlots)
   const [isDark, setIsDark] = useDarkMode()
   const [generatedGCode, setGeneratedGCode] = useState<string[] | null>(null)
   const [previewTab, setPreviewTab] = useState<'2d' | '3d' | 'gcode'>('2d')
@@ -135,6 +158,7 @@ function App() {
   const updateParams = (patch: Partial<WizardParams>) => {
     setParams((prev) => ({ ...prev, ...patch }))
     setGeneratedGCode(null)
+    setShowRestoredBanner(false)
   }
 
   const goForward = () => setActiveStep((s) => Math.min(s + 1, TOTAL_STEPS))
@@ -149,7 +173,48 @@ function App() {
   const isGeometryValid =
     isToolDiameterValid(params.geometry) && isStepdownValid(params.feeds) && isStartZValid(params.feeds)
 
-  const handleGenerate = () => setGeneratedGCode(activeOperation.generate(params))
+  // Generate is also the auto-save trigger for the hidden slot 0 — see
+  // CLAUDE.md, Etap 5, "localStorage": persisted on Generate rather than on
+  // every keystroke, so a snapshot only survives once the user considered
+  // the params worth turning into G-code.
+  const handleGenerate = () => {
+    setGeneratedGCode(activeOperation.generate(params))
+    saveSlot(AUTO_SAVE_SLOT, params)
+    setShowRestoredBanner(false)
+  }
+
+  // Returns false (and leaves the slot untouched) if the user cancels the
+  // overwrite confirmation on an occupied slot.
+  const handleSaveToPreset = (id: PresetSlotId): boolean => {
+    const existing = presetSlots[id]
+    if (existing && !window.confirm(`Overwrite preset [${id}] — ${presetLabel(existing)}?`)) {
+      return false
+    }
+    saveSlot(id, params)
+    setPresetSlots((prev) => ({ ...prev, [id]: params }))
+    return true
+  }
+
+  const handleLoadPreset = (id: PresetSlotId) => {
+    const preset = presetSlots[id]
+    if (!preset) return
+    setParams(preset)
+    setGeneratedGCode(null)
+    setShowRestoredBanner(false)
+    setActiveStep(4)
+  }
+
+  const handleDeletePreset = (id: PresetSlotId) => {
+    const existing = presetSlots[id]
+    if (!existing) return
+    if (!window.confirm(`Delete preset [${id}] — ${presetLabel(existing)}?`)) return
+    deleteSlot(id)
+    setPresetSlots((prev) => {
+      const next = { ...prev }
+      delete next[id]
+      return next
+    })
+  }
 
   return (
     <div className="flex h-svh flex-col bg-white text-slate-900 dark:bg-slate-950 dark:text-slate-100">
@@ -162,6 +227,40 @@ function App() {
         </div>
 
         <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1 border-r border-slate-200 pr-2 dark:border-slate-800">
+            {PRESET_SLOT_IDS.map((id) => {
+              const preset = presetSlots[id]
+              return (
+                <div key={id} className="group relative">
+                  <button
+                    type="button"
+                    onClick={() => handleLoadPreset(id)}
+                    disabled={!preset}
+                    title={preset ? `Load preset [${id}] — ${presetLabel(preset)}` : `Preset [${id}] — empty`}
+                    className={
+                      preset
+                        ? 'flex h-8 w-8 items-center justify-center rounded-md border border-indigo-300 text-xs font-semibold text-indigo-700 hover:bg-indigo-50 dark:border-indigo-800 dark:text-indigo-300 dark:hover:bg-indigo-950/40'
+                        : 'flex h-8 w-8 cursor-default items-center justify-center rounded-md border border-slate-200 text-xs font-semibold text-slate-300 dark:border-slate-800 dark:text-slate-700'
+                    }
+                  >
+                    {id}
+                  </button>
+                  {preset && (
+                    <button
+                      type="button"
+                      onClick={() => handleDeletePreset(id)}
+                      aria-label={`Delete preset ${id}`}
+                      title="Delete preset"
+                      className="absolute -top-1 -right-1 hidden h-4 w-4 items-center justify-center rounded-full bg-red-100 text-[10px] leading-none font-bold text-red-600 group-hover:flex dark:bg-red-950 dark:text-red-400"
+                    >
+                      ×
+                    </button>
+                  )}
+                </div>
+              )
+            })}
+          </div>
+
           <button
             type="button"
             onClick={() => setIsDark((d) => !d)}
@@ -214,13 +313,22 @@ function App() {
                   {step.id === 2 && <Step2Geometry params={params} onChange={updateParams} />}
                   {step.id === 3 && <Step3Feeds params={params} onChange={updateParams} />}
                   {step.id === 4 && (
-                    <Step4Output
-                      params={params}
-                      onChange={updateParams}
-                      generatedGCode={generatedGCode}
-                      onGenerate={handleGenerate}
-                      canGenerate={isGeometryValid}
-                    />
+                    <>
+                      {showRestoredBanner && (
+                        <div className="mb-4 rounded-md border border-indigo-200 bg-indigo-50 px-3 py-2 text-xs text-indigo-700 dark:border-indigo-900 dark:bg-indigo-950/40 dark:text-indigo-300">
+                          Restored from your last session — click Generate to refresh the G-code.
+                        </div>
+                      )}
+                      <Step4Output
+                        params={params}
+                        onChange={updateParams}
+                        generatedGCode={generatedGCode}
+                        onGenerate={handleGenerate}
+                        canGenerate={isGeometryValid}
+                        presetSlots={presetSlots}
+                        onSaveToPreset={handleSaveToPreset}
+                      />
+                    </>
                   )}
 
                   {STEPS_WITH_NEXT_BUTTON.has(step.id) && (

@@ -65,7 +65,7 @@ Projekt budowany etapami z checkpointami do akceptacji. Aktualny stan:
       "0,0" przez fizyczny origin, oraz pionowe linie `G0 Z` (zjazd na
       materiał / wyjazd na Safe Z) przy każdym otworze. Jak 2D Preview:
       zawsze live, nie wymaga Generate.
-- [ ] **Etap 5** (w trakcie) — walidacje, localStorage, polish. Zrobione:
+- [x] **Etap 5** — walidacje, localStorage, polish. Zrobione:
       - [x] Tool Diameter w Kroku 2 jako dropdown: 1–8mm (całe mm) + 1/8"
         (3.175mm) i 1/4" (6.35mm) jako dodatkowe opcje —
         `TOOL_DIAMETER_OPTIONS` w `Step2Geometry.tsx`.
@@ -130,13 +130,44 @@ Projekt budowany etapami z checkpointami do akceptacji. Aktualny stan:
         gdy `generatedGCode` istnieje (po Generate, przed unieważnieniem
         przez zmianę parametru — patrz Etap 2); w przeciwnym razie amber
         X (`XIcon`), sygnalizujący że trzeba kliknąć Generate.
-
-      Pozostało:
-      - **localStorage** (persystencja parametrów wizarda między sesjami)
-        — część oryginalnego zakresu Etapu 5 (patrz opis etapu wyżej: "walidacje,
-        localStorage, polish"), nigdy nieruszona, brak dotąd rozbicia na
-        konkretne decyzje projektowe (co zapisywać, kiedy czyścić, wersja
-        schematu). Rozważyć `/grill-me` przed startem.
+      - [x] **localStorage — auto-save + presety** (dawne "Pozostało"
+        Etapu 5, połączone z wcześniejszym wishlist-pomysłem "Presety
+        operacji" po sesji `/grill-me` 2026-08-18 — jeden mechanizm
+        storage zamiast dwóch niezależnych). Nowy moduł
+        `src/lib/storage.ts`: jeden klucz `localStorage`
+        (`simplecam.storage`), jeden JSON `{ version, slots: { "0"…"5" } }`.
+        Slot `"0"` = niewidoczny auto-save bieżącego stanu, zapisywany
+        wyłącznie przy kliknięciu **Generate** (nie co zmianę
+        parametru/keystroke — świadomie: "zapisujemy to, co user uznał
+        za gotowe", akceptowane ryzyko utraty niezapisanej edycji przy
+        zamknięciu karty bez Generate), wczytywany raz przy starcie
+        appki (`loadInitialState()` w `App.tsx`, lazy `useState`
+        initializer) — jeśli coś jest, wizard od razu otwiera się na
+        **Kroku 4** z subtelnym bannerem "Restored from your last
+        session" (znika po pierwszej zmianie parametru albo Generate).
+        Sloty `"1"`–`"5"` = nazwane presety, widoczne jako `[1]…[5]` w
+        headerze — puste wyszarzone/nieklikalne, zajęte klikalne (klik =
+        load, natychmiastowy, bez potwierdzenia — spójnie z resztą
+        appki, która nigdzie indziej nie pyta o niezapisane zmiany) i z
+        ikonką "×" przy hoverze do usunięcia (z potwierdzeniem). Zapis
+        do slotu — nowa sekcja "Save to preset" na Kroku 4
+        (`Step4Output.tsx`), przycisk na slot, z potwierdzeniem przy
+        nadpisaniu zajętego i krótkim "✓ Saved" feedbackiem (ten sam
+        wzorzec co istniejące "Copied!" w tym samym pliku). Etykieta
+        slotu to auto-opis z parametrów, nie nazwa wpisywana przez
+        użytkownika — `presetLabel()` w nowym `src/lib/presetLabel.ts`
+        (np. `"Helix • ⌀8mm, 4mm deep"`). Migracja schematu: płytki
+        merge per-sekcja (`geometry`/`feeds`/`output`) z
+        `DEFAULT_WIZARD_PARAMS` w `loadSlot()`/`loadPresetSlots()` —
+        brakujące pola po dodaniu nowych w przyszłości dostają wartości
+        domyślne. Błędy (private mode, quota exceeded, uszkodzony JSON)
+        — cichy fallback do wartości domyślnych/stanu w pamięci +
+        `console.warn`, appka nigdy się nie wywala. Świadomie poza
+        zakresem: brak nazywania presetów przez usera (tylko
+        auto-opis), brak "Reset to defaults"/"Clear saved state", brak
+        grupowania kilku operacji pod jednym presetem (odrzucone
+        wcześniej — jeden preset = jeden `WizardParams`, jak stała
+        decyzja "Jedno narzędzie na wygenerowany plik" wymagała).
 
 ## Pomysły na przyszłość (poza MVP, poza Etapem 5)
 
@@ -164,56 +195,6 @@ nowa funkcjonalność. Nie zaczynać bez wyraźnego "przechodzimy do X".
     rozszerzenie Kroku 2), oraz sprawdzenia czy podgląd 2D/3D (które dziś
     zakładają "okrąg" jako kształt operacji) w ogóle się do tego nadają
     czy potrzebują osobnej ścieżki rysowania.
-
-- **Presety operacji (zapisz/wczytaj ustawienia wizarda)** — możliwość
-  zapisania kompletu ustawień ze wszystkich 4 Kroków pod nazwanym
-  presetem i późniejszego ich wczytania. Zgłoszone przez użytkownika,
-  surowy zarys:
-  - Zapis dostępny jako opcja na **Kroku 4**.
-  - W górnym pasku (header) numerowane sloty `[1] [2] [3]…` (maks.
-    **5** zapisanych presetów) do szybkiego przełączania.
-  - Wczytanie presetu ładuje ustawienia na **wszystkich** Krokach
-    naraz, nie tylko bieżącym.
-  - **Jeden preset = jeden, niezależny zestaw parametrów wizarda**
-    (jeden `WizardParams` snapshot) — bez grupowania kilku powiązanych
-    operacji pod jednym presetem; ten pomysł rozważony i świadomie
-    odrzucony (uprościłoby przyszłą implementację, ale traciło się
-    elastyczność).
-  - Na daleką przyszłość: funkcja **Premium** (płatna/ograniczona).
-
-  **Feasibility study (2026-08-18, obserwacje, bez implementacji):**
-  - **Wysoka wykonalność, niskie ryzyko.** `WizardParams` (`params` w
-    `App.tsx`) to już dziś jeden obiekt trzymający stan wszystkich
-    4 Kroków (`useState<WizardParams>`), w pełni złożony z
-    prymitywów/tablic — `JSON.stringify`/`parse` działa bez zmian w
-    typach. Wczytanie presetu to `setParams(preset)` +
-    `setGeneratedGCode(null)` — dokładnie ten sam wzorzec, którego
-    `updateParams()` już dziś używa przy każdej zmianie parametru, więc
-    "wszystkie Kroki naraz" jest strukturalnie darmowe (jeden wspólny
-    stan, nie osobny per krok).
-  - Realny zakres pracy: schemat w `localStorage` z numerem wersji +
-    strategia dla brakujących pól gdy preset zapisany starszą wersją
-    appki wczytywany jest po dodaniu nowych pól (np. merge z
-    `DEFAULT_WIZARD_PARAMS`) — dokładnie ten sam problem co przy
-    ogólnym `localStorage` z Etapu 5 "Pozostało" wyżej (persystencja
-    *bieżącego* stanu między sesjami, bez nazwanych slotów) — warto
-    projektować oba jednym mechanizmem wersjonowania, nie dwoma
-    niezależnymi rozwiązaniami tego samego problemu.
-  - Dzięki odrzuceniu grupowania operacji, funkcja nie koliduje ze
-    stałą decyzją projektową "Jedno narzędzie na wygenerowany plik —
-    brak zmiany narzędzia" (patrz "Kluczowe decyzje projektowe" niżej)
-    — każdy preset nadal odpowiada dokładnie jednej operacji/jednemu
-    plikowi `.gcode`, jak dziś.
-  - **"Premium":** dziś appka jest świadomie zero-backend/zero-kont
-    (patrz "Stack" wyżej) — jakiekolwiek bramkowanie funkcji za
-    płatnością wymaga backendu/uwierzytelniania, czyli odejścia od tej
-    decyzji. Traktować jako marker "kiedyś, jeśli w ogóle", nie jako
-    wymóg wpływający na dzisiejszy kształt tej funkcji.
-  - **UI:** header (`App.tsx`, sekcja `<header>`) ma dziś tylko dwa
-    przyciski w prostym flex-rowie (dark mode, disabled Settings) —
-    miejsce na `[1]…[5]` sloty jest, ale wymaga small UI pass (stan
-    "pusty slot" vs "zajęty", nazwa/etykieta presetu widoczna w
-    tooltipie, potwierdzenie nadpisania zajętego slotu, usuwanie).
 
 Nie przeskakuj etapów bez pytania — każdy kończy się checkpointem do
 przeglądu przez użytkownika.

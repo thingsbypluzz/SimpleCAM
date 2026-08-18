@@ -7,6 +7,40 @@ zgodne z [SemVer](https://semver.org/). Ten plik pozostaje głównym, czytelnym
 thingsbypluzz/SimpleCAM), ale to infrastruktura pod izolację pracy
 (branch/worktree per zadanie), nie zamiennik tego changeloga.
 
+## [0.7.0] — 2026-08-18
+
+### Dodano
+
+- **localStorage — auto-save i presety wizarda** (Etap 5, ostatnia
+  pozycja — teraz kompletny). Zaprojektowane w sesji `/grill-me`, łączy
+  dwa wcześniej osobne pomysły (persystencja bieżącego stanu + wishlist
+  "Presety operacji") na jednym mechanizmie storage:
+  - Nowy moduł `src/lib/storage.ts` — jeden klucz `localStorage`
+    (`simplecam.storage`), jeden JSON `{ version, slots }`, generyczne
+    `saveSlot`/`loadSlot`/`deleteSlot`/`loadPresetSlots`. Każdy odczyt/
+    zapis w try/catch — błąd (tryb prywatny, quota exceeded, uszkodzony
+    JSON) daje cichy fallback do wartości domyślnych + `console.warn`,
+    appka nigdy się nie wywala.
+  - **Auto-save (slot "0"):** zapisywany wyłącznie przy kliknięciu
+    **Generate**, nie przy każdej zmianie parametru. Wczytywany raz przy
+    starcie appki — jeśli coś jest, wizard od razu otwiera się na Kroku 4
+    z bannerem "Restored from your last session" (znika po pierwszej
+    zmianie parametru albo Generate).
+  - **Presety (sloty "1"–"5"):** numerowane `[1]…[5]` w headerze, obok
+    dark mode toggle. Puste — wyszarzone/nieklikalne; zajęte — klik
+    wczytuje natychmiast (bez potwierdzenia, spójnie z resztą appki),
+    hover pokazuje ikonkę "×" do usunięcia (z potwierdzeniem). Zapis do
+    slotu — nowa sekcja "Save to preset" na Kroku 4, z potwierdzeniem
+    przy nadpisaniu i krótkim "✓ Saved" feedbackiem (wzorzec "Copied!").
+  - Etykieta slotu to auto-opis z parametrów — nowy
+    `src/lib/presetLabel.ts` (np. `"Helix • ⌀8mm, 4mm deep"`), bez
+    nazwy wpisywanej ręcznie.
+  - Migracja schematu: płytki merge per-sekcja z `DEFAULT_WIZARD_PARAMS`
+    — snapshot zapisany starszą wersją appki, brakujący nowsze pola, i
+    tak wczytuje się poprawnie.
+  - 11 nowych testów (`storage.test.ts`, `presetLabel.test.ts`) —
+    round-trip zapisu/odczytu, usuwanie, migracja, obsługa błędów.
+
 ## [0.6.22] — 2026-08-18
 
 ### Zmieniono

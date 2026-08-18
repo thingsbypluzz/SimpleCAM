@@ -1,6 +1,8 @@
 import { useState } from 'react'
 import type { WizardParams } from '../../types/wizard'
 import { buildFilename, downloadTextFile } from '../../lib/download'
+import { presetLabel } from '../../lib/presetLabel'
+import { PRESET_SLOT_IDS, type PresetSlotId } from '../../lib/storage'
 
 interface Step4OutputProps {
   params: WizardParams
@@ -8,6 +10,8 @@ interface Step4OutputProps {
   generatedGCode: string[] | null
   onGenerate: () => void
   canGenerate: boolean
+  presetSlots: Partial<Record<PresetSlotId, WizardParams>>
+  onSaveToPreset: (id: PresetSlotId) => boolean
 }
 
 interface CheckboxOption {
@@ -27,9 +31,12 @@ export function Step4Output({
   generatedGCode,
   onGenerate,
   canGenerate,
+  presetSlots,
+  onSaveToPreset,
 }: Step4OutputProps) {
   const { output } = params
   const [copied, setCopied] = useState(false)
+  const [savedSlot, setSavedSlot] = useState<PresetSlotId | null>(null)
 
   const updateOutput = (patch: Partial<WizardParams['output']>) =>
     onChange({ output: { ...output, ...patch } })
@@ -44,6 +51,12 @@ export function Step4Output({
   const handleDownload = () => {
     if (!generatedGCode) return
     downloadTextFile(buildFilename(params.operation), generatedGCode.join('\n'))
+  }
+
+  const handleSaveToPreset = (id: PresetSlotId) => {
+    if (!onSaveToPreset(id)) return
+    setSavedSlot(id)
+    setTimeout(() => setSavedSlot(null), 1500)
   }
 
   return (
@@ -115,6 +128,39 @@ export function Step4Output({
         >
           Download .gcode file
         </button>
+      </div>
+
+      <div className="flex flex-col gap-2 border-t border-slate-200 pt-4 dark:border-slate-800">
+        <span className="text-xs font-medium text-slate-500 dark:text-slate-400">
+          Save current settings as preset
+        </span>
+        <div className="flex gap-2">
+          {PRESET_SLOT_IDS.map((id) => {
+            const existing = presetSlots[id]
+            const justSaved = savedSlot === id
+            return (
+              <button
+                key={id}
+                type="button"
+                onClick={() => handleSaveToPreset(id)}
+                title={
+                  existing
+                    ? `Overwrite preset [${id}] — ${presetLabel(existing)}`
+                    : `Save current settings to preset [${id}]`
+                }
+                className={
+                  justSaved
+                    ? 'flex h-8 w-8 items-center justify-center rounded-md border border-green-500 bg-green-50 text-xs font-semibold text-green-700 dark:bg-green-950/40 dark:text-green-300'
+                    : existing
+                      ? 'flex h-8 w-8 items-center justify-center rounded-md border border-indigo-300 bg-indigo-50 text-xs font-semibold text-indigo-700 hover:bg-indigo-100 dark:border-indigo-800 dark:bg-indigo-950/40 dark:text-indigo-300 dark:hover:bg-indigo-950'
+                      : 'flex h-8 w-8 items-center justify-center rounded-md border border-dashed border-slate-300 text-xs font-semibold text-slate-400 hover:border-slate-400 hover:text-slate-600 dark:border-slate-700 dark:text-slate-500 dark:hover:border-slate-600 dark:hover:text-slate-300'
+                }
+              >
+                {justSaved ? '✓' : id}
+              </button>
+            )
+          })}
+        </div>
       </div>
     </div>
   )
