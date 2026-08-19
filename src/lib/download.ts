@@ -1,8 +1,9 @@
-import type { OperationType } from '../types/wizard'
+import { patternSlug } from '../config/positioningMeta'
+import type { WizardParams } from '../types/wizard'
 
-export function buildFilename(operation: OperationType): string {
+export function buildFilename(params: WizardParams): string {
   const date = new Date().toISOString().slice(0, 10)
-  return `simplecam-${operation}-${date}.gcode`
+  return `simplecam-${patternSlug(params.geometry)}-${date}.gcode`
 }
 
 export function downloadTextFile(filename: string, content: string): void {

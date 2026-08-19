@@ -50,7 +50,7 @@ export function Step4Output({
 
   const handleDownload = () => {
     if (!generatedGCode) return
-    downloadTextFile(buildFilename(params.operation), generatedGCode.join('\n'))
+    downloadTextFile(buildFilename(params), generatedGCode.join('\n'))
   }
 
   const handleSaveToPreset = (id: PresetSlotId) => {

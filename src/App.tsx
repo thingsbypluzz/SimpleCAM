@@ -1,5 +1,5 @@
 import { lazy, Suspense, useEffect, useState } from 'react'
-import { Step1Operation } from './components/wizard/Step1Operation'
+import { Step1Positioning } from './components/wizard/Step1Positioning'
 import { Step2Geometry } from './components/wizard/Step2Geometry'
 import { Step3Feeds } from './components/wizard/Step3Feeds'
 import { Step4Output } from './components/wizard/Step4Output'
@@ -14,21 +14,17 @@ const Scene3D = lazy(() =>
 import {
   BitIcon,
   CheckIcon,
-  CircleHolesIcon,
-  CustomPointsIcon,
   DepthIcon,
   DiameterIcon,
   FeedIcon,
   OffsetIcon,
   PlungeIcon,
-  RectangleCenteredIcon,
-  RectangleIcon,
-  SingleIcon,
   StartZIcon,
   StepdownIcon,
   XIcon,
 } from './components/icons'
-import { OPERATION_LIST, OPERATION_META } from './config/operationMeta'
+import { OPERATION_META } from './config/operationMeta'
+import { positioningIcon, positioningLines, positioningSummary } from './config/positioningMeta'
 import { fmt } from './lib/format'
 import { presetLabel } from './lib/presetLabel'
 import {
@@ -41,25 +37,20 @@ import {
   type PresetSlotId,
 } from './lib/storage'
 import { isStartZValid, isStepdownValid, isToolDiameterValid } from './lib/validation'
-import {
-  DEFAULT_WIZARD_PARAMS,
-  type GeometryParams,
-  type PositioningMode,
-  type WizardParams,
-} from './types/wizard'
+import { DEFAULT_WIZARD_PARAMS, type GeometryParams, type WizardParams } from './types/wizard'
 
 const TOTAL_STEPS = 4
 
 const STEP_META = [
-  { id: 1, title: 'Operation' },
+  { id: 1, title: 'Pattern' },
   { id: 2, title: 'Geometry' },
   { id: 3, title: 'Feeds & Speeds' },
   { id: 4, title: 'G-Code' },
 ] as const
 
-// Steps whose panel needs an explicit "Next" button — step 1 auto-advances
-// on card click, step 4 is the last one.
-const STEPS_WITH_NEXT_BUTTON = new Set([2, 3])
+// Steps whose panel needs an explicit "Next" button — none of the steps
+// auto-advance on selection, step 4 is the last one.
+const STEPS_WITH_NEXT_BUTTON = new Set([1, 2, 3])
 
 // null when there's no offset to show — the collapsed-bar annotation is
 // hidden entirely at the (0,0) default, not just zeroed out.
@@ -68,50 +59,13 @@ function offsetSummary(geometry: GeometryParams): string | null {
   return `(${fmt(geometry.offsetX)};${fmt(geometry.offsetY)})mm`
 }
 
-// Short lines stacked in the narrow (80px) Step 2 collapsed-bar badge —
-// broken up rather than one long string so each line stays readable at
-// the tiny font size the column allows.
-function positioningLines(geometry: GeometryParams): string[] {
-  switch (geometry.positioning) {
-    case 'single':
-      return ['SINGLE', 'HOLE']
-    case 'grid':
-      return ['RECTANGLE', `(${fmt(geometry.gridX)}×${fmt(geometry.gridY)})`]
-    case 'gridCentered':
-      return ['RECTANGLE', 'CENTERED', `(${fmt(geometry.gridX)}×${fmt(geometry.gridY)})`]
-    case 'circle':
-      return [`${Math.round(geometry.circleHoleCount)}-HOLES`, 'CIRCLE', `(⌀${fmt(geometry.circleDiameter)})`]
-    case 'custom':
-      return ['CUSTOM', 'POINTS', `(${geometry.customPoints.length})`]
-  }
-}
-
-function positioningSummary(geometry: GeometryParams): string {
-  return positioningLines(geometry).join(' ')
-}
-
-function positioningIcon(mode: PositioningMode) {
-  switch (mode) {
-    case 'single':
-      return SingleIcon
-    case 'grid':
-      return RectangleIcon
-    case 'gridCentered':
-      return RectangleCenteredIcon
-    case 'circle':
-      return CircleHolesIcon
-    case 'custom':
-      return CustomPointsIcon
-  }
-}
-
 function collapsedStepTitle(stepId: number, params: WizardParams): string {
   switch (stepId) {
     case 1:
-      return `Operation: ${OPERATION_META[params.operation].title}`
+      return `Pattern — ${positioningSummary(params.geometry)}`
     case 2: {
       const offset = offsetSummary(params.geometry)
-      return `Geometry — ${positioningSummary(params.geometry)}${offset ? ` — Offset ${offset}` : ''} — Tool ⌀${params.geometry.toolDiameter}mm, Hole ⌀${params.geometry.holeDiameter}mm, Depth ${params.geometry.totalDepth}mm`
+      return `Geometry — Tool ⌀${params.geometry.toolDiameter}mm, Hole ⌀${params.geometry.holeDiameter}mm, Depth ${params.geometry.totalDepth}mm${offset ? ` — Offset ${offset}` : ''} — Method: ${OPERATION_META[params.operation].title}`
     }
     case 3:
       return `Feeds & Speeds — Feed ${params.feeds.feedrateXY} mm/min, Stepdown ${params.feeds.stepdown} mm`
@@ -162,11 +116,6 @@ function App() {
   }
 
   const goForward = () => setActiveStep((s) => Math.min(s + 1, TOTAL_STEPS))
-
-  const selectOperationAndAdvance = (patch: Partial<WizardParams>) => {
-    updateParams(patch)
-    goForward()
-  }
 
   const activeOperation = OPERATION_META[params.operation]
   const offset = offsetSummary(params.geometry)
@@ -229,7 +178,7 @@ function App() {
         <div className="flex items-center justify-self-center gap-2">
           {PRESET_SLOT_IDS.map((id) => {
             const preset = presetSlots[id]
-            const PresetIcon = preset ? OPERATION_META[preset.operation].Icon : null
+            const PresetIcon = preset ? positioningIcon(preset.geometry.positioning) : null
             return (
               <div key={id} className="group relative">
                 <button
@@ -309,7 +258,7 @@ function App() {
                   </h2>
 
                   {step.id === 1 && (
-                    <Step1Operation params={params} onChange={selectOperationAndAdvance} />
+                    <Step1Positioning params={params} onChange={updateParams} />
                   )}
                   {step.id === 2 && <Step2Geometry params={params} onChange={updateParams} />}
                   {step.id === 3 && <Step3Feeds params={params} onChange={updateParams} />}
@@ -356,56 +305,37 @@ function App() {
                 className="flex w-20 shrink-0 flex-col items-center gap-3 border-r border-slate-200 py-4 hover:bg-slate-50 dark:border-slate-800 dark:hover:bg-slate-900"
               >
                 {step.id === 1 && (
-                  <div className="flex flex-col items-center gap-2">
-                    {OPERATION_LIST.map((op) => {
-                      const isActive = op.value === params.operation
+                  <div
+                    className="flex flex-col items-center gap-1"
+                    title={`Pattern: ${positioningSummary(params.geometry)}`}
+                  >
+                    {(() => {
+                      const PositioningIcon = positioningIcon(params.geometry.positioning)
                       return (
-                        <div key={op.value} className="flex flex-col items-center gap-0.5">
-                          <op.Icon
-                            className={
-                              isActive
-                                ? 'h-6 w-6 text-indigo-600 dark:text-indigo-400'
-                                : 'h-6 w-6 text-slate-300 opacity-50 dark:text-slate-600'
-                            }
-                          />
-                          <span
-                            className={
-                              isActive
-                                ? 'text-[10px] font-medium text-slate-500 dark:text-slate-400'
-                                : 'text-[10px] font-medium text-slate-300 opacity-50 dark:text-slate-600'
-                            }
-                          >
-                            {op.shortLabel}
-                          </span>
-                        </div>
+                        <PositioningIcon className="h-6 w-6 text-slate-500 dark:text-slate-400" />
                       )
-                    })}
+                    })()}
+                    <div className="flex flex-col items-center">
+                      {positioningLines(params.geometry).map((line, i) => (
+                        <span
+                          key={i}
+                          className="text-center text-[9px] leading-tight font-semibold whitespace-nowrap text-slate-600 dark:text-slate-300"
+                        >
+                          {line}
+                        </span>
+                      ))}
+                    </div>
                   </div>
                 )}
 
                 {step.id === 2 && (
                   <div className="flex flex-col items-center gap-4">
-                    <div
-                      className="flex flex-col items-center gap-1"
-                      title={`Positioning: ${positioningSummary(params.geometry)}`}
-                    >
-                      {(() => {
-                        const PositioningIcon = positioningIcon(params.geometry.positioning)
-                        return (
-                          <PositioningIcon className="h-6 w-6 text-slate-500 dark:text-slate-400" />
-                        )
-                      })()}
-                      <div className="flex flex-col items-center">
-                        {positioningLines(params.geometry).map((line, i) => (
-                          <span
-                            key={i}
-                            className="text-center text-[9px] leading-tight font-semibold whitespace-nowrap text-slate-600 dark:text-slate-300"
-                          >
-                            {line}
-                          </span>
-                        ))}
-                      </div>
-                    </div>
+                    <MiniStat
+                      icon={<activeOperation.Icon className="h-6 w-6" />}
+                      label="METHOD"
+                      value={activeOperation.shortLabel}
+                      title={`Method: ${activeOperation.title}`}
+                    />
                     {offset && (
                       <MiniStat
                         icon={<OffsetIcon className="h-6 w-6" />}

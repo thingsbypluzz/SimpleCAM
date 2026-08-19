@@ -172,6 +172,108 @@ Projekt budowany etapami z checkpointami do akceptacji. Aktualny stan:
         grupowania kilku operacji pod jednym presetem (odrzucone
         wcześniej — jeden preset = jeden `WizardParams`, jak stała
         decyzja "Jedno narzędzie na wygenerowany plik" wymagała).
+- [x] **Etap 6** — reorganizacja taksonomii wizarda: pattern na Krok 1,
+      method na Krok 2. Wynik sesji `/grill-me` 2026-08-19 (pełny zapis
+      dyskusji w `ideas.md`), zainicjowany realnym problemem UX: dwa
+      zapisane presety Helix (różny `PositioningMode`, np. pojedynczy
+      otwór vs 5 otworów na okręgu) wyglądały identycznie w headerze, bo
+      ikona/etykieta presetu kluczowała się po **method**
+      (`OperationType`: Helix/Standard), nie po **pattern**
+      (`PositioningMode`: Single/Grid/Grid Centered/N-Holes Circle/
+      Custom) — a to właśnie pattern odpowiada na pytanie "co user
+      faktycznie zrobił", method tylko na "jak".
+      - [x] **Krok 1 = tylko wybór patternu, Krok 2 = wszystko
+        liczbowe.** Krok 1 (`Step1Positioning.tsx`, nowy plik) to
+        wyłącznie kartowy picker patternu (Single/Grid/Grid Centered/
+        N-Holes Circle/Custom) + placeholdery rodzin (patrz niżej) —
+        celowo "wizualnie lekki", **żadne** pattern-specific pola tam
+        nie mieszkają. Krok 2 (`Step2Geometry.tsx`) zostaje z Tool
+        Diameter/Hole Diameter/Total Depth i przejmuje **wszystko
+        pozostałe**: nowy toggle **Method** (`MethodPicker.tsx`, rename
+        dawnego `Step1Operation.tsx`, logika wyboru 1:1 ale przepisana
+        na kompaktowy dwuprzyciskowy toggle — ten sam styl co
+        Circle Interpolation (arcs/segments) na Kroku 4, nie duże karty
+        jak w dawnym Kroku 1 Operation, bo tu jest to jedno z kilku pól
+        drugorzędnych, nie jedyna treść kroku), pattern-specific pola
+        (grid X/Y, circle count/diameter/start angle, custom points
+        textarea) i blok Offset X/Y — dokładnie jak ustalono w
+        `/grill-me` ("Krok 2 zostaje z tym, czym jest dziś sekcja
+        Geometry minus sam wybór trybu positioning, plus dołożony
+        toggle method"). Zero zmian w `WizardParams`/typach —
+        `operation` i `geometry.positioning` były już niezależnymi
+        polami `WizardParams` (żadne nie zagnieżdżone w drugim), to
+        czysta reorganizacja UI/wiring.
+      - [x] **Podwójne parametry (X/Y) renderowane w jednej linii, nie
+        jeden pod drugim** — Grid X/Y i Offset X/Y w `Step2Geometry.tsx`
+        to teraz dwa `FieldRow` obok siebie (`flex gap-4`, każdy
+        `min-w-0 flex-1`) zamiast osobnych wierszy, oszczędza pionowe
+        miejsce w i tak już gęstym Kroku 2. Świadomy, wąski wyjątek od
+        zasady "Layout wizarda: ... pola/opcje w jednej kolumnie" (patrz
+        "Kluczowe decyzje projektowe" niżej) — dotyczy wyłącznie
+        analogicznych par X/Y, nie ogólnej zmiany na siatkę/wiersze.
+        Circle (Hole Count/Diameter/Start Angle — trzy pola o różnym
+        znaczeniu, nie para X/Y) zostaje bez zmian, jeden pod drugim.
+        `min-w-0` na obu `flex-1` wrapperach jest tu konieczny, nie
+        kosmetyczny — bez niego pojawiał się poziomy scroll na Kroku 2
+        (0.8.1): `<input>` bez jawnej szerokości ma domyślną
+        min-content ~20 znaków (przeglądarkowy default dla `size`), a
+        flex items mają domyślnie `min-width: auto`, więc flex-shrink
+        nie mógł zejść poniżej tej szerokości formularza — dwa pola
+        obok siebie (2×~20 znaków + gap + padding panelu) nie mieściły
+        się w 420px panelu kroku. `min-w-0` znosi tę podłogę, a input i
+        tak dostaje pełną dostępną szerokość przez `align-items: stretch`
+        domyślne na `label.flex.flex-col` w `FieldRow` — bez potrzeby
+        `w-full` na samym inputcie. Ten sam wzorzec przyda się przy
+        każdym kolejnym grupowaniu pól w wiersz (np. Circle
+        Diameter/Start Angle, gdyby kiedyś też miały iść obok siebie).
+      - [x] **Krok 1 nie auto-advance'uje** po kliknięciu patternu (w
+        przeciwieństwie do dawnego Kroku 1 Operation, który
+        auto-advance'ował na klik) — ustalone z userem: spójność z
+        resztą wizarda, który nigdzie indziej nie auto-advance'uje na
+        wybór, wymaga przycisku Next jak pozostałe kroki
+        (`STEPS_WITH_NEXT_BUTTON` rozszerzony z `Set([2, 3])` na
+        `Set([1, 2, 3])`).
+      - [x] **Nowy `src/config/positioningMeta.ts`** — analogiczny do
+        `config/operationMeta.ts`, jedno źródło prawdy dla wszystkiego
+        zależnego od `PositioningMode` (wcześniej rozproszone jako
+        lokalne funkcje w `App.tsx`): `POSITIONING_META`/
+        `POSITIONING_LIST` (karty Kroku 1, tytuł/opis/ikona per mode),
+        `positioningIcon()`/`positioningLines()`/`positioningSummary()`
+        (zwinięte paski — przeniesione z `App.tsx` bez zmian w logice),
+        oraz nowe `patternLabel()` (zwarta jednoliniowa etykieta, np.
+        `"5-Holes Circle"`, `"Rectangle 50×30"`) i `patternSlug()`
+        (filename-safe slug, np. `"5holes-circle"`, `"grid-centered"`).
+      - [x] **Ikona/etykieta presetu w headerze — pattern jako główna
+        tożsamość.** Header (`App.tsx`) i `presetLabel()`
+        (`src/lib/presetLabel.ts`) przeszły z `OPERATION_META[operation]
+        .Icon`/`shortLabel` na `positioningIcon(geometry.positioning)`/
+        `patternLabel(geometry)`. `presetLabel()` zmienia się z
+        `"Helix • ⌀8mm, 4mm deep"` na `"5-Holes Circle • Helix •
+        ⌀8mm"` (pattern na początku, method drugorzędny, depth wypada z
+        etykiety). To bezpośrednio rozwiązuje oryginalny problem UX: dwa
+        różne presety Helix (różny pattern) dostają teraz różne
+        ikony/etykiety zamiast identycznych.
+      - [x] **Nazwa pliku wyjściowego — pattern zamiast method.**
+        `buildFilename()` (`src/lib/download.ts`) zmienia sygnaturę z
+        `(operation: OperationType)` na `(params: WizardParams)`,
+        `simplecam-<operacja>-<data>.gcode` →
+        `simplecam-<pattern>-<data>.gcode` (np.
+        `simplecam-5holes-circle-2026-08-20.gcode`).
+      - [x] **Zapisane presety w localStorage nie wymagały migracji
+        schematu** — `geometry.positioning` był już częścią zapisanego
+        `WizardParams` JSON-u, zmieniła się wyłącznie logika odczytu
+        (`presetLabel.ts`, header), nie sam zapis.
+      - [x] **Placeholdery przyszłych rodzin operacji** (Outline/Pocket/
+        Surface) — rząd 4 kafelków na górze `Step1Positioning.tsx`:
+        "Hole(s)" aktywny (dziś jedyna realna rodzina), pozostałe trzy
+        wyszarzone/nieklikalne z etykietą "Coming soon". Czysto
+        wizualne — świadomie **nie** modelowane jako pole `family` w
+        `WizardParams`/typach, dopóki istnieje tylko jedna realna
+        rodzina (unikanie projektowania pod hipotetyczne wymagania).
+        Każda przyszła rodzina (Outline/Pocket/Surface) wymaga własnej
+        sesji `/grill-me` przed realną implementacją — patrz `ideas.md`
+        dla pełnego zapisu dyskusji nt. docelowej taksonomii
+        (rodzina → pattern/sub-choice → parametry).
 
 ## Pomysły na przyszłość (poza MVP, poza Etapem 5)
 
@@ -221,7 +323,8 @@ przeglądu przez użytkownika.
   punktu XY.
 - **Wrzeciono:** tylko `M3` (bez `M4`) w MVP.
 - **Jedno narzędzie na wygenerowany plik** — brak zmiany narzędzia.
-- **Nazwa pliku wyjściowego:** `simplecam-<operacja>-<data>.gcode`.
+- **Nazwa pliku wyjściowego:** `simplecam-<pattern>-<data>.gcode` (od
+  Etapu 6 — pattern, nie method; patrz niżej).
 - **Hosting docelowy:** strona własna użytkownika (static build); lokalnie
   praca przez `npm run dev`.
 - Logika generowania G-code musi być **czystymi funkcjami TS**
@@ -238,7 +341,12 @@ przeglądu przez użytkownika.
   przełącza aktywny krok. Brak przycisku „Wstecz”, brak blokady kolejności
   — użytkownik może skoczyć od razu na Krok 4. Wewnątrz każdego
   rozwiniętego kroku pola/opcje układane są w **jednej kolumnie** (pod
-  sobą), nie w siatce/wierszu — patrz `src/App.tsx`.
+  sobą), nie w siatce/wierszu — patrz `src/App.tsx`. Wyjątek: **analogiczne
+  pary X/Y** (Grid X/Y, Offset X/Y w `Step2Geometry.tsx`) renderowane obok
+  siebie w jednej linii (`flex gap-4`, po `flex-1`) zamiast jeden pod
+  drugim — oszczędza miejsce, nie dotyczy pól o różnym znaczeniu (np.
+  Circle: Hole Count/Diameter/Start Angle zostają w kolumnie) — patrz
+  Etap 6.
 - Nagłówek ma toggle dark/light mode (działający, klasa `.dark` na
   `<html>`, Tailwind skonfigurowany przez `@custom-variant dark` w
   `src/index.css`) oraz przycisk Settings (na razie `disabled`,
@@ -303,11 +411,30 @@ bo `.claude/` jest wykluczone z gita (patrz `.gitignore` w sekcji
 ```
 src/
   types/wizard.ts          — typy WizardParams + DEFAULT_WIZARD_PARAMS
-  config/operationMeta.ts   — rejestr metadanych per-operacja (nazwy, ikony,
-                              etykiety zależne od Helix/Standard) — jedno
+  config/operationMeta.ts   — rejestr metadanych per-method (Helix/Standard:
+                              nazwy, ikony, etykiety, `generate()`) — jedno
                               źródło prawdy, nie hardkodować ternary po
                               `operation` w komponentach
-  components/wizard/        — komponenty poszczególnych kroków wizarda
+  config/positioningMeta.ts — rejestr metadanych per-pattern (Single/Grid/
+                              Grid Centered/N-Holes Circle/Custom: nazwy,
+                              ikony, opisy dla kart Kroku 1) — analogicznie
+                              do `operationMeta.ts`, ale dla
+                              `PositioningMode`. Też: `positioningIcon()`/
+                              `positioningLines()`/`positioningSummary()`
+                              (zwinięte paski Kroku 1), `patternLabel()`
+                              (jednoliniowa etykieta presetu, używana przez
+                              `lib/presetLabel.ts`), `patternSlug()`
+                              (filename-safe slug, używany przez
+                              `lib/download.ts`) — patrz Etap 6
+  components/wizard/        — komponenty poszczególnych kroków wizarda.
+                              `Step1Positioning.tsx` = wyłącznie pattern
+                              picker + placeholdery rodzin, nic liczbowego.
+                              `Step2Geometry.tsx` = Tool/Hole Diameter,
+                              Total Depth, `MethodPicker.tsx` (kompaktowy
+                              toggle Helix/Standard, dawny
+                              `Step1Operation.tsx`), pattern-specific pola
+                              (grid/circle/custom) i Offset X/Y — patrz
+                              Etap 6
   components/icons.tsx      — zestaw ikon SVG (własne, bez zależności)
   components/preview/       — podgląd 2D (Etap 3)
     ToolpathCanvas.tsx        — React wrapper: <canvas>, devicePixelRatio,
@@ -506,13 +633,18 @@ src/
   App.tsx                    — orkiestracja stanu wizarda i nawigacji kroków
 ```
 
-**Zasada:** wszystko co zależy od wybranej operacji (Helix vs Standard —
+**Zasada:** wszystko co zależy od wybranego method (Helix vs Standard —
 nazwa, ikona, etykiety pól, **oraz funkcja generująca G-code**: `generate`)
 idzie przez `OPERATION_META` w `config/operationMeta.ts`, nie przez
 rozproszone `operation === 'helix' ? ...` w komponentach. Wywołanie
 `OPERATION_META[params.operation].generate(params)` to jedyne miejsce,
 które powinno wołać silnik — nie importować `generateHelix`/
-`generateStandardHole` bezpośrednio w komponentach UI.
+`generateStandardHole` bezpośrednio w komponentach UI. Analogicznie —
+wszystko co zależy od wybranego patternu (Single/Grid/Grid Centered/
+N-Holes Circle/Custom — ikona, tytuł/opis karty, etykieta presetu,
+filename slug) idzie przez `POSITIONING_META`/pomocnicze funkcje w
+`config/positioningMeta.ts` (patrz Etap 6), nie przez rozproszone
+`switch (geometry.positioning)` w komponentach.
 
 ## Komendy
 

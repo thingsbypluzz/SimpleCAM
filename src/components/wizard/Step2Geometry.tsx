@@ -1,20 +1,13 @@
 import { useState } from 'react'
-import type { PositioningMode, WizardParams } from '../../types/wizard'
+import type { WizardParams } from '../../types/wizard'
 import { isToolDiameterValid } from '../../lib/validation'
 import { FieldRow, inputClass } from './FieldRow'
+import { MethodPicker } from './MethodPicker'
 
 interface Step2GeometryProps {
   params: WizardParams
   onChange: (patch: Partial<WizardParams>) => void
 }
-
-const POSITIONING_OPTIONS: { value: PositioningMode; label: string }[] = [
-  { value: 'single', label: 'Single (0,0)' },
-  { value: 'grid', label: 'Rectangular Grid' },
-  { value: 'gridCentered', label: 'Rectangular Grid (Centered)' },
-  { value: 'circle', label: 'N-Holes on Circle' },
-  { value: 'custom', label: 'Custom List' },
-]
 
 const TOOL_DIAMETER_OPTIONS = [
   { value: 1, label: '1 mm' },
@@ -106,27 +99,9 @@ export function Step2Geometry({ params, onChange }: Step2GeometryProps) {
         </FieldRow>
       </div>
 
-      <div>
-        <span className="mb-2 block text-sm font-medium text-slate-700 dark:text-slate-300">
-          Positioning
-        </span>
-        <div className="flex flex-col gap-2">
-          {POSITIONING_OPTIONS.map((opt) => (
-            <button
-              key={opt.value}
-              type="button"
-              onClick={() => updateGeometry({ positioning: opt.value })}
-              className={[
-                'rounded-md border px-3 py-1.5 text-left text-sm font-medium transition',
-                geometry.positioning === opt.value
-                  ? 'border-indigo-500 bg-indigo-50 text-indigo-700 dark:bg-indigo-950/40 dark:text-indigo-300'
-                  : 'border-slate-200 text-slate-600 hover:border-slate-300 dark:border-slate-700 dark:text-slate-400',
-              ].join(' ')}
-            >
-              {opt.label}
-            </button>
-          ))}
-        </div>
+      <div className="flex items-center gap-2 text-sm text-slate-700 dark:text-slate-300">
+        <span>Method:</span>
+        <MethodPicker params={params} onChange={onChange} />
       </div>
 
       {geometry.positioning === 'single' && (
@@ -142,24 +117,30 @@ export function Step2Geometry({ params, onChange }: Step2GeometryProps) {
               Corners at (±X/2, ±Y/2) — zero the machine at the pattern center.
             </p>
           )}
-          <FieldRow label="X [mm]">
-            <input
-              type="number"
-              step="0.1"
-              className={inputClass}
-              value={geometry.gridX}
-              onChange={(e) => updateGeometry({ gridX: Number(e.target.value) })}
-            />
-          </FieldRow>
-          <FieldRow label="Y [mm]">
-            <input
-              type="number"
-              step="0.1"
-              className={inputClass}
-              value={geometry.gridY}
-              onChange={(e) => updateGeometry({ gridY: Number(e.target.value) })}
-            />
-          </FieldRow>
+          <div className="flex gap-4">
+            <div className="min-w-0 flex-1">
+              <FieldRow label="X [mm]">
+                <input
+                  type="number"
+                  step="0.1"
+                  className={inputClass}
+                  value={geometry.gridX}
+                  onChange={(e) => updateGeometry({ gridX: Number(e.target.value) })}
+                />
+              </FieldRow>
+            </div>
+            <div className="min-w-0 flex-1">
+              <FieldRow label="Y [mm]">
+                <input
+                  type="number"
+                  step="0.1"
+                  className={inputClass}
+                  value={geometry.gridY}
+                  onChange={(e) => updateGeometry({ gridY: Number(e.target.value) })}
+                />
+              </FieldRow>
+            </div>
+          </div>
         </div>
       )}
 
@@ -217,25 +198,29 @@ export function Step2Geometry({ params, onChange }: Step2GeometryProps) {
         <p className="mb-2 text-sm text-slate-500 dark:text-slate-400">
           Shifts the whole pattern — applies on top of any positioning mode above.
         </p>
-        <div className="flex flex-col gap-4">
-          <FieldRow label="Offset X [mm]">
-            <input
-              type="number"
-              step="0.1"
-              className={inputClass}
-              value={geometry.offsetX}
-              onChange={(e) => updateGeometry({ offsetX: Number(e.target.value) })}
-            />
-          </FieldRow>
-          <FieldRow label="Offset Y [mm]">
-            <input
-              type="number"
-              step="0.1"
-              className={inputClass}
-              value={geometry.offsetY}
-              onChange={(e) => updateGeometry({ offsetY: Number(e.target.value) })}
-            />
-          </FieldRow>
+        <div className="flex gap-4">
+          <div className="min-w-0 flex-1">
+            <FieldRow label="Offset X [mm]">
+              <input
+                type="number"
+                step="0.1"
+                className={inputClass}
+                value={geometry.offsetX}
+                onChange={(e) => updateGeometry({ offsetX: Number(e.target.value) })}
+              />
+            </FieldRow>
+          </div>
+          <div className="min-w-0 flex-1">
+            <FieldRow label="Offset Y [mm]">
+              <input
+                type="number"
+                step="0.1"
+                className={inputClass}
+                value={geometry.offsetY}
+                onChange={(e) => updateGeometry({ offsetY: Number(e.target.value) })}
+              />
+            </FieldRow>
+          </div>
         </div>
       </div>
     </div>

@@ -3,21 +3,41 @@ import { presetLabel } from './presetLabel'
 import { DEFAULT_WIZARD_PARAMS } from '../types/wizard'
 
 describe('presetLabel', () => {
-  it('combines the operation short label with hole diameter and depth', () => {
+  it('leads with the pattern, then method, then hole diameter', () => {
     const params = {
       ...DEFAULT_WIZARD_PARAMS,
       operation: 'helix' as const,
-      geometry: { ...DEFAULT_WIZARD_PARAMS.geometry, holeDiameter: 8, totalDepth: 4 },
+      geometry: { ...DEFAULT_WIZARD_PARAMS.geometry, positioning: 'single' as const, holeDiameter: 8 },
     }
-    expect(presetLabel(params)).toBe('Helix • ⌀8mm, 4mm deep')
+    expect(presetLabel(params)).toBe('Single Hole • Helix • ⌀8mm')
   })
 
-  it('reflects the standard hole operation', () => {
+  it('reflects the standard hole method', () => {
     const params = {
       ...DEFAULT_WIZARD_PARAMS,
       operation: 'standard' as const,
-      geometry: { ...DEFAULT_WIZARD_PARAMS.geometry, holeDiameter: 12, totalDepth: 6 },
+      geometry: { ...DEFAULT_WIZARD_PARAMS.geometry, positioning: 'single' as const, holeDiameter: 12 },
     }
-    expect(presetLabel(params)).toBe('Standard • ⌀12mm, 6mm deep')
+    expect(presetLabel(params)).toBe('Single Hole • Standard • ⌀12mm')
+  })
+
+  it('distinguishes two presets that share a method but differ in pattern', () => {
+    const single = {
+      ...DEFAULT_WIZARD_PARAMS,
+      operation: 'helix' as const,
+      geometry: { ...DEFAULT_WIZARD_PARAMS.geometry, positioning: 'single' as const, holeDiameter: 8 },
+    }
+    const circle = {
+      ...DEFAULT_WIZARD_PARAMS,
+      operation: 'helix' as const,
+      geometry: {
+        ...DEFAULT_WIZARD_PARAMS.geometry,
+        positioning: 'circle' as const,
+        circleHoleCount: 5,
+        holeDiameter: 8,
+      },
+    }
+    expect(presetLabel(single)).not.toBe(presetLabel(circle))
+    expect(presetLabel(circle)).toBe('5-Holes Circle • Helix • ⌀8mm')
   })
 })

@@ -7,6 +7,71 @@ zgodne z [SemVer](https://semver.org/). Ten plik pozostaje głównym, czytelnym
 thingsbypluzz/SimpleCAM), ale to infrastruktura pod izolację pracy
 (branch/worktree per zadanie), nie zamiennik tego changeloga.
 
+## [0.8.1] — 2026-08-20
+
+### Naprawiono
+
+- **Poziomy scroll na Kroku 2 przy sparowanych polach X/Y** — wprowadzony
+  w 0.8.0 razem z grupowaniem Grid X/Y i Offset X/Y w jednej linii.
+  `<input>` bez jawnej szerokości ma domyślną min-content ~20 znaków, a
+  flex items mają domyślnie `min-width: auto` — dwa pola obok siebie w
+  420px panelu Kroku 2 nie mieściły się bez przycinania. Dodano
+  `min-w-0` do obu `flex-1` wrapperów w `Step2Geometry.tsx` (Grid X/Y,
+  Offset X/Y) — input i tak dostaje pełną dostępną (już zmniejszoną)
+  szerokość przez `align-items: stretch` na `FieldRow`, bez potrzeby
+  `w-full` na samym inputcie.
+
+## [0.8.0] — 2026-08-20
+
+### Zmieniono
+
+- **Reorganizacja taksonomii wizarda: pattern na Krok 1, wszystko
+  liczbowe na Krok 2** — wynik sesji `/grill-me` 2026-08-19 (pełny zapis
+  w `ideas.md`), zainicjowany realnym problemem UX: dwa zapisane presety
+  Helix (różny `PositioningMode`) wyglądały identycznie w headerze, bo
+  ikona/etykieta presetu kluczowała się po **method** (Helix/Standard),
+  nie po **pattern** (Single/Grid/Grid Centered/N-Holes Circle/Custom).
+  Krok 1 (`Step1Positioning.tsx`, nowy plik) to teraz wyłącznie wybór
+  patternu (karty) + placeholdery przyszłych rodzin — wizualnie lekki,
+  bez pól liczbowych. Krok 2 (`Step2Geometry.tsx`) zostaje z Tool/Hole
+  Diameter/Total Depth i przejmuje wszystko pozostałe: nowy kompaktowy
+  toggle **Method** (`MethodPicker.tsx`, dawny `Step1Operation.tsx`,
+  logika 1:1 ale przepisana na mały dwuprzyciskowy toggle — ten sam styl
+  co Circle Interpolation na Kroku 4, nie duże karty), pattern-specific
+  pola (grid X/Y, circle params, custom points) i Offset X/Y. Żadna
+  zmiana w `WizardParams`/typach — `operation` i `geometry.positioning`
+  były już niezależnymi polami, to czysta reorganizacja UI/wiring. Krok 1
+  nie auto-advance'uje po kliknięciu patternu (w przeciwieństwie do
+  dawnego Kroku 1 Operation) — spójność z resztą wizarda, wymaga
+  przycisku Next jak pozostałe kroki (`STEPS_WITH_NEXT_BUTTON`).
+  Dodatkowo: **analogiczne pary X/Y (Grid X/Y, Offset X/Y) renderowane
+  teraz obok siebie w jednej linii** zamiast jeden pod drugim — świadomy,
+  wąski wyjątek od zasady "pola w jednej kolumnie" (patrz CLAUDE.md),
+  oszczędza miejsce w gęstym Kroku 2.
+- **Nowy `src/config/positioningMeta.ts`** — analogiczny do
+  `operationMeta.ts`, jedno źródło prawdy dla wszystkiego zależnego od
+  `PositioningMode` (wcześniej rozproszone jako lokalne funkcje w
+  `App.tsx`): `POSITIONING_META`/`POSITIONING_LIST` (karty Kroku 1),
+  `positioningIcon`/`positioningLines`/`positioningSummary` (zwinięte
+  paski), oraz nowe `patternLabel()`/`patternSlug()`.
+- **Ikona/etykieta presetu w headerze i nazwa pliku pobieranego G-code —
+  pattern jako główna tożsamość, method jako drugorzędny tekst.**
+  `presetLabel()` (`src/lib/presetLabel.ts`) zmienia się z `"Helix •
+  ⌀8mm, 4mm deep"` na `"5-Holes Circle • Helix • ⌀8mm"` — dwa różne
+  presety Helix (różny pattern) mają teraz różne ikony/etykiety, nie
+  identyczne. `buildFilename()` (`src/lib/download.ts`) zmienia sygnaturę
+  z `(operation: OperationType)` na `(params: WizardParams)`, plik
+  wynikowy `simplecam-<operacja>-<data>.gcode` →
+  `simplecam-<pattern>-<data>.gcode` (np.
+  `simplecam-5holes-circle-2026-08-20.gcode`). Zapisane presety w
+  localStorage nie wymagały migracji schematu — `geometry.positioning`
+  był już w zapisanym JSON-ie, zmieniła się tylko logika odczytu.
+- **Placeholdery przyszłych rodzin operacji** (Outline/Pocket/Surface) —
+  rząd 4 kafelków na górze Kroku 1, "Hole(s)" aktywny, pozostałe trzy
+  wyszarzone/`disabled` z etykietą "Coming soon". Czysto wizualne, zero
+  zmian w `WizardParams` — nie modelowane pole `family` w typach, dopóki
+  istnieje tylko jedna realna rodzina.
+
 ## [0.7.2] — 2026-08-18
 
 ### Naprawiono
