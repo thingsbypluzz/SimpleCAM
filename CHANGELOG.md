@@ -260,6 +260,20 @@ thingsbypluzz/SimpleCAM), ale to infrastruktura pod izolację pracy
   groty osi X/Y były zahardkodowane pod kątem prostym, offset wymaga
   dowolnego kąta).
 
+## [0.6.12] — 2026-08-17
+
+### Zmieniono
+
+- **Collapsed pasek Kroku 1 pokazuje teraz obie operacje (Helix + Standard),
+  nie tylko aktywną — każda z własną etykietą.** Wcześniej pasek renderował
+  samo `activeOperation.Icon` + jedną wspólną etykietę aktywnej operacji;
+  teraz iteruje po `OPERATION_LIST` (`src/config/operationMeta.ts`) i
+  rysuje obie pary ikona+etykieta (`op.shortLabel`) jedną nad drugą
+  (pionowo, wąski 80px pasek) — aktywna operacja w pełnym kolorze indigo
+  (ikona i etykieta), nieaktywna wyszarzona/przygaszona (`opacity-50`,
+  szary zamiast indigo, obie razem). `activeOperation` bez zmian — nadal
+  używana do `generate`/`stepdown.shortLabel` — `src/App.tsx`.
+
 ## [0.6.11] — 2026-08-17
 
 ### Dodano
@@ -294,20 +308,6 @@ thingsbypluzz/SimpleCAM), ale to infrastruktura pod izolację pracy
 - **Domyślna interpolacja okręgów zmieniona z G2/G3 (arc) na G1
   (segmented)** — `DEFAULT_WIZARD_PARAMS.output.interpolation` w
   `src/types/wizard.ts`.
-
-## [0.6.12] — 2026-08-17
-
-### Zmieniono
-
-- **Collapsed pasek Kroku 1 pokazuje teraz obie operacje (Helix + Standard),
-  nie tylko aktywną — każda z własną etykietą.** Wcześniej pasek renderował
-  samo `activeOperation.Icon` + jedną wspólną etykietę aktywnej operacji;
-  teraz iteruje po `OPERATION_LIST` (`src/config/operationMeta.ts`) i
-  rysuje obie pary ikona+etykieta (`op.shortLabel`) jedną nad drugą
-  (pionowo, wąski 80px pasek) — aktywna operacja w pełnym kolorze indigo
-  (ikona i etykieta), nieaktywna wyszarzona/przygaszona (`opacity-50`,
-  szary zamiast indigo, obie razem). `activeOperation` bez zmian — nadal
-  używana do `generate`/`stepdown.shortLabel` — `src/App.tsx`.
 
 ## [0.6.10] — 2026-08-17
 
