@@ -262,6 +262,42 @@ przeglądu przez użytkownika.
   ewentualnego posprzątania (usunąć pole albo spiąć z osobnym
   checkboxem), nieporuszone celowo poza zakresem Etapu 1.
 
+## Hosting testowy
+
+Aplikacja jest wdrażana ręcznie (nie CI/CD — jednoosobowy projekt w fazie
+testów, deploy ma być kontrolowanym krokiem, nie automatycznym skutkiem
+każdego pusha) na `https://simplecam.pluzz.pl` (subdomena na cPanelu
+użytkownika, Apache 2.4.68, SSL aktywny) — ustalone w sesji `/grill-me`
+2026-08-19. `npm run deploy` buduje (`vite build`) i wysyła `dist/` przez
+FTP (`scripts/deploy.mjs`, biblioteka `basic-ftp`) — pierwotnie zakładane
+SFTP okazało się w praktyce zwykłym FTP z opcjonalnym explicit FTPS
+(`AUTH TLS`, port 21), więc skrypt domyślnie łączy się z `secure: true`
+(dane logowania i transfer szyfrowane; `FTP_SECURE=false` w `.env` jako
+awaryjny fallback do plain FTP, gdyby handshake TLS zawiódł). Każdy
+deploy usuwa tylko zdalny `assets/` (zahashowane nazwy plików inaczej by
+się bezterminowo kumulowały) i nadpisuje własne pliki po nazwie
+(`index.html`, `.htaccess`, `robots.txt`, `favicon.svg`) — **świadomie
+NIE** pełny `clearWorkingDir()`: root subdomeny na tym hostingu wcale nie
+jest dedykowany wyłącznie SimpleCAM, jak pierwotnie założono w sesji
+grill-me — zawiera też pliki zarządzane przez cPanel (`cgi-bin/`,
+`php.ini`), których pełne wymiatanie katalogu by skasowało. Konto FTP
+(`claude@simplecam.pluzz.pl`) miało też domyślnie katalog domowy
+ustawiony na podfolder `claude/` wewnątrz docroota (typowe zachowanie
+cPanela przy zakładaniu dodatkowego konta FTP — sugeruje podfolder od
+nazwy usera), nie na sam docroot — trzeba to poprawić w cPanelu, inaczej
+appka wychodzi pod `simplecam.pluzz.pl/claude/` zamiast pod rootem. Dane
+logowania w lokalnym
+`.env` (gitignored, szablon w `.env.example`) — czytane przez natywne
+`node --env-file=.env` (Node ≥20.6, brak potrzeby paczki `dotenv`).
+`public/robots.txt` (`Disallow: /`) blokuje indeksowanie na czas testów;
+`public/.htaccess` ustawia długi cache dla zahashowanych assetów i
+`no-cache` dla `index.html`. Brak GitHub Actions/CI mimo że repo jest na
+GitHubie — świadomie poza zakresem, do rozważenia dopiero gdy appka
+wyjdzie z fazy testów. Slash command `/deploy` (`.claude/commands/deploy.md`)
+odpala `npm run deploy` bez dodatkowej analizy — lokalny dla tej maszyny,
+bo `.claude/` jest wykluczone z gita (patrz `.gitignore` w sekcji
+"Kluczowe decyzje projektowe" wyżej).
+
 ## Struktura katalogów
 
 ```
