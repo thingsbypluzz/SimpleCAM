@@ -245,12 +245,11 @@ przeglądu przez użytkownika.
   przygotowany pod przyszłe ustawienia). **Dark mode jest domyślny**
   (niezależnie od preferencji systemowej) — toggle nadal pozwala
   przełączyć na light.
-- **`.gitignore` musi wykluczać `.claude/`** mimo że projekt nie używa
-  gita — Tailwind v4 (`@tailwindcss/vite`) auto-skanuje cały katalog
-  projektu pod kątem nazw klas i respektuje tylko `.gitignore` jako listę
-  wykluczeń (bez niego dokumentacja zainstalowanych skilli w
-  `.claude/skills/` też trafia do skanowania i winduje bundle CSS —
-  realnie zaobserwowane: 16KB → 34KB).
+- **`.gitignore` musi wykluczać `.claude/`** — Tailwind v4
+  (`@tailwindcss/vite`) auto-skanuje cały katalog projektu pod kątem nazw
+  klas i respektuje tylko `.gitignore` jako listę wykluczeń (bez niego
+  dokumentacja zainstalowanych skilli w `.claude/skills/` też trafia do
+  skanowania i winduje bundle CSS — realnie zaobserwowane: 16KB → 34KB).
 - **`G4 P<sekundy>`** (dwell po starcie wrzeciona) jest poprawne dla
   GRBL/Mach3, ale Marlin interpretuje `P` jako milisekundy (jego `S` w
   sekundach nie jest wspierane przez GRBL/Mach3) — świadomie zostawione
@@ -517,6 +516,9 @@ odpowiednich zadaniach:
 
 ## Konwencje
 
-- Wersjonowanie i historia zmian: **`CHANGELOG.md`** (projekt nie używa
-  gita — każda znacząca zmiana/etap dostaje wpis tam, nie w commit message).
+- Wersjonowanie i historia zmian: **`CHANGELOG.md`** pozostaje głównym,
+  czytelnym źródłem historii zmian — projekt ma repo git (GitHub:
+  `thingsbypluzz/SimpleCAM`), ale to nie zastępuje changeloga: każda
+  znacząca zmiana/etap i tak dostaje wpis w `CHANGELOG.md`, commit
+  messages są dodatkowe, nie jedynym miejscem historii.
 - Brak testów E2E w MVP — tylko testy jednostkowe silnika G-code.
