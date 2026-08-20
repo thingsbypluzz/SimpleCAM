@@ -32,6 +32,17 @@ export function Scene3D({ params, isDark }: Scene3DProps) {
     const container = containerRef.current
     if (!container) return
 
+    // Every run of this effect builds a *new* camera, so the "already
+    // framed" latch below must reset with it. Without this, React
+    // StrictMode's deliberate double-invoke (setup → cleanup → setup, on
+    // the same component instance, so refs survive) left the second camera
+    // unframed at Three's default (0,0,0): sitting exactly on the CNC
+    // origin, looking down -Z (CNC +Y). That rendered as a flat, hugely
+    // zoomed-in view along the Y axis *and* made OrbitControls appear
+    // dead, since camera.position === controls.target means an orbit
+    // radius of zero — there's nothing to rotate around.
+    hasFramedRef.current = false
+
     const scene = new THREE.Scene()
     sceneRef.current = scene
 
@@ -120,11 +131,12 @@ export function Scene3D({ params, isDark }: Scene3DProps) {
     objects.forEach((obj) => contentGroup.add(obj))
     boundsRef.current = bounds
 
-    // Default view is the fitted isometric angle — only on the very first
-    // build, so later parameter tweaks don't yank the camera out of the
-    // angle the user rotated to.
+    // Default view is the fitted front angle (camera centered on -Y,
+    // elevated on +Z, looking toward +Y — see VIEW_PRESETS.front) — only
+    // on the very first build, so later parameter tweaks don't yank the
+    // camera out of the angle the user rotated to.
     if (!hasFramedRef.current) {
-      frameCamera(camera, controls, bounds, VIEW_PRESETS.isometric.direction, VIEW_PRESETS.isometric.up)
+      frameCamera(camera, controls, bounds, VIEW_PRESETS.front.direction, VIEW_PRESETS.front.up)
       hasFramedRef.current = true
     }
   }, [params, isDark])

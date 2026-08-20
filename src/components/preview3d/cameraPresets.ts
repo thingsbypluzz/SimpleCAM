@@ -11,19 +11,26 @@ import type { OrbitControls } from 'three/addons/controls/OrbitControls.js'
 // Every preset here was verified by direct substitution into the
 // lookAt cross-product formulas, not just visually — see CHANGELOG 0.6.7.
 //
-// `front`'s numbers are unchanged from before that mapping fix (its old,
-// pre-fix rendering already happened to be correct, by coincidence of which
-// side of the handedness flip it landed on) — `top`, `side`, and `isometric`
-// all needed new values.
+// `top` and `side` needed new values after that mapping fix — see
+// CHANGELOG 0.6.7.
 //
 // `isometric` sits over CNC quadrant III (-X,-Y), above, still looking
 // toward +Y (the 0.6.3 decision) — chosen so the camera looks *across* the
 // work area instead of from behind it, since parts typically sit in
 // quadrant I (+X,+Y).
+//
+// `front` (0.8.4) is CNC direction (0,-1,0.85) — the same +Z elevation as
+// `isometric`, but with zero X offset, so the camera sits centered on -Y
+// (the boundary between quadrants III/IV) instead of over a corner. It
+// replaced a perfectly flat, edge-on front (CNC direction (0,-1,0)), which
+// had no depth cue at all and read as an ambiguous side-on slice; the
+// elevation keeps the "straight down the Y axis, no X skew" framing the
+// name promises while making the Z extent legible. This is also the
+// default view the scene opens on — see Scene3D.tsx.
 export const VIEW_PRESETS = {
   isometric: { direction: new THREE.Vector3(-1, 0.85, 1).normalize(), up: new THREE.Vector3(0, 1, 0) },
   top: { direction: new THREE.Vector3(0, 1, 0), up: new THREE.Vector3(0, 0, -1) },
-  front: { direction: new THREE.Vector3(0, 0, 1), up: new THREE.Vector3(0, 1, 0) },
+  front: { direction: new THREE.Vector3(0, 0.85, 1).normalize(), up: new THREE.Vector3(0, 1, 0) },
   side: { direction: new THREE.Vector3(-1, 0, 0), up: new THREE.Vector3(0, 1, 0) },
 } as const
 

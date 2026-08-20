@@ -104,7 +104,7 @@ function App() {
   const [presetSlots, setPresetSlots] = useState(loadPresetSlots)
   const [isDark, setIsDark] = useDarkMode()
   const [generatedGCode, setGeneratedGCode] = useState<string[] | null>(null)
-  const [previewTab, setPreviewTab] = useState<'2d' | '3d' | 'gcode'>('2d')
+  const [previewTab, setPreviewTab] = useState<'2d' | '3d' | 'gcode'>('3d')
 
   // Any parameter change invalidates the last generated snapshot — Copy/
   // Download must not act on G-code that no longer matches the current

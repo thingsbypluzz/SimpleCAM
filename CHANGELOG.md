@@ -7,6 +7,39 @@ zgodne z [SemVer](https://semver.org/). Ten plik pozostaje głównym, czytelnym
 thingsbypluzz/SimpleCAM), ale to infrastruktura pod izolację pracy
 (branch/worktree per zadanie), nie zamiennik tego changeloga.
 
+## [0.8.4] — 2026-08-20
+
+### Zmieniono
+
+- **3D Preview jako domyślna zakładka.** `previewTab` w `App.tsx` startuje
+  teraz na `'3d'` zamiast `'2d'` — w praktyce użytkownik i tak od razu
+  przełączał się na 3D, 2D Preview przestało być pierwszym, co widać po
+  starcie.
+- **Domyślny/`Front` kąt kamery w 3D Preview zmieniony na podniesiony
+  rzut wzdłuż osi Y** (`VIEW_PRESETS.front` w `cameraPresets.ts`) — kamera
+  wyśrodkowana na granicy ćwiartek III/IV (na osi -Y, bez offsetu w X),
+  patrząca wzdłuż +Y, z tym samym podniesieniem na Z co `isometric`
+  (zamiast płaskiego, idealnie prostopadłego do osi Y rzutu, który dawał
+  zerowy sygnał głębi). Ten sam preset jest teraz i domyślnym widokiem
+  otwarcia sceny, i tym, na co wraca przycisk **Front**.
+
+### Naprawiono
+
+- **Domyślny widok 3D Preview czasem "zatrzaskiwał się" na zdegenerowanym
+  kadrze (kamera dosłownie w punkcie (0,0,0), patrząca wzdłuż +Y, z
+  zerowym promieniem orbitowania — OrbitControls wyglądały jak martwe).**
+  Przyczyna: `hasFramedRef` w `Scene3D.tsx` (blokada "kadruj automatycznie
+  tylko raz") nigdy nie była resetowana przy budowie nowej kamery. React
+  `StrictMode` (włączony w `main.tsx`) celowo uruchamia efekty dwukrotnie
+  przy montowaniu tej samej instancji komponentu (setup → cleanup →
+  setup) — refy przeżywają między przebiegami, więc druga (docelowa)
+  kamera zostawała bez wywołania `frameCamera()`, bo flaga była już
+  `true` po pierwszym przebiegu. Naprawione: `hasFramedRef.current =
+  false` na starcie efektu budującego scenę/kamerę, więc każda nowa
+  kamera dostaje dokładnie jedno auto-kadrowanie. Błąd istniał od dawna
+  (Etap 4), ale stał się widoczny dopiero teraz, gdy 3D Preview zostało
+  domyślną zakładką.
+
 ## [0.8.3] — 2026-08-20
 
 ### Zmieniono
