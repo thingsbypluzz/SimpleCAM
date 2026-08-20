@@ -7,6 +7,39 @@ zgodne z [SemVer](https://semver.org/). Ten plik pozostaje głównym, czytelnym
 thingsbypluzz/SimpleCAM), ale to infrastruktura pod izolację pracy
 (branch/worktree per zadanie), nie zamiennik tego changeloga.
 
+## [0.8.3] — 2026-08-20
+
+### Zmieniono
+
+- **Krok 2 (Geometry) — powtórzony Pattern pod Method, kreska przed
+  Offset.** Pod rzędem `Method: [Helix][Standard]` doszedł analogiczny
+  rząd `Pattern: <nazwa>` + krótki, generyczny opis z
+  `POSITIONING_META[...]` — spójny dla wszystkich 5 patternów, zamiast
+  dawnych, niespójnych zdań przy niektórych z nich (Single: "zero the
+  machine at the hole location", Grid Centered: "zero the machine at
+  the pattern center", Circle: "starting at Start Angle and going
+  counter-clockwise" — usunięte, zastąpione tym jednym generycznym
+  blokiem). Sekcja **Offset** dostała `border-t` oddzielający ją
+  wizualnie od pól powyżej (ten sam wzorzec co "Save to preset" w
+  `Step4Output.tsx`) — czytelniej sygnalizuje, że offset to osobny,
+  nakładający się na wszystko powyżej mechanizm, nie kolejne pole
+  pattern-specific.
+- **Krok 2 — etykiety Grid X/Y zmienione na "Width (X) [mm]" / "Height
+  (Y) [mm]"** (Rectangular Grid i Rectangular Grid (Centered), ten sam
+  współdzielony blok JSX) — czytelniejsze niż gołe "X"/"Y" dla kogoś,
+  kto nie od razu kojarzy osie z wymiarami prostokąta.
+- **Krok spinnera (up/down) na polach liczbowych: 0.1 zamiast 0.01** —
+  Hole Diameter i Total Depth (`Step2Geometry.tsx`) miały `step="0.01"`,
+  więc klik strzałki natywnego spinnera zmieniał wartość o setną
+  milimetra, zbyt drobno w praktyce; teraz `step="0.1"` (precyzja
+  setnych nadal osiągalna wpisaniem z klawiatury — `step` HTML wpływa
+  tylko na skok spinnera). Stepdown (`Step3Feeds.tsx`) dostał
+  `step="0.05"` zamiast `0.01` — świadomy wyjątek od `0.1` reszty pól,
+  bo głębokość na przejście jest bardziej wrażliwa na wielkość skoku.
+  Usunięto powiązaną, częściowo już nieaktualną notatkę z CLAUDE.md
+  "Pomysły na przyszłość" (Circle Diameter miał już `step="0.1"`,
+  notatka o tym nie wiedziała).
+
 ## [0.8.2] — 2026-08-20
 
 ### Zmieniono

@@ -311,13 +311,6 @@ nowa funkcjonalność. Nie zaczynać bez wyraźnego "przechodzimy do X".
   przy implementacji: wybór, które presety nałożyć (wszystkie sloty
   `[1]…[5]` naraz? multi-select?), i jak odróżnić je wizualnie (kolor
   per-slot?).
-- **Krok spinnera (up/down) w polach liczbowych: 0.1 zamiast 0.01** —
-  dziś część pól ma `step="0.01"` (Hole Diameter, Total Depth, Circle
-  Diameter — patrz `Step2Geometry.tsx`), więc kliknięcie strzałek
-  natywnego spinnera zmienia wartość o jedną setną milimetra, zbyt
-  drobno w praktyce. Zmienić domyślny `step` na `0.1` na tych polach —
-  precyzja setnych nadal osiągalna wpisaniem z klawiatury, `step` HTML
-  wpływa tylko na wielkość skoku spinnera.
 - **Górny limit (`max`) na niektórych polach liczbowych** — np. Hole
   Count w N-Holes on Circle (`circleHoleCount`, `Step2Geometry.tsx`) nie
   ma dziś żadnego górnego ograniczenia; wpisanie np. 1000 nie ma

@@ -19,7 +19,7 @@ export function Step3Feeds({ params, onChange }: Step3FeedsProps) {
       <FieldRow label={OPERATION_META[operation].stepdown.fieldLabel}>
         <input
           type="number"
-          step="0.01"
+          step="0.05"
           className={inputClass}
           value={feeds.stepdown}
           onChange={(e) => updateFeeds({ stepdown: Number(e.target.value) })}

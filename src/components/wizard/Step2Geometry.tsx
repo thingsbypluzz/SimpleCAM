@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import type { WizardParams } from '../../types/wizard'
 import { isToolDiameterValid } from '../../lib/validation'
+import { POSITIONING_META } from '../../config/positioningMeta'
 import { FieldRow, inputClass } from './FieldRow'
 import { MethodPicker } from './MethodPicker'
 
@@ -77,7 +78,7 @@ export function Step2Geometry({ params, onChange }: Step2GeometryProps) {
         <FieldRow label="Hole Diameter [mm]">
           <input
             type="number"
-            step="0.01"
+            step="0.1"
             className={inputClass}
             value={geometry.holeDiameter}
             onChange={(e) => updateGeometry({ holeDiameter: Number(e.target.value) })}
@@ -91,7 +92,7 @@ export function Step2Geometry({ params, onChange }: Step2GeometryProps) {
         <FieldRow label="Total Depth [mm]">
           <input
             type="number"
-            step="0.01"
+            step="0.1"
             className={inputClass}
             value={geometry.totalDepth}
             onChange={(e) => updateGeometry({ totalDepth: Number(e.target.value) })}
@@ -104,22 +105,23 @@ export function Step2Geometry({ params, onChange }: Step2GeometryProps) {
         <MethodPicker params={params} onChange={onChange} />
       </div>
 
-      {geometry.positioning === 'single' && (
+      <div className="flex flex-col gap-1">
+        <div className="flex items-center gap-2 text-sm text-slate-700 dark:text-slate-300">
+          <span>Pattern:</span>
+          <span className="font-medium text-slate-900 dark:text-slate-100">
+            {POSITIONING_META[geometry.positioning].title}
+          </span>
+        </div>
         <p className="text-sm text-slate-500 dark:text-slate-400">
-          Single hole at (0, 0) — zero the machine at the hole location.
+          {POSITIONING_META[geometry.positioning].description}
         </p>
-      )}
+      </div>
 
       {(geometry.positioning === 'grid' || geometry.positioning === 'gridCentered') && (
         <div className="flex flex-col gap-4">
-          {geometry.positioning === 'gridCentered' && (
-            <p className="text-sm text-slate-500 dark:text-slate-400">
-              Corners at (±X/2, ±Y/2) — zero the machine at the pattern center.
-            </p>
-          )}
           <div className="flex gap-4">
             <div className="min-w-0 flex-1">
-              <FieldRow label="X [mm]">
+              <FieldRow label="Width (X) [mm]">
                 <input
                   type="number"
                   step="0.1"
@@ -130,7 +132,7 @@ export function Step2Geometry({ params, onChange }: Step2GeometryProps) {
               </FieldRow>
             </div>
             <div className="min-w-0 flex-1">
-              <FieldRow label="Y [mm]">
+              <FieldRow label="Height (Y) [mm]">
                 <input
                   type="number"
                   step="0.1"
@@ -146,10 +148,6 @@ export function Step2Geometry({ params, onChange }: Step2GeometryProps) {
 
       {geometry.positioning === 'circle' && (
         <div className="flex flex-col gap-4">
-          <p className="text-sm text-slate-500 dark:text-slate-400">
-            Holes evenly spaced around a circle centered at (0, 0), starting at
-            Start Angle and going counter-clockwise.
-          </p>
           <FieldRow label="Hole Count">
             <input
               type="number"
@@ -191,7 +189,7 @@ export function Step2Geometry({ params, onChange }: Step2GeometryProps) {
         </FieldRow>
       )}
 
-      <div>
+      <div className="border-t border-slate-200 pt-4 dark:border-slate-800">
         <span className="mb-2 block text-sm font-medium text-slate-700 dark:text-slate-300">
           Offset
         </span>
