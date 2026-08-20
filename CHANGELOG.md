@@ -7,6 +7,29 @@ zgodne z [SemVer](https://semver.org/). Ten plik pozostaje głównym, czytelnym
 thingsbypluzz/SimpleCAM), ale to infrastruktura pod izolację pracy
 (branch/worktree per zadanie), nie zamiennik tego changeloga.
 
+## [0.8.2] — 2026-08-20
+
+### Zmieniono
+
+- **Krok 1 (Family/Pattern) — rodziny ułożone pionowo, pattern picker
+  skompresowany.** Wynik sesji `/grill-me` po feedbacku, że karty
+  patternu (Single/Grid/Grid Centered/Circle/Custom) były za duże
+  względem paska Family, a sam podział na dwie osobne sekcje nie
+  oddawał relacji "pattern należy do Hole(s)". `Family` (dawny
+  `grid-cols-4`) zamienia się na pionowy stos pełnej szerokości, jedna
+  rodzina na wiersz — ten sam pomysł co akordeon 4 kroków wizarda,
+  zagnieżdżony jeden poziom głębiej. **Hole(s)** to jedyna
+  rozwinięta/aktywna sekcja: pogrubiony, większy nagłówek "Hole(s)"
+  (podkreśla relację rodzic-dziecko), a pod nim skompresowana pionowa
+  lista 5 patternów — ikona + tytuł (z `POSITIONING_META[...].title`,
+  bez opisu, bez wartości liczbowych — Krok 1 zostaje bez
+  pattern-specific pól, jak ustalone w Etapie 6), jeden wiersz na
+  pattern zamiast dawnych dużych kart `p-5`. **Outline/Pocket/Surface**
+  zostają zwiniętymi, wyszarzonymi, pełnej szerokości paskami
+  (etykieta + "Coming soon"), tylko już jako osobne wiersze zamiast
+  komórek grida. Czysta reorganizacja JSX w `Step1Positioning.tsx` —
+  zero zmian w `WizardParams`/`positioningMeta.ts`.
+
 ## [0.8.1] — 2026-08-20
 
 ### Naprawiono

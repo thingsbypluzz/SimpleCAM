@@ -301,6 +301,31 @@ nowa funkcjonalność. Nie zaczynać bez wyraźnego "przechodzimy do X".
     rozszerzenie Kroku 2), oraz sprawdzenia czy podgląd 2D/3D (które dziś
     zakładają "okrąg" jako kształt operacji) w ogóle się do tego nadają
     czy potrzebują osobnej ścieżki rysowania.
+- **Overimpose presetów na 3D Preview** — wizualne (nie w generowanym
+  G-code) zestawienie kilku zapisanych presetów w jednej scenie 3D, żeby
+  podejrzeć ich korelację przestrzenną (np. czy otwory z różnych
+  presetów na siebie nie nachodzą). Nie zmienia stałej decyzji "jedno
+  narzędzie na wygenerowany plik" / "jeden preset = jeden
+  `WizardParams`" — presety nadal eksportują się osobno, to czysto
+  podglądowa nakładka w `Scene3D`/`buildScene.ts`. Do rozstrzygnięcia
+  przy implementacji: wybór, które presety nałożyć (wszystkie sloty
+  `[1]…[5]` naraz? multi-select?), i jak odróżnić je wizualnie (kolor
+  per-slot?).
+- **Krok spinnera (up/down) w polach liczbowych: 0.1 zamiast 0.01** —
+  dziś część pól ma `step="0.01"` (Hole Diameter, Total Depth, Circle
+  Diameter — patrz `Step2Geometry.tsx`), więc kliknięcie strzałek
+  natywnego spinnera zmienia wartość o jedną setną milimetra, zbyt
+  drobno w praktyce. Zmienić domyślny `step` na `0.1` na tych polach —
+  precyzja setnych nadal osiągalna wpisaniem z klawiatury, `step` HTML
+  wpływa tylko na wielkość skoku spinnera.
+- **Górny limit (`max`) na niektórych polach liczbowych** — np. Hole
+  Count w N-Holes on Circle (`circleHoleCount`, `Step2Geometry.tsx`) nie
+  ma dziś żadnego górnego ograniczenia; wpisanie np. 1000 nie ma
+  praktycznego sensu. Dodać `max` (atrybut HTML + walidacja spójna z
+  `src/lib/validation.ts`) — punkt startowy: 100. Rozważyć przy
+  implementacji, czy inne pola bez sensownego górnego ograniczenia
+  (np. Grid X/Y, Circle Diameter) też tego potrzebują, czy tylko
+  Hole Count jest na tyle "łatwe do przesadzenia".
 
 Nie przeskakuj etapów bez pytania — każdy kończy się checkpointem do
 przeglądu przez użytkownika.
