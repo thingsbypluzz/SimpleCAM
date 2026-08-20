@@ -39,13 +39,16 @@ Projekt budowany etapami z checkpointami do akceptacji. Aktualny stan:
       na Krok 4 i wygenerować z domyślnymi parametrami — to celowo
       dozwolone, nie ma wymogu przejścia sekwencyjnego).
 - [x] **Etap 3** — podgląd 2D (Canvas) ścieżki narzędzia. Zakładki
-      **2D Preview** / **G-Code** w nagłówku prawego panelu (domyślnie
-      2D Preview). W przeciwieństwie do G-Code Preview, **2D Preview jest
+      **2D Preview** / **G-Code** w nagłówku prawego panelu (pierwotnie
+      domyślnie 2D Preview — od 0.8.4 domyślną zakładką jest **3D
+      Preview**, patrz Etap 4). W przeciwieństwie do G-Code Preview, **2D
+      Preview jest
       zawsze live** — nie wymaga klikania Generate, bo to widok
       poglądowy/read-only, nie artefakt do eksportu (ryzyko "nieaktualnych
       danych" dotyczy tylko Copy/Download).
 - [x] **Etap 4** — wizualizator 3D (Three.js). Trzecia zakładka **3D
-      Preview** obok 2D Preview / G-Code w prawym panelu. `Scene3D`
+      Preview** obok 2D Preview / G-Code w prawym panelu (od 0.8.4:
+      pierwsza, domyślnie aktywna zakładka — patrz Etap 3). `Scene3D`
       wczytywany przez `React.lazy()` — Three.js (~550KB) trafia do
       osobnego chunka, ładowanego dopiero po otwarciu zakładki (opcjonalny
       z założenia, więc nie ma obciążać startowego bundle'a). OrbitControls
@@ -53,9 +56,11 @@ Projekt budowany etapami z checkpointami do akceptacji. Aktualny stan:
       / Fit View** — presety ustawiają konkretny kąt + dopasowują odległość,
       Fit View dopasowuje odległość/target zachowując aktualny kąt kamery
       (patrz `cameraPresets.ts`). Domyślny widok przy otwarciu zakładki to
-      dopasowany Isometric — ustawiany raz przy pierwszym zbudowaniu sceny,
-      nie przy każdej zmianie parametru (nie zrzuca widoku użytkownikowi w
-      trakcie edycji/obrotu), świadomie zorientowany tak, żeby patrzeć w
+      dopasowany **Front** (do 0.8.3 był to Isometric — zmienione na
+      życzenie użytkownika, patrz niżej) — ustawiany raz przy pierwszym
+      zbudowaniu sceny, nie przy każdej zmianie parametru (nie zrzuca
+      widoku użytkownikowi w trakcie edycji/obrotu). Isometric wciąż
+      istnieje jako preset/przycisk, nadal zorientowany tak, żeby patrzeć w
       kierunku **+Y**, z kamerą nad ćwiartką **III (-X,-Y)** — obrabiane
       elementy najczęściej leżą w ćwiartce I (+X,+Y), więc kamera z
       przeciwległej ćwiartki patrzy "przez" obszar roboczy, nie "zza" niego
@@ -65,6 +70,39 @@ Projekt budowany etapami z checkpointami do akceptacji. Aktualny stan:
       "0,0" przez fizyczny origin, oraz pionowe linie `G0 Z` (zjazd na
       materiał / wyjazd na Safe Z) przy każdym otworze. Jak 2D Preview:
       zawsze live, nie wymaga Generate.
+      - [x] **0.8.4 — Front stał się domyślnym widokiem (zamiast
+        Isometric), i dostał podniesienie na Z.** Sesja `/grill-me`:
+        użytkownik chciał domyślnego rzutu "prosto wzdłuż osi Y,
+        wyśrodkowanego między ćwiartką III i IV, patrząc na I/II" —
+        matematycznie to CNC-space kierunek `(0,-1,0)`, dokładnie to, co
+        `front` już reprezentował (zweryfikowane podstawieniem do
+        `toThree()`), więc zamiana defaultu z isometric na front nie
+        wymagała nowej matematyki. Pierwsza wersja (czysto płaski,
+        `(0,-1,0)`) okazała się jednak złym **domyślnym** kątem: brak
+        sygnału głębi sprawiał, że drobne przeciągnięcia OrbitControls nie
+        dawały widocznego efektu, co wyglądało jak "kamera nie reaguje".
+        `VIEW_PRESETS.front.direction` dostał więc to samo podniesienie
+        na Z co `isometric` (CNC `(0,-1,0.85)` zamiast `(0,-1,0)`), przy
+        zachowanym `X=0` (środek między ćwiartkami III/IV, bez zsunięcia
+        w bok jak przy isometric). To jednocześnie zmieniło znaczenie
+        przycisku **Front** (już nie płaski rzut) i domyślny widok sceny
+        — jedna wspólna wartość w `VIEW_PRESETS.front`.
+      - [x] **0.8.4 — naprawiony bug: domyślna kamera czasem "zatrzaskiwała
+        się" w punkcie (0,0,0), z martwymi OrbitControls.** Prawdziwa
+        przyczyna nie miała nic wspólnego z kątem kamery: `hasFramedRef`
+        w `Scene3D.tsx` (blokada "auto-kadruj tylko raz") nigdy nie była
+        resetowana przy budowie nowej kamery. React `StrictMode`
+        (`main.tsx`) celowo uruchamia efekt mountujący dwukrotnie na tej
+        samej instancji komponentu (setup → cleanup → setup) — refy
+        przeżywają między przebiegami, więc druga, docelowa kamera
+        zostawała bez wywołania `frameCamera()` (flaga już `true` po
+        pierwszym przebiegu), lądując na domyślnej pozycji Three.js
+        `(0,0,0)` — dokładnie na origin, z zerowym promieniem orbitowania
+        (`camera.position === controls.target`), stąd martwe sterowanie.
+        Naprawione: `hasFramedRef.current = false` na starcie efektu
+        setupowego, więc każda nowo zbudowana kamera dostaje dokładnie
+        jedno auto-kadrowanie. Błąd istniał od Etapu 4, ujawnił się
+        dopiero gdy 3D Preview zostało domyślną zakładką.
 - [x] **Etap 5** — walidacje, localStorage, polish. Zrobione:
       - [x] Tool Diameter w Kroku 2 jako dropdown: 1–8mm (całe mm) + 1/8"
         (3.175mm) i 1/4" (6.35mm) jako dodatkowe opcje —
@@ -264,23 +302,119 @@ Projekt budowany etapami z checkpointami do akceptacji. Aktualny stan:
         `WizardParams` JSON-u, zmieniła się wyłącznie logika odczytu
         (`presetLabel.ts`, header), nie sam zapis.
       - [x] **Placeholdery przyszłych rodzin operacji** (Outline/Pocket/
-        Surface) — rząd 4 kafelków na górze `Step1Positioning.tsx`:
-        "Hole(s)" aktywny (dziś jedyna realna rodzina), pozostałe trzy
-        wyszarzone/nieklikalne z etykietą "Coming soon". Czysto
-        wizualne — świadomie **nie** modelowane jako pole `family` w
-        `WizardParams`/typach, dopóki istnieje tylko jedna realna
-        rodzina (unikanie projektowania pod hipotetyczne wymagania).
-        Każda przyszła rodzina (Outline/Pocket/Surface) wymaga własnej
-        sesji `/grill-me` przed realną implementacją — patrz `ideas.md`
-        dla pełnego zapisu dyskusji nt. docelowej taksonomii
-        (rodzina → pattern/sub-choice → parametry).
+        Surface) w `Step1Positioning.tsx`: "Hole(s)" aktywny (dziś jedyna
+        realna rodzina), pozostałe trzy wyszarzone/nieklikalne z etykietą
+        "Coming soon". Pierwotnie (0.8.0) rząd 4 kafelków w poziomym
+        gridzie nad listą patternów — **w 0.8.2 przełożone na pionowy
+        stos** (patrz bullet niżej), ale sam koncept placeholderów bez
+        zmian. Czysto wizualne — świadomie **nie** modelowane jako pole
+        `family` w `WizardParams`/typach, dopóki istnieje tylko jedna
+        realna rodzina (unikanie projektowania pod hipotetyczne
+        wymagania). Każda przyszła rodzina — `FAM-1` (Outline), `FAM-2`
+        (Pocket), `FAM-3` (Surface), patrz sekcja "Przyszłe rodziny
+        operacji" niżej — wymaga własnej sesji `/grill-me` przed realną
+        implementacją — patrz `ideas.md` dla pełnego zapisu dyskusji nt.
+        docelowej taksonomii (rodzina → pattern/sub-choice → parametry).
+      - [x] **0.8.2 — Krok 1 przebudowany na pionowy stos rodzin**
+        (zamiast poziomego gridu 4 kolumn + oddzielnej listy dużych kart
+        patternu poniżej). Feedback po sesji `/grill-me`: karty patternu
+        były za duże względem paska Family, a podział na dwie sekcje nie
+        oddawał relacji "pattern należy do Hole(s)". Rodziny (Hole(s),
+        Outline, Pocket, Surface) są teraz pełnej szerokości wierszami,
+        jeden pod drugim — ten sam pomysł co akordeon 4 kroków wizarda,
+        zagnieżdżony jeden poziom głębiej. **Hole(s)** to jedyna
+        rozwinięta/aktywna sekcja: pogrubiony, większy nagłówek "Hole(s)"
+        (podkreśla relację rodzic-dziecko), a pod nim skompresowana
+        pionowa lista 5 patternów — ikona + tytuł (z
+        `POSITIONING_META[...].title`, bez opisu), jeden wiersz na
+        pattern zamiast dawnych dużych kart `p-5`. Outline/Pocket/Surface
+        zostają zwiniętymi, wyszarzonymi, pełnej szerokości paskami.
+        `POSITIONING_LIST` reużyty bez zmian — czysta reorganizacja JSX w
+        `Step1Positioning.tsx`, zero zmian w `WizardParams`/
+        `positioningMeta.ts`.
+      - [x] **0.8.3 — Krok 2 dostał powtórzony "Pattern: `<nazwa>`" pod
+        Method, plus kreska przed Offset.** Kontynuacja tej samej sesji:
+        pod rzędem `Method: [Helix][Standard]` doszedł analogiczny rząd
+        `Pattern: <nazwa>` + krótki, generyczny opis z
+        `POSITIONING_META[...]` — spójny dla wszystkich 5 patternów,
+        zastąpił dawne, niespójne zdania przy niektórych z nich (Single:
+        "zero the machine at the hole location", Grid Centered: "zero the
+        machine at the pattern center", Circle: "starting at Start Angle
+        and going counter-clockwise" — usunięte; Grid i Custom wcześniej
+        nie miały żadnego opisu). Sekcja **Offset** dostała `border-t`
+        oddzielający ją wizualnie od pól powyżej (ten sam wzorzec co
+        "Save to preset" w `Step4Output.tsx`). Przy okazji: etykiety Grid
+        X/Y zmienione na "Width (X) [mm]" / "Height (Y) [mm]"
+        (Rectangular Grid i Grid Centered, wspólny blok JSX), i krok
+        spinnera (up/down) na Hole Diameter/Total Depth zmieniony z 0.01
+        na 0.1, na Stepdown (Krok 3) na 0.05 — precyzja setnych nadal
+        osiągalna wpisaniem z klawiatury, `step` HTML wpływa tylko na
+        wielkość skoku spinnera.
+
+## Backlog (`BL-#`)
+
+Wszystkie niezaimplementowane pomysły/notatki "do rozważenia" w tym
+pliku — niezależnie od tego, w której sekcji faktycznie mieszkają
+(część jest tutaj, część przy „Kluczowe decyzje projektowe" czy
+„Hosting testowy") — mają stabilny numer `BL-1`…`BL-7`, dopisany na
+początku swojego bulletu. Numer nadawany jest raz i nie zmienia się przy
+regrupowaniu/reprioritetyzacji — to czysty identyfikator do odnoszenia
+się w rozmowie ("zrób BL-4"), świadomie odróżniony od **Etapu**
+(Etap = ukończony, numerowany kamień milowy w historii projektu, patrz
+"Status / Etapy" wyżej — BL-# to coś jeszcze nieruszonego). Osobna,
+większa kategoria — całe przyszłe rodziny operacji (Outline/Pocket/
+Surface) — dostaje własny, celowo odróżniony schemat `FAM-#`, patrz
+sekcja "Przyszłe rodziny operacji" niżej.
+
+Ta sama lista, wizualnie — pogrupowana etapami trudności i z kolorowym
+oznaczeniem 🟢/🟠/🔴 — jest opublikowana jako Artifact:
+**<https://claude.ai/code/artifact/e90a2f5c-932c-4772-804e-0fe155ab32a0>**.
+
+**Zasada — trzymać oba źródła w zgodzie:** po wdrożeniu zmiany
+odpowiadającej któremuś `BL-#`/`FAM-#` (patrz niżej) — usunąć/oznaczyć
+jako zrobiony bullet w tym pliku (jak dotychczas przy Etapach) **i**
+zaktualizować Artifact pod tym samym URL (republikacja z `url`
+ustawionym na powyższy link, nie nowa publikacja) — usunąć pozycję z
+listy, poprawić liczniki w pasku statystyk na górze. Bez tego kroku
+Artifact szybko rozjeżdża się ze stanem faktycznym, dokładnie jak
+wcześniej rozjechał się sam CLAUDE.md względem kodu (patrz poprawki z
+2026-08-21 opisane przy Etapie 4).
+
+## Przyszłe rodziny operacji (`FAM-#`)
+
+Osobna, celowo **nie** `BL-#` kategoria — Outline/Pocket/Surface (patrz
+placeholdery w `Step1Positioning.tsx`, Etap 6) to nie drobne poprawki
+tylko kamienie milowe wielkości całego Etapu, każdy z własną, dziś
+nieznaną taksonomią (rodzina → pattern/sub-choice → parametry, patrz
+`ideas.md`). Numer `FAM-#` jest identyfikatorem, nie kolejnością
+realizacji — żadna z trzech nie jest dziś zaplanowana jako "następna"
+względem pozostałych.
+
+- **`FAM-1` — Outline.** Frezowanie po konturze (kontur zamknięty lub
+  otwarty) — najbliższe koncepcyjnie już zaplanowanemu `BL-6` (Rectangle
+  Cut Out), który można traktować jako pierwszy, najprostszy przypadek
+  tej rodziny (prostokąt = szczególny przypadek konturu).
+- **`FAM-2` — Pocket.** Kieszeniowanie — wybieranie materiału wewnątrz
+  zamkniętego konturu (nie tylko po samej linii), wymaga strategii
+  wypełnienia (np. zigzag/spiral) nieobecnej dziś w silniku w ogóle.
+- **`FAM-3` — Surface.** Planowanie/frezowanie powierzchni (face
+  milling) — inny paradygmat niż "otwór"/"kontur": wejściem jest
+  obszar, nie ścieżka.
+
+**Każda z `FAM-#` wymaga własnej, pełnej sesji `/grill-me` przed
+napisaniem jakiegokolwiek kodu** — nieporównywalnie większy zakres
+otwartych decyzji niż `BL-#` (patrz `ideas.md` dla pełnego zapisu
+wcześniejszej dyskusji nt. docelowej taksonomii). Z tego powodu
+Artifact pokazuje je jako osobną sekcję, nie jako kolorowe
+łatwe/średnie/trudne zadania — trudność jest dziś celowo nieoszacowana,
+`/grill-me` to część definiowania zakresu, nie coś do zgadnięcia z góry.
 
 ## Pomysły na przyszłość (poza MVP, poza Etapem 5)
 
 Większe rozszerzenia zakresu — nie polish istniejących operacji, tylko
 nowa funkcjonalność. Nie zaczynać bez wyraźnego "przechodzimy do X".
 
-- **Nowa operacja: "Rectangle Cut Out"** — trzecia operacja obok Helix i
+- **`BL-6`** — **Nowa operacja: "Rectangle Cut Out"** — trzecia operacja obok Helix i
   Standard Hole, wycinanie prostokątnego konturu. Parametry:
   - **Tryb cięcia:** Inside / Outside / On-line — offset ścieżki
     narzędzia względem narysowanego prostokąta (Inside: ścieżka do środka
@@ -301,7 +435,7 @@ nowa funkcjonalność. Nie zaczynać bez wyraźnego "przechodzimy do X".
     rozszerzenie Kroku 2), oraz sprawdzenia czy podgląd 2D/3D (które dziś
     zakładają "okrąg" jako kształt operacji) w ogóle się do tego nadają
     czy potrzebują osobnej ścieżki rysowania.
-- **Overimpose presetów na 3D Preview** — wizualne (nie w generowanym
+- **`BL-3`** — **Overimpose presetów na 3D Preview** — wizualne (nie w generowanym
   G-code) zestawienie kilku zapisanych presetów w jednej scenie 3D, żeby
   podejrzeć ich korelację przestrzenną (np. czy otwory z różnych
   presetów na siebie nie nachodzą). Nie zmienia stałej decyzji "jedno
@@ -311,7 +445,7 @@ nowa funkcjonalność. Nie zaczynać bez wyraźnego "przechodzimy do X".
   przy implementacji: wybór, które presety nałożyć (wszystkie sloty
   `[1]…[5]` naraz? multi-select?), i jak odróżnić je wizualnie (kolor
   per-slot?).
-- **Górny limit (`max`) na niektórych polach liczbowych** — np. Hole
+- **`BL-1`** — **Górny limit (`max`) na niektórych polach liczbowych** — np. Hole
   Count w N-Holes on Circle (`circleHoleCount`, `Step2Geometry.tsx`) nie
   ma dziś żadnego górnego ograniczenia; wpisanie np. 1000 nie ma
   praktycznego sensu. Dodać `max` (atrybut HTML + walidacja spójna z
@@ -336,7 +470,7 @@ przeglądu przez użytkownika.
   być zaimplementowane w silniku.
 - **3 warianty pozycjonowania:** Single (0,0), Rectangular Grid (4 rogi),
   Custom List (dowolne punkty `X,Y` wpisane ręcznie). Brak importu DXF/SVG
-  w MVP (możliwe rozszerzenie w przyszłości).
+  w MVP (`BL-7` — możliwe rozszerzenie w przyszłości, patrz Backlog).
 - **Ruch między otworami:** powrót na `Safe Z` przed `G0` do kolejnego
   punktu XY.
 - **Wrzeciono:** tylko `M3` (bez `M4`) w MVP.
@@ -379,13 +513,14 @@ przeglądu przez użytkownika.
 - **`G4 P<sekundy>`** (dwell po starcie wrzeciona) jest poprawne dla
   GRBL/Mach3, ale Marlin interpretuje `P` jako milisekundy (jego `S` w
   sekundach nie jest wspierane przez GRBL/Mach3) — świadomie zostawione
-  bez rozróżnienia dialektów (MVP nie ma przełącznika dialektu), efekt
-  na Marlinie to krótsza pauza niż zamierzona, nie dłuższa/niebezpieczna.
+  bez rozróżnienia dialektów (MVP nie ma przełącznika dialektu, `BL-5` —
+  patrz Backlog), efekt na Marlinie to krótsza pauza niż zamierzona, nie
+  dłuższa/niebezpieczna.
 - **`WizardParams.output.spindleStopEnd`** to martwe pole typu — checkbox
   w Kroku 4 ("Return to Safe Z and stop spindle (M5) at the end") steruje
   tylko `returnSafeZEnd`, który w silniku G-code gasi wrzeciono (M5) i
-  robi retrakt razem. `spindleStopEnd` nigdy nie jest czytane — do
-  ewentualnego posprzątania (usunąć pole albo spiąć z osobnym
+  robi retrakt razem. `spindleStopEnd` nigdy nie jest czytane — `BL-2` —
+  do ewentualnego posprzątania (usunąć pole albo spiąć z osobnym
   checkboxem), nieporuszone celowo poza zakresem Etapu 1.
 
 ## Hosting testowy
@@ -418,8 +553,8 @@ logowania w lokalnym
 `public/robots.txt` (`Disallow: /`) blokuje indeksowanie na czas testów;
 `public/.htaccess` ustawia długi cache dla zahashowanych assetów i
 `no-cache` dla `index.html`. Brak GitHub Actions/CI mimo że repo jest na
-GitHubie — świadomie poza zakresem, do rozważenia dopiero gdy appka
-wyjdzie z fazy testów. Slash command `/deploy` (`.claude/commands/deploy.md`)
+GitHubie — `BL-4` — świadomie poza zakresem, do rozważenia dopiero gdy
+appka wyjdzie z fazy testów. Slash command `/deploy` (`.claude/commands/deploy.md`)
 odpala `npm run deploy` bez dodatkowej analizy — lokalny dla tej maszyny,
 bo `.claude/` jest wykluczone z gita (patrz `.gitignore` w sekcji
 "Kluczowe decyzje projektowe" wyżej).
@@ -446,12 +581,17 @@ src/
                               `lib/download.ts`) — patrz Etap 6
   components/wizard/        — komponenty poszczególnych kroków wizarda.
                               `Step1Positioning.tsx` = wyłącznie pattern
-                              picker + placeholdery rodzin, nic liczbowego.
+                              picker + placeholdery rodzin, nic liczbowego;
+                              od 0.8.2 pionowy stos rodzin (Hole(s)
+                              rozwinięta z kompaktową listą patternów w
+                              środku), nie poziomy grid + duże karty.
                               `Step2Geometry.tsx` = Tool/Hole Diameter,
                               Total Depth, `MethodPicker.tsx` (kompaktowy
                               toggle Helix/Standard, dawny
-                              `Step1Operation.tsx`), pattern-specific pola
-                              (grid/circle/custom) i Offset X/Y — patrz
+                              `Step1Operation.tsx`), powtórzony
+                              "Pattern: <nazwa>" + generyczny opis (0.8.3),
+                              pattern-specific pola (grid/circle/custom) i
+                              Offset X/Y (za `border-t` od 0.8.3) — patrz
                               Etap 6
   components/icons.tsx      — zestaw ikon SVG (własne, bez zależności)
   components/preview/       — podgląd 2D (Etap 3)
@@ -511,10 +651,31 @@ src/
                                obu komponentów ma teraz `flex-1 min-h-0`
                                zamiast `h-full w-full`, ten sam solidny
                                wzorzec co panel G-Code.
-                               Kamera auto-dopasowuje się (izometryczny fit)
-                               tylko przy pierwszym zbudowaniu sceny (nie
-                               przy każdej zmianie parametru — nie resetuje
-                               widoku użytkownikowi w trakcie edycji/obrotu)
+                               Kamera auto-dopasowuje się (fit na preset
+                               `front` — do 0.8.3 był to `isometric`, patrz
+                               Etap 4) tylko przy pierwszym zbudowaniu sceny
+                               (nie przy każdej zmianie parametru — nie
+                               resetuje widoku użytkownikowi w trakcie
+                               edycji/obrotu), pilnowane przez `hasFramedRef`.
+                               Ten ref musi być zresetowany (`= false`) na
+                               starcie efektu setupującego scenę/kamerę/
+                               renderer/controls, nie tylko zainicjowany raz
+                               przy `useRef(false)` — inaczej React
+                               `StrictMode` (`main.tsx`, celowo podwójnie
+                               uruchamiane efekty mountujące: setup →
+                               cleanup → setup, na tej samej instancji
+                               komponentu, więc refy przeżywają między
+                               przebiegami) zostawiał DRUGĄ, docelową kamerę
+                               bez wywołania `frameCamera()` — flaga była już
+                               `true` po pierwszym przebiegu. Efekt: kamera
+                               na domyślnej pozycji Three.js `(0,0,0)`,
+                               dokładnie na origin, z zerowym promieniem
+                               orbitowania (`camera.position ===
+                               controls.target`) — OrbitControls wyglądały na
+                               martwe, widok zdegenerowany (patrzący wzdłuż
+                               +Y z dystansu zero). Błąd istniał od Etapu 4,
+                               ujawnił się dopiero w 0.8.4, gdy 3D Preview
+                               zostało domyślną zakładką.
     cameraPresets.ts             — VIEW_PRESETS (kierunek + up-vector dla
                                top/isometric/front/side) + frameCamera() —
                                pozycjonuje kamerę wzdłuż kierunku, w
@@ -534,11 +695,20 @@ src/
                                iloczynu wektorowego `lookAt`, nie tylko
                                wizualnie (historia błędnych podejść: 0.6.5,
                                0.6.6 — patrz CHANGELOG 0.6.7 po pełną
-                               poprawkę i wyjaśnienie). `front` ma te same
-                               liczby co przed poprawką mapowania (przypadkiem
+                               poprawkę i wyjaśnienie). Przy tamtej poprawce
+                               `front` zachował swoje liczby (przypadkiem
                                renderował się poprawnie już wcześniej); `top`,
-                               `side`, `isometric` miały błędne (lustrzane)
-                               osie i dostały nowe wartości.
+                               `side`, `isometric` dostały wtedy nowe
+                               wartości. `front` dostał własną zmianę
+                               wartości później, w 0.8.4: doszło podniesienie
+                               na Z (to samo co ma `isometric`, ale bez
+                               offsetu w X) — zamienia płaski, pozbawiony
+                               sygnału głębi rzut wzdłuż osi Y na widok, który
+                               wciąż patrzy prosto wzdłuż Y (środek między
+                               ćwiartkami III/IV) ale pokazuje wysokość
+                               obrabianego elementu. Ten sam preset jest teraz
+                               też domyślnym widokiem otwarcia sceny (patrz
+                               Etap 4 i `Scene3D.tsx` wyżej).
     buildScene.ts               — budowanie obiektów Three.js: płaszczyzna
                                materiału (Z=0) + siatka, osie X (czerwona) /
                                Y (zielona) przez fizyczny origin (0,0), każda
