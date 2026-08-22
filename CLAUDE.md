@@ -458,6 +458,28 @@ Artifact pokazuje je jako osobną sekcję, nie jako kolorowe
 Większe rozszerzenia zakresu — nie polish istniejących operacji, tylko
 nowa funkcjonalność. Nie zaczynać bez wyraźnego "przechodzimy do X".
 
+- **`BL-5`** — **Przełącznik dialektu G-code (GRBL / Marlin / Mach3).**
+  Pierwotnie planowany jako pole w `WizardParams.output` (per-preset) —
+  sesja `/grill-me` 2026-08-22 przeniosła go koncepcyjnie do **Machine
+  Settings** (`MachineSettings.dialect`, `BL-9`), obok `travelX/Y/Z`:
+  dialekt sterownika jest fizyczną cechą Twojej maszyny (zmienia się,
+  gdy zmienisz kontroler, nie między zadaniami), nie parametrem
+  pojedynczego joba — ten sam podział, który już odróżnia
+  `MachineSettings` od `WizardParams` dla reszty appki. Domyślnie
+  `'grbl'` (najpopularniejszy w hobbystycznych sterownikach, zero zmiany
+  zachowania dla kogoś, kto nigdy nie otworzy Settings — ten sam wzorzec
+  co domyślne X=5000/Y=5000/Z=1000). Dziś jedyny znany, konkretny
+  przypadek użycia: `G4 P<sekundy>` (dwell po starcie wrzeciona) jest
+  poprawne dla GRBL/Mach3, ale Marlin interpretuje `P` jako milisekundy
+  — patrz notatka przy `G4 P` w "Kluczowe decyzje projektowe" niżej.
+  Styka się z `BL-10` (koniec programu `M30`/`M2`), który też może
+  zależeć od tego samego pola — patrz tam. **Nieustalone jeszcze:**
+  dokładna lista miejsc w silniku, które mają czytać to pole (na razie
+  tylko `G4 P` jest potwierdzonym przypadkiem), i czy dialekt wpływa na
+  cokolwiek poza `program.ts` (np. czy warto go pokazywać/używać gdzieś
+  w UI Kroku 3/4). Wymaga własnej implementacji: `dialect` w
+  `types/machine.ts`/`DEFAULT_MACHINE_SETTINGS`, pole wyboru w
+  `SettingsModal.tsx`, warunkowa emisja w `buildHeader()`.
 - **`BL-6`** — **Nowa metoda: "Rectangle Cut Out"** — trzecia metoda obok Helix i
   Standard Hole, wycinanie prostokątnego konturu. Parametry:
   - **Tryb cięcia:** Inside / Outside / On-line — offset ścieżki
@@ -496,7 +518,9 @@ nowa funkcjonalność. Nie zaczynać bez wyraźnego "przechodzimy do X".
   zresetować stan modalny). Sama zmiana to jedna linia, ale zostawia
   drobiazgi do rozstrzygnięcia: `M30` (koniec + rewind) czy `M2` (samo
   zakończenie), bezwarunkowo czy pod checkboxem w Kroku 4, i czy wybór
-  zależy od dialektu (styk z `BL-5`).
+  zależy od `MachineSettings.dialect` (patrz `BL-5` wyżej — jeśli tak,
+  to dwie różne przyszłe implementacje czytają to samo pole Machine
+  Settings, nie dwa osobne mechanizmy).
 - **`BL-11`** — **Zoom/pan na 2D Preview.** Dziś `drawToolpath()` nie ma
   żadnego stanu kamery — przelicza skalę/wycentrowanie od zera przy
   każdym renderze, zawsze dopasowując się do danych (patrz `BL-3`).
@@ -732,6 +756,12 @@ przeglądu przez użytkownika.
   bez rozróżnienia dialektów (MVP nie ma przełącznika dialektu, `BL-5` —
   patrz Backlog), efekt na Marlinie to krótsza pauza niż zamierzona, nie
   dłuższa/niebezpieczna.
+
+  Sesja `/grill-me` 2026-08-22 przeniosła koncepcyjnie przyszły
+  przełącznik dialektu z `WizardParams.output` do
+  `MachineSettings.dialect` (`BL-9`) — nic tu jeszcze nie
+  zaimplementowane, pełne uzasadnienie i szczegóły przy `BL-5` w
+  "Pomysły na przyszłość" wyżej.
 - **`buildFooter()` celowo NIE robi retraktu na Safe Z** — emituje
   wyłącznie `M5` (pod `output.spindleStopEnd`) i ewentualne `G0 X0 Y0`
   (pod `returnOriginEnd`). Retrakt robi bezwarunkowo pętla po punktach w
