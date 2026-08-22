@@ -157,94 +157,49 @@ export interface BuiltScene {
   bounds: THREE.Box3
 }
 
-export function buildToolpathScene(params: WizardParams, isDark: boolean): BuiltScene {
-  const theme = isDark ? DARK_THEME : LIGHT_THEME
-  const { geometry, feeds, method } = params
+interface ResolvedPattern {
+  params: WizardParams
+  points: { x: number; y: number }[]
+  holeRadius: number
+  toolRadius: number
+}
+
+function resolvePattern(params: WizardParams): ResolvedPattern {
+  const { geometry } = params
   const points = resolvePoints(geometry)
   const holeRadius = geometry.holeDiameter / 2
   // Guarded against a tool larger than the hole (allowed until Etap 5
   // validation covers every entry point) — CylinderGeometry with a
   // negative radius throws.
   const toolRadius = Math.max(0, (geometry.holeDiameter - geometry.toolDiameter) / 2)
+  return { params, points, holeRadius, toolRadius }
+}
 
-  const objects: THREE.Object3D[] = []
-  const bounds = new THREE.Box3()
-  bounds.expandByPoint(toThree(0, 0, 0))
-
-  for (const p of points) {
-    bounds.expandByPoint(toThree(p.x - holeRadius, p.y - holeRadius, -geometry.totalDepth))
-    bounds.expandByPoint(toThree(p.x + holeRadius, p.y + holeRadius, feeds.safeZ))
+// Expands `bounds` (in place, matching THREE.Box3's mutable API already used
+// throughout this file) to include one pattern's footprint — using THAT
+// pattern's own totalDepth/safeZ, since overlaid presets (BL-3) can have a
+// different depth/Safe Z than the active one.
+function expandBoundsForPattern(bounds: THREE.Box3, pattern: ResolvedPattern) {
+  const { geometry, feeds } = pattern.params
+  for (const p of pattern.points) {
+    bounds.expandByPoint(toThree(p.x - pattern.holeRadius, p.y - pattern.holeRadius, -geometry.totalDepth))
+    bounds.expandByPoint(toThree(p.x + pattern.holeRadius, p.y + pattern.holeRadius, feeds.safeZ))
   }
+}
 
-  const size = new THREE.Vector3()
-  bounds.getSize(size)
-  const span = Math.max(size.x, size.z, 10)
-  const padding = span * 0.25
-  const planeSize = span + padding * 2
-
-  // Material surface (CNC Z = 0)
-  const plane = new THREE.Mesh(
-    new THREE.PlaneGeometry(planeSize, planeSize),
-    new THREE.MeshBasicMaterial({
-      color: theme.material,
-      transparent: true,
-      opacity: theme.materialOpacity,
-      side: THREE.DoubleSide,
-    }),
-  )
-  plane.rotation.x = -Math.PI / 2
-  const center = new THREE.Vector3()
-  bounds.getCenter(center)
-  plane.position.set(center.x, 0, center.z)
-  objects.push(plane)
-
-  const grid = new THREE.GridHelper(planeSize, 10, theme.grid, theme.grid)
-  grid.position.set(center.x, 0.01, center.z)
-  ;(grid.material as THREE.Material).transparent = true
-  ;(grid.material as THREE.Material).opacity = 0.4
-  objects.push(grid)
-
-  // Origin marker + label
-  const origin = new THREE.Mesh(
-    new THREE.SphereGeometry(span * 0.01, 12, 12),
-    new THREE.MeshBasicMaterial({ color: theme.origin }),
-  )
-  objects.push(origin)
-
-  const originLabel = createTextSprite('0,0', theme.origin, span * 0.08)
-  originLabel.position.set(span * 0.02, span * 0.03, -span * 0.02)
-  objects.push(originLabel)
-
-  // X/Y axes through the machine origin (not the geometry center — origin
-  // is the fixed physical reference point, independent of where the holes
-  // happen to sit). Each gets an arrowhead + text label at its positive end
-  // to show direction, not just orientation.
-  const axisLength = planeSize * 0.55
-  const arrowSize = span * 0.05
-
-  const xAxisGeometry = new THREE.BufferGeometry().setFromPoints([
-    toThree(-axisLength, 0, 0),
-    toThree(axisLength, 0, 0),
-  ])
-  objects.push(new THREE.Line(xAxisGeometry, new THREE.LineBasicMaterial({ color: theme.axisX })))
-  objects.push(
-    createArrowhead(theme.axisX, arrowSize, toThree(axisLength, 0, 0), new THREE.Vector3(1, 0, 0)),
-  )
-  const xLabel = createTextSprite('X', theme.axisX, span * 0.09)
-  xLabel.position.copy(toThree(axisLength + arrowSize * 1.5, 0, 0))
-  objects.push(xLabel)
-
-  const yAxisGeometry = new THREE.BufferGeometry().setFromPoints([
-    toThree(0, -axisLength, 0),
-    toThree(0, axisLength, 0),
-  ])
-  objects.push(new THREE.Line(yAxisGeometry, new THREE.LineBasicMaterial({ color: theme.axisY })))
-  objects.push(
-    createArrowhead(theme.axisY, arrowSize, toThree(0, axisLength, 0), new THREE.Vector3(0, 0, -1)),
-  )
-  const yLabel = createTextSprite('Y', theme.axisY, span * 0.09)
-  yLabel.position.copy(toThree(0, axisLength + arrowSize * 1.5, 0))
-  objects.push(yLabel)
+// Builds everything that's per-pattern (BL-3 overlay): offset vector, rapid
+// XY traverse, and per-hole rapid-Z lines + bore cylinder + toolpath line.
+// The material plane/grid/origin/axes are NOT per-pattern — built once by
+// the caller from the combined bounds.
+function buildPatternObjects(
+  pattern: ResolvedPattern,
+  theme: Theme,
+  span: number,
+  arrowSize: number,
+): THREE.Object3D[] {
+  const { points, holeRadius, toolRadius, params } = pattern
+  const { geometry, feeds, method } = params
+  const objects: THREE.Object3D[] = []
 
   // Offset vector — amber, physical origin to the shifted pattern. Hidden
   // entirely at (0,0), same rule as the collapsed Step 2 summary annotation.
@@ -326,6 +281,103 @@ export function buildToolpathScene(params: WizardParams, isDark: boolean): Built
     const pathGeometry = new THREE.BufferGeometry().setFromPoints(pathPoints)
     const pathLine = new THREE.Line(pathGeometry, new THREE.LineBasicMaterial({ color: theme.toolpath }))
     objects.push(pathLine)
+  }
+
+  return objects
+}
+
+export function buildToolpathScene(
+  params: WizardParams,
+  isDark: boolean,
+  overlayParams: WizardParams[] = [],
+): BuiltScene {
+  const theme = isDark ? DARK_THEME : LIGHT_THEME
+
+  // Overlay patterns first, active pattern last — cosmetically inert in 3D
+  // (real depth-tested geometry, add-order doesn't affect occlusion) but
+  // kept for consistency with the 2D preview, where draw order matters.
+  const allPatterns = [...overlayParams.map(resolvePattern), resolvePattern(params)]
+
+  const objects: THREE.Object3D[] = []
+  const bounds = new THREE.Box3()
+  bounds.expandByPoint(toThree(0, 0, 0))
+
+  for (const pattern of allPatterns) {
+    expandBoundsForPattern(bounds, pattern)
+  }
+
+  const size = new THREE.Vector3()
+  bounds.getSize(size)
+  const span = Math.max(size.x, size.z, 10)
+  const padding = span * 0.25
+  const planeSize = span + padding * 2
+
+  // Material surface (CNC Z = 0)
+  const plane = new THREE.Mesh(
+    new THREE.PlaneGeometry(planeSize, planeSize),
+    new THREE.MeshBasicMaterial({
+      color: theme.material,
+      transparent: true,
+      opacity: theme.materialOpacity,
+      side: THREE.DoubleSide,
+    }),
+  )
+  plane.rotation.x = -Math.PI / 2
+  const center = new THREE.Vector3()
+  bounds.getCenter(center)
+  plane.position.set(center.x, 0, center.z)
+  objects.push(plane)
+
+  const grid = new THREE.GridHelper(planeSize, 10, theme.grid, theme.grid)
+  grid.position.set(center.x, 0.01, center.z)
+  ;(grid.material as THREE.Material).transparent = true
+  ;(grid.material as THREE.Material).opacity = 0.4
+  objects.push(grid)
+
+  // Origin marker + label
+  const origin = new THREE.Mesh(
+    new THREE.SphereGeometry(span * 0.01, 12, 12),
+    new THREE.MeshBasicMaterial({ color: theme.origin }),
+  )
+  objects.push(origin)
+
+  const originLabel = createTextSprite('0,0', theme.origin, span * 0.08)
+  originLabel.position.set(span * 0.02, span * 0.03, -span * 0.02)
+  objects.push(originLabel)
+
+  // X/Y axes through the machine origin (not the geometry center — origin
+  // is the fixed physical reference point, independent of where the holes
+  // happen to sit). Each gets an arrowhead + text label at its positive end
+  // to show direction, not just orientation.
+  const axisLength = planeSize * 0.55
+  const arrowSize = span * 0.05
+
+  const xAxisGeometry = new THREE.BufferGeometry().setFromPoints([
+    toThree(-axisLength, 0, 0),
+    toThree(axisLength, 0, 0),
+  ])
+  objects.push(new THREE.Line(xAxisGeometry, new THREE.LineBasicMaterial({ color: theme.axisX })))
+  objects.push(
+    createArrowhead(theme.axisX, arrowSize, toThree(axisLength, 0, 0), new THREE.Vector3(1, 0, 0)),
+  )
+  const xLabel = createTextSprite('X', theme.axisX, span * 0.09)
+  xLabel.position.copy(toThree(axisLength + arrowSize * 1.5, 0, 0))
+  objects.push(xLabel)
+
+  const yAxisGeometry = new THREE.BufferGeometry().setFromPoints([
+    toThree(0, -axisLength, 0),
+    toThree(0, axisLength, 0),
+  ])
+  objects.push(new THREE.Line(yAxisGeometry, new THREE.LineBasicMaterial({ color: theme.axisY })))
+  objects.push(
+    createArrowhead(theme.axisY, arrowSize, toThree(0, axisLength, 0), new THREE.Vector3(0, 0, -1)),
+  )
+  const yLabel = createTextSprite('Y', theme.axisY, span * 0.09)
+  yLabel.position.copy(toThree(0, axisLength + arrowSize * 1.5, 0))
+  objects.push(yLabel)
+
+  for (const pattern of allPatterns) {
+    objects.push(...buildPatternObjects(pattern, theme, span, arrowSize))
   }
 
   return { objects, bounds }

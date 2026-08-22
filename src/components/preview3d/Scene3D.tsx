@@ -8,6 +8,7 @@ import { frameCamera, VIEW_PRESETS, type ViewPresetName } from './cameraPresets'
 interface Scene3DProps {
   params: WizardParams
   isDark: boolean
+  overlayParams: WizardParams[]
 }
 
 const PRESET_BUTTONS: { name: ViewPresetName; label: string }[] = [
@@ -17,7 +18,7 @@ const PRESET_BUTTONS: { name: ViewPresetName; label: string }[] = [
   { name: 'side', label: 'Side' },
 ]
 
-export function Scene3D({ params, isDark }: Scene3DProps) {
+export function Scene3D({ params, isDark, overlayParams }: Scene3DProps) {
   const containerRef = useRef<HTMLDivElement>(null)
   const sceneRef = useRef<THREE.Scene | null>(null)
   const cameraRef = useRef<THREE.PerspectiveCamera | null>(null)
@@ -127,19 +128,23 @@ export function Scene3D({ params, isDark }: Scene3DProps) {
       disposeObject3D(child)
     }
 
-    const { objects, bounds } = buildToolpathScene(params, isDark)
+    const { objects, bounds } = buildToolpathScene(params, isDark, overlayParams)
     objects.forEach((obj) => contentGroup.add(obj))
     boundsRef.current = bounds
 
     // Default view is the fitted front angle (camera centered on -Y,
     // elevated on +Z, looking toward +Y — see VIEW_PRESETS.front) — only
-    // on the very first build, so later parameter tweaks don't yank the
-    // camera out of the angle the user rotated to.
+    // on the very first build, so later parameter tweaks (including
+    // toggling the BL-3 overlay) don't yank the camera out of the angle
+    // the user rotated to. hasFramedRef is only ever reset in the setup
+    // effect above, so it's already `true` by the time overlayParams
+    // changes trigger a rebuild here — frameCamera is skipped, "Fit View"
+    // stays the manual way to bring new overlay geometry into frame.
     if (!hasFramedRef.current) {
       frameCamera(camera, controls, bounds, VIEW_PRESETS.front.direction, VIEW_PRESETS.front.up)
       hasFramedRef.current = true
     }
-  }, [params, isDark])
+  }, [params, isDark, overlayParams])
 
   const handlePreset = (name: ViewPresetName) => {
     const camera = cameraRef.current

@@ -209,6 +209,18 @@ export function XIcon({ className }: IconProps) {
 // (see machineFitWarnings() in lib/validation.ts) — takes priority over
 // both CheckIcon and XIcon, since "generated but doesn't fit the machine"
 // is still something the user should notice at a glance.
+// Header toggle for the BL-3 preset overlay — reuses the filled-pupil-dot
+// idiom already used elsewhere (e.g. SingleIcon's center dot) rather than
+// introducing a new icon convention.
+export function EyeIcon({ className }: IconProps) {
+  return (
+    <svg {...base} className={className}>
+      <path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7-10-7-10-7Z" />
+      <circle cx="12" cy="12" r="2.6" fill="currentColor" stroke="none" />
+    </svg>
+  )
+}
+
 export function WarningIcon({ className }: IconProps) {
   return (
     <svg {...base} strokeWidth={3.2} className={className}>

@@ -5,9 +5,10 @@ import { drawToolpath } from './drawToolpath'
 interface ToolpathCanvasProps {
   params: WizardParams
   isDark: boolean
+  overlayParams: WizardParams[]
 }
 
-export function ToolpathCanvas({ params, isDark }: ToolpathCanvasProps) {
+export function ToolpathCanvas({ params, isDark, overlayParams }: ToolpathCanvasProps) {
   const containerRef = useRef<HTMLDivElement>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
 
@@ -28,7 +29,7 @@ export function ToolpathCanvas({ params, isDark }: ToolpathCanvasProps) {
       const ctx = canvas.getContext('2d')
       if (!ctx) return
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
-      drawToolpath(ctx, width, height, params, isDark)
+      drawToolpath(ctx, width, height, params, isDark, overlayParams)
     }
 
     render()
@@ -36,7 +37,7 @@ export function ToolpathCanvas({ params, isDark }: ToolpathCanvasProps) {
     const resizeObserver = new ResizeObserver(render)
     resizeObserver.observe(container)
     return () => resizeObserver.disconnect()
-  }, [params, isDark])
+  }, [params, isDark, overlayParams])
 
   return (
     <div ref={containerRef} className="min-h-0 w-full flex-1">

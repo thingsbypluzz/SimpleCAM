@@ -479,16 +479,6 @@ nowa funkcjonalność. Nie zaczynać bez wyraźnego "przechodzimy do X".
     rozszerzenie Kroku 2), oraz sprawdzenia czy podgląd 2D/3D (które dziś
     zakładają "okrąg" jako kształt operacji) w ogóle się do tego nadają
     czy potrzebują osobnej ścieżki rysowania.
-- **`BL-3`** — **Overimpose presetów na 3D Preview** — wizualne (nie w generowanym
-  G-code) zestawienie kilku zapisanych presetów w jednej scenie 3D, żeby
-  podejrzeć ich korelację przestrzenną (np. czy otwory z różnych
-  presetów na siebie nie nachodzą). Nie zmienia stałej decyzji "jedno
-  narzędzie na wygenerowany plik" / "jeden preset = jeden
-  `WizardParams`" — presety nadal eksportują się osobno, to czysto
-  podglądowa nakładka w `Scene3D`/`buildScene.ts`. Do rozstrzygnięcia
-  przy implementacji: wybór, które presety nałożyć (wszystkie sloty
-  `[1]…[5]` naraz? multi-select?), i jak odróżnić je wizualnie (kolor
-  per-slot?).
 - **`BL-8`** — **Responsywny UI na małych ekranach.** Dziś layout
   zakłada desktop: dwukolumnowy układ (akordeon wizarda + panel
   podglądu 2D/3D/G-Code obok siebie), gęste pola liczbowe w parach
@@ -637,6 +627,43 @@ przeglądu przez użytkownika.
   `h-6 w-6`), i tło zmienione na pastelowe `bg-orange-200` (z
   nasyconego `bg-orange-500`) — czarny symbol w środku miał za mało
   kontrastu na mocnym pomarańczu.
+- **Overlay presetów w 2D/3D Preview (`BL-3`, `0.8.13`).** W headerze,
+  obok rzędu presetów `[1]…[5]`, nowa ikonka "oko" (`EyeIcon`) —
+  wizualnie zgrupowana z presetami wspólnym podkreśleniem
+  (`border-b-2` pod samym rzędem), sama lekko odsunięta. Klik = globalny
+  toggle `overlayEnabled`. Gdy aktywny, klik w zajęty slot **nie ładuje**
+  presetu — przełącza jego członkostwo w `overlaySlots` (grubsza ramka +
+  checkmark w lewym górnym rogu), a usuwanie (hover "×") jest ukryte,
+  żeby nie skasować czegoś przypadkiem podczas zaznaczania. Sesja
+  `/grill-me` (z mockupem od użytkownika) ustaliła zakres szerszy niż
+  pierwotny zapis w Backlogu: overlay renderuje się **w 2D i 3D
+  jednocześnie**, nie tylko w 3D — bez auto-przełączania zakładek.
+  Pełny render per nałożony preset (jak żywy wzorzec: otwory, ścieżka,
+  przejazdy, wektor offsetu w 2D; cylindry, ścieżka helix/standard,
+  linie Z w 3D), **bez** rozróżnienia kolorem per-slot — świadomie
+  odłożone jako osobna decyzja do rewizji, gdyby się okazało że
+  przeszkadza (użytkownik: "otwieramy tu puszkę Pandory"). Nakładki
+  rysowane/dodawane pierwsze, żywy wzorzec ostatni (na wierzchu) — w
+  2D realnie decyduje o przesłanianiu, w 3D kosmetyczne (prawdziwa
+  geometria z depth-testingiem). Kamera 3D **nie** re-frame'uje się przy
+  przełączeniu overlay (`hasFramedRef` już to zapewniał, bez zmian
+  logiki) — Fit View ręcznie. 2D nie ma pojęcia kamery w ogóle
+  (`drawToolpath()` przelicza skalę/wycentrowanie od zera przy każdym
+  renderze), więc automatycznie obejmuje nakładki bez dodatkowej logiki.
+
+  Implementacja: `drawToolpath.ts` i `buildScene.ts` przeszły ten sam
+  refaktor — wydzielenie `resolvePattern()` (matematyka jednego
+  wzorca) i funkcji budującej/rysującej geometrię jednego wzorca
+  atomowo, plus bounds liczone z **sumy** wszystkich renderowanych
+  wzorców (każdy punkt rozszerzony o *własny* promień otworu/głębokość/
+  Safe Z danego presetu, nie wzorca aktywnego). Nowy
+  `src/lib/overlayParams.ts` (`deriveOverlayParams()`, z testem) — jedyna
+  czysta funkcja w tym zestawie zmian, iteruje po `PRESET_SLOT_IDS` (nie
+  po `Set`) dla stabilnej kolejności `[1]…[5]` niezależnie od kolejności
+  klikania. `overlayParams` w `App.tsx` jest zmemoizowane (`useMemo`) —
+  bez tego trafiałoby jako nowa referencja do zależności efektu
+  przebudowującego scenę 3D przy każdym renderze `App`, wywołując zbędny
+  dispose+rebuild całej geometrii THREE.
 - **`.gitignore` musi wykluczać `.claude/`** — Tailwind v4
   (`@tailwindcss/vite`) auto-skanuje cały katalog projektu pod kątem nazw
   klas i respektuje tylko `.gitignore` jako listę wykluczeń (bez niego
@@ -975,7 +1002,12 @@ src/
                                  ten sam try/catch + merge-z-defaultami co
                                  storage.ts, ale bez systemu slotów (jeden
                                  płaski obiekt)
-    *.test.ts                    — testy Vitest (93 testy, `npm run test`)
+    overlayParams.ts               — deriveOverlayParams() (`BL-3`, `0.8.13`)
+                                 — jedyna czysta funkcja w overlay presetów,
+                                 filtruje/mapuje overlaySlots względem
+                                 presetSlots w stabilnej kolejności
+                                 [1]…[5] (iteruje PRESET_SLOT_IDS, nie Set)
+    *.test.ts                    — testy Vitest (96 testów, `npm run test`)
   App.tsx                    — orkiestracja stanu wizarda i nawigacji kroków
 ```
 

@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect, useState, type ComponentType } from 'react'
+import { lazy, Suspense, useEffect, useMemo, useState, type ComponentType } from 'react'
 import { Step1Positioning } from './components/wizard/Step1Positioning'
 import { Step2Geometry } from './components/wizard/Step2Geometry'
 import { Step3Feeds } from './components/wizard/Step3Feeds'
@@ -17,6 +17,7 @@ import {
   CheckIcon,
   DepthIcon,
   DiameterIcon,
+  EyeIcon,
   FeedIcon,
   OffsetIcon,
   PlungeIcon,
@@ -28,6 +29,7 @@ import {
 import { METHOD_META } from './config/methodMeta'
 import { positioningIcon, positioningLines, positioningSummary } from './config/positioningMeta'
 import { fmt } from './lib/format'
+import { deriveOverlayParams } from './lib/overlayParams'
 import { presetLabel } from './lib/presetLabel'
 import {
   AUTO_SAVE_SLOT,
@@ -152,6 +154,8 @@ function App() {
   const [previewTab, setPreviewTab] = useState<'2d' | '3d' | 'gcode'>('3d')
   const [machine, setMachine] = useState(loadMachineSettings)
   const [isSettingsOpen, setIsSettingsOpen] = useState(false)
+  const [overlayEnabled, setOverlayEnabled] = useState(false)
+  const [overlaySlots, setOverlaySlots] = useState<Set<PresetSlotId>>(new Set())
 
   // Any parameter change invalidates the last generated snapshot — Copy/
   // Download must not act on G-code that no longer matches the current
@@ -173,6 +177,15 @@ function App() {
     isCircleHoleCountValid(params.geometry)
   const fitWarnings = machineFitWarnings(params, machine)
   const step4BadgeInfo = step4Badge(generatedGCode, fitWarnings)
+  // Memoized: this feeds Scene3D's content-rebuild effect deps, which
+  // disposes and rebuilds all THREE geometry on reference change — without
+  // memoizing, a fresh array literal on every App render (e.g. every
+  // wizard keystroke) would trigger that rebuild constantly, not just on
+  // an actual overlay-selection change.
+  const overlayParams = useMemo(
+    () => deriveOverlayParams(overlaySlots, presetSlots),
+    [overlaySlots, presetSlots],
+  )
 
   const handleSaveMachine = (next: typeof machine) => {
     saveMachineSettings(next)
@@ -210,6 +223,15 @@ function App() {
     setActiveStep(4)
   }
 
+  const handleToggleOverlaySlot = (id: PresetSlotId) => {
+    setOverlaySlots((prev) => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }
+
   const handleDeletePreset = (id: PresetSlotId) => {
     const existing = presetSlots[id]
     if (!existing) return
@@ -233,38 +255,75 @@ function App() {
         </div>
 
         <div className="flex items-center justify-self-center gap-2">
-          {PRESET_SLOT_IDS.map((id) => {
-            const preset = presetSlots[id]
-            const PresetIcon = preset ? positioningIcon(preset.geometry.positioning) : null
-            return (
-              <div key={id} className="group relative">
-                <button
-                  type="button"
-                  onClick={() => handleLoadPreset(id)}
-                  disabled={!preset}
-                  title={preset ? `Load preset [${id}] — ${presetLabel(preset)}` : `Preset [${id}] — empty`}
-                  className={
-                    preset
-                      ? 'flex h-11 w-11 items-center justify-center rounded-md border border-indigo-300 text-indigo-700 hover:bg-indigo-50 dark:border-indigo-800 dark:text-indigo-300 dark:hover:bg-indigo-950/40'
-                      : 'flex h-11 w-11 cursor-default items-center justify-center rounded-md border border-slate-200 text-xs font-semibold text-slate-300 dark:border-slate-800 dark:text-slate-700'
-                  }
-                >
-                  {PresetIcon ? <PresetIcon className="h-6 w-6" /> : id}
-                </button>
-                {preset && (
+          <div className="flex items-center gap-2 rounded-b-md border-b-2 border-slate-200 pb-2 dark:border-slate-800">
+            {PRESET_SLOT_IDS.map((id) => {
+              const preset = presetSlots[id]
+              const PresetIcon = preset ? positioningIcon(preset.geometry.positioning) : null
+              const isOverlaySelected = overlayEnabled && overlaySlots.has(id)
+              return (
+                <div key={id} className="group relative">
                   <button
                     type="button"
-                    onClick={() => handleDeletePreset(id)}
-                    aria-label={`Delete preset ${id}`}
-                    title="Delete preset"
-                    className="absolute -top-1 -right-1 hidden h-4 w-4 items-center justify-center rounded-full bg-red-100 text-[10px] leading-none font-bold text-red-600 group-hover:flex dark:bg-red-950 dark:text-red-400"
+                    onClick={() => (overlayEnabled ? handleToggleOverlaySlot(id) : handleLoadPreset(id))}
+                    disabled={!preset}
+                    title={
+                      !preset
+                        ? `Preset [${id}] — empty`
+                        : overlayEnabled
+                          ? `${isOverlaySelected ? 'Remove' : 'Add'} preset [${id}] — ${presetLabel(preset)} ${isOverlaySelected ? 'from' : 'to'} overlay`
+                          : `Load preset [${id}] — ${presetLabel(preset)}`
+                    }
+                    className={
+                      !preset
+                        ? 'flex h-11 w-11 cursor-default items-center justify-center rounded-md border border-slate-200 text-xs font-semibold text-slate-300 dark:border-slate-800 dark:text-slate-700'
+                        : isOverlaySelected
+                          ? 'flex h-11 w-11 items-center justify-center rounded-md border-2 border-indigo-600 text-indigo-700 hover:bg-indigo-50 dark:border-indigo-400 dark:text-indigo-300 dark:hover:bg-indigo-950/40'
+                          : 'flex h-11 w-11 items-center justify-center rounded-md border border-indigo-300 text-indigo-700 hover:bg-indigo-50 dark:border-indigo-800 dark:text-indigo-300 dark:hover:bg-indigo-950/40'
+                    }
                   >
-                    ×
+                    {PresetIcon ? <PresetIcon className="h-6 w-6" /> : id}
                   </button>
-                )}
-              </div>
-            )
-          })}
+                  {preset && isOverlaySelected && (
+                    <span
+                      aria-hidden="true"
+                      className="absolute -top-1 -left-1 flex h-4 w-4 items-center justify-center rounded-full bg-indigo-600 text-white dark:bg-indigo-500"
+                    >
+                      <CheckIcon className="h-2.5 w-2.5" />
+                    </span>
+                  )}
+                  {preset && !overlayEnabled && (
+                    <button
+                      type="button"
+                      onClick={() => handleDeletePreset(id)}
+                      aria-label={`Delete preset ${id}`}
+                      title="Delete preset"
+                      className="absolute -top-1 -right-1 hidden h-4 w-4 items-center justify-center rounded-full bg-red-100 text-[10px] leading-none font-bold text-red-600 group-hover:flex dark:bg-red-950 dark:text-red-400"
+                    >
+                      ×
+                    </button>
+                  )}
+                </div>
+              )
+            })}
+          </div>
+          <button
+            type="button"
+            onClick={() => setOverlayEnabled((v) => !v)}
+            aria-label="Toggle preset overlay"
+            title={
+              overlayEnabled
+                ? 'Overlay preview: on — click preset slots to add/remove them from the 2D/3D overlay'
+                : 'Overlay preview: off — click to compare saved presets against the current pattern'
+            }
+            className={[
+              'ml-1 flex h-9 w-9 items-center justify-center rounded-md border transition',
+              overlayEnabled
+                ? 'border-2 border-indigo-600 bg-indigo-50 text-indigo-700 dark:border-indigo-400 dark:bg-indigo-950/40 dark:text-indigo-300'
+                : 'border-slate-200 text-slate-600 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-900',
+            ].join(' ')}
+          >
+            <EyeIcon className="h-4 w-4" />
+          </button>
         </div>
 
         <div className="flex items-center justify-self-end gap-2">
@@ -520,7 +579,9 @@ function App() {
             )}
           </div>
 
-          {previewTab === '2d' && <ToolpathCanvas params={params} isDark={isDark} />}
+          {previewTab === '2d' && (
+            <ToolpathCanvas params={params} isDark={isDark} overlayParams={overlayParams} />
+          )}
 
           {previewTab === '3d' && (
             <Suspense
@@ -530,7 +591,7 @@ function App() {
                 </div>
               }
             >
-              <Scene3D params={params} isDark={isDark} />
+              <Scene3D params={params} isDark={isDark} overlayParams={overlayParams} />
             </Suspense>
           )}
 

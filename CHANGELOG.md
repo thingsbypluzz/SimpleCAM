@@ -7,6 +7,27 @@ zgodne z [SemVer](https://semver.org/). Ten plik pozostaje głównym, czytelnym
 thingsbypluzz/SimpleCAM), ale to infrastruktura pod izolację pracy
 (branch/worktree per zadanie), nie zamiennik tego changeloga.
 
+## [0.8.13] — 2026-08-22
+
+### Dodano
+
+- **`BL-3` — overlay zapisanych presetów w 2D/3D Preview.** Nowa
+  ikonka "oko" w headerze, obok rzędu presetów `[1]…[5]`, przełącza
+  tryb overlay: gdy aktywny, klik w zajęty slot dodaje/usuwa go z
+  nakładki (zamiast ładować preset), z wizualnym zaznaczeniem (grubsza
+  ramka + checkmark w lewym górnym rogu); usuwanie presetu jest
+  ukryte, dopóki tryb jest aktywny. Sesja `/grill-me` (z mockupem od
+  użytkownika) rozszerzyła pierwotny zakres z Backlogu — overlay działa
+  **w 2D i 3D Preview jednocześnie**, nie tylko w 3D. Pełny render per
+  nałożony preset (jak żywy wzorzec), bez rozróżnienia kolorem per-slot
+  (świadomie odłożone). Nakładki rysowane pierwsze, żywy wzorzec na
+  wierzchu. `drawToolpath.ts` i `buildScene.ts` przeszły równoległy
+  refaktor pod wiele wzorców naraz (bounds z sumy wszystkich, każdy ze
+  swoim promieniem/głębokością/Safe Z); nowy `src/lib/overlayParams.ts`
+  z testem. 3D nie re-frame'uje kamery przy przełączaniu overlay (Fit
+  View ręcznie); 2D automatycznie obejmuje nakładki, bo już zawsze
+  przelicza kadr od zera przy każdym renderze.
+
 ## [0.8.12] — 2026-08-22
 
 ### Zmieniono

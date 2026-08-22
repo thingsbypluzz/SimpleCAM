@@ -82,33 +82,137 @@ function niceStep(rawStep: number): number {
   return niceFraction * 10 ** exponent
 }
 
-export function drawToolpath(
-  ctx: CanvasRenderingContext2D,
-  width: number,
-  height: number,
-  params: WizardParams,
-  isDark: boolean,
-) {
-  const theme = isDark ? DARK_THEME : LIGHT_THEME
+interface ResolvedPattern {
+  params: WizardParams
+  points: { x: number; y: number }[]
+  holeRadius: number
+  toolPathRadius: number
+}
+
+function resolvePattern(params: WizardParams): ResolvedPattern {
   const { geometry } = params
   const points = resolvePoints(geometry)
   const holeRadius = geometry.holeDiameter / 2
   // Guarded against a tool larger than the hole (allowed until Etap 5
   // validation exists) — a negative radius would throw in ctx.arc().
   const toolPathRadius = Math.max(0, (geometry.holeDiameter - geometry.toolDiameter) / 2)
+  return { params, points, holeRadius, toolPathRadius }
+}
+
+// Bounds spanning every rendered pattern (BL-3 overlay) — each pattern's
+// points are padded by its OWN holeRadius, since overlaid presets can have
+// a different hole diameter than the active one.
+function computeCombinedBounds(patterns: ResolvedPattern[]) {
+  const allX = [0]
+  const allY = [0]
+  for (const pattern of patterns) {
+    for (const p of pattern.points) {
+      allX.push(p.x - pattern.holeRadius, p.x + pattern.holeRadius)
+      allY.push(p.y - pattern.holeRadius, p.y + pattern.holeRadius)
+    }
+  }
+  return {
+    dataMinX: Math.min(...allX),
+    dataMaxX: Math.max(...allX),
+    dataMinY: Math.min(...allY),
+    dataMaxY: Math.max(...allY),
+  }
+}
+
+// Draws one pattern's full geometry (rapid traverse, holes, offset vector)
+// as one atomic unit — this is what makes pattern-level (not element-level)
+// draw ordering control occlusion between overlaid presets and the active
+// pattern (see BL-3: active pattern is always drawn last, on top).
+function drawPatternGeometry(
+  ctx: CanvasRenderingContext2D,
+  toPx: (x: number, y: number) => [number, number],
+  scale: number,
+  pattern: ResolvedPattern,
+  theme: Theme,
+  arrowSize: number,
+) {
+  const { points, holeRadius, toolPathRadius, params } = pattern
+  const { geometry } = params
+
+  // Rapid traverse between holes (G0 XY order)
+  if (points.length > 1) {
+    ctx.strokeStyle = theme.rapid
+    ctx.lineWidth = 1
+    ctx.setLineDash([4, 4])
+    ctx.beginPath()
+    points.forEach((p, i) => {
+      const [px, py] = toPx(p.x, p.y)
+      if (i === 0) ctx.moveTo(px, py)
+      else ctx.lineTo(px, py)
+    })
+    ctx.stroke()
+    ctx.setLineDash([])
+  }
+
+  // Each hole: final bore outline (fill) + tool-center toolpath (stroke)
+  for (const p of points) {
+    const [px, py] = toPx(p.x, p.y)
+
+    ctx.beginPath()
+    ctx.arc(px, py, holeRadius * scale, 0, Math.PI * 2)
+    ctx.fillStyle = theme.holeFill
+    ctx.fill()
+    ctx.strokeStyle = theme.holeStroke
+    ctx.lineWidth = 1
+    ctx.stroke()
+
+    ctx.beginPath()
+    ctx.arc(px, py, toolPathRadius * scale, 0, Math.PI * 2)
+    ctx.strokeStyle = theme.toolpath
+    ctx.lineWidth = 1.5
+    ctx.stroke()
+
+    ctx.beginPath()
+    ctx.arc(px, py, 2, 0, Math.PI * 2)
+    ctx.fillStyle = theme.toolpath
+    ctx.fill()
+  }
+
+  // Offset vector — amber, physical origin to the shifted pattern. Hidden
+  // entirely at (0,0), same rule as the collapsed Step 2 summary annotation.
+  if (geometry.offsetX !== 0 || geometry.offsetY !== 0) {
+    const [vecTailX, vecTailY] = toPx(0, 0)
+    const [vecTipX, vecTipY] = toPx(geometry.offsetX, geometry.offsetY)
+    const vecDx = vecTipX - vecTailX
+    const vecDy = vecTipY - vecTailY
+    const vecLen = Math.hypot(vecDx, vecDy) || 1
+
+    ctx.strokeStyle = theme.offset
+    ctx.lineWidth = 1.5
+    ctx.beginPath()
+    ctx.moveTo(vecTailX, vecTailY)
+    ctx.lineTo(vecTipX, vecTipY)
+    ctx.stroke()
+    drawArrowhead(ctx, vecTipX, vecTipY, vecDx / vecLen, vecDy / vecLen, arrowSize, theme.offset)
+  }
+}
+
+export function drawToolpath(
+  ctx: CanvasRenderingContext2D,
+  width: number,
+  height: number,
+  params: WizardParams,
+  isDark: boolean,
+  overlayParams: WizardParams[] = [],
+) {
+  const theme = isDark ? DARK_THEME : LIGHT_THEME
+
+  // Overlay patterns drawn first, active pattern last — the active pattern
+  // ends up on top wherever it overlaps an overlaid preset (BL-3).
+  const allPatterns = [...overlayParams.map(resolvePattern), resolvePattern(params)]
 
   ctx.clearRect(0, 0, width, height)
   ctx.fillStyle = theme.background
   ctx.fillRect(0, 0, width, height)
 
-  if (points.length === 0) return
+  if (allPatterns.every((p) => p.points.length === 0)) return
 
-  const allX = [0, ...points.map((p) => p.x)]
-  const allY = [0, ...points.map((p) => p.y)]
-  const dataMinX = Math.min(...allX) - holeRadius
-  const dataMaxX = Math.max(...allX) + holeRadius
-  const dataMinY = Math.min(...allY) - holeRadius
-  const dataMaxY = Math.max(...allY) + holeRadius
+  const { dataMinX, dataMaxX, dataMinY, dataMaxY } = computeCombinedBounds(allPatterns)
   const dataWidth = Math.max(dataMaxX - dataMinX, 1)
   const dataHeight = Math.max(dataMaxY - dataMinY, 1)
 
@@ -191,61 +295,8 @@ export function drawToolpath(
   ctx.fillText('Y', originPxX + 5, offsetY - 3)
   ctx.font = '10px ui-monospace, monospace'
 
-  // Rapid traverse between holes (G0 XY order)
-  if (points.length > 1) {
-    ctx.strokeStyle = theme.rapid
-    ctx.lineWidth = 1
-    ctx.setLineDash([4, 4])
-    ctx.beginPath()
-    points.forEach((p, i) => {
-      const [px, py] = toPx(p.x, p.y)
-      if (i === 0) ctx.moveTo(px, py)
-      else ctx.lineTo(px, py)
-    })
-    ctx.stroke()
-    ctx.setLineDash([])
-  }
-
-  // Each hole: final bore outline (fill) + tool-center toolpath (stroke)
-  for (const p of points) {
-    const [px, py] = toPx(p.x, p.y)
-
-    ctx.beginPath()
-    ctx.arc(px, py, holeRadius * scale, 0, Math.PI * 2)
-    ctx.fillStyle = theme.holeFill
-    ctx.fill()
-    ctx.strokeStyle = theme.holeStroke
-    ctx.lineWidth = 1
-    ctx.stroke()
-
-    ctx.beginPath()
-    ctx.arc(px, py, toolPathRadius * scale, 0, Math.PI * 2)
-    ctx.strokeStyle = theme.toolpath
-    ctx.lineWidth = 1.5
-    ctx.stroke()
-
-    ctx.beginPath()
-    ctx.arc(px, py, 2, 0, Math.PI * 2)
-    ctx.fillStyle = theme.toolpath
-    ctx.fill()
-  }
-
-  // Offset vector — amber, physical origin to the shifted pattern. Hidden
-  // entirely at (0,0), same rule as the collapsed Step 2 summary annotation.
-  if (geometry.offsetX !== 0 || geometry.offsetY !== 0) {
-    const [vecTailX, vecTailY] = [originPxX, originPxY]
-    const [vecTipX, vecTipY] = toPx(geometry.offsetX, geometry.offsetY)
-    const vecDx = vecTipX - vecTailX
-    const vecDy = vecTipY - vecTailY
-    const vecLen = Math.hypot(vecDx, vecDy) || 1
-
-    ctx.strokeStyle = theme.offset
-    ctx.lineWidth = 1.5
-    ctx.beginPath()
-    ctx.moveTo(vecTailX, vecTailY)
-    ctx.lineTo(vecTipX, vecTipY)
-    ctx.stroke()
-    drawArrowhead(ctx, vecTipX, vecTipY, vecDx / vecLen, vecDy / vecLen, arrowSize, theme.offset)
+  for (const pattern of allPatterns) {
+    drawPatternGeometry(ctx, toPx, scale, pattern, theme, arrowSize)
   }
 
   // Origin marker
