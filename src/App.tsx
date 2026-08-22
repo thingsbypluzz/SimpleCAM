@@ -22,6 +22,7 @@ import {
   PlungeIcon,
   StartZIcon,
   StepdownIcon,
+  WarningIcon,
   XIcon,
 } from './components/icons'
 import { OPERATION_META } from './config/operationMeta'
@@ -428,13 +429,23 @@ function App() {
                   <>
                     <span
                       className={
-                        generatedGCode
-                          ? 'flex h-8 w-8 items-center justify-center rounded-full bg-indigo-100 text-indigo-700 dark:bg-indigo-950 dark:text-indigo-300'
-                          : 'flex h-8 w-8 items-center justify-center rounded-full bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-300'
+                        fitWarnings.length > 0
+                          ? 'flex h-8 w-8 items-center justify-center rounded-full bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-300'
+                          : generatedGCode
+                            ? 'flex h-8 w-8 items-center justify-center rounded-full bg-indigo-100 text-indigo-700 dark:bg-indigo-950 dark:text-indigo-300'
+                            : 'flex h-8 w-8 items-center justify-center rounded-full bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-300'
                       }
-                      title={generatedGCode ? 'G-Code generated' : 'G-Code not generated yet'}
+                      title={
+                        fitWarnings.length > 0
+                          ? fitWarnings.join(' ')
+                          : generatedGCode
+                            ? 'G-Code generated'
+                            : 'G-Code not generated yet'
+                      }
                     >
-                      {generatedGCode ? (
+                      {fitWarnings.length > 0 ? (
+                        <WarningIcon className="h-4 w-4" />
+                      ) : generatedGCode ? (
                         <CheckIcon className="h-4 w-4" />
                       ) : (
                         <XIcon className="h-4 w-4" />

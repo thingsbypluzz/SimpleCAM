@@ -38,6 +38,18 @@ thingsbypluzz/SimpleCAM), ale to infrastruktura pod izolację pracy
     max−min ≤ travel, plus `safeZ + totalDepth ≤ travelZ` dla Z). Nie
     blokuje Generate — decyzja zostaje przy operatorze.
 
+## [0.8.7] — 2026-08-22
+
+### Zmieniono
+
+- **Badge zwiniętego Kroku 4 sygnalizuje przekroczenie zakresu
+  maszyny.** Nowa `WarningIcon` (`components/icons.tsx`) zastępuje
+  dotychczasowy `CheckIcon`/`XIcon` w pasku Kroku 4, gdy
+  `machineFitWarnings()` zwraca choć jedno ostrzeżenie — ma priorytet
+  nad stanem "wygenerowano"/"nie wygenerowano", bo "wygenerowane, ale
+  nie mieści się w maszynie" nadal wymaga uwagi na pierwszy rzut oka.
+  Tooltip paska pokazuje treść ostrzeżeń.
+
 ## [0.8.5] — 2026-08-22
 
 ### Zmieniono

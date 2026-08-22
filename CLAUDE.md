@@ -568,6 +568,12 @@ przeglądu przez użytkownika.
     `safeZ + totalDepth`, bo `safeZ` jest zawsze ≥ `startZ`, patrz
     `isStartZValid`). **Nie** blokuje Generate — decyzja i
     odpowiedzialność zostają przy operatorze.
+
+  Zwinięty pasek Kroku 4 pokazuje to samo ostrzeżenie jednym
+  spojrzeniem — `WarningIcon` (`components/icons.tsx`) zastępuje
+  `CheckIcon`/`XIcon` w badge'u, gdy `machineFitWarnings()` zwraca choć
+  jeden komunikat, z priorytetem nad stanem wygenerowania (bo
+  "wygenerowane, ale nie mieści się w maszynie" i tak wymaga uwagi).
 - **`.gitignore` musi wykluczać `.claude/`** — Tailwind v4
   (`@tailwindcss/vite`) auto-skanuje cały katalog projektu pod kątem nazw
   klas i respektuje tylko `.gitignore` jako listę wykluczeń (bez niego

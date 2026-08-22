@@ -204,3 +204,16 @@ export function XIcon({ className }: IconProps) {
     </svg>
   )
 }
+
+// Step 4 collapsed-bar badge when the machine-fit soft warning is active
+// (see machineFitWarnings() in lib/validation.ts) — takes priority over
+// both CheckIcon and XIcon, since "generated but doesn't fit the machine"
+// is still something the user should notice at a glance.
+export function WarningIcon({ className }: IconProps) {
+  return (
+    <svg {...base} className={className}>
+      <path d="M12 8.5v4.5" />
+      <circle cx="12" cy="16.2" r="0.9" fill="currentColor" stroke="none" />
+    </svg>
+  )
+}
