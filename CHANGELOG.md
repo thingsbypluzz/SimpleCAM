@@ -98,6 +98,23 @@ thingsbypluzz/SimpleCAM), ale to infrastruktura pod izolację pracy
   na nasyconym `orange-500` był słabo czytelny — jaśniejsze tło
   poprawia kontrast z czarnym symbolem w środku.
 
+## [0.8.11] — 2026-08-22
+
+### Dodano
+
+- **`BL-1` — górny limit na Hole Count (N-Holes on Circle).** Nowa
+  `isCircleHoleCountValid()` + stała `MAX_CIRCLE_HOLE_COUNT = 100` w
+  `src/lib/validation.ts`, dołączona do `isGeometryValid` w `App.tsx` —
+  ten sam wzorzec co Tool Diameter/Stepdown/Start Z (twardy blok
+  Generate + czerwony inline error pod polem w Kroku 2), nie miękki
+  soft-warning z `BL-9` — sesja `/grill-me` potwierdziła, że 101+
+  otworów to "na pewno bez sensu", nie "może się nie zmieścić", więc
+  pasuje tu pewność, nie ostrzeżenie. Limit czysto arbitralny (w
+  odróżnieniu od `BL-9` nie ma tu żadnej fizycznej wielkości do
+  wyprowadzenia progu) — walidacja jest wyciszona (`true`) poza trybem
+  `circle`, żeby nie blokować Generate przez pole, którego w danym
+  trybie nawet nie widać.
+
 ## [0.8.5] — 2026-08-22
 
 ### Zmieniono

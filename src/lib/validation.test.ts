@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
+  isCircleHoleCountValid,
   isStartZValid,
   isStepdownValid,
   isToolDiameterValid,
@@ -59,6 +60,23 @@ describe('isStartZValid', () => {
 
   it('is invalid when startZ exceeds safeZ', () => {
     expect(isStartZValid({ ...DEFAULT_WIZARD_PARAMS.feeds, safeZ: 5, startZ: 6 })).toBe(false)
+  })
+})
+
+describe('isCircleHoleCountValid', () => {
+  it('is valid at exactly the limit', () => {
+    const geometry = { ...DEFAULT_WIZARD_PARAMS.geometry, positioning: 'circle' as const, circleHoleCount: 100 }
+    expect(isCircleHoleCountValid(geometry)).toBe(true)
+  })
+
+  it('is invalid above the limit', () => {
+    const geometry = { ...DEFAULT_WIZARD_PARAMS.geometry, positioning: 'circle' as const, circleHoleCount: 101 }
+    expect(isCircleHoleCountValid(geometry)).toBe(false)
+  })
+
+  it('ignores the count outside circle positioning', () => {
+    const geometry = { ...DEFAULT_WIZARD_PARAMS.geometry, positioning: 'grid' as const, circleHoleCount: 5000 }
+    expect(isCircleHoleCountValid(geometry)).toBe(true)
   })
 })
 

@@ -14,6 +14,18 @@ export function isStartZValid(feeds: FeedsParams): boolean {
   return feeds.startZ <= feeds.safeZ
 }
 
+// Purely arbitrary sanity ceiling (BL-1) — unlike the machine-fit checks
+// below, there's no physical quantity to derive this from, so it's a flat
+// constant. Vacuously valid outside 'circle' positioning: circleHoleCount
+// only affects the resolved pattern in that mode, and blocking Generate
+// over a value the user can't even see (the Circle fields are hidden for
+// every other mode) would be confusing rather than helpful.
+export const MAX_CIRCLE_HOLE_COUNT = 100
+
+export function isCircleHoleCountValid(geometry: GeometryParams): boolean {
+  return geometry.positioning !== 'circle' || geometry.circleHoleCount <= MAX_CIRCLE_HOLE_COUNT
+}
+
 // X/Y extent of the resolved pattern, hole footprint included (radius, not
 // just center points) — the same bounding-box math buildScene.ts uses for
 // 3D Preview framing, computed fresh in CNC space rather than reusing its

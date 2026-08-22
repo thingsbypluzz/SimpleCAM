@@ -40,6 +40,7 @@ import {
 } from './lib/storage'
 import { loadMachineSettings, saveMachineSettings } from './lib/machineStorage'
 import {
+  isCircleHoleCountValid,
   isStartZValid,
   isStepdownValid,
   isToolDiameterValid,
@@ -166,7 +167,10 @@ function App() {
   const activeOperation = OPERATION_META[params.operation]
   const offset = offsetSummary(params.geometry)
   const isGeometryValid =
-    isToolDiameterValid(params.geometry) && isStepdownValid(params.feeds) && isStartZValid(params.feeds)
+    isToolDiameterValid(params.geometry) &&
+    isStepdownValid(params.feeds) &&
+    isStartZValid(params.feeds) &&
+    isCircleHoleCountValid(params.geometry)
   const fitWarnings = machineFitWarnings(params, machine)
   const step4BadgeInfo = step4Badge(generatedGCode, fitWarnings)
 

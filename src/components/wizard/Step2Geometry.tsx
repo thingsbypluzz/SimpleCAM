@@ -1,7 +1,11 @@
 import { useState } from 'react'
 import type { WizardParams } from '../../types/wizard'
 import type { MachineSettings } from '../../types/machine'
-import { isToolDiameterValid } from '../../lib/validation'
+import {
+  isCircleHoleCountValid,
+  isToolDiameterValid,
+  MAX_CIRCLE_HOLE_COUNT,
+} from '../../lib/validation'
 import { POSITIONING_META } from '../../config/positioningMeta'
 import { FieldRow, inputClass } from './FieldRow'
 import { MethodPicker } from './MethodPicker'
@@ -161,11 +165,17 @@ export function Step2Geometry({ params, onChange, machine }: Step2GeometryProps)
               type="number"
               step="1"
               min="0"
+              max={MAX_CIRCLE_HOLE_COUNT}
               className={inputClass}
               value={geometry.circleHoleCount}
               onChange={(e) => updateGeometry({ circleHoleCount: Number(e.target.value) })}
             />
           </FieldRow>
+          {!isCircleHoleCountValid(geometry) && (
+            <p className="text-sm text-red-600 dark:text-red-400">
+              Hole count can't exceed {MAX_CIRCLE_HOLE_COUNT}.
+            </p>
+          )}
           <FieldRow label="Circle Diameter [mm]">
             <input
               type="number"

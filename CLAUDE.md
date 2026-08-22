@@ -445,15 +445,6 @@ nowa funkcjonalność. Nie zaczynać bez wyraźnego "przechodzimy do X".
   przy implementacji: wybór, które presety nałożyć (wszystkie sloty
   `[1]…[5]` naraz? multi-select?), i jak odróżnić je wizualnie (kolor
   per-slot?).
-- **`BL-1`** — **Górny limit (`max`) na `circleHoleCount`.** Częściowo
-  zamknięte przez `BL-9` (`0.8.6`) — Grid X/Y, Circle Diameter, Offset
-  X/Y, Total Depth i Safe Z dostały `max` wyprowadzony z Machine
-  Settings zamiast sztywnej stałej. Hole Count w N-Holes on Circle
-  (`circleHoleCount`, `Step2Geometry.tsx`) zostaje bez limitu — to
-  licznik, nie odległość, więc nie ma naturalnego związku z zakresem
-  maszyny; wpisanie np. 1000 nadal nie ma praktycznego sensu. Dodać
-  `max` (atrybut HTML + walidacja spójna z `src/lib/validation.ts`) —
-  punkt startowy: 100.
 - **`BL-8`** — **Responsywny UI na małych ekranach.** Dziś layout
   zakłada desktop: dwukolumnowy układ (akordeon wizarda + panel
   podglądu 2D/3D/G-Code obok siebie), gęste pola liczbowe w parach
@@ -555,9 +546,10 @@ przeglądu przez użytkownika.
     Circle Diameter, Offset X/Y w `Step2Geometry.tsx`; Total Depth w
     `Step2Geometry.tsx`, Safe Z w `Step3Feeds.tsx`) — sanity-ceiling,
     nie gwarantuje dopasowania (nie zna zerowania), tylko nie pozwala
-    wpisać absurdu. Częściowo zastępuje `BL-1` — nie w całości:
-    `circleHoleCount` to licznik, nie odległość, więc zostaje bez
-    limitu, `BL-1` dla tego pola nadal otwarte.
+    wpisać absurdu. Częściowo zastępuje `BL-1` — `circleHoleCount` to
+    licznik, nie odległość, więc nie ma naturalnego związku z zakresem
+    maszyny i dostał osobny, czysto arbitralny limit zamiast tego
+    (`isCircleHoleCountValid()`, `0.8.11`, patrz niżej).
   - **Miękki, nieblokujący warning na Step 4** (`machineFitWarnings()`
     w `src/lib/validation.ts`, korzysta z `patternSpan()`/`zSpan()`
     tamże) — osobny komunikat per oś, tylko dla osi, która faktycznie
@@ -911,11 +903,14 @@ src/
                                  funkcje `(WizardParams) => string[]`
     validation.ts                — isToolDiameterValid, isStepdownValid —
                                  blokują przycisk Generate na Kroku 4 i
-                                 pokazują inline error w Kroku 2/3. Też
-                                 (od `BL-9`): patternSpan/zSpan/
-                                 machineFitWarnings — nieblokujący
-                                 soft-warning na Kroku 4, patrz "Machine
-                                 Settings" w "Kluczowych decyzjach" wyżej
+                                 pokazują inline error w Kroku 2/3. Też:
+                                 isCircleHoleCountValid (`BL-1`, `0.8.11`)
+                                 — twardy limit, arbitralne 100, wyciszony
+                                 poza trybem circle; i (od `BL-9`):
+                                 patternSpan/zSpan/machineFitWarnings —
+                                 nieblokujący soft-warning na Kroku 4,
+                                 patrz "Machine Settings" w "Kluczowych
+                                 decyzjach" wyżej
     download.ts                  — buildFilename/downloadTextFile — efekt
                                  uboczny (Blob/URL), celowo poza czystym
                                  rdzeniem lib/
@@ -936,7 +931,7 @@ src/
                                  ten sam try/catch + merge-z-defaultami co
                                  storage.ts, ale bez systemu slotów (jeden
                                  płaski obiekt)
-    *.test.ts                    — testy Vitest (89 testów, `npm run test`)
+    *.test.ts                    — testy Vitest (92 testy, `npm run test`)
   App.tsx                    — orkiestracja stanu wizarda i nawigacji kroków
 ```
 
