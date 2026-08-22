@@ -7,6 +7,16 @@ zgodne z [SemVer](https://semver.org/). Ten plik pozostaje głównym, czytelnym
 thingsbypluzz/SimpleCAM), ale to infrastruktura pod izolację pracy
 (branch/worktree per zadanie), nie zamiennik tego changeloga.
 
+## [0.8.16] — 2026-08-22
+
+### Zmieniono
+
+- **Ramka wokół presetów + oka pokazuje się tylko, gdy overlay jest
+  aktywny.** Dotąd widoczna zawsze — teraz `border-transparent` poza
+  trybem overlay (kolor, nie `border-width`, więc bez skoku layoutu przy
+  włączaniu/wyłączaniu). Przy okazji więcej oddechu: `py-1.5` → `py-2`
+  (+2px góra/dół) — było za ciasno.
+
 ## [0.8.15] — 2026-08-22
 
 ### Dodano

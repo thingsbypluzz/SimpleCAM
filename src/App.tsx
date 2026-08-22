@@ -266,7 +266,12 @@ function App() {
           </p>
         </div>
 
-        <div className="flex items-center justify-self-center gap-2 rounded-lg border border-slate-200 px-2 py-1.5 dark:border-slate-700">
+        <div
+          className={[
+            'flex items-center justify-self-center gap-2 rounded-lg border px-2 py-2 transition-colors',
+            overlayEnabled ? 'border-slate-200 dark:border-slate-700' : 'border-transparent',
+          ].join(' ')}
+        >
           {PRESET_SLOT_IDS.map((id) => {
             const preset = presetSlots[id]
             const PresetIcon = preset ? positioningIcon(preset.geometry.positioning) : null

@@ -687,21 +687,40 @@ przeglądu przez użytkownika.
 
   **`0.8.14`** — poprawki po pierwszym realnym użyciu (feedback
   użytkownika). Ikonka oka wyrównana rozmiarem do ikonek presetów
-  (`h-11 w-11`) i przeniesiona do wnętrza podkreślonej grupy — jedna
-  wspólna linia pod całością zamiast tylko pod presetami, żeby
-  sugerować zależność; odstęp do presetów zwiększony do szerokości
-  jednej ikonki (`ml-11`). Wyłączenie oka (`handleToggleOverlay()`)
-  czyści teraz `overlaySlots` — dotychczasowe "zostaw jak jest"
-  myliło, bo nic się wizualnie nie resetowało. Nowy parametr
-  `showActivePattern` w `drawToolpath()`/`buildToolpathScene()` — `false`
-  podczas aktywnego overlay, więc żywy wzorzec (user: "preset 0") **nie
-  jest renderowany razem z** porównywanymi presetami — mieszanie ich
-  utrudniało odczytanie, co jest czym; wraca automatycznie po wyłączeniu
-  oka. `canGenerate` w `App.tsx` dostał `&& !overlayEnabled` — skoro
-  żywy wzorzec nie jest wtedy widoczny w podglądzie, Generate byłby "w
+  (`h-11 w-11`) i przeniesiona do wnętrza wspólnej grupy z presetami
+  (wizualne opakowanie zmieniło się dwukrotnie potem, patrz `0.8.15`/
+  `0.8.16` niżej), odstęp do presetów zwiększony do szerokości jednej
+  ikonki (`ml-11`). Wyłączenie oka (`handleToggleOverlay()`) czyści
+  teraz `overlaySlots` — dotychczasowe "zostaw jak jest" myliło, bo nic
+  się wizualnie nie resetowało. Nowy parametr `showActivePattern` w
+  `drawToolpath()`/`buildToolpathScene()` — `false` podczas aktywnego
+  overlay, więc żywy wzorzec (user: "preset 0") **nie jest renderowany
+  razem z** porównywanymi presetami — mieszanie ich utrudniało
+  odczytanie, co jest czym; wraca automatycznie po wyłączeniu oka.
+  `canGenerate` w `App.tsx` dostał `&& !overlayEnabled` — skoro żywy
+  wzorzec nie jest wtedy widoczny w podglądzie, Generate byłby "w
   ciemno"; `Step4Output.tsx` dostał nowy prop `overlayActive` do
   wyświetlenia właściwego powodu blokady zamiast mylącego "Fix the
   highlighted errors...".
+
+  **`0.8.15`** — podkreślenie pod samymi presetami (z `0.8.14`)
+  zastąpione jedną, delikatną ramką (`rounded-lg border`) wokół całej
+  grupy (presety + oko razem) — mocniej sugeruje, że to jedna
+  funkcjonalna całość. Pływający baner "Preview mode" nad 2D i 3D
+  Preview, gdy overlay aktywny. Cofnięta wcześniejsza decyzja "brak
+  re-frame przy zmianie overlay" (patrz `0.8.13` wyżej) —
+  dodanie/usunięcie presetu z nakładki w 3D teraz automatycznie
+  dopasowuje odległość/target kamery (ta sama matematyka co Fit View),
+  **bez** zmiany kąta patrzenia; rozróżnione od zwykłej edycji żywego
+  wzorca (która nadal nie rusza kamery) przez `prevOverlayParamsRef`
+  śledzący poprzednią referencję `overlayParams`. Krótki flash (1.5s,
+  wzorzec "✓ Saved") na ikonce właśnie załadowanego presetu poza trybem
+  overlay.
+
+  **`0.8.16`** — ramka z `0.8.15` widoczna tylko, gdy overlay jest
+  aktywny (`border-transparent` w przeciwnym razie — zmiana koloru, nie
+  `border-width`, żeby nie skakał layout przy włączaniu/wyłączaniu) i
+  więcej pionowego oddechu wokół ikonek (`py-1.5` → `py-2`).
 - **`.gitignore` musi wykluczać `.claude/`** — Tailwind v4
   (`@tailwindcss/vite`) auto-skanuje cały katalog projektu pod kątem nazw
   klas i respektuje tylko `.gitignore` jako listę wykluczeń (bez niego
