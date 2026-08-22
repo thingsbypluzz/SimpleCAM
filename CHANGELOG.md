@@ -62,6 +62,29 @@ thingsbypluzz/SimpleCAM), ale to infrastruktura pod izolację pracy
   grubszy `strokeWidth` (3.2 zamiast wspólnego 1.8 z innych ikon) i
   większa kropka wykrzyknika.
 
+## [0.8.9] — 2026-08-22
+
+### Zmieniono
+
+- **Badge Kroku 4 przetrwał rozwinięcie panelu.** Dotąd znikał w
+  momencie przejścia na Krok 4 (zwinięty pasek z ikonką zamieniał się
+  w pełny panel bez żadnego odpowiednika), co sprawiało wrażenie, że
+  problem zniknął. Ten sam badge (mniejsza wersja, `h-6 w-6`) jest teraz
+  też w prawym górnym rogu rozwiniętego panelu, obok nagłówka "Step 4 ·
+  G-Code". Logika wyciągnięta do wspólnej `step4Badge()` w `App.tsx`,
+  współdzielonej przez zwinięty pasek i rozwinięty panel — jedno źródło
+  prawdy zamiast dwóch kopii warunków.
+- **Kombinacja "wygenerowano + nadal nie mieści się w maszynie" dostała
+  własny, odróżnialny stan.** Kształt ikony śledzi wyłącznie to, czy
+  Generate zostało kliknięte (X → check), kolor śledzi wyłącznie to, czy
+  wzorzec mieści się w maszynie (amber/indigo → orange) — te dwa wymiary
+  są niezależne (zmiana parametru może zostawić nieaktualny wygenerowany
+  G-code, podczas gdy żywy wzorzec już nie pasuje). Efekt: po Generate
+  z aktywnym ostrzeżeniem badge pokazuje **check na pomarańczowym tle**
+  (zamiast wykrzyknika) — sygnalizuje "wygenerowano, ale sprawdź
+  zakres", odróżnione od "jeszcze nie wygenerowano, i już wiadomo że nie
+  zmieści się" (wykrzyknik na pomarańczowym).
+
 ## [0.8.5] — 2026-08-22
 
 ### Zmieniono

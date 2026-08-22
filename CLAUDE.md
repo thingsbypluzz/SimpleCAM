@@ -579,6 +579,21 @@ przeglądu przez użytkownika.
   wersja reużywała odcieni amber identycznych ze stanem "nie
   wygenerowano", co okazało się nieczytelne/za mało odróżnialne), plus
   grubszy `strokeWidth` na samej ikonie.
+
+  **`0.8.9`** — dwie dalsze poprawki tego samego badge'u. Po pierwsze,
+  przestał znikać przy rozwinięciu Kroku 4 — ten sam badge (mniejsza
+  wersja, `h-6 w-6`) jest teraz też w prawym górnym rogu rozwiniętego
+  panelu, obok nagłówka "Step 4 · G-Code"; logika wyciągnięta do
+  wspólnej `step4Badge()` w `App.tsx`, współdzielonej przez zwinięty
+  pasek i rozwinięty panel. Po drugie, kształt ikony i kolor stały się
+  **niezależnymi wymiarami**: kształt śledzi wyłącznie stan Generate
+  (X → check), kolor śledzi wyłącznie dopasowanie do maszyny
+  (amber/indigo → orange) — bo param może zmienić się po Generate,
+  zostawiając nieaktualny G-code w `generatedGCode` podczas gdy żywy
+  wzorzec już nie mieści się w maszynie. Kombinacja "wygenerowano +
+  nie mieści się" dostała własny wygląd: **check na pomarańczowym
+  tle**, odróżniony od "jeszcze nie wygenerowano + już wiadomo że nie
+  zmieści się" (wykrzyknik na pomarańczowym).
 - **`.gitignore` musi wykluczać `.claude/`** — Tailwind v4
   (`@tailwindcss/vite`) auto-skanuje cały katalog projektu pod kątem nazw
   klas i respektuje tylko `.gitignore` jako listę wykluczeń (bez niego

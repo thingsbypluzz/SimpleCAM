@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect, useState } from 'react'
+import { lazy, Suspense, useEffect, useState, type ComponentType } from 'react'
 import { Step1Positioning } from './components/wizard/Step1Positioning'
 import { Step2Geometry } from './components/wizard/Step2Geometry'
 import { Step3Feeds } from './components/wizard/Step3Feeds'
@@ -67,6 +67,42 @@ function offsetSummary(geometry: GeometryParams): string | null {
   return `(${fmt(geometry.offsetX)};${fmt(geometry.offsetY)})mm`
 }
 
+interface Step4Badge {
+  Icon: ComponentType<{ className?: string }>
+  colorClassName: string
+  title: string
+}
+
+// Shared between the collapsed-bar badge and the persistent top-right
+// badge in the expanded Step 4 panel (see App() body) — both need the
+// exact same icon/color/tooltip, just at different sizes. Icon shape
+// tracks "has Generate been clicked" (X vs check), color tracks "does the
+// current pattern fit the machine" (amber/indigo vs orange) — the two are
+// independent, e.g. a param change can leave stale G-code generated while
+// the live pattern no longer fits. `colorClassName` excludes sizing so
+// each call site can pick its own h-*/w-*.
+function step4Badge(generatedGCode: string[] | null, warnings: string[]): Step4Badge {
+  if (warnings.length > 0) {
+    return {
+      Icon: generatedGCode ? CheckIcon : WarningIcon,
+      colorClassName: 'bg-orange-500 text-black',
+      title: warnings.join(' '),
+    }
+  }
+  if (generatedGCode) {
+    return {
+      Icon: CheckIcon,
+      colorClassName: 'bg-indigo-100 text-indigo-700 dark:bg-indigo-950 dark:text-indigo-300',
+      title: 'G-Code generated',
+    }
+  }
+  return {
+    Icon: XIcon,
+    colorClassName: 'bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-300',
+    title: 'G-Code not generated yet',
+  }
+}
+
 function collapsedStepTitle(stepId: number, params: WizardParams): string {
   switch (stepId) {
     case 1:
@@ -132,6 +168,7 @@ function App() {
   const isGeometryValid =
     isToolDiameterValid(params.geometry) && isStepdownValid(params.feeds) && isStartZValid(params.feeds)
   const fitWarnings = machineFitWarnings(params, machine)
+  const step4BadgeInfo = step4Badge(generatedGCode, fitWarnings)
 
   const handleSaveMachine = (next: typeof machine) => {
     saveMachineSettings(next)
@@ -270,9 +307,19 @@ function App() {
                   key={step.id}
                   className="flex w-[420px] shrink-0 flex-col overflow-y-auto border-r border-slate-200 p-6 dark:border-slate-800"
                 >
-                  <h2 className="mb-4 text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
-                    Step {step.id} · {step.title}
-                  </h2>
+                  <div className="mb-4 flex items-center justify-between gap-2">
+                    <h2 className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+                      Step {step.id} · {step.title}
+                    </h2>
+                    {step.id === 4 && (
+                      <span
+                        className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full ${step4BadgeInfo.colorClassName}`}
+                        title={step4BadgeInfo.title}
+                      >
+                        <step4BadgeInfo.Icon className="h-3.5 w-3.5" />
+                      </span>
+                    )}
+                  </div>
 
                   {step.id === 1 && (
                     <Step1Positioning params={params} onChange={updateParams} />
@@ -428,28 +475,10 @@ function App() {
                 {step.id === 4 && (
                   <>
                     <span
-                      className={
-                        fitWarnings.length > 0
-                          ? 'flex h-8 w-8 items-center justify-center rounded-full bg-orange-500 text-black'
-                          : generatedGCode
-                            ? 'flex h-8 w-8 items-center justify-center rounded-full bg-indigo-100 text-indigo-700 dark:bg-indigo-950 dark:text-indigo-300'
-                            : 'flex h-8 w-8 items-center justify-center rounded-full bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-300'
-                      }
-                      title={
-                        fitWarnings.length > 0
-                          ? fitWarnings.join(' ')
-                          : generatedGCode
-                            ? 'G-Code generated'
-                            : 'G-Code not generated yet'
-                      }
+                      className={`flex h-8 w-8 items-center justify-center rounded-full ${step4BadgeInfo.colorClassName}`}
+                      title={step4BadgeInfo.title}
                     >
-                      {fitWarnings.length > 0 ? (
-                        <WarningIcon className="h-4 w-4" />
-                      ) : generatedGCode ? (
-                        <CheckIcon className="h-4 w-4" />
-                      ) : (
-                        <XIcon className="h-4 w-4" />
-                      )}
+                      <step4BadgeInfo.Icon className="h-4 w-4" />
                     </span>
                     <span className="[writing-mode:vertical-rl] rotate-180 text-xs font-medium text-slate-500 dark:text-slate-400">
                       {step.title}
