@@ -2,10 +2,10 @@ import type { ComponentType } from 'react'
 import { HelixIcon, StandardHoleIcon } from '../components/icons'
 import { generateHelix } from '../lib/helix'
 import { generateStandardHole } from '../lib/standardHole'
-import type { OperationType, WizardParams } from '../types/wizard'
+import type { MethodType, WizardParams } from '../types/wizard'
 
-export interface OperationMeta {
-  value: OperationType
+export interface MethodMeta {
+  value: MethodType
   title: string
   shortLabel: string
   description: string
@@ -17,7 +17,7 @@ export interface OperationMeta {
   }
 }
 
-export const OPERATION_META: Record<OperationType, OperationMeta> = {
+export const METHOD_META: Record<MethodType, MethodMeta> = {
   helix: {
     value: 'helix',
     title: 'Helix Hole',
@@ -46,4 +46,4 @@ export const OPERATION_META: Record<OperationType, OperationMeta> = {
   },
 }
 
-export const OPERATION_LIST: OperationMeta[] = [OPERATION_META.helix, OPERATION_META.standard]
+export const METHOD_LIST: MethodMeta[] = [METHOD_META.helix, METHOD_META.standard]

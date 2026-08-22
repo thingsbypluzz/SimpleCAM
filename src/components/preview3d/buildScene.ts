@@ -159,7 +159,7 @@ export interface BuiltScene {
 
 export function buildToolpathScene(params: WizardParams, isDark: boolean): BuiltScene {
   const theme = isDark ? DARK_THEME : LIGHT_THEME
-  const { geometry, feeds, operation } = params
+  const { geometry, feeds, method } = params
   const points = resolvePoints(geometry)
   const holeRadius = geometry.holeDiameter / 2
   // Guarded against a tool larger than the hole (allowed until Etap 5
@@ -320,7 +320,7 @@ export function buildToolpathScene(params: WizardParams, isDark: boolean): Built
 
     // Actual tool-center toolpath
     const pathPoints =
-      operation === 'helix'
+      method === 'helix'
         ? helixPoints3D(p.x, p.y, toolRadius, geometry.totalDepth, feeds.stepdown, feeds.startZ)
         : standardHolePoints3D(p.x, p.y, toolRadius, geometry.totalDepth, feeds.stepdown, feeds.startZ)
     const pathGeometry = new THREE.BufferGeometry().setFromPoints(pathPoints)

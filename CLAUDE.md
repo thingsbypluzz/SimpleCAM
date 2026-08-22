@@ -28,7 +28,7 @@ Projekt budowany etapami z checkpointami do akceptacji. Aktualny stan:
       hardkodowanymi domyślnymi wartościami, brak realnej logiki G-code).
 - [x] **Etap 1** — silnik G-code jako czyste funkcje TS (`generateHelix`,
       `generateStandardHole`) + testy Vitest.
-- [x] **Etap 2** — integracja silnika z wizardem (`OPERATION_META[...].generate`),
+- [x] **Etap 2** — integracja silnika z wizardem (`METHOD_META[...].generate`),
       podgląd G-code w prawym panelu na żądanie. Przycisk **Generate** żyje
       na Kroku 4 (nad Copy/Download), nie w globalnym prawym panelu —
       współdzieli miejsce z akcjami, które odblokowuje. Każda zmiana
@@ -125,9 +125,9 @@ Projekt budowany etapami z checkpointami do akceptacji. Aktualny stan:
         (`buildScene.ts` — bryła otworu, linia zjazdu) w pełni spójne.
         Walidacja `isStartZValid()` (`startZ ≤ safeZ`).
       - [x] **Krok 1 (STEP 1 SUMMARY):** zwinięty pasek pokazuje obie
-        opcje operacji (Helix + Standard), każda z własną etykietą —
+        opcje metody (Helix + Standard), każda z własną etykietą —
         aktywna w pełnym kolorze, nieaktywna wyszarzona/przygaszona.
-        Iteruje po `OPERATION_LIST` w `App.tsx`.
+        Iteruje po `METHOD_LIST` w `App.tsx`.
       - [x] **Domyślna interpolacja okręgów: G1 (segmented)** zamiast
         G2/G3 (arc) — `DEFAULT_WIZARD_PARAMS.output.interpolation`.
       - [x] **Rectangular Grid (Centered)** — nowy, osobny wariant
@@ -187,10 +187,12 @@ Projekt budowany etapami z checkpointami do akceptacji. Aktualny stan:
         headerze — puste wyszarzone/nieklikalne (pokazują numer slotu),
         zajęte klikalne (klik = load, natychmiastowy, bez potwierdzenia
         — spójnie z resztą appki, która nigdzie indziej nie pyta o
-        niezapisane zmiany), pokazują ikonę operacji, którą przechowują
-        (`OPERATION_META[preset.operation].Icon` zamiast numeru — 0.7.1,
+        niezapisane zmiany), pokazują ikonę metody, którą przechowują
+        (`METHOD_META[preset.method].Icon` zamiast numeru — 0.7.1,
         na życzenie użytkownika: "niech ikonki presetów na górze
-        zapisanych przyjmują obraz operacji jaką przechowują"), i z
+        zapisanych przyjmują obraz operacji jaką przechowują" — ówczesne
+        słowo "operacja" znaczyło to, co dziś "metoda", patrz `0.8.12`
+        niżej), i z
         ikonką "×" przy hoverze do usunięcia (z potwierdzeniem). Zapis
         do slotu — nowa sekcja "Save to preset" na Kroku 4
         (`Step4Output.tsx`), przycisk na slot, z potwierdzeniem przy
@@ -216,14 +218,14 @@ Projekt budowany etapami z checkpointami do akceptacji. Aktualny stan:
       zapisane presety Helix (różny `PositioningMode`, np. pojedynczy
       otwór vs 5 otworów na okręgu) wyglądały identycznie w headerze, bo
       ikona/etykieta presetu kluczowała się po **method**
-      (`OperationType`: Helix/Standard), nie po **pattern**
+      (`MethodType`: Helix/Standard), nie po **pattern**
       (`PositioningMode`: Single/Grid/Grid Centered/N-Holes Circle/
       Custom) — a to właśnie pattern odpowiada na pytanie "co user
       faktycznie zrobił", method tylko na "jak".
       - [x] **Krok 1 = tylko wybór patternu, Krok 2 = wszystko
         liczbowe.** Krok 1 (`Step1Positioning.tsx`, nowy plik) to
         wyłącznie kartowy picker patternu (Single/Grid/Grid Centered/
-        N-Holes Circle/Custom) + placeholdery rodzin (patrz niżej) —
+        N-Holes Circle/Custom) + placeholdery operacji (patrz niżej) —
         celowo "wizualnie lekki", **żadne** pattern-specific pola tam
         nie mieszkają. Krok 2 (`Step2Geometry.tsx`) zostaje z Tool
         Diameter/Hole Diameter/Total Depth i przejmuje **wszystko
@@ -231,16 +233,20 @@ Projekt budowany etapami z checkpointami do akceptacji. Aktualny stan:
         dawnego `Step1Operation.tsx`, logika wyboru 1:1 ale przepisana
         na kompaktowy dwuprzyciskowy toggle — ten sam styl co
         Circle Interpolation (arcs/segments) na Kroku 4, nie duże karty
-        jak w dawnym Kroku 1 Operation, bo tu jest to jedno z kilku pól
+        jak w dawnym Kroku 1 Operation (ówczesna nazwa ekranu wyboru
+        Helix/Standard, dziś Method — nie mylić z dzisiejszym znaczeniem
+        słowa "Operation", patrz `0.8.12` niżej), bo tu jest to jedno z
+        kilku pól
         drugorzędnych, nie jedyna treść kroku), pattern-specific pola
         (grid X/Y, circle count/diameter/start angle, custom points
         textarea) i blok Offset X/Y — dokładnie jak ustalono w
         `/grill-me` ("Krok 2 zostaje z tym, czym jest dziś sekcja
         Geometry minus sam wybór trybu positioning, plus dołożony
         toggle method"). Zero zmian w `WizardParams`/typach —
-        `operation` i `geometry.positioning` były już niezależnymi
-        polami `WizardParams` (żadne nie zagnieżdżone w drugim), to
-        czysta reorganizacja UI/wiring.
+        `method` (nazwane wtedy `operation`, patrz `0.8.12` niżej) i
+        `geometry.positioning` były już niezależnymi polami
+        `WizardParams` (żadne nie zagnieżdżone w drugim), to czysta
+        reorganizacja UI/wiring.
       - [x] **Podwójne parametry (X/Y) renderowane w jednej linii, nie
         jeden pod drugim** — Grid X/Y i Offset X/Y w `Step2Geometry.tsx`
         to teraz dwa `FieldRow` obok siebie (`flex gap-4`, każdy
@@ -265,14 +271,15 @@ Projekt budowany etapami z checkpointami do akceptacji. Aktualny stan:
         każdym kolejnym grupowaniu pól w wiersz (np. Circle
         Diameter/Start Angle, gdyby kiedyś też miały iść obok siebie).
       - [x] **Krok 1 nie auto-advance'uje** po kliknięciu patternu (w
-        przeciwieństwie do dawnego Kroku 1 Operation, który
+        przeciwieństwie do dawnego Kroku 1 Operation — ówczesna nazwa
+        ekranu wyboru Helix/Standard, dziś Method — który
         auto-advance'ował na klik) — ustalone z userem: spójność z
         resztą wizarda, który nigdzie indziej nie auto-advance'uje na
         wybór, wymaga przycisku Next jak pozostałe kroki
         (`STEPS_WITH_NEXT_BUTTON` rozszerzony z `Set([2, 3])` na
         `Set([1, 2, 3])`).
       - [x] **Nowy `src/config/positioningMeta.ts`** — analogiczny do
-        `config/operationMeta.ts`, jedno źródło prawdy dla wszystkiego
+        `config/methodMeta.ts`, jedno źródło prawdy dla wszystkiego
         zależnego od `PositioningMode` (wcześniej rozproszone jako
         lokalne funkcje w `App.tsx`): `POSITIONING_META`/
         `POSITIONING_LIST` (karty Kroku 1, tytuł/opis/ikona per mode),
@@ -283,7 +290,7 @@ Projekt budowany etapami z checkpointami do akceptacji. Aktualny stan:
         (filename-safe slug, np. `"5holes-circle"`, `"grid-centered"`).
       - [x] **Ikona/etykieta presetu w headerze — pattern jako główna
         tożsamość.** Header (`App.tsx`) i `presetLabel()`
-        (`src/lib/presetLabel.ts`) przeszły z `OPERATION_META[operation]
+        (`src/lib/presetLabel.ts`) przeszły z `METHOD_META[method]
         .Icon`/`shortLabel` na `positioningIcon(geometry.positioning)`/
         `patternLabel(geometry)`. `presetLabel()` zmienia się z
         `"Helix • ⌀8mm, 4mm deep"` na `"5-Holes Circle • Helix •
@@ -293,7 +300,7 @@ Projekt budowany etapami z checkpointami do akceptacji. Aktualny stan:
         ikony/etykiety zamiast identycznych.
       - [x] **Nazwa pliku wyjściowego — pattern zamiast method.**
         `buildFilename()` (`src/lib/download.ts`) zmienia sygnaturę z
-        `(operation: OperationType)` na `(params: WizardParams)`,
+        `(method: MethodType)` na `(params: WizardParams)`,
         `simplecam-<operacja>-<data>.gcode` →
         `simplecam-<pattern>-<data>.gcode` (np.
         `simplecam-5holes-circle-2026-08-20.gcode`).
@@ -301,26 +308,29 @@ Projekt budowany etapami z checkpointami do akceptacji. Aktualny stan:
         schematu** — `geometry.positioning` był już częścią zapisanego
         `WizardParams` JSON-u, zmieniła się wyłącznie logika odczytu
         (`presetLabel.ts`, header), nie sam zapis.
-      - [x] **Placeholdery przyszłych rodzin operacji** (Outline/Pocket/
+      - [x] **Placeholdery przyszłych operacji** (Outline/Pocket/
         Surface) w `Step1Positioning.tsx`: "Hole(s)" aktywny (dziś jedyna
-        realna rodzina), pozostałe trzy wyszarzone/nieklikalne z etykietą
+        realna operacja), pozostałe trzy wyszarzone/nieklikalne z etykietą
         "Coming soon". Pierwotnie (0.8.0) rząd 4 kafelków w poziomym
         gridzie nad listą patternów — **w 0.8.2 przełożone na pionowy
         stos** (patrz bullet niżej), ale sam koncept placeholderów bez
         zmian. Czysto wizualne — świadomie **nie** modelowane jako pole
-        `family` w `WizardParams`/typach, dopóki istnieje tylko jedna
-        realna rodzina (unikanie projektowania pod hipotetyczne
-        wymagania). Każda przyszła rodzina — `FAM-1` (Outline), `FAM-2`
-        (Pocket), `FAM-3` (Surface), patrz sekcja "Przyszłe rodziny
-        operacji" niżej — wymaga własnej sesji `/grill-me` przed realną
-        implementacją — patrz `ideas.md` dla pełnego zapisu dyskusji nt.
-        docelowej taksonomii (rodzina → pattern/sub-choice → parametry).
-      - [x] **0.8.2 — Krok 1 przebudowany na pionowy stos rodzin**
+        `operation`/`family` w `WizardParams`/typach, dopóki istnieje
+        tylko jedna realna operacja (unikanie projektowania pod
+        hipotetyczne wymagania). Każda przyszła operacja — `OP-1`
+        (Outline), `OP-2` (Pocket), `OP-3` (Surface), patrz sekcja
+        "Przyszłe operacje" niżej — wymaga własnej sesji `/grill-me`
+        przed realną implementacją — patrz `ideas.md` dla pełnego zapisu
+        dyskusji nt. docelowej taksonomii (operacja → pattern/sub-choice
+        → parametry; ta sesja jeszcze mówiła o "rodzinach", patrz `0.8.12`
+        niżej po zmianę nazewnictwa).
+      - [x] **0.8.2 — Krok 1 przebudowany na pionowy stos operacji**
         (zamiast poziomego gridu 4 kolumn + oddzielnej listy dużych kart
         patternu poniżej). Feedback po sesji `/grill-me`: karty patternu
-        były za duże względem paska Family, a podział na dwie sekcje nie
-        oddawał relacji "pattern należy do Hole(s)". Rodziny (Hole(s),
-        Outline, Pocket, Surface) są teraz pełnej szerokości wierszami,
+        były za duże względem paska rodzin (dawna nazwa, patrz `0.8.12`),
+        a podział na dwie sekcje nie oddawał relacji "pattern należy do
+        Hole(s)". Operacje (Hole(s), Outline, Pocket, Surface) są teraz
+        pełnej szerokości wierszami,
         jeden pod drugim — ten sam pomysł co akordeon 4 kroków wizarda,
         zagnieżdżony jeden poziom głębiej. **Hole(s)** to jedyna
         rozwinięta/aktywna sekcja: pogrubiony, większy nagłówek "Hole(s)"
@@ -350,6 +360,38 @@ Projekt budowany etapami z checkpointami do akceptacji. Aktualny stan:
         na 0.1, na Stepdown (Krok 3) na 0.05 — precyzja setnych nadal
         osiągalna wpisaniem z klawiatury, `step` HTML wpływa tylko na
         wielkość skoku spinnera.
+      - [x] **`0.8.12` — terminologia "Operation" przepisana na rodzinę,
+        stare znaczenie (Helix/Standard) przechrzczone na "Method".**
+        Wynikło z drobnej prośby o zmianę tekstu nagłówka Kroku 1
+        ("Pattern" → "Operation & Pattern"), która ujawniła kolizję: słowo
+        "Operation" było już zajęte w kodzie (`OperationType`,
+        `OPERATION_META`, pole `WizardParams.operation`) przez koncept
+        Helix/Standard — od dawna zresztą user-facing nazywany "Method"
+        (rząd "Method: [Helix][Standard]" na Kroku 2 istniał już od
+        Etapu 6). Ustalono w rozmowie: user chce, żeby "Operation" znaczyło
+        to, co dotąd nazywało się "rodzina"/"family" (Hole(s) dziś,
+        Outline/Pocket/Surface w przyszłości) — bliższe temu, co user
+        faktycznie kojarzy ze słowem w kontekście appki. Stąd
+        dwukierunkowa zamiana, czysto nazewnicza (zero zmian w zachowaniu):
+        - `OperationType`/`WizardParams.operation`/`OPERATION_META`/
+          `OPERATION_LIST` (`config/operationMeta.ts`) → `MethodType`/
+          `WizardParams.method`/`METHOD_META`/`METHOD_LIST`
+          (`config/methodMeta.ts`, plik przemianowany). Bez migracji
+          zapisanych presetów w `localStorage` (świadoma decyzja, jak
+          przy `BL-2` — jednoosobowy projekt w fazie testów): stary klucz
+          `operation` w już zapisanym JSON-ie jest po prostu ignorowany,
+          `method` wraca do domyślnego Helix.
+        - `FAMILY_PLACEHOLDERS` (`Step1Positioning.tsx`) →
+          `OPERATION_PLACEHOLDERS`; `FAM-#` (schemat referencyjny dla
+          Outline/Pocket/Surface) → `OP-#`, sekcja "Przyszłe rodziny
+          operacji" → "Przyszłe operacje" (patrz niżej). Renderowane
+          napisy ("Hole(s)", "Outline", "Pocket", "Surface", "Coming
+          soon") bez zmian.
+        Historyczne wzmianki gdzie indziej w tym pliku o dawnym "Kroku 1
+        Operation" (sprzed reorganizacji Etapu 6, ekran wyboru
+        Helix/Standard) dostały dopisek disambiguujący — to inny,
+        wcześniejszy byt niż dzisiejsze znaczenie słowa "Operation", nie
+        pomyłka.
 
 ## Backlog (`BL-#`)
 
@@ -362,16 +404,16 @@ regrupowaniu/reprioritetyzacji — to czysty identyfikator do odnoszenia
 się w rozmowie ("zrób BL-4"), świadomie odróżniony od **Etapu**
 (Etap = ukończony, numerowany kamień milowy w historii projektu, patrz
 "Status / Etapy" wyżej — BL-# to coś jeszcze nieruszonego). Osobna,
-większa kategoria — całe przyszłe rodziny operacji (Outline/Pocket/
-Surface) — dostaje własny, celowo odróżniony schemat `FAM-#`, patrz
-sekcja "Przyszłe rodziny operacji" niżej.
+większa kategoria — całe przyszłe operacje (Outline/Pocket/Surface) —
+dostaje własny, celowo odróżniony schemat `OP-#`, patrz sekcja
+"Przyszłe operacje" niżej.
 
 Ta sama lista, wizualnie — pogrupowana etapami trudności i z kolorowym
 oznaczeniem 🟢/🟠/🔴 — jest opublikowana jako Artifact:
 **<https://claude.ai/code/artifact/e90a2f5c-932c-4772-804e-0fe155ab32a0>**.
 
 **Zasada — trzymać oba źródła w zgodzie:** po wdrożeniu zmiany
-odpowiadającej któremuś `BL-#`/`FAM-#` (patrz niżej) — usunąć/oznaczyć
+odpowiadającej któremuś `BL-#`/`OP-#` (patrz niżej) — usunąć/oznaczyć
 jako zrobiony bullet w tym pliku (jak dotychczas przy Etapach) **i**
 zaktualizować Artifact pod tym samym URL (republikacja z `url`
 ustawionym na powyższy link, nie nowa publikacja) — usunąć pozycję z
@@ -380,28 +422,30 @@ Artifact szybko rozjeżdża się ze stanem faktycznym, dokładnie jak
 wcześniej rozjechał się sam CLAUDE.md względem kodu (patrz poprawki z
 2026-08-21 opisane przy Etapie 4).
 
-## Przyszłe rodziny operacji (`FAM-#`)
+## Przyszłe operacje (`OP-#`)
 
 Osobna, celowo **nie** `BL-#` kategoria — Outline/Pocket/Surface (patrz
 placeholdery w `Step1Positioning.tsx`, Etap 6) to nie drobne poprawki
 tylko kamienie milowe wielkości całego Etapu, każdy z własną, dziś
-nieznaną taksonomią (rodzina → pattern/sub-choice → parametry, patrz
-`ideas.md`). Numer `FAM-#` jest identyfikatorem, nie kolejnością
+nieznaną taksonomią (operacja → pattern/sub-choice → parametry, patrz
+`ideas.md`). Numer `OP-#` jest identyfikatorem, nie kolejnością
 realizacji — żadna z trzech nie jest dziś zaplanowana jako "następna"
-względem pozostałych.
+względem pozostałych. (Do `0.8.12` ten schemat nazywał się `FAM-#`
+["family"] — patrz nota niżej przy Etapie 6 po pełne uzasadnienie
+zmiany.)
 
-- **`FAM-1` — Outline.** Frezowanie po konturze (kontur zamknięty lub
+- **`OP-1` — Outline.** Frezowanie po konturze (kontur zamknięty lub
   otwarty) — najbliższe koncepcyjnie już zaplanowanemu `BL-6` (Rectangle
   Cut Out), który można traktować jako pierwszy, najprostszy przypadek
-  tej rodziny (prostokąt = szczególny przypadek konturu).
-- **`FAM-2` — Pocket.** Kieszeniowanie — wybieranie materiału wewnątrz
+  tej operacji (prostokąt = szczególny przypadek konturu).
+- **`OP-2` — Pocket.** Kieszeniowanie — wybieranie materiału wewnątrz
   zamkniętego konturu (nie tylko po samej linii), wymaga strategii
   wypełnienia (np. zigzag/spiral) nieobecnej dziś w silniku w ogóle.
-- **`FAM-3` — Surface.** Planowanie/frezowanie powierzchni (face
+- **`OP-3` — Surface.** Planowanie/frezowanie powierzchni (face
   milling) — inny paradygmat niż "otwór"/"kontur": wejściem jest
   obszar, nie ścieżka.
 
-**Każda z `FAM-#` wymaga własnej, pełnej sesji `/grill-me` przed
+**Każda z `OP-#` wymaga własnej, pełnej sesji `/grill-me` przed
 napisaniem jakiegokolwiek kodu** — nieporównywalnie większy zakres
 otwartych decyzji niż `BL-#` (patrz `ideas.md` dla pełnego zapisu
 wcześniejszej dyskusji nt. docelowej taksonomii). Z tego powodu
@@ -414,7 +458,7 @@ Artifact pokazuje je jako osobną sekcję, nie jako kolorowe
 Większe rozszerzenia zakresu — nie polish istniejących operacji, tylko
 nowa funkcjonalność. Nie zaczynać bez wyraźnego "przechodzimy do X".
 
-- **`BL-6`** — **Nowa operacja: "Rectangle Cut Out"** — trzecia operacja obok Helix i
+- **`BL-6`** — **Nowa metoda: "Rectangle Cut Out"** — trzecia metoda obok Helix i
   Standard Hole, wycinanie prostokątnego konturu. Parametry:
   - **Tryb cięcia:** Inside / Outside / On-line — offset ścieżki
     narzędzia względem narysowanego prostokąta (Inside: ścieżka do środka
@@ -428,8 +472,8 @@ nowa funkcjonalność. Nie zaczynać bez wyraźnego "przechodzimy do X".
     od **lewego dolnego rogu** — do wyboru (analogicznie do pomysłu
     "Rectangular Grid centered at 0,0" wyżej, ale tu dla samego kształtu
     wycinanego, nie dla pozycjonowania wielu otworów).
-  - Wymaga: nowej wartości `OperationType` (`'rectangleCutOut'`), nowego
-    wpisu w `OPERATION_META`, nowego modułu w `src/lib/` (z własnymi
+  - Wymaga: nowej wartości `MethodType` (`'rectangleCutOut'`), nowego
+    wpisu w `METHOD_META`, nowego modułu w `src/lib/` (z własnymi
     testami — offset/tabs to nietrywialna geometria, inna niż okrąg),
     nowej sekcji parametrów w UI (prawdopodobnie nowy krok albo
     rozszerzenie Kroku 2), oraz sprawdzenia czy podgląd 2D/3D (które dziś
@@ -663,14 +707,14 @@ src/
                               (Machine Settings, `BL-9`) — celowo osobny plik
                               od `wizard.ts`, to inny rodzaj danych (jeden
                               globalny obiekt, nie WizardParams)
-  config/operationMeta.ts   — rejestr metadanych per-method (Helix/Standard:
+  config/methodMeta.ts      — rejestr metadanych per-method (Helix/Standard:
                               nazwy, ikony, etykiety, `generate()`) — jedno
                               źródło prawdy, nie hardkodować ternary po
-                              `operation` w komponentach
+                              `method` w komponentach
   config/positioningMeta.ts — rejestr metadanych per-pattern (Single/Grid/
                               Grid Centered/N-Holes Circle/Custom: nazwy,
                               ikony, opisy dla kart Kroku 1) — analogicznie
-                              do `operationMeta.ts`, ale dla
+                              do `methodMeta.ts`, ale dla
                               `PositioningMode`. Też: `positioningIcon()`/
                               `positioningLines()`/`positioningSummary()`
                               (zwinięte paski Kroku 1), `patternLabel()`
@@ -683,8 +727,8 @@ src/
                               projektowe" wyżej po pełny opis
   components/wizard/        — komponenty poszczególnych kroków wizarda.
                               `Step1Positioning.tsx` = wyłącznie pattern
-                              picker + placeholdery rodzin, nic liczbowego;
-                              od 0.8.2 pionowy stos rodzin (Hole(s)
+                              picker + placeholdery operacji, nic liczbowego;
+                              od 0.8.2 pionowy stos operacji (Hole(s)
                               rozwinięta z kompaktową listą patternów w
                               środku), nie poziomy grid + duże karty.
                               `Step2Geometry.tsx` = Tool/Hole Diameter,
@@ -931,15 +975,15 @@ src/
                                  ten sam try/catch + merge-z-defaultami co
                                  storage.ts, ale bez systemu slotów (jeden
                                  płaski obiekt)
-    *.test.ts                    — testy Vitest (92 testy, `npm run test`)
+    *.test.ts                    — testy Vitest (93 testy, `npm run test`)
   App.tsx                    — orkiestracja stanu wizarda i nawigacji kroków
 ```
 
 **Zasada:** wszystko co zależy od wybranego method (Helix vs Standard —
 nazwa, ikona, etykiety pól, **oraz funkcja generująca G-code**: `generate`)
-idzie przez `OPERATION_META` w `config/operationMeta.ts`, nie przez
-rozproszone `operation === 'helix' ? ...` w komponentach. Wywołanie
-`OPERATION_META[params.operation].generate(params)` to jedyne miejsce,
+idzie przez `METHOD_META` w `config/methodMeta.ts`, nie przez
+rozproszone `method === 'helix' ? ...` w komponentach. Wywołanie
+`METHOD_META[params.method].generate(params)` to jedyne miejsce,
 które powinno wołać silnik — nie importować `generateHelix`/
 `generateStandardHole` bezpośrednio w komponentach UI. Analogicznie —
 wszystko co zależy od wybranego patternu (Single/Grid/Grid Centered/

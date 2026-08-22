@@ -1,4 +1,4 @@
-export type OperationType = 'helix' | 'standard'
+export type MethodType = 'helix' | 'standard'
 
 export type PositioningMode = 'single' | 'grid' | 'gridCentered' | 'circle' | 'custom'
 
@@ -42,14 +42,14 @@ export interface OutputOptions {
 }
 
 export interface WizardParams {
-  operation: OperationType
+  method: MethodType
   geometry: GeometryParams
   feeds: FeedsParams
   output: OutputOptions
 }
 
 export const DEFAULT_WIZARD_PARAMS: WizardParams = {
-  operation: 'helix',
+  method: 'helix',
   geometry: {
     toolDiameter: 3.175,
     holeDiameter: 8,

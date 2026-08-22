@@ -6,12 +6,12 @@ interface Step1PositioningProps {
   onChange: (patch: Partial<WizardParams>) => void
 }
 
-// Placeholder rows for future operation families (see CLAUDE.md /
+// Placeholder rows for future operations (see CLAUDE.md /
 // ideas.md "Reorganizacja taksonomii wizarda") — purely visual, no
-// WizardParams field backs these, since Hole(s) is the only real family
-// today. Not worth a dedicated icon per family yet (nothing to
-// distinguish visually beyond the label until the family actually exists).
-const FAMILY_PLACEHOLDERS = ['Outline', 'Pocket', 'Surface']
+// WizardParams field backs these, since Hole(s) is the only real operation
+// today. Not worth a dedicated icon per operation yet (nothing to
+// distinguish visually beyond the label until the operation actually exists).
+const OPERATION_PLACEHOLDERS = ['Outline', 'Pocket', 'Surface']
 
 export function Step1Positioning({ params, onChange }: Step1PositioningProps) {
   const { geometry } = params
@@ -45,7 +45,7 @@ export function Step1Positioning({ params, onChange }: Step1PositioningProps) {
         </div>
       </div>
 
-      {FAMILY_PLACEHOLDERS.map((label) => (
+      {OPERATION_PLACEHOLDERS.map((label) => (
         <div
           key={label}
           className="flex cursor-not-allowed items-center justify-between rounded-lg border border-dashed border-slate-200 px-3 py-2 opacity-60 dark:border-slate-700"

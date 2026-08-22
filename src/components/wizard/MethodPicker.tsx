@@ -1,5 +1,5 @@
 import type { WizardParams } from '../../types/wizard'
-import { OPERATION_LIST } from '../../config/operationMeta'
+import { METHOD_LIST } from '../../config/methodMeta'
 
 interface MethodPickerProps {
   params: WizardParams
@@ -13,14 +13,14 @@ interface MethodPickerProps {
 export function MethodPicker({ params, onChange }: MethodPickerProps) {
   return (
     <div className="flex gap-2">
-      {OPERATION_LIST.map((op) => {
-        const isSelected = params.operation === op.value
+      {METHOD_LIST.map((method) => {
+        const isSelected = params.method === method.value
         return (
           <button
-            key={op.value}
+            key={method.value}
             type="button"
-            onClick={() => onChange({ operation: op.value })}
-            title={op.description}
+            onClick={() => onChange({ method: method.value })}
+            title={method.description}
             className={[
               'rounded-md border px-2.5 py-1 text-xs font-medium transition',
               isSelected
@@ -28,7 +28,7 @@ export function MethodPicker({ params, onChange }: MethodPickerProps) {
                 : 'border-slate-200 text-slate-600 hover:border-slate-300 dark:border-slate-700 dark:text-slate-400',
             ].join(' ')}
           >
-            {op.shortLabel}
+            {method.shortLabel}
           </button>
         )
       })}

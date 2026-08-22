@@ -1,4 +1,4 @@
-import { OPERATION_META } from '../config/operationMeta'
+import { METHOD_META } from '../config/methodMeta'
 import { patternLabel } from '../config/positioningMeta'
 import type { WizardParams } from '../types/wizard'
 
@@ -8,6 +8,6 @@ import type { WizardParams } from '../types/wizard'
 // different pattern must look distinct — see CLAUDE.md "Reorganizacja
 // taksonomii"), method and hole diameter are secondary.
 export function presetLabel(params: WizardParams): string {
-  const { shortLabel } = OPERATION_META[params.operation]
+  const { shortLabel } = METHOD_META[params.method]
   return `${patternLabel(params.geometry)} • ${shortLabel} • ⌀${params.geometry.holeDiameter}mm`
 }

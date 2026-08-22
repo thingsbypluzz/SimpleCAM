@@ -52,7 +52,7 @@ export function buildFooter(params: WizardParams): string[] {
 }
 
 // Shared assembly: header, then for each resolved point a rapid move to its
-// XY followed by the operation-specific toolpath and a retract to Safe Z,
+// XY followed by the method-specific toolpath and a retract to Safe Z,
 // then footer. `toolpathForPoint` only needs to know about depth/feeds —
 // positioning and Safe-Z bookkeeping are handled once, here.
 export function assembleProgram(

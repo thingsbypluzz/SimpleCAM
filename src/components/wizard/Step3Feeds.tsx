@@ -1,6 +1,6 @@
 import type { WizardParams } from '../../types/wizard'
 import type { MachineSettings } from '../../types/machine'
-import { OPERATION_META } from '../../config/operationMeta'
+import { METHOD_META } from '../../config/methodMeta'
 import { isStartZValid, isStepdownValid } from '../../lib/validation'
 import { FieldRow, inputClass } from './FieldRow'
 
@@ -11,14 +11,14 @@ interface Step3FeedsProps {
 }
 
 export function Step3Feeds({ params, onChange, machine }: Step3FeedsProps) {
-  const { feeds, operation } = params
+  const { feeds, method } = params
 
   const updateFeeds = (patch: Partial<WizardParams['feeds']>) =>
     onChange({ feeds: { ...feeds, ...patch } })
 
   return (
     <div className="flex flex-col gap-4">
-      <FieldRow label={OPERATION_META[operation].stepdown.fieldLabel}>
+      <FieldRow label={METHOD_META[method].stepdown.fieldLabel}>
         <input
           type="number"
           step="0.05"

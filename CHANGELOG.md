@@ -7,6 +7,111 @@ zgodne z [SemVer](https://semver.org/). Ten plik pozostaje głównym, czytelnym
 thingsbypluzz/SimpleCAM), ale to infrastruktura pod izolację pracy
 (branch/worktree per zadanie), nie zamiennik tego changeloga.
 
+## [0.8.12] — 2026-08-22
+
+### Zmieniono
+
+- **Terminologia "Operation" przepisana na przyszłą rodzinę operacji
+  (Hole(s)/Outline/Pocket/Surface), stare znaczenie (Helix/Standard)
+  przechrzczone na "Method".** Wynikło z drobnej prośby o zmianę
+  nagłówka Kroku 1 ("Pattern" → "Operation & Pattern"), która ujawniła
+  kolizję: "Operation" było już zajęte w kodzie (`OperationType`,
+  `OPERATION_META`, pole `WizardParams.operation`) przez koncept
+  Helix/Standard — od dawna user-facing nazywany "Method". Ustalono w
+  rozmowie: user chce, żeby "Operation" znaczyło to, co dotąd nazywało
+  się "rodzina"/"family" (Hole(s) dziś, Outline/Pocket/Surface w
+  przyszłości). Czysto nazewnicza zmiana, zero różnicy w zachowaniu:
+  - `OperationType`/`WizardParams.operation`/`OPERATION_META`/
+    `OPERATION_LIST` (`config/operationMeta.ts`) → `MethodType`/
+    `WizardParams.method`/`METHOD_META`/`METHOD_LIST`
+    (`config/methodMeta.ts`, plik przemianowany). Bez migracji
+    zapisanych presetów w `localStorage` — stary klucz `operation` w
+    już zapisanym JSON-ie jest ignorowany, `method` wraca do domyślnego
+    Helix (świadoma decyzja, jak przy `BL-2`).
+  - `FAMILY_PLACEHOLDERS` (`Step1Positioning.tsx`) →
+    `OPERATION_PLACEHOLDERS`; `FAM-#` (schemat referencyjny dla
+    Outline/Pocket/Surface) → `OP-#`, sekcja CLAUDE.md "Przyszłe
+    rodziny operacji" → "Przyszłe operacje". Renderowane napisy
+    ("Hole(s)", "Outline", "Pocket", "Surface", "Coming soon") bez
+    zmian. Backlog artifact zaktualizowany pod tym samym URL.
+
+## [0.8.11] — 2026-08-22
+
+### Dodano
+
+- **`BL-1` — górny limit na Hole Count (N-Holes on Circle).** Nowa
+  `isCircleHoleCountValid()` + stała `MAX_CIRCLE_HOLE_COUNT = 100` w
+  `src/lib/validation.ts`, dołączona do `isGeometryValid` w `App.tsx` —
+  ten sam wzorzec co Tool Diameter/Stepdown/Start Z (twardy blok
+  Generate + czerwony inline error pod polem w Kroku 2), nie miękki
+  soft-warning z `BL-9` — sesja `/grill-me` potwierdziła, że 101+
+  otworów to "na pewno bez sensu", nie "może się nie zmieścić", więc
+  pasuje tu pewność, nie ostrzeżenie. Limit czysto arbitralny (w
+  odróżnieniu od `BL-9` nie ma tu żadnej fizycznej wielkości do
+  wyprowadzenia progu) — walidacja jest wyciszona (`true`) poza trybem
+  `circle`, żeby nie blokować Generate przez pole, którego w danym
+  trybie nawet nie widać.
+
+## [0.8.10] — 2026-08-22
+
+### Zmieniono
+
+- **Badge w rozwiniętym Kroku 4 wyrównany rozmiarem do zwiniętego
+  paska.** `0.8.9` wprowadziło mniejszą wersję (`h-6 w-6`) w rozwiniętym
+  panelu — nieczytelną. Teraz oba miejsca renderują ten sam rozmiar
+  (`h-8 w-8`, ikona `h-4 w-4`).
+- **Pomarańcz na badge'u ostrzeżenia zmieniony na pastelowy
+  (`bg-orange-200` zamiast `bg-orange-500`).** Czarny wykrzyknik/check
+  na nasyconym `orange-500` był słabo czytelny — jaśniejsze tło
+  poprawia kontrast z czarnym symbolem w środku.
+
+## [0.8.9] — 2026-08-22
+
+### Zmieniono
+
+- **Badge Kroku 4 przetrwał rozwinięcie panelu.** Dotąd znikał w
+  momencie przejścia na Krok 4 (zwinięty pasek z ikonką zamieniał się
+  w pełny panel bez żadnego odpowiednika), co sprawiało wrażenie, że
+  problem zniknął. Ten sam badge (mniejsza wersja, `h-6 w-6`) jest teraz
+  też w prawym górnym rogu rozwiniętego panelu, obok nagłówka "Step 4 ·
+  G-Code". Logika wyciągnięta do wspólnej `step4Badge()` w `App.tsx`,
+  współdzielonej przez zwinięty pasek i rozwinięty panel — jedno źródło
+  prawdy zamiast dwóch kopii warunków.
+- **Kombinacja "wygenerowano + nadal nie mieści się w maszynie" dostała
+  własny, odróżnialny stan.** Kształt ikony śledzi wyłącznie to, czy
+  Generate zostało kliknięte (X → check), kolor śledzi wyłącznie to, czy
+  wzorzec mieści się w maszynie (amber/indigo → orange) — te dwa wymiary
+  są niezależne (zmiana parametru może zostawić nieaktualny wygenerowany
+  G-code, podczas gdy żywy wzorzec już nie pasuje). Efekt: po Generate
+  z aktywnym ostrzeżeniem badge pokazuje **check na pomarańczowym tle**
+  (zamiast wykrzyknika) — sygnalizuje "wygenerowano, ale sprawdź
+  zakres", odróżnione od "jeszcze nie wygenerowano, i już wiadomo że nie
+  zmieści się" (wykrzyknik na pomarańczowym).
+
+## [0.8.8] — 2026-08-22
+
+### Zmieniono
+
+- **Czytelność `WarningIcon` na badge'u Kroku 4.** Pierwsza wersja
+  (amber-100 tło, amber-700 ikona — te same odcienie co stan "nie
+  wygenerowano") była za mało odróżnialna. Poprawione: stałe
+  `bg-orange-500 text-black` (bez wariantu dark — świadomie ten sam
+  mocny kontrast w obu motywach, ostrzeżenie nie ma się "wtapiać"),
+  grubszy `strokeWidth` (3.2 zamiast wspólnego 1.8 z innych ikon) i
+  większa kropka wykrzyknika.
+
+## [0.8.7] — 2026-08-22
+
+### Zmieniono
+
+- **Badge zwiniętego Kroku 4 sygnalizuje przekroczenie zakresu
+  maszyny.** Nowa `WarningIcon` (`components/icons.tsx`) zastępuje
+  dotychczasowy `CheckIcon`/`XIcon` w pasku Kroku 4, gdy
+  `machineFitWarnings()` zwraca choć jedno ostrzeżenie — ma priorytet
+  nad stanem "wygenerowano"/"nie wygenerowano", bo "wygenerowane, ale
+  nie mieści się w maszynie" nadal wymaga uwagi na pierwszy rzut oka.
+  Tooltip paska pokazuje treść ostrzeżeń.
+
 ## [0.8.6] — 2026-08-22
 
 ### Dodano
@@ -37,83 +142,6 @@ thingsbypluzz/SimpleCAM), ale to infrastruktura pod izolację pracy
     która faktycznie przekracza skok maszyny (rozpiętość wzorca
     max−min ≤ travel, plus `safeZ + totalDepth ≤ travelZ` dla Z). Nie
     blokuje Generate — decyzja zostaje przy operatorze.
-
-## [0.8.7] — 2026-08-22
-
-### Zmieniono
-
-- **Badge zwiniętego Kroku 4 sygnalizuje przekroczenie zakresu
-  maszyny.** Nowa `WarningIcon` (`components/icons.tsx`) zastępuje
-  dotychczasowy `CheckIcon`/`XIcon` w pasku Kroku 4, gdy
-  `machineFitWarnings()` zwraca choć jedno ostrzeżenie — ma priorytet
-  nad stanem "wygenerowano"/"nie wygenerowano", bo "wygenerowane, ale
-  nie mieści się w maszynie" nadal wymaga uwagi na pierwszy rzut oka.
-  Tooltip paska pokazuje treść ostrzeżeń.
-
-## [0.8.8] — 2026-08-22
-
-### Zmieniono
-
-- **Czytelność `WarningIcon` na badge'u Kroku 4.** Pierwsza wersja
-  (amber-100 tło, amber-700 ikona — te same odcienie co stan "nie
-  wygenerowano") była za mało odróżnialna. Poprawione: stałe
-  `bg-orange-500 text-black` (bez wariantu dark — świadomie ten sam
-  mocny kontrast w obu motywach, ostrzeżenie nie ma się "wtapiać"),
-  grubszy `strokeWidth` (3.2 zamiast wspólnego 1.8 z innych ikon) i
-  większa kropka wykrzyknika.
-
-## [0.8.9] — 2026-08-22
-
-### Zmieniono
-
-- **Badge Kroku 4 przetrwał rozwinięcie panelu.** Dotąd znikał w
-  momencie przejścia na Krok 4 (zwinięty pasek z ikonką zamieniał się
-  w pełny panel bez żadnego odpowiednika), co sprawiało wrażenie, że
-  problem zniknął. Ten sam badge (mniejsza wersja, `h-6 w-6`) jest teraz
-  też w prawym górnym rogu rozwiniętego panelu, obok nagłówka "Step 4 ·
-  G-Code". Logika wyciągnięta do wspólnej `step4Badge()` w `App.tsx`,
-  współdzielonej przez zwinięty pasek i rozwinięty panel — jedno źródło
-  prawdy zamiast dwóch kopii warunków.
-- **Kombinacja "wygenerowano + nadal nie mieści się w maszynie" dostała
-  własny, odróżnialny stan.** Kształt ikony śledzi wyłącznie to, czy
-  Generate zostało kliknięte (X → check), kolor śledzi wyłącznie to, czy
-  wzorzec mieści się w maszynie (amber/indigo → orange) — te dwa wymiary
-  są niezależne (zmiana parametru może zostawić nieaktualny wygenerowany
-  G-code, podczas gdy żywy wzorzec już nie pasuje). Efekt: po Generate
-  z aktywnym ostrzeżeniem badge pokazuje **check na pomarańczowym tle**
-  (zamiast wykrzyknika) — sygnalizuje "wygenerowano, ale sprawdź
-  zakres", odróżnione od "jeszcze nie wygenerowano, i już wiadomo że nie
-  zmieści się" (wykrzyknik na pomarańczowym).
-
-## [0.8.10] — 2026-08-22
-
-### Zmieniono
-
-- **Badge w rozwiniętym Kroku 4 wyrównany rozmiarem do zwiniętego
-  paska.** `0.8.9` wprowadziło mniejszą wersję (`h-6 w-6`) w rozwiniętym
-  panelu — nieczytelną. Teraz oba miejsca renderują ten sam rozmiar
-  (`h-8 w-8`, ikona `h-4 w-4`).
-- **Pomarańcz na badge'u ostrzeżenia zmieniony na pastelowy
-  (`bg-orange-200` zamiast `bg-orange-500`).** Czarny wykrzyknik/check
-  na nasyconym `orange-500` był słabo czytelny — jaśniejsze tło
-  poprawia kontrast z czarnym symbolem w środku.
-
-## [0.8.11] — 2026-08-22
-
-### Dodano
-
-- **`BL-1` — górny limit na Hole Count (N-Holes on Circle).** Nowa
-  `isCircleHoleCountValid()` + stała `MAX_CIRCLE_HOLE_COUNT = 100` w
-  `src/lib/validation.ts`, dołączona do `isGeometryValid` w `App.tsx` —
-  ten sam wzorzec co Tool Diameter/Stepdown/Start Z (twardy blok
-  Generate + czerwony inline error pod polem w Kroku 2), nie miękki
-  soft-warning z `BL-9` — sesja `/grill-me` potwierdziła, że 101+
-  otworów to "na pewno bez sensu", nie "może się nie zmieścić", więc
-  pasuje tu pewność, nie ostrzeżenie. Limit czysto arbitralny (w
-  odróżnieniu od `BL-9` nie ma tu żadnej fizycznej wielkości do
-  wyprowadzenia progu) — walidacja jest wyciszona (`true`) poza trybem
-  `circle`, żeby nie blokować Generate przez pole, którego w danym
-  trybie nawet nie widać.
 
 ## [0.8.5] — 2026-08-22
 

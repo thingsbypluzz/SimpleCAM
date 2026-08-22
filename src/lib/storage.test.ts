@@ -34,14 +34,14 @@ beforeEach(() => {
 
 describe('saveSlot / loadSlot', () => {
   it('round-trips a full snapshot through the auto-save slot', () => {
-    const params = { ...DEFAULT_WIZARD_PARAMS, operation: 'standard' as const }
+    const params = { ...DEFAULT_WIZARD_PARAMS, method: 'standard' as const }
     saveSlot(AUTO_SAVE_SLOT, params)
     expect(loadSlot(AUTO_SAVE_SLOT)).toEqual(params)
   })
 
   it('round-trips a named preset slot independently of the auto-save slot', () => {
-    const autoSave = { ...DEFAULT_WIZARD_PARAMS, operation: 'helix' as const }
-    const preset = { ...DEFAULT_WIZARD_PARAMS, operation: 'standard' as const }
+    const autoSave = { ...DEFAULT_WIZARD_PARAMS, method: 'helix' as const }
+    const preset = { ...DEFAULT_WIZARD_PARAMS, method: 'standard' as const }
     saveSlot(AUTO_SAVE_SLOT, autoSave)
     saveSlot('1', preset)
     expect(loadSlot(AUTO_SAVE_SLOT)).toEqual(autoSave)
@@ -66,10 +66,10 @@ describe('deleteSlot', () => {
 describe('loadPresetSlots', () => {
   it('only returns occupied preset slots, excluding the auto-save slot', () => {
     saveSlot(AUTO_SAVE_SLOT, DEFAULT_WIZARD_PARAMS)
-    saveSlot('2', { ...DEFAULT_WIZARD_PARAMS, operation: 'standard' as const })
+    saveSlot('2', { ...DEFAULT_WIZARD_PARAMS, method: 'standard' as const })
     const slots = loadPresetSlots()
     expect(Object.keys(slots)).toEqual(['2'])
-    expect(slots['2']?.operation).toBe('standard')
+    expect(slots['2']?.method).toBe('standard')
   })
 
   it('returns an empty object when nothing is saved', () => {
@@ -87,7 +87,6 @@ describe('schema migration', () => {
           [AUTO_SAVE_SLOT]: {
             version: 1,
             params: {
-              operation: 'helix',
               geometry: { toolDiameter: 2, holeDiameter: 6 },
               // feeds/output omitted entirely, as an older schema would.
             },
@@ -102,6 +101,29 @@ describe('schema migration', () => {
     expect(restored?.geometry.totalDepth).toBe(DEFAULT_WIZARD_PARAMS.geometry.totalDepth)
     expect(restored?.feeds).toEqual(DEFAULT_WIZARD_PARAMS.feeds)
     expect(restored?.output).toEqual(DEFAULT_WIZARD_PARAMS.output)
+  })
+
+  it('ignores a pre-rename operation key and falls back to the default method (no migration, by design)', () => {
+    localStorage.setItem(
+      STORAGE_KEY,
+      JSON.stringify({
+        version: 1,
+        slots: {
+          [AUTO_SAVE_SLOT]: {
+            version: 1,
+            params: {
+              // Pre-0.8.12 snapshots used `operation` instead of `method` —
+              // deliberately not migrated (see CLAUDE.md), so this foreign
+              // key is silently ignored and `method` falls back to default.
+              operation: 'standard',
+            },
+          },
+        },
+      }),
+    )
+
+    const restored = loadSlot(AUTO_SAVE_SLOT)
+    expect(restored?.method).toBe(DEFAULT_WIZARD_PARAMS.method)
   })
 })
 

@@ -25,7 +25,7 @@ import {
   WarningIcon,
   XIcon,
 } from './components/icons'
-import { OPERATION_META } from './config/operationMeta'
+import { METHOD_META } from './config/methodMeta'
 import { positioningIcon, positioningLines, positioningSummary } from './config/positioningMeta'
 import { fmt } from './lib/format'
 import { presetLabel } from './lib/presetLabel'
@@ -51,7 +51,7 @@ import { DEFAULT_WIZARD_PARAMS, type GeometryParams, type WizardParams } from '.
 const TOTAL_STEPS = 4
 
 const STEP_META = [
-  { id: 1, title: 'Pattern' },
+  { id: 1, title: 'Operation & Pattern' },
   { id: 2, title: 'Geometry' },
   { id: 3, title: 'Feeds & Speeds' },
   { id: 4, title: 'G-Code' },
@@ -110,7 +110,7 @@ function collapsedStepTitle(stepId: number, params: WizardParams): string {
       return `Pattern — ${positioningSummary(params.geometry)}`
     case 2: {
       const offset = offsetSummary(params.geometry)
-      return `Geometry — Tool ⌀${params.geometry.toolDiameter}mm, Hole ⌀${params.geometry.holeDiameter}mm, Depth ${params.geometry.totalDepth}mm${offset ? ` — Offset ${offset}` : ''} — Method: ${OPERATION_META[params.operation].title}`
+      return `Geometry — Tool ⌀${params.geometry.toolDiameter}mm, Hole ⌀${params.geometry.holeDiameter}mm, Depth ${params.geometry.totalDepth}mm${offset ? ` — Offset ${offset}` : ''} — Method: ${METHOD_META[params.method].title}`
     }
     case 3:
       return `Feeds & Speeds — Feed ${params.feeds.feedrateXY} mm/min, Stepdown ${params.feeds.stepdown} mm`
@@ -164,7 +164,7 @@ function App() {
 
   const goForward = () => setActiveStep((s) => Math.min(s + 1, TOTAL_STEPS))
 
-  const activeOperation = OPERATION_META[params.operation]
+  const activeMethod = METHOD_META[params.method]
   const offset = offsetSummary(params.geometry)
   const isGeometryValid =
     isToolDiameterValid(params.geometry) &&
@@ -184,7 +184,7 @@ function App() {
   // every keystroke, so a snapshot only survives once the user considered
   // the params worth turning into G-code.
   const handleGenerate = () => {
-    setGeneratedGCode(activeOperation.generate(params))
+    setGeneratedGCode(activeMethod.generate(params))
     saveSlot(AUTO_SAVE_SLOT, params)
     setShowRestoredBanner(false)
   }
@@ -404,10 +404,10 @@ function App() {
                 {step.id === 2 && (
                   <div className="flex flex-col items-center gap-4">
                     <MiniStat
-                      icon={<activeOperation.Icon className="h-6 w-6" />}
+                      icon={<activeMethod.Icon className="h-6 w-6" />}
                       label="METHOD"
-                      value={activeOperation.shortLabel}
-                      title={`Method: ${activeOperation.title}`}
+                      value={activeMethod.shortLabel}
+                      title={`Method: ${activeMethod.title}`}
                     />
                     {offset && (
                       <MiniStat
@@ -468,7 +468,7 @@ function App() {
                     )}
                     <MiniStat
                       icon={<StepdownIcon className="h-6 w-6" />}
-                      label={activeOperation.stepdown.shortLabel}
+                      label={activeMethod.stepdown.shortLabel}
                       value={`${params.feeds.stepdown}`}
                       unit="mm"
                       title={`Stepdown: ${params.feeds.stepdown} mm`}

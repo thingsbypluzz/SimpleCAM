@@ -6,7 +6,7 @@ describe('presetLabel', () => {
   it('leads with the pattern, then method, then hole diameter', () => {
     const params = {
       ...DEFAULT_WIZARD_PARAMS,
-      operation: 'helix' as const,
+      method: 'helix' as const,
       geometry: { ...DEFAULT_WIZARD_PARAMS.geometry, positioning: 'single' as const, holeDiameter: 8 },
     }
     expect(presetLabel(params)).toBe('Single Hole • Helix • ⌀8mm')
@@ -15,7 +15,7 @@ describe('presetLabel', () => {
   it('reflects the standard hole method', () => {
     const params = {
       ...DEFAULT_WIZARD_PARAMS,
-      operation: 'standard' as const,
+      method: 'standard' as const,
       geometry: { ...DEFAULT_WIZARD_PARAMS.geometry, positioning: 'single' as const, holeDiameter: 12 },
     }
     expect(presetLabel(params)).toBe('Single Hole • Standard • ⌀12mm')
@@ -24,12 +24,12 @@ describe('presetLabel', () => {
   it('distinguishes two presets that share a method but differ in pattern', () => {
     const single = {
       ...DEFAULT_WIZARD_PARAMS,
-      operation: 'helix' as const,
+      method: 'helix' as const,
       geometry: { ...DEFAULT_WIZARD_PARAMS.geometry, positioning: 'single' as const, holeDiameter: 8 },
     }
     const circle = {
       ...DEFAULT_WIZARD_PARAMS,
-      operation: 'helix' as const,
+      method: 'helix' as const,
       geometry: {
         ...DEFAULT_WIZARD_PARAMS.geometry,
         positioning: 'circle' as const,
