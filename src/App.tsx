@@ -156,6 +156,7 @@ function App() {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false)
   const [overlayEnabled, setOverlayEnabled] = useState(false)
   const [overlaySlots, setOverlaySlots] = useState<Set<PresetSlotId>>(new Set())
+  const [justLoadedSlot, setJustLoadedSlot] = useState<PresetSlotId | null>(null)
 
   // Any parameter change invalidates the last generated snapshot — Copy/
   // Download must not act on G-code that no longer matches the current
@@ -221,6 +222,10 @@ function App() {
     setGeneratedGCode(null)
     setShowRestoredBanner(false)
     setActiveStep(4)
+    // Brief flash on the loaded preset's icon — confirms "this is what just
+    // got loaded" (same 1.5s timing convention as "Copied!"/"✓ Saved").
+    setJustLoadedSlot(id)
+    setTimeout(() => setJustLoadedSlot((s) => (s === id ? null : s)), 1500)
   }
 
   const handleToggleOverlaySlot = (id: PresetSlotId) => {
@@ -261,11 +266,17 @@ function App() {
           </p>
         </div>
 
-        <div className="flex items-center justify-self-center gap-2 rounded-b-md border-b-2 border-slate-200 pb-2 dark:border-slate-800">
+        <div className="flex items-center justify-self-center gap-2 rounded-lg border border-slate-200 px-2 py-1.5 dark:border-slate-700">
           {PRESET_SLOT_IDS.map((id) => {
             const preset = presetSlots[id]
             const PresetIcon = preset ? positioningIcon(preset.geometry.positioning) : null
             const isOverlaySelected = overlayEnabled && overlaySlots.has(id)
+            const isJustLoaded = !overlayEnabled && justLoadedSlot === id
+            const baseClassName = !preset
+              ? 'flex h-11 w-11 cursor-default items-center justify-center rounded-md border border-slate-200 text-xs font-semibold text-slate-300 dark:border-slate-800 dark:text-slate-700'
+              : isOverlaySelected
+                ? 'flex h-11 w-11 items-center justify-center rounded-md border-2 border-indigo-600 text-indigo-700 hover:bg-indigo-50 dark:border-indigo-400 dark:text-indigo-300 dark:hover:bg-indigo-950/40'
+                : 'flex h-11 w-11 items-center justify-center rounded-md border border-indigo-300 text-indigo-700 hover:bg-indigo-50 dark:border-indigo-800 dark:text-indigo-300 dark:hover:bg-indigo-950/40'
             return (
               <div key={id} className="group relative">
                 <button
@@ -279,13 +290,7 @@ function App() {
                         ? `${isOverlaySelected ? 'Remove' : 'Add'} preset [${id}] — ${presetLabel(preset)} ${isOverlaySelected ? 'from' : 'to'} overlay`
                         : `Load preset [${id}] — ${presetLabel(preset)}`
                   }
-                  className={
-                    !preset
-                      ? 'flex h-11 w-11 cursor-default items-center justify-center rounded-md border border-slate-200 text-xs font-semibold text-slate-300 dark:border-slate-800 dark:text-slate-700'
-                      : isOverlaySelected
-                        ? 'flex h-11 w-11 items-center justify-center rounded-md border-2 border-indigo-600 text-indigo-700 hover:bg-indigo-50 dark:border-indigo-400 dark:text-indigo-300 dark:hover:bg-indigo-950/40'
-                        : 'flex h-11 w-11 items-center justify-center rounded-md border border-indigo-300 text-indigo-700 hover:bg-indigo-50 dark:border-indigo-800 dark:text-indigo-300 dark:hover:bg-indigo-950/40'
-                  }
+                  className={`${baseClassName} transition-shadow duration-700${isJustLoaded ? ' ring-2 ring-indigo-400 ring-offset-2 dark:ring-offset-slate-950' : ''}`}
                 >
                   {PresetIcon ? <PresetIcon className="h-6 w-6" /> : id}
                 </button>
@@ -585,42 +590,50 @@ function App() {
             )}
           </div>
 
-          {previewTab === '2d' && (
-            <ToolpathCanvas
-              params={params}
-              isDark={isDark}
-              overlayParams={overlayParams}
-              showActivePattern={!overlayEnabled}
-            />
-          )}
+          <div className="relative flex flex-1 flex-col overflow-hidden">
+            {overlayEnabled && previewTab !== 'gcode' && (
+              <div className="pointer-events-none absolute top-3 left-1/2 z-10 -translate-x-1/2 rounded-full bg-indigo-600 px-3 py-1 text-xs font-semibold text-white shadow-lg dark:bg-indigo-500">
+                Preview mode
+              </div>
+            )}
 
-          {previewTab === '3d' && (
-            <Suspense
-              fallback={
-                <div className="flex flex-1 items-center justify-center text-sm text-slate-400 dark:text-slate-500">
-                  Loading 3D viewer…
-                </div>
-              }
-            >
-              <Scene3D
+            {previewTab === '2d' && (
+              <ToolpathCanvas
                 params={params}
                 isDark={isDark}
                 overlayParams={overlayParams}
                 showActivePattern={!overlayEnabled}
               />
-            </Suspense>
-          )}
+            )}
 
-          {previewTab === 'gcode' &&
-            (generatedGCode ? (
-              <pre className="flex-1 overflow-auto bg-slate-50 p-6 font-mono text-xs leading-relaxed text-slate-700 dark:bg-slate-900 dark:text-slate-300">
-                {generatedGCode.join('\n')}
-              </pre>
-            ) : (
-              <div className="flex flex-1 items-center justify-center p-6 text-center text-sm text-slate-400 dark:text-slate-500">
-                Go to Step 4 and click "Generate" to preview the G-code.
-              </div>
-            ))}
+            {previewTab === '3d' && (
+              <Suspense
+                fallback={
+                  <div className="flex flex-1 items-center justify-center text-sm text-slate-400 dark:text-slate-500">
+                    Loading 3D viewer…
+                  </div>
+                }
+              >
+                <Scene3D
+                  params={params}
+                  isDark={isDark}
+                  overlayParams={overlayParams}
+                  showActivePattern={!overlayEnabled}
+                />
+              </Suspense>
+            )}
+
+            {previewTab === 'gcode' &&
+              (generatedGCode ? (
+                <pre className="flex-1 overflow-auto bg-slate-50 p-6 font-mono text-xs leading-relaxed text-slate-700 dark:bg-slate-900 dark:text-slate-300">
+                  {generatedGCode.join('\n')}
+                </pre>
+              ) : (
+                <div className="flex flex-1 items-center justify-center p-6 text-center text-sm text-slate-400 dark:text-slate-500">
+                  Go to Step 4 and click "Generate" to preview the G-code.
+                </div>
+              ))}
+          </div>
         </div>
       </div>
 

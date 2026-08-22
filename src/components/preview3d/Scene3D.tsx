@@ -28,6 +28,7 @@ export function Scene3D({ params, isDark, overlayParams, showActivePattern }: Sc
   const contentGroupRef = useRef<THREE.Group | null>(null)
   const boundsRef = useRef<THREE.Box3 | null>(null)
   const hasFramedRef = useRef(false)
+  const prevOverlayParamsRef = useRef(overlayParams)
 
   // One-time scene/camera/renderer/controls setup.
   useEffect(() => {
@@ -135,15 +136,27 @@ export function Scene3D({ params, isDark, overlayParams, showActivePattern }: Sc
 
     // Default view is the fitted front angle (camera centered on -Y,
     // elevated on +Z, looking toward +Y — see VIEW_PRESETS.front) — only
-    // on the very first build, so later parameter tweaks (including
-    // toggling the BL-3 overlay) don't yank the camera out of the angle
-    // the user rotated to. hasFramedRef is only ever reset in the setup
-    // effect above, so it's already `true` by the time overlayParams
-    // changes trigger a rebuild here — frameCamera is skipped, "Fit View"
-    // stays the manual way to bring new overlay geometry into frame.
+    // on the very first build, so later parameter tweaks don't yank the
+    // camera out of the angle the user rotated to. hasFramedRef is only
+    // ever reset in the setup effect above.
+    const overlayParamsChanged = prevOverlayParamsRef.current !== overlayParams
+    prevOverlayParamsRef.current = overlayParams
+
     if (!hasFramedRef.current) {
       frameCamera(camera, controls, bounds, VIEW_PRESETS.front.direction, VIEW_PRESETS.front.up)
       hasFramedRef.current = true
+    } else if (overlayParamsChanged) {
+      // Re-fit distance/target at whatever angle the camera is currently
+      // at (same math as handleFitView below) whenever the BL-3 overlay
+      // selection changes — newly added/removed presets shouldn't require
+      // a manual "Fit View" click to become visible, but this must NOT
+      // change the angle itself, only reuse it, or every checkbox click
+      // would yank the view like editing the live pattern deliberately
+      // doesn't.
+      const direction = camera.position.clone().sub(controls.target)
+      if (direction.lengthSq() > 0) {
+        frameCamera(camera, controls, bounds, direction.normalize(), camera.up.clone())
+      }
     }
   }, [params, isDark, overlayParams, showActivePattern])
 

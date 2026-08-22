@@ -7,6 +7,35 @@ zgodne z [SemVer](https://semver.org/). Ten plik pozostaje głównym, czytelnym
 thingsbypluzz/SimpleCAM), ale to infrastruktura pod izolację pracy
 (branch/worktree per zadanie), nie zamiennik tego changeloga.
 
+## [0.8.15] — 2026-08-22
+
+### Dodano
+
+- **`BL-11` i `BL-12` dopisane do backlogu** (dokumentacja/planowanie,
+  nieimplementowane) — zoom/pan na 2D Preview reagujący na scroll
+  myszki + przycisk Fit View w rogu; oraz presety kolorów renderowania
+  2D/3D w Settings.
+
+### Zmieniono
+
+- **Ramka zamiast podkreślenia wokół presetów + oka.** Cała grupa
+  (presety `[1]…[5]` + ikonka oka) dostała jedną, delikatną ramkę
+  (`rounded-lg border`) zamiast dotychczasowego podkreślenia tylko pod
+  presetami — sugeruje, że oko i presety są jedną funkcjonalną całością,
+  nie dwoma osobnymi elementami.
+- **Pływający komunikat "Preview mode"** nad 2D i 3D Preview, gdy
+  overlay jest aktywny — wyśrodkowany u góry, ten sam sygnał w obu
+  podglądach.
+- **Auto-Fit View przy zmianie zaznaczenia overlay w 3D.** Cofnięta
+  wcześniejsza decyzja "user klika Fit View sam" — dodanie/usunięcie
+  presetu z nakładki teraz automatycznie dopasowuje odległość/target
+  kamery (jak klik w Fit View), **bez** zmiany kąta patrzenia. Zwykłe
+  edytowanie żywego wzorca nadal nie rusza kamery — rozróżnione przez
+  osobny ref śledzący poprzednią referencję `overlayParams`.
+- **Krótki flash na ikonce właśnie załadowanego presetu** (poza trybem
+  overlay) — potwierdza "to zostało właśnie wczytane" na 1.5s, ten sam
+  wzorzec timingu co "Copied!"/"✓ Saved" gdzie indziej w appce.
+
 ## [0.8.14] — 2026-08-22
 
 ### Zmieniono

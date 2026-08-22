@@ -398,7 +398,7 @@ Projekt budowany etapami z checkpointami do akceptacji. Aktualny stan:
 Wszystkie niezaimplementowane pomysły/notatki "do rozważenia" w tym
 pliku — niezależnie od tego, w której sekcji faktycznie mieszkają
 (część jest tutaj, część przy „Kluczowe decyzje projektowe" czy
-„Hosting testowy") — mają stabilny numer `BL-1`…`BL-10`, dopisany na
+„Hosting testowy") — mają stabilny numer `BL-1`…`BL-12`, dopisany na
 początku swojego bulletu. Numer nadawany jest raz i nie zmienia się przy
 regrupowaniu/reprioritetyzacji — to czysty identyfikator do odnoszenia
 się w rozmowie ("zrób BL-4"), świadomie odróżniony od **Etapu**
@@ -497,6 +497,25 @@ nowa funkcjonalność. Nie zaczynać bez wyraźnego "przechodzimy do X".
   drobiazgi do rozstrzygnięcia: `M30` (koniec + rewind) czy `M2` (samo
   zakończenie), bezwarunkowo czy pod checkboxem w Kroku 4, i czy wybór
   zależy od dialektu (styk z `BL-5`).
+- **`BL-11`** — **Zoom/pan na 2D Preview.** Dziś `drawToolpath()` nie ma
+  żadnego stanu kamery — przelicza skalę/wycentrowanie od zera przy
+  każdym renderze, zawsze dopasowując się do danych (patrz `BL-3`).
+  User chciałby, żeby canvas reagował na scroll myszki (zoom in/out) i
+  dostał osobny przycisk **Fit View** w prawym dolnym rogu (jak w 3D
+  Preview) — wymaga wprowadzenia realnego stanu kamery (offset/zoom),
+  którego 2D dziś celowo nie ma, plus obsługi zdarzenia `wheel` i
+  przeliczenia `toPx()`/bounds pod kątem tego stanu zamiast zawsze liczyć
+  je na nowo z danych.
+- **`BL-12`** — **Presety kolorów renderowania 2D/3D w Settings.**
+  Dziś `drawToolpath.ts`/`buildScene.ts` mają po dwa stałe motywy
+  (`LIGHT_THEME`/`DARK_THEME`), przełączane wyłącznie dark/light
+  mode'em. Dodać do `SettingsModal.tsx` (`BL-9`) wybór spośród kilku
+  gotowych palet kolorów dla obu podglądów — wymaga zdefiniowania
+  zestawu presetów kolorystycznych, sposobu ich przechowania (nowy klucz
+  w `machineStorage.ts` czy osobny), i przekazania wybranej palety przez
+  propsy do `ToolpathCanvas`/`Scene3D` zamiast dzisiejszych
+  wbudowanych stałych. Styka się z odłożoną w `BL-3` decyzją o braku
+  kolorów per-slot w overlay — dobry moment żeby to razem przemyśleć.
 
 Nie przeskakuj etapów bez pytania — każdy kończy się checkpointem do
 przeglądu przez użytkownika.
