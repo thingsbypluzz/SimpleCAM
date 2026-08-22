@@ -7,6 +7,23 @@ zgodne z [SemVer](https://semver.org/). Ten plik pozostaje głównym, czytelnym
 thingsbypluzz/SimpleCAM), ale to infrastruktura pod izolację pracy
 (branch/worktree per zadanie), nie zamiennik tego changeloga.
 
+## [0.8.17] — 2026-08-22
+
+### Dodano
+
+- **`BL-13` dopisane do backlogu** (dokumentacja/planowanie,
+  nieimplementowane) — numer wersji appki, niewielką szarą czcionką,
+  zaraz za "SimpleCAM" w nagłówku.
+
+### Zmieniono
+
+- **Podtytuł w nagłówku.** "Fast G-code generator for CNC holes —
+  client-side, no backend." → "Fast G-Code generator for your basic
+  operations." — "CNC holes" było zawężone względem terminologii
+  ustalonej w `0.8.12` (Hole(s) to dziś jedna z, docelowo kilku,
+  operacji), nowy tekst nie zakłada z góry, że appka robi wyłącznie
+  otwory.
+
 ## [0.8.16] — 2026-08-22
 
 ### Zmieniono

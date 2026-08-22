@@ -398,7 +398,7 @@ Projekt budowany etapami z checkpointami do akceptacji. Aktualny stan:
 Wszystkie niezaimplementowane pomysły/notatki "do rozważenia" w tym
 pliku — niezależnie od tego, w której sekcji faktycznie mieszkają
 (część jest tutaj, część przy „Kluczowe decyzje projektowe" czy
-„Hosting testowy") — mają stabilny numer `BL-1`…`BL-12`, dopisany na
+„Hosting testowy") — mają stabilny numer `BL-1`…`BL-13`, dopisany na
 początku swojego bulletu. Numer nadawany jest raz i nie zmienia się przy
 regrupowaniu/reprioritetyzacji — to czysty identyfikator do odnoszenia
 się w rozmowie ("zrób BL-4"), świadomie odróżniony od **Etapu**
@@ -540,6 +540,15 @@ nowa funkcjonalność. Nie zaczynać bez wyraźnego "przechodzimy do X".
   propsy do `ToolpathCanvas`/`Scene3D` zamiast dzisiejszych
   wbudowanych stałych. Styka się z odłożoną w `BL-3` decyzją o braku
   kolorów per-slot w overlay — dobry moment żeby to razem przemyśleć.
+- **`BL-13`** — **Numer wersji appki w nagłówku.** Zaraz za "SimpleCAM"
+  w `<h1>` (`App.tsx`), niewielką, szarą czcionką — np. `<span
+  className="text-xs font-normal text-slate-400">v{version}</span>`.
+  `package.json` jest już jedynym źródłem prawdy dla numeru wersji
+  (bump przy każdej zmianie, patrz konwencja w tym pliku) — potrzeba
+  tylko sposobu wciągnięcia go do runtime'u (import JSON w Vite
+  działa od razu, albo `import.meta.env` przez `define` w
+  `vite.config.ts`, żeby nie zależeć od tego, czy `resolveJsonModule`
+  jest wszędzie włączone).
 
 Nie przeskakuj etapów bez pytania — każdy kończy się checkpointem do
 przeglądu przez użytkownika.

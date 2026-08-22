@@ -262,7 +262,7 @@ function App() {
         <div>
           <h1 className="text-xl font-semibold">SimpleCAM</h1>
           <p className="text-xs text-slate-500 dark:text-slate-400">
-            Fast G-code generator for CNC holes — client-side, no backend.
+            Fast G-Code generator for your basic operations.
           </p>
         </div>
 
