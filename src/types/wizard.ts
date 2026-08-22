@@ -37,7 +37,6 @@ export interface OutputOptions {
   spindleStart: boolean
   spindleSpeed: number
   dwellSeconds: number
-  returnSafeZEnd: boolean
   spindleStopEnd: boolean
   returnOriginEnd: boolean
 }
@@ -77,7 +76,6 @@ export const DEFAULT_WIZARD_PARAMS: WizardParams = {
     spindleStart: true,
     spindleSpeed: 12000,
     dwellSeconds: 3,
-    returnSafeZEnd: true,
     spindleStopEnd: true,
     returnOriginEnd: true,
   },

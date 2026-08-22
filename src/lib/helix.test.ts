@@ -118,15 +118,15 @@ describe('generateHelix', () => {
     expect(arcLines[5]).toContain('Z-4')
   })
 
-  it('appends Safe Z retract + M5 and origin return only when enabled', () => {
+  it('appends M5 and origin return only when enabled', () => {
     const withFooter = generateHelix(
-      buildParams({ output: { returnSafeZEnd: true, returnOriginEnd: true } }),
+      buildParams({ output: { spindleStopEnd: true, returnOriginEnd: true } }),
     )
     expect(withFooter[withFooter.length - 2]).toBe('M5')
     expect(withFooter[withFooter.length - 1]).toBe('G0 X0 Y0')
 
     const withoutFooter = generateHelix(
-      buildParams({ output: { returnSafeZEnd: false, returnOriginEnd: false } }),
+      buildParams({ output: { spindleStopEnd: false, returnOriginEnd: false } }),
     )
     expect(withoutFooter.some((l) => l === 'M5')).toBe(false)
     expect(withoutFooter[withoutFooter.length - 1]).not.toBe('G0 X0 Y0')

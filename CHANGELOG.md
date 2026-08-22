@@ -7,6 +7,35 @@ zgodne z [SemVer](https://semver.org/). Ten plik pozostaje głównym, czytelnym
 thingsbypluzz/SimpleCAM), ale to infrastruktura pod izolację pracy
 (branch/worktree per zadanie), nie zamiennik tego changeloga.
 
+## [0.8.5] — 2026-08-22
+
+### Zmieniono
+
+- **`BL-2` — sprzątnięcie martwego pola `spindleStopEnd` przez zamianę
+  ról z `returnSafeZEnd`.** `OutputOptions` miało trzy pola przy dwóch
+  checkboxach Kroku 4: `spindleStopEnd` istniało w typie i w
+  `DEFAULT_WIZARD_PARAMS`, ale nigdy nie było czytane, a checkbox
+  "Return to Safe Z and stop spindle (M5) at the end" sterował
+  `returnSafeZEnd`, który w `buildFooter()` emitował `G0 Z<safeZ>` **i**
+  `M5` naraz. Przy analizie okazało się, że martwe/mylące jest raczej to
+  drugie pole: `assembleProgram()` retraktuje na Safe Z po **każdym**
+  punkcie, łącznie z ostatnim, więc `G0 Z<safeZ>` ze stopki był zawsze
+  dosłownym duplikatem poprzedniej linii — jedyną realną treścią tego
+  checkboxa było `M5`. Checkbox przeszedł więc na `spindleStopEnd`,
+  `returnSafeZEnd` zniknęło z typu i z domyślnych parametrów, a etykieta
+  została skrócona do uczciwego **"Stop spindle (M5) at the end"**.
+  Drugi checkbox (`returnOriginEnd`, "Return to (0,0)…") bez zmian.
+- **Z generowanego G-code wypada jedna redundantna linia** — końcówka
+  programu to teraz `G0 Z<safeZ>` (z pętli po punktach) / `M5` /
+  `G0 X0 Y0` zamiast dwóch identycznych `G0 Z<safeZ>` pod rząd. Poza tą
+  jedną linią wyjście jest bit-w-bit identyczne.
+- **Migracja zapisanych presetów świadomie pominięta** (`storage.ts` bez
+  zmian). Preset zapisany przed tą zmianą ma `spindleStopEnd: true`
+  (wartość domyślna, bo pole nigdy nie było edytowalne), więc komuś, kto
+  odznaczył stary checkbox, `M5` po cichu wróci. Zaakceptowane: projekt
+  jest dziś jednoosobowy/deweloperski, a `M5` na końcu programu jest
+  bezpieczne.
+
 ## [0.8.4] — 2026-08-20
 
 ### Zmieniono

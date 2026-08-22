@@ -103,7 +103,7 @@ describe('generateStandardHole', () => {
 
   it('omits M5 and origin return when disabled', () => {
     const lines = generateStandardHole(
-      buildParams({ output: { returnSafeZEnd: false, returnOriginEnd: false } }),
+      buildParams({ output: { spindleStopEnd: false, returnOriginEnd: false } }),
     )
     expect(lines.some((l) => l === 'M5')).toBe(false)
     expect(lines[lines.length - 1]).not.toBe('G0 X0 Y0')

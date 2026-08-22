@@ -33,11 +33,14 @@ export function buildHeader(params: WizardParams): string[] {
 }
 
 export function buildFooter(params: WizardParams): string[] {
-  const { feeds, output } = params
+  const { output } = params
   const lines: string[] = []
 
-  if (output.returnSafeZEnd) {
-    lines.push(`G0 Z${fmt(feeds.safeZ)}`)
+  // No Safe Z retract here on purpose: assembleProgram() below already
+  // retracts after *every* point, the last one included, so the tool is
+  // guaranteed to be at Safe Z by the time we get here. Emitting another
+  // `G0 Z<safeZ>` would just repeat the previous line verbatim.
+  if (output.spindleStopEnd) {
     lines.push('M5')
   }
 

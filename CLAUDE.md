@@ -356,7 +356,7 @@ Projekt budowany etapami z checkpointami do akceptacji. Aktualny stan:
 Wszystkie niezaimplementowane pomysły/notatki "do rozważenia" w tym
 pliku — niezależnie od tego, w której sekcji faktycznie mieszkają
 (część jest tutaj, część przy „Kluczowe decyzje projektowe" czy
-„Hosting testowy") — mają stabilny numer `BL-1`…`BL-7`, dopisany na
+„Hosting testowy") — mają stabilny numer `BL-1`…`BL-10`, dopisany na
 początku swojego bulletu. Numer nadawany jest raz i nie zmienia się przy
 regrupowaniu/reprioritetyzacji — to czysty identyfikator do odnoszenia
 się w rozmowie ("zrób BL-4"), świadomie odróżniony od **Etapu**
@@ -453,6 +453,33 @@ nowa funkcjonalność. Nie zaczynać bez wyraźnego "przechodzimy do X".
   implementacji, czy inne pola bez sensownego górnego ograniczenia
   (np. Grid X/Y, Circle Diameter) też tego potrzebują, czy tylko
   Hole Count jest na tyle "łatwe do przesadzenia".
+- **`BL-8`** — **Responsywny UI na małych ekranach.** Dziś layout
+  zakłada desktop: dwukolumnowy układ (akordeon wizarda + panel
+  podglądu 2D/3D/G-Code obok siebie), gęste pola liczbowe w parach
+  X/Y w jednej linii, kanwa Three.js z absolutnie pozycjonowanymi
+  przyciskami widoku. Dotyka praktycznie każdego komponentu, nie
+  jednego miejsca — wymaga przemyślenia, czy panel podglądu
+  chowa się pod wizardem czy za zakładką, czy pary X/Y wracają do
+  jednej kolumny na wąskim ekranie, itd. Do zrobienia zgodnie z
+  aktualnymi best practices frontendowymi (breakpointy Tailwind już
+  są w projekcie, ale nieużywane responsywnie poza defaultową
+  szerokością).
+- **`BL-9`** — **Ustawienia maszyny CNC pod nieaktywnym guzikiem
+  Settings** — zakres roboczy X/Y/Z (dziś guzik w nagłówku jest
+  `disabled`, przygotowany pod przyszłe ustawienia, patrz "Kluczowe
+  decyzje projektowe"). Rozważyć przy implementacji, czy te limity
+  powinny też ograniczać/walidować pola liczbowe w wizardzie (rect
+  size, hole size, offset, grid X/Y, circle diameter, itd.) — jeśli
+  tak, to naturalnie rozszerza/zastępuje `BL-1` (górny limit na
+  polach liczbowych) o limit wyprowadzony z realnego obszaru
+  roboczego maszyny, zamiast sztywnej stałej.
+- **`BL-10`** — **Brak zakończenia programu (`M30`/`M2`).** `buildFooter()`
+  kończy plik na `M5` / `G0 X0 Y0`, bez formalnego "koniec programu" —
+  część kontrolerów tego oczekuje (m.in. żeby wrócić do początku pliku i
+  zresetować stan modalny). Sama zmiana to jedna linia, ale zostawia
+  drobiazgi do rozstrzygnięcia: `M30` (koniec + rewind) czy `M2` (samo
+  zakończenie), bezwarunkowo czy pod checkboxem w Kroku 4, i czy wybór
+  zależy od dialektu (styk z `BL-5`).
 
 Nie przeskakuj etapów bez pytania — każdy kończy się checkpointem do
 przeglądu przez użytkownika.
@@ -516,12 +543,19 @@ przeglądu przez użytkownika.
   bez rozróżnienia dialektów (MVP nie ma przełącznika dialektu, `BL-5` —
   patrz Backlog), efekt na Marlinie to krótsza pauza niż zamierzona, nie
   dłuższa/niebezpieczna.
-- **`WizardParams.output.spindleStopEnd`** to martwe pole typu — checkbox
-  w Kroku 4 ("Return to Safe Z and stop spindle (M5) at the end") steruje
-  tylko `returnSafeZEnd`, który w silniku G-code gasi wrzeciono (M5) i
-  robi retrakt razem. `spindleStopEnd` nigdy nie jest czytane — `BL-2` —
-  do ewentualnego posprzątania (usunąć pole albo spiąć z osobnym
-  checkboxem), nieporuszone celowo poza zakresem Etapu 1.
+- **`buildFooter()` celowo NIE robi retraktu na Safe Z** — emituje
+  wyłącznie `M5` (pod `output.spindleStopEnd`) i ewentualne `G0 X0 Y0`
+  (pod `returnOriginEnd`). Retrakt robi bezwarunkowo pętla po punktach w
+  `assembleProgram()`, po **każdym** otworze łącznie z ostatnim, więc
+  narzędzie jest na Safe Z zanim stopka w ogóle zacznie. Dodanie tam
+  `G0 Z<safeZ>` powtarzałoby poprzednią linię dosłownie — dokładnie tak
+  było do 0.8.5, gdzie zamiast osobnego pola na M5 istniało zbiorcze
+  `returnSafeZEnd` robiące retrakt i M5 naraz (a `spindleStopEnd`, mimo
+  pasującej nazwy, leżało nieczytane — to był `BL-2`). Przy zamianie ról
+  pole zbiorcze zniknęło, checkbox Kroku 4 przeszedł na `spindleStopEnd`
+  i dostał etykietę "Stop spindle (M5) at the end". Jeśli kiedyś
+  retrakt w stopce zacznie wyglądać na "brakujący" — to jest ten
+  komentarz, który tłumaczy, że nie brakuje.
 
 ## Hosting testowy
 
@@ -817,7 +851,7 @@ src/
                                  zapisanego slotu z parametrów (operacja +
                                  ⌀otworu + głębokość), używane w
                                  tooltipach header/Step 4
-    *.test.ts                    — testy Vitest (71 testów, `npm run test`)
+    *.test.ts                    — testy Vitest (78 testów, `npm run test`)
   App.tsx                    — orkiestracja stanu wizarda i nawigacji kroków
 ```
 

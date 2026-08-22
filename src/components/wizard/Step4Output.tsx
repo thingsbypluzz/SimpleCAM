@@ -21,7 +21,7 @@ interface CheckboxOption {
 
 const CHECKBOX_OPTIONS: CheckboxOption[] = [
   { key: 'spindleStart', label: 'Start spindle at the beginning (M3 + dwell)' },
-  { key: 'returnSafeZEnd', label: 'Return to Safe Z and stop spindle (M5) at the end' },
+  { key: 'spindleStopEnd', label: 'Stop spindle (M5) at the end' },
   { key: 'returnOriginEnd', label: 'Return to (0,0) at the end of the program' },
 ]
 
