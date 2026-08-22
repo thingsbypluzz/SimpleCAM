@@ -85,6 +85,19 @@ thingsbypluzz/SimpleCAM), ale to infrastruktura pod izolację pracy
   zakres", odróżnione od "jeszcze nie wygenerowano, i już wiadomo że nie
   zmieści się" (wykrzyknik na pomarańczowym).
 
+## [0.8.10] — 2026-08-22
+
+### Zmieniono
+
+- **Badge w rozwiniętym Kroku 4 wyrównany rozmiarem do zwiniętego
+  paska.** `0.8.9` wprowadziło mniejszą wersję (`h-6 w-6`) w rozwiniętym
+  panelu — nieczytelną. Teraz oba miejsca renderują ten sam rozmiar
+  (`h-8 w-8`, ikona `h-4 w-4`).
+- **Pomarańcz na badge'u ostrzeżenia zmieniony na pastelowy
+  (`bg-orange-200` zamiast `bg-orange-500`).** Czarny wykrzyknik/check
+  na nasyconym `orange-500` był słabo czytelny — jaśniejsze tło
+  poprawia kontrast z czarnym symbolem w środku.
+
 ## [0.8.5] — 2026-08-22
 
 ### Zmieniono

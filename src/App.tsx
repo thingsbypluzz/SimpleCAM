@@ -85,7 +85,7 @@ function step4Badge(generatedGCode: string[] | null, warnings: string[]): Step4B
   if (warnings.length > 0) {
     return {
       Icon: generatedGCode ? CheckIcon : WarningIcon,
-      colorClassName: 'bg-orange-500 text-black',
+      colorClassName: 'bg-orange-200 text-black',
       title: warnings.join(' '),
     }
   }
@@ -313,10 +313,10 @@ function App() {
                     </h2>
                     {step.id === 4 && (
                       <span
-                        className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full ${step4BadgeInfo.colorClassName}`}
+                        className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full ${step4BadgeInfo.colorClassName}`}
                         title={step4BadgeInfo.title}
                       >
-                        <step4BadgeInfo.Icon className="h-3.5 w-3.5" />
+                        <step4BadgeInfo.Icon className="h-4 w-4" />
                       </span>
                     )}
                   </div>

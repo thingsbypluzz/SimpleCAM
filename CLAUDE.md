@@ -594,6 +594,13 @@ przeglądu przez użytkownika.
   nie mieści się" dostała własny wygląd: **check na pomarańczowym
   tle**, odróżniony od "jeszcze nie wygenerowano + już wiadomo że nie
   zmieści się" (wykrzyknik na pomarańczowym).
+
+  **`0.8.10`** — dwie kosmetyczne korekty tego samego badge'u: rozmiar
+  w rozwiniętym panelu zrównany z zwiniętym paskiem (oba `h-8 w-8`,
+  ikona `h-4 w-4` — `0.8.9` wprowadziło mniejszą, nieczytelną wersję
+  `h-6 w-6`), i tło zmienione na pastelowe `bg-orange-200` (z
+  nasyconego `bg-orange-500`) — czarny symbol w środku miał za mało
+  kontrastu na mocnym pomarańczu.
 - **`.gitignore` musi wykluczać `.claude/`** — Tailwind v4
   (`@tailwindcss/vite`) auto-skanuje cały katalog projektu pod kątem nazw
   klas i respektuje tylko `.gitignore` jako listę wykluczeń (bez niego
