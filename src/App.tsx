@@ -232,6 +232,13 @@ function App() {
     })
   }
 
+  // Turning overlay off also clears the selection — re-enabling starts from
+  // a clean slate rather than silently resuming a stale comparison set.
+  const handleToggleOverlay = () => {
+    if (overlayEnabled) setOverlaySlots(new Set())
+    setOverlayEnabled((v) => !v)
+  }
+
   const handleDeletePreset = (id: PresetSlotId) => {
     const existing = presetSlots[id]
     if (!existing) return
@@ -254,61 +261,59 @@ function App() {
           </p>
         </div>
 
-        <div className="flex items-center justify-self-center gap-2">
-          <div className="flex items-center gap-2 rounded-b-md border-b-2 border-slate-200 pb-2 dark:border-slate-800">
-            {PRESET_SLOT_IDS.map((id) => {
-              const preset = presetSlots[id]
-              const PresetIcon = preset ? positioningIcon(preset.geometry.positioning) : null
-              const isOverlaySelected = overlayEnabled && overlaySlots.has(id)
-              return (
-                <div key={id} className="group relative">
+        <div className="flex items-center justify-self-center gap-2 rounded-b-md border-b-2 border-slate-200 pb-2 dark:border-slate-800">
+          {PRESET_SLOT_IDS.map((id) => {
+            const preset = presetSlots[id]
+            const PresetIcon = preset ? positioningIcon(preset.geometry.positioning) : null
+            const isOverlaySelected = overlayEnabled && overlaySlots.has(id)
+            return (
+              <div key={id} className="group relative">
+                <button
+                  type="button"
+                  onClick={() => (overlayEnabled ? handleToggleOverlaySlot(id) : handleLoadPreset(id))}
+                  disabled={!preset}
+                  title={
+                    !preset
+                      ? `Preset [${id}] — empty`
+                      : overlayEnabled
+                        ? `${isOverlaySelected ? 'Remove' : 'Add'} preset [${id}] — ${presetLabel(preset)} ${isOverlaySelected ? 'from' : 'to'} overlay`
+                        : `Load preset [${id}] — ${presetLabel(preset)}`
+                  }
+                  className={
+                    !preset
+                      ? 'flex h-11 w-11 cursor-default items-center justify-center rounded-md border border-slate-200 text-xs font-semibold text-slate-300 dark:border-slate-800 dark:text-slate-700'
+                      : isOverlaySelected
+                        ? 'flex h-11 w-11 items-center justify-center rounded-md border-2 border-indigo-600 text-indigo-700 hover:bg-indigo-50 dark:border-indigo-400 dark:text-indigo-300 dark:hover:bg-indigo-950/40'
+                        : 'flex h-11 w-11 items-center justify-center rounded-md border border-indigo-300 text-indigo-700 hover:bg-indigo-50 dark:border-indigo-800 dark:text-indigo-300 dark:hover:bg-indigo-950/40'
+                  }
+                >
+                  {PresetIcon ? <PresetIcon className="h-6 w-6" /> : id}
+                </button>
+                {preset && isOverlaySelected && (
+                  <span
+                    aria-hidden="true"
+                    className="absolute -top-1 -left-1 flex h-4 w-4 items-center justify-center rounded-full bg-indigo-600 text-white dark:bg-indigo-500"
+                  >
+                    <CheckIcon className="h-2.5 w-2.5" />
+                  </span>
+                )}
+                {preset && !overlayEnabled && (
                   <button
                     type="button"
-                    onClick={() => (overlayEnabled ? handleToggleOverlaySlot(id) : handleLoadPreset(id))}
-                    disabled={!preset}
-                    title={
-                      !preset
-                        ? `Preset [${id}] — empty`
-                        : overlayEnabled
-                          ? `${isOverlaySelected ? 'Remove' : 'Add'} preset [${id}] — ${presetLabel(preset)} ${isOverlaySelected ? 'from' : 'to'} overlay`
-                          : `Load preset [${id}] — ${presetLabel(preset)}`
-                    }
-                    className={
-                      !preset
-                        ? 'flex h-11 w-11 cursor-default items-center justify-center rounded-md border border-slate-200 text-xs font-semibold text-slate-300 dark:border-slate-800 dark:text-slate-700'
-                        : isOverlaySelected
-                          ? 'flex h-11 w-11 items-center justify-center rounded-md border-2 border-indigo-600 text-indigo-700 hover:bg-indigo-50 dark:border-indigo-400 dark:text-indigo-300 dark:hover:bg-indigo-950/40'
-                          : 'flex h-11 w-11 items-center justify-center rounded-md border border-indigo-300 text-indigo-700 hover:bg-indigo-50 dark:border-indigo-800 dark:text-indigo-300 dark:hover:bg-indigo-950/40'
-                    }
+                    onClick={() => handleDeletePreset(id)}
+                    aria-label={`Delete preset ${id}`}
+                    title="Delete preset"
+                    className="absolute -top-1 -right-1 hidden h-4 w-4 items-center justify-center rounded-full bg-red-100 text-[10px] leading-none font-bold text-red-600 group-hover:flex dark:bg-red-950 dark:text-red-400"
                   >
-                    {PresetIcon ? <PresetIcon className="h-6 w-6" /> : id}
+                    ×
                   </button>
-                  {preset && isOverlaySelected && (
-                    <span
-                      aria-hidden="true"
-                      className="absolute -top-1 -left-1 flex h-4 w-4 items-center justify-center rounded-full bg-indigo-600 text-white dark:bg-indigo-500"
-                    >
-                      <CheckIcon className="h-2.5 w-2.5" />
-                    </span>
-                  )}
-                  {preset && !overlayEnabled && (
-                    <button
-                      type="button"
-                      onClick={() => handleDeletePreset(id)}
-                      aria-label={`Delete preset ${id}`}
-                      title="Delete preset"
-                      className="absolute -top-1 -right-1 hidden h-4 w-4 items-center justify-center rounded-full bg-red-100 text-[10px] leading-none font-bold text-red-600 group-hover:flex dark:bg-red-950 dark:text-red-400"
-                    >
-                      ×
-                    </button>
-                  )}
-                </div>
-              )
-            })}
-          </div>
+                )}
+              </div>
+            )
+          })}
           <button
             type="button"
-            onClick={() => setOverlayEnabled((v) => !v)}
+            onClick={handleToggleOverlay}
             aria-label="Toggle preset overlay"
             title={
               overlayEnabled
@@ -316,13 +321,13 @@ function App() {
                 : 'Overlay preview: off — click to compare saved presets against the current pattern'
             }
             className={[
-              'ml-1 flex h-9 w-9 items-center justify-center rounded-md border transition',
+              'ml-11 flex h-11 w-11 items-center justify-center rounded-md border transition',
               overlayEnabled
                 ? 'border-2 border-indigo-600 bg-indigo-50 text-indigo-700 dark:border-indigo-400 dark:bg-indigo-950/40 dark:text-indigo-300'
                 : 'border-slate-200 text-slate-600 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-900',
             ].join(' ')}
           >
-            <EyeIcon className="h-4 w-4" />
+            <EyeIcon className="h-5 w-5" />
           </button>
         </div>
 
@@ -405,7 +410,8 @@ function App() {
                         onChange={updateParams}
                         generatedGCode={generatedGCode}
                         onGenerate={handleGenerate}
-                        canGenerate={isGeometryValid}
+                        canGenerate={isGeometryValid && !overlayEnabled}
+                        overlayActive={overlayEnabled}
                         presetSlots={presetSlots}
                         onSaveToPreset={handleSaveToPreset}
                         warnings={fitWarnings}
@@ -580,7 +586,12 @@ function App() {
           </div>
 
           {previewTab === '2d' && (
-            <ToolpathCanvas params={params} isDark={isDark} overlayParams={overlayParams} />
+            <ToolpathCanvas
+              params={params}
+              isDark={isDark}
+              overlayParams={overlayParams}
+              showActivePattern={!overlayEnabled}
+            />
           )}
 
           {previewTab === '3d' && (
@@ -591,7 +602,12 @@ function App() {
                 </div>
               }
             >
-              <Scene3D params={params} isDark={isDark} overlayParams={overlayParams} />
+              <Scene3D
+                params={params}
+                isDark={isDark}
+                overlayParams={overlayParams}
+                showActivePattern={!overlayEnabled}
+              />
             </Suspense>
           )}
 

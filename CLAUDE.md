@@ -643,9 +643,10 @@ przeglądu przez użytkownika.
   linie Z w 3D), **bez** rozróżnienia kolorem per-slot — świadomie
   odłożone jako osobna decyzja do rewizji, gdyby się okazało że
   przeszkadza (użytkownik: "otwieramy tu puszkę Pandory"). Nakładki
-  rysowane/dodawane pierwsze, żywy wzorzec ostatni (na wierzchu) — w
-  2D realnie decyduje o przesłanianiu, w 3D kosmetyczne (prawdziwa
-  geometria z depth-testingiem). Kamera 3D **nie** re-frame'uje się przy
+  rysowane/dodawane pierwsze, żywy wzorzec (gdy w ogóle renderowany —
+  patrz `0.8.14` niżej) ostatni (na wierzchu) — w 2D realnie decyduje o
+  przesłanianiu, w 3D kosmetyczne (prawdziwa geometria z
+  depth-testingiem). Kamera 3D **nie** re-frame'uje się przy
   przełączeniu overlay (`hasFramedRef` już to zapewniał, bez zmian
   logiki) — Fit View ręcznie. 2D nie ma pojęcia kamery w ogóle
   (`drawToolpath()` przelicza skalę/wycentrowanie od zera przy każdym
@@ -664,6 +665,24 @@ przeglądu przez użytkownika.
   bez tego trafiałoby jako nowa referencja do zależności efektu
   przebudowującego scenę 3D przy każdym renderze `App`, wywołując zbędny
   dispose+rebuild całej geometrii THREE.
+
+  **`0.8.14`** — poprawki po pierwszym realnym użyciu (feedback
+  użytkownika). Ikonka oka wyrównana rozmiarem do ikonek presetów
+  (`h-11 w-11`) i przeniesiona do wnętrza podkreślonej grupy — jedna
+  wspólna linia pod całością zamiast tylko pod presetami, żeby
+  sugerować zależność; odstęp do presetów zwiększony do szerokości
+  jednej ikonki (`ml-11`). Wyłączenie oka (`handleToggleOverlay()`)
+  czyści teraz `overlaySlots` — dotychczasowe "zostaw jak jest"
+  myliło, bo nic się wizualnie nie resetowało. Nowy parametr
+  `showActivePattern` w `drawToolpath()`/`buildToolpathScene()` — `false`
+  podczas aktywnego overlay, więc żywy wzorzec (user: "preset 0") **nie
+  jest renderowany razem z** porównywanymi presetami — mieszanie ich
+  utrudniało odczytanie, co jest czym; wraca automatycznie po wyłączeniu
+  oka. `canGenerate` w `App.tsx` dostał `&& !overlayEnabled` — skoro
+  żywy wzorzec nie jest wtedy widoczny w podglądzie, Generate byłby "w
+  ciemno"; `Step4Output.tsx` dostał nowy prop `overlayActive` do
+  wyświetlenia właściwego powodu blokady zamiast mylącego "Fix the
+  highlighted errors...".
 - **`.gitignore` musi wykluczać `.claude/`** — Tailwind v4
   (`@tailwindcss/vite`) auto-skanuje cały katalog projektu pod kątem nazw
   klas i respektuje tylko `.gitignore` jako listę wykluczeń (bez niego

@@ -7,6 +7,34 @@ zgodne z [SemVer](https://semver.org/). Ten plik pozostaje głównym, czytelnym
 thingsbypluzz/SimpleCAM), ale to infrastruktura pod izolację pracy
 (branch/worktree per zadanie), nie zamiennik tego changeloga.
 
+## [0.8.14] — 2026-08-22
+
+### Zmieniono
+
+- **Poprawki UX overlay presetów po pierwszym użyciu.** Ikonka "oko"
+  wyrównana rozmiarem do ikonek presetów (`h-11 w-11`, zamiast
+  mniejszej `h-9 w-9`) i przeniesiona do wnętrza podkreślonej grupy —
+  wspólna linia pod całym rzędem sugeruje teraz zależność oka i
+  presetów, nie tylko samych presetów. Odstęp między ostatnim presetem
+  a okiem zwiększony do szerokości jednej ikonki (`ml-11`).
+- **Wyłączenie overlay resetuje widok.** Dotąd zaznaczenie presetów w
+  `overlaySlots` przeżywało wyłączenie oka (świadoma decyzja na
+  start — "zachowaj zestaw porównawczy") — w praktyce myliło, bo
+  wyłączenie nie czyściło niczego w podglądzie. Teraz wyłączenie oka
+  czyści zaznaczenie i przywraca zwykły, jednowzorcowy widok.
+- **Żywy wzorzec ukryty domyślnie podczas overlay.** Mieszanie
+  edytowanego wzorca z porównywanymi presetami utrudniało odczytanie,
+  co jest czym. Nowy parametr `showActivePattern` w `drawToolpath()` i
+  `buildToolpathScene()` — `false` podczas aktywnego overlay, więc
+  widoczne są wyłącznie zaznaczone presety (żywy wzorzec wraca, gdy
+  overlay wyłączony).
+- **Generate zablokowany podczas overlay.** Skoro żywy wzorzec nie jest
+  wtedy widoczny w podglądzie, generowanie dla niego G-code byłoby
+  generowaniem "w ciemno" — `canGenerate` w `App.tsx` dostał dodatkowy
+  warunek `&& !overlayEnabled`, z dedykowanym komunikatem pod
+  przyciskiem tłumaczącym dlaczego (zamiast mylącego "Fix the
+  highlighted errors...").
+
 ## [0.8.13] — 2026-08-22
 
 ### Dodano

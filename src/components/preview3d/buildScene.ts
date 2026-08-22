@@ -290,13 +290,20 @@ export function buildToolpathScene(
   params: WizardParams,
   isDark: boolean,
   overlayParams: WizardParams[] = [],
+  showActivePattern = true,
 ): BuiltScene {
   const theme = isDark ? DARK_THEME : LIGHT_THEME
 
   // Overlay patterns first, active pattern last — cosmetically inert in 3D
   // (real depth-tested geometry, add-order doesn't affect occlusion) but
   // kept for consistency with the 2D preview, where draw order matters.
-  const allPatterns = [...overlayParams.map(resolvePattern), resolvePattern(params)]
+  // While comparing presets, the live pattern is left out entirely
+  // (showActivePattern=false) — mixing it in made it hard to tell what was
+  // being compared against what.
+  const allPatterns = [
+    ...overlayParams.map(resolvePattern),
+    ...(showActivePattern ? [resolvePattern(params)] : []),
+  ]
 
   const objects: THREE.Object3D[] = []
   const bounds = new THREE.Box3()

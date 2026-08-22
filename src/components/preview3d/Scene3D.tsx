@@ -9,6 +9,7 @@ interface Scene3DProps {
   params: WizardParams
   isDark: boolean
   overlayParams: WizardParams[]
+  showActivePattern: boolean
 }
 
 const PRESET_BUTTONS: { name: ViewPresetName; label: string }[] = [
@@ -18,7 +19,7 @@ const PRESET_BUTTONS: { name: ViewPresetName; label: string }[] = [
   { name: 'side', label: 'Side' },
 ]
 
-export function Scene3D({ params, isDark, overlayParams }: Scene3DProps) {
+export function Scene3D({ params, isDark, overlayParams, showActivePattern }: Scene3DProps) {
   const containerRef = useRef<HTMLDivElement>(null)
   const sceneRef = useRef<THREE.Scene | null>(null)
   const cameraRef = useRef<THREE.PerspectiveCamera | null>(null)
@@ -128,7 +129,7 @@ export function Scene3D({ params, isDark, overlayParams }: Scene3DProps) {
       disposeObject3D(child)
     }
 
-    const { objects, bounds } = buildToolpathScene(params, isDark, overlayParams)
+    const { objects, bounds } = buildToolpathScene(params, isDark, overlayParams, showActivePattern)
     objects.forEach((obj) => contentGroup.add(obj))
     boundsRef.current = bounds
 
@@ -144,7 +145,7 @@ export function Scene3D({ params, isDark, overlayParams }: Scene3DProps) {
       frameCamera(camera, controls, bounds, VIEW_PRESETS.front.direction, VIEW_PRESETS.front.up)
       hasFramedRef.current = true
     }
-  }, [params, isDark, overlayParams])
+  }, [params, isDark, overlayParams, showActivePattern])
 
   const handlePreset = (name: ViewPresetName) => {
     const camera = cameraRef.current

@@ -10,6 +10,7 @@ interface Step4OutputProps {
   generatedGCode: string[] | null
   onGenerate: () => void
   canGenerate: boolean
+  overlayActive: boolean
   presetSlots: Partial<Record<PresetSlotId, WizardParams>>
   onSaveToPreset: (id: PresetSlotId) => boolean
   warnings: string[]
@@ -32,6 +33,7 @@ export function Step4Output({
   generatedGCode,
   onGenerate,
   canGenerate,
+  overlayActive,
   presetSlots,
   onSaveToPreset,
   warnings,
@@ -100,7 +102,9 @@ export function Step4Output({
 
       {!canGenerate && (
         <p className="text-sm text-red-600 dark:text-red-400">
-          Fix the highlighted errors in Step 2 / Step 3 before generating.
+          {overlayActive
+            ? 'Turn off preset overlay (the eye icon in the header) to generate G-code.'
+            : 'Fix the highlighted errors in Step 2 / Step 3 before generating.'}
         </p>
       )}
 

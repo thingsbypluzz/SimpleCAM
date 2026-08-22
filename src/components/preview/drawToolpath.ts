@@ -199,12 +199,19 @@ export function drawToolpath(
   params: WizardParams,
   isDark: boolean,
   overlayParams: WizardParams[] = [],
+  showActivePattern = true,
 ) {
   const theme = isDark ? DARK_THEME : LIGHT_THEME
 
   // Overlay patterns drawn first, active pattern last — the active pattern
-  // ends up on top wherever it overlaps an overlaid preset (BL-3).
-  const allPatterns = [...overlayParams.map(resolvePattern), resolvePattern(params)]
+  // ends up on top wherever it overlaps an overlaid preset (BL-3). While
+  // comparing presets, the live pattern is left out entirely
+  // (showActivePattern=false) — mixing it in made it hard to tell what was
+  // being compared against what.
+  const allPatterns = [
+    ...overlayParams.map(resolvePattern),
+    ...(showActivePattern ? [resolvePattern(params)] : []),
+  ]
 
   ctx.clearRect(0, 0, width, height)
   ctx.fillStyle = theme.background
