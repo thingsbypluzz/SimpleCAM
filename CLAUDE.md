@@ -521,15 +521,6 @@ nowa funkcjonalność. Nie zaczynać bez wyraźnego "przechodzimy do X".
   zależy od `MachineSettings.dialect` (patrz `BL-5` wyżej — jeśli tak,
   to dwie różne przyszłe implementacje czytają to samo pole Machine
   Settings, nie dwa osobne mechanizmy).
-- **`BL-11`** — **Zoom/pan na 2D Preview.** Dziś `drawToolpath()` nie ma
-  żadnego stanu kamery — przelicza skalę/wycentrowanie od zera przy
-  każdym renderze, zawsze dopasowując się do danych (patrz `BL-3`).
-  User chciałby, żeby canvas reagował na scroll myszki (zoom in/out) i
-  dostał osobny przycisk **Fit View** w prawym dolnym rogu (jak w 3D
-  Preview) — wymaga wprowadzenia realnego stanu kamery (offset/zoom),
-  którego 2D dziś celowo nie ma, plus obsługi zdarzenia `wheel` i
-  przeliczenia `toPx()`/bounds pod kątem tego stanu zamiast zawsze liczyć
-  je na nowo z danych.
 Nie przeskakuj etapów bez pytania — każdy kończy się checkpointem do
 przeglądu przez użytkownika.
 
@@ -780,6 +771,51 @@ przeglądu przez użytkownika.
   odłożonej w `BL-3` decyzji o braku kolorów per-slot w overlay —
   paleta reskinuje jednolicie żywy wzorzec i każdy nałożony preset,
   bez wprowadzania nowego rozróżnienia kolorem per-slot.
+- **Zoom/pan na 2D Preview (`BL-11`, `0.10.0`).** Sesja `/grill-me`
+  ustaliła zakres: scroll = zoom-to-cursor (punkt pod kursorem zostaje
+  na miejscu), prawy przycisk myszy + przeciąganie = pan (kontekstowe
+  menu przeglądarki wygaszone nad canvasem), zoom ograniczony
+  względnie do skali fit-to-data (`0.2×`–`20×`, nie stałe px/mm — patrz
+  `MIN_ZOOM_FACTOR`/`MAX_ZOOM_FACTOR` w nowym
+  `src/components/preview/camera2d.ts`). Bez obsługi gestów dotykowych
+  (touch/pinch) — poza zakresem, to terytorium `BL-8`. Zachowanie
+  kamery lustrzane do 3D Preview: pierwsze zamontowanie auto-dopasowuje
+  (jednorazowo, `hasFittedRef` — analogiczny do `hasFramedRef` w
+  `Scene3D.tsx`), dalsze edycje parametrów **nie** ruszają kamery,
+  zmiana selekcji overlayu `BL-3` wymusza pełne re-dopasowanie (2D nie
+  ma odpowiednika "kąta" do zachowania jak 3D, więc to zawsze pełny
+  fit, nie tylko re-dopasowanie dystansu/targetu). Przycisk **Fit
+  View** w prawym dolnym rogu, ta sama pozycja/styl co w 3D Preview.
+
+  `src/components/preview/camera2d.ts` — czysty moduł matematyki kamery
+  2D (analogiczny do `preview3d/cameraPresets.ts`, ale bez rotacji: tu
+  kamera to tylko `{ scale, centerX, centerY }`). `computeFitCamera()`,
+  `zoomAt()` (zoom-to-cursor), `panBy()`, `worldToScreen()`/
+  `screenToWorld()`, `clampScale()` — wszystkie czyste funkcje z
+  testami (`camera2d.test.ts`, pierwszy plik testowy poza `src/lib/`;
+  `vitest.config.ts` nie ogranicza lokalizacji plików testowych, więc
+  to działało bez zmian konfiguracji). `ToolpathCanvas.tsx` przechowuje
+  stan kamery (`useState<Camera2D | null>`) i podłącza natywne listenery
+  (`wheel` z `{ passive: false }`, `contextmenu`, `mousedown`/
+  `mousemove`/`mouseup` na `window`) — ten sam wzorzec "manual
+  addEventListener zamiast React synthetic events" co `Scene3D.tsx`
+  stosuje dla resize.
+
+  Refaktor `drawToolpath.ts`: `toPx()` przestał liczyć skalę/offset od
+  zera z danych przy każdym renderze — teraz przyjmuje gotowy
+  `Camera2D` jako parametr. Przy okazji naprawiony utajony bug, który
+  ujawniłby się dopiero z realnym zoomem: siatka/etykiety osi były
+  wcześniej bounded do prostokąta danych (`dataMinX`…`dataMaxX`), więc
+  po wprowadzeniu zoom-out poza fit obszar poza danymi zostałby bez
+  siatki. Siatka i osie liczą się teraz z **widocznego viewportu**
+  (`camera.centerX/Y ± width/height / (2×scale)`), nie z zasięgu
+  danych — grubość kroku siatki (`niceStep`) skaluje się więc razem z
+  zoomem (gęstsza siatka przy przybliżeniu), zamiast być stała
+  niezależnie od poziomu przybliżenia. Etykiety osi X/Y i ich groty
+  zmieniły punkt odniesienia z "krawędzi dopasowanego prostokąta
+  danych + padding" na "krawędź widocznego canvasa - stały margines"
+  (`EDGE_MARGIN`), bo po BL-11 nie ma już jednego kanonicznego
+  narysowanego prostokąta do którego by się przypiąć.
 - **`.gitignore` musi wykluczać `.claude/`** — Tailwind v4
   (`@tailwindcss/vite`) auto-skanuje cały katalog projektu pod kątem nazw
   klas i respektuje tylko `.gitignore` jako listę wykluczeń (bez niego
@@ -912,7 +948,20 @@ src/
   components/preview/       — podgląd 2D (Etap 3)
     ToolpathCanvas.tsx        — React wrapper: <canvas>, devicePixelRatio,
                                ResizeObserver, przerysowanie przy zmianie
-                               params/motywu
+                               params/motywu/kamery. Od `BL-11` też
+                               właściciel stanu kamery (`Camera2D`) i
+                               natywnych listenerów zoom/pan (wheel,
+                               contextmenu, mousedown/move/up) — patrz
+                               "Zoom/pan na 2D Preview" w "Kluczowe decyzje
+                               projektowe" po pełny opis
+    camera2d.ts                — czysta matematyka kamery 2D (`BL-11`) —
+                               odpowiednik `preview3d/cameraPresets.ts`,
+                               ale bez rotacji (`Camera2D = { scale,
+                               centerX, centerY }`). `computeFitCamera()`,
+                               `zoomAt()` (zoom-to-cursor), `panBy()`,
+                               `worldToScreen()`/`screenToWorld()`,
+                               `clampScale()` — z testami
+                               (`camera2d.test.ts`)
     drawToolpath.ts            — właściwe rysowanie (Canvas 2D API): siatka,
                                osie X (czerwona) / Y (zielona) — te same
                                wartości hex co `preview3d/buildScene.ts`
@@ -928,7 +977,18 @@ src/
                                `buildTheme(paletteId, isDark)` łączy stałe
                                kolory CNC (`getFixedColors`) z akcentami
                                wybranej palety (`getPaletteAccents`) —
-                               `BL-12`. Reużywa `resolvePoints()` z
+                               `BL-12`. Od `BL-11` przyjmuje gotowy
+                               `Camera2D` zamiast liczyć skalę/offset od
+                               zera z danych przy każdym renderze — siatka
+                               i osie są bounded do widocznego viewportu
+                               (pochodnego z kamery), nie do zasięgu
+                               danych, więc zoom/pan nigdy nie odsłania
+                               obszaru bez siatki. Eksportuje
+                               `computeToolpathDataBounds()` — jedyny
+                               punkt styku z `ToolpathCanvas.tsx`, które
+                               woła go, żeby policzyć fit-to-data kamerę
+                               (mount, Fit View, zmiana selekcji overlayu).
+                               Reużywa `resolvePoints()` z
                                `lib/positioning.ts` — geometria liczona raz,
                                wspólnie z silnikiem
   components/preview3d/     — podgląd 3D (Etap 4), doładowywany leniwie

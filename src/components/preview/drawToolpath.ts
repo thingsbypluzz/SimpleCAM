@@ -1,6 +1,7 @@
 import { getFixedColors, getPaletteAccents, type PaletteId } from '../../config/palettes'
 import { resolvePoints } from '../../lib/positioning'
 import type { WizardParams } from '../../types/wizard'
+import { type Camera2D, type DataBounds, worldToScreen } from './camera2d'
 
 interface Theme {
   background: string
@@ -94,7 +95,7 @@ function resolvePattern(params: WizardParams): ResolvedPattern {
 // Bounds spanning every rendered pattern (BL-3 overlay) — each pattern's
 // points are padded by its OWN holeRadius, since overlaid presets can have
 // a different hole diameter than the active one.
-function computeCombinedBounds(patterns: ResolvedPattern[]) {
+function computeCombinedBounds(patterns: ResolvedPattern[]): DataBounds {
   const allX = [0]
   const allY = [0]
   for (const pattern of patterns) {
@@ -109,6 +110,21 @@ function computeCombinedBounds(patterns: ResolvedPattern[]) {
     dataMinY: Math.min(...allY),
     dataMaxY: Math.max(...allY),
   }
+}
+
+// BL-11: exposed so ToolpathCanvas can compute a fit-to-data Camera2D
+// (initial mount, Fit View click, BL-3 overlay-selection change) without
+// duplicating the overlay/active-pattern resolution logic below.
+export function computeToolpathDataBounds(
+  params: WizardParams,
+  overlayParams: WizardParams[] = [],
+  showActivePattern = true,
+): DataBounds {
+  const allPatterns = [
+    ...overlayParams.map(resolvePattern),
+    ...(showActivePattern ? [resolvePattern(params)] : []),
+  ]
+  return computeCombinedBounds(allPatterns)
 }
 
 // Draws one pattern's full geometry (rapid traverse, holes, offset vector)
@@ -184,6 +200,14 @@ function drawPatternGeometry(
   }
 }
 
+// Fixed screen-space margin (px) kept between the visible canvas edge and
+// the axis arrow tips/labels/grid-number labels — BL-11 replaced the old
+// "data rect with padding" layout (axes/grid bounded to where the data
+// happened to fit) with a real pan/zoom camera, so there's no longer a
+// canonical drawn rectangle to anchor these to; they're anchored to the
+// canvas edges instead, like a ruler.
+const EDGE_MARGIN = 24
+
 export function drawToolpath(
   ctx: CanvasRenderingContext2D,
   width: number,
@@ -191,6 +215,7 @@ export function drawToolpath(
   params: WizardParams,
   isDark: boolean,
   paletteId: PaletteId,
+  camera: Camera2D,
   overlayParams: WizardParams[] = [],
   showActivePattern = true,
 ) {
@@ -212,91 +237,86 @@ export function drawToolpath(
 
   if (allPatterns.every((p) => p.points.length === 0)) return
 
-  const { dataMinX, dataMaxX, dataMinY, dataMaxY } = computeCombinedBounds(allPatterns)
-  const dataWidth = Math.max(dataMaxX - dataMinX, 1)
-  const dataHeight = Math.max(dataMaxY - dataMinY, 1)
+  const toPx = (x: number, y: number): [number, number] => worldToScreen(camera, width, height, x, y)
 
-  const padding = 40
-  const availW = Math.max(width - padding * 2, 1)
-  const availH = Math.max(height - padding * 2, 1)
-  const scale = Math.min(availW / dataWidth, availH / dataHeight)
+  // Grid + axis labels — spans the visible viewport (derived from the
+  // camera), not the data extent, so panning/zooming out never reveals an
+  // area with no grid (BL-11; the old fit-only camera made "visible
+  // viewport" and "data extent with padding" the same rectangle, so this
+  // distinction didn't exist before).
+  const halfWorldW = width / (2 * camera.scale)
+  const halfWorldH = height / (2 * camera.scale)
+  const visMinX = camera.centerX - halfWorldW
+  const visMaxX = camera.centerX + halfWorldW
+  const visMinY = camera.centerY - halfWorldH
+  const visMaxY = camera.centerY + halfWorldH
 
-  const drawnWidth = dataWidth * scale
-  const drawnHeight = dataHeight * scale
-  const offsetX = padding + (availW - drawnWidth) / 2
-  const offsetY = padding + (availH - drawnHeight) / 2
-
-  const toPx = (x: number, y: number): [number, number] => [
-    offsetX + (x - dataMinX) * scale,
-    offsetY + (dataMaxY - y) * scale, // flip Y: world up = canvas up
-  ]
-
-  // Grid + axis labels
-  const step = niceStep(Math.max(dataWidth, dataHeight) / 8)
+  const step = niceStep(Math.max(halfWorldW, halfWorldH) / 4)
   ctx.font = '10px ui-monospace, monospace'
   ctx.fillStyle = theme.text
   ctx.strokeStyle = theme.grid
   ctx.lineWidth = 1
 
-  const gridStartX = Math.floor(dataMinX / step) * step
-  for (let x = gridStartX; x <= dataMaxX; x += step) {
+  const gridStartX = Math.floor(visMinX / step) * step
+  for (let x = gridStartX; x <= visMaxX; x += step) {
     const [px] = toPx(x, 0)
     ctx.beginPath()
-    ctx.moveTo(px, offsetY)
-    ctx.lineTo(px, offsetY + drawnHeight)
+    ctx.moveTo(px, 0)
+    ctx.lineTo(px, height)
     ctx.stroke()
-    if (Math.abs(x) > step / 2) ctx.fillText(`${Math.round(x)}`, px + 3, height - padding + 14)
+    if (Math.abs(x) > step / 2) ctx.fillText(`${Math.round(x)}`, px + 3, height - EDGE_MARGIN + 14)
   }
 
-  const gridStartY = Math.floor(dataMinY / step) * step
-  for (let y = gridStartY; y <= dataMaxY; y += step) {
+  const gridStartY = Math.floor(visMinY / step) * step
+  for (let y = gridStartY; y <= visMaxY; y += step) {
     const [, py] = toPx(0, y)
     ctx.beginPath()
-    ctx.moveTo(offsetX, py)
-    ctx.lineTo(offsetX + drawnWidth, py)
+    ctx.moveTo(0, py)
+    ctx.lineTo(width, py)
     ctx.stroke()
-    if (Math.abs(y) > step / 2) ctx.fillText(`${Math.round(y)}`, padding - 32, py + 3)
+    if (Math.abs(y) > step / 2) ctx.fillText(`${Math.round(y)}`, 4, py + 3)
   }
 
-  // Axes through the origin — red X / green Y, each with an arrowhead +
-  // label at the positive end (same convention as 3D Preview's axes).
+  // Axes through the origin — red X / green Y, spanning the full visible
+  // canvas, each with an arrowhead + label pinned near the screen edge
+  // (same convention as 3D Preview's axes, adapted for a pannable camera).
   const [originPxX, originPxY] = toPx(0, 0)
   const arrowSize = 7
 
   ctx.strokeStyle = theme.axisX
   ctx.lineWidth = 1.5
   ctx.beginPath()
-  ctx.moveTo(offsetX, originPxY)
-  ctx.lineTo(offsetX + drawnWidth, originPxY)
+  ctx.moveTo(0, originPxY)
+  ctx.lineTo(width, originPxY)
   ctx.stroke()
   ctx.beginPath()
-  ctx.moveTo(offsetX + drawnWidth, originPxY)
-  ctx.lineTo(offsetX + drawnWidth - arrowSize, originPxY - arrowSize * 0.6)
-  ctx.lineTo(offsetX + drawnWidth - arrowSize, originPxY + arrowSize * 0.6)
+  ctx.moveTo(width - EDGE_MARGIN, originPxY)
+  ctx.lineTo(width - EDGE_MARGIN - arrowSize, originPxY - arrowSize * 0.6)
+  ctx.lineTo(width - EDGE_MARGIN - arrowSize, originPxY + arrowSize * 0.6)
   ctx.closePath()
   ctx.fillStyle = theme.axisX
   ctx.fill()
   ctx.font = 'bold 12px ui-monospace, monospace'
-  ctx.fillText('X', offsetX + drawnWidth + 4, originPxY + 4)
+  ctx.fillText('X', width - EDGE_MARGIN + 4, originPxY + 4)
 
   // Canvas up = world +Y (toPx flips Y), so the positive end is at the top.
   ctx.strokeStyle = theme.axisY
   ctx.beginPath()
-  ctx.moveTo(originPxX, offsetY)
-  ctx.lineTo(originPxX, offsetY + drawnHeight)
+  ctx.moveTo(originPxX, 0)
+  ctx.lineTo(originPxX, height)
   ctx.stroke()
   ctx.beginPath()
-  ctx.moveTo(originPxX, offsetY)
-  ctx.lineTo(originPxX - arrowSize * 0.6, offsetY + arrowSize)
-  ctx.lineTo(originPxX + arrowSize * 0.6, offsetY + arrowSize)
+  ctx.moveTo(originPxX, EDGE_MARGIN)
+  ctx.lineTo(originPxX - arrowSize * 0.6, EDGE_MARGIN + arrowSize)
+  ctx.lineTo(originPxX + arrowSize * 0.6, EDGE_MARGIN + arrowSize)
   ctx.closePath()
   ctx.fillStyle = theme.axisY
   ctx.fill()
-  ctx.fillText('Y', originPxX + 5, offsetY - 3)
+  ctx.fillText('Y', originPxX + 5, EDGE_MARGIN - 5)
   ctx.font = '10px ui-monospace, monospace'
 
   for (const pattern of allPatterns) {
-    drawPatternGeometry(ctx, toPx, scale, pattern, theme, arrowSize)
+    drawPatternGeometry(ctx, toPx, camera.scale, pattern, theme, arrowSize)
   }
 
   // Origin marker

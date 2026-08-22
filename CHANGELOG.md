@@ -7,6 +7,27 @@ zgodne z [SemVer](https://semver.org/). Ten plik pozostaje głównym, czytelnym
 thingsbypluzz/SimpleCAM), ale to infrastruktura pod izolację pracy
 (branch/worktree per zadanie), nie zamiennik tego changeloga.
 
+## [0.10.0] — 2026-08-23
+
+### Dodano
+
+- **`BL-11` zamknięte — zoom/pan na 2D Preview.** Scroll myszki zooma
+  do kursora (punkt pod kursorem zostaje na miejscu); prawy przycisk +
+  przeciąganie panuje (menu kontekstowe przeglądarki wygaszone nad
+  canvasem). Zoom ograniczony względnie do skali fit-to-data
+  (`0.2×`–`20×`). Kamera zachowuje się jak w 3D Preview: auto-fit
+  jednorazowo przy pierwszym montowaniu, edycje parametrów jej nie
+  ruszają, zmiana selekcji overlayu (`BL-3`) wymusza pełne
+  re-dopasowanie. Nowy przycisk **Fit View** w prawym dolnym rogu,
+  taki sam jak w 3D Preview.
+- **Nowy `src/components/preview/camera2d.ts`** — czysta matematyka
+  kamery 2D (fit-to-data, zoom-to-cursor, pan, konwersje
+  screen↔world), z testami. `drawToolpath.ts` przyjmuje teraz gotowy
+  `Camera2D` zamiast liczyć skalę/offset od zera z danych przy każdym
+  renderze — przy okazji naprawiony utajony bug: siatka/osie są teraz
+  bounded do widocznego viewportu, nie do zasięgu danych, więc
+  zoom-out poza fit nigdy nie odsłania obszaru bez siatki.
+
 ## [0.9.0] — 2026-08-23
 
 ### Dodano
