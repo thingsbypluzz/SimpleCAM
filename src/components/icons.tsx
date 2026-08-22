@@ -211,9 +211,9 @@ export function XIcon({ className }: IconProps) {
 // is still something the user should notice at a glance.
 export function WarningIcon({ className }: IconProps) {
   return (
-    <svg {...base} className={className}>
-      <path d="M12 8.5v4.5" />
-      <circle cx="12" cy="16.2" r="0.9" fill="currentColor" stroke="none" />
+    <svg {...base} strokeWidth={3.2} className={className}>
+      <path d="M12 7.5v5.5" />
+      <circle cx="12" cy="16.5" r="1.1" fill="currentColor" stroke="none" />
     </svg>
   )
 }

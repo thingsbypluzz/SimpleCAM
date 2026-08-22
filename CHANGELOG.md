@@ -50,6 +50,18 @@ thingsbypluzz/SimpleCAM), ale to infrastruktura pod izolację pracy
   nie mieści się w maszynie" nadal wymaga uwagi na pierwszy rzut oka.
   Tooltip paska pokazuje treść ostrzeżeń.
 
+## [0.8.8] — 2026-08-22
+
+### Zmieniono
+
+- **Czytelność `WarningIcon` na badge'u Kroku 4.** Pierwsza wersja
+  (amber-100 tło, amber-700 ikona — te same odcienie co stan "nie
+  wygenerowano") była za mało odróżnialna. Poprawione: stałe
+  `bg-orange-500 text-black` (bez wariantu dark — świadomie ten sam
+  mocny kontrast w obu motywach, ostrzeżenie nie ma się "wtapiać"),
+  grubszy `strokeWidth` (3.2 zamiast wspólnego 1.8 z innych ikon) i
+  większa kropka wykrzyknika.
+
 ## [0.8.5] — 2026-08-22
 
 ### Zmieniono

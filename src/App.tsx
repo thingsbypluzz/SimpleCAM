@@ -430,7 +430,7 @@ function App() {
                     <span
                       className={
                         fitWarnings.length > 0
-                          ? 'flex h-8 w-8 items-center justify-center rounded-full bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-300'
+                          ? 'flex h-8 w-8 items-center justify-center rounded-full bg-orange-500 text-black'
                           : generatedGCode
                             ? 'flex h-8 w-8 items-center justify-center rounded-full bg-indigo-100 text-indigo-700 dark:bg-indigo-950 dark:text-indigo-300'
                             : 'flex h-8 w-8 items-center justify-center rounded-full bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-300'

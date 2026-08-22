@@ -574,6 +574,11 @@ przeglądu przez użytkownika.
   `CheckIcon`/`XIcon` w badge'u, gdy `machineFitWarnings()` zwraca choć
   jeden komunikat, z priorytetem nad stanem wygenerowania (bo
   "wygenerowane, ale nie mieści się w maszynie" i tak wymaga uwagi).
+  Kolorystyka celowo mocniejsza niż reszta badge'y: stałe
+  `bg-orange-500 text-black`, bez wariantu dark (`0.8.8` — pierwsza
+  wersja reużywała odcieni amber identycznych ze stanem "nie
+  wygenerowano", co okazało się nieczytelne/za mało odróżnialne), plus
+  grubszy `strokeWidth` na samej ikonie.
 - **`.gitignore` musi wykluczać `.claude/`** — Tailwind v4
   (`@tailwindcss/vite`) auto-skanuje cały katalog projektu pod kątem nazw
   klas i respektuje tylko `.gitignore` jako listę wykluczeń (bez niego
