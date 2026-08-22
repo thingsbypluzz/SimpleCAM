@@ -1,4 +1,5 @@
 import type { WizardParams } from '../../types/wizard'
+import type { MachineSettings } from '../../types/machine'
 import { OPERATION_META } from '../../config/operationMeta'
 import { isStartZValid, isStepdownValid } from '../../lib/validation'
 import { FieldRow, inputClass } from './FieldRow'
@@ -6,9 +7,10 @@ import { FieldRow, inputClass } from './FieldRow'
 interface Step3FeedsProps {
   params: WizardParams
   onChange: (patch: Partial<WizardParams>) => void
+  machine: MachineSettings
 }
 
-export function Step3Feeds({ params, onChange }: Step3FeedsProps) {
+export function Step3Feeds({ params, onChange, machine }: Step3FeedsProps) {
   const { feeds, operation } = params
 
   const updateFeeds = (patch: Partial<WizardParams['feeds']>) =>
@@ -67,6 +69,8 @@ export function Step3Feeds({ params, onChange }: Step3FeedsProps) {
         <input
           type="number"
           step="0.1"
+          min="0"
+          max={machine.travelZ}
           className={inputClass}
           value={feeds.safeZ}
           onChange={(e) => updateFeeds({ safeZ: Number(e.target.value) })}

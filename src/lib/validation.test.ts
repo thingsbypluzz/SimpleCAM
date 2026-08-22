@@ -1,6 +1,14 @@
 import { describe, expect, it } from 'vitest'
-import { isStartZValid, isStepdownValid, isToolDiameterValid } from './validation'
+import {
+  isStartZValid,
+  isStepdownValid,
+  isToolDiameterValid,
+  machineFitWarnings,
+  patternSpan,
+  zSpan,
+} from './validation'
 import { DEFAULT_WIZARD_PARAMS } from '../types/wizard'
+import { DEFAULT_MACHINE_SETTINGS } from '../types/machine'
 
 describe('isToolDiameterValid', () => {
   it('is valid when tool is smaller than the hole', () => {
@@ -51,5 +59,67 @@ describe('isStartZValid', () => {
 
   it('is invalid when startZ exceeds safeZ', () => {
     expect(isStartZValid({ ...DEFAULT_WIZARD_PARAMS.feeds, safeZ: 5, startZ: 6 })).toBe(false)
+  })
+})
+
+describe('patternSpan', () => {
+  it('is just the hole footprint for a single point', () => {
+    // single positioning resolves to one point at (0,0); span is the hole
+    // diameter itself (radius on each side), not zero.
+    const geometry = { ...DEFAULT_WIZARD_PARAMS.geometry, positioning: 'single' as const, holeDiameter: 8 }
+    expect(patternSpan(geometry)).toEqual({ x: 8, y: 8 })
+  })
+
+  it('adds the hole footprint on top of the grid extent', () => {
+    const geometry = {
+      ...DEFAULT_WIZARD_PARAMS.geometry,
+      positioning: 'grid' as const,
+      gridX: 50,
+      gridY: 30,
+      holeDiameter: 8,
+    }
+    expect(patternSpan(geometry)).toEqual({ x: 58, y: 38 })
+  })
+
+  it('is zero-by-zero for an empty custom point list', () => {
+    const geometry = { ...DEFAULT_WIZARD_PARAMS.geometry, positioning: 'custom' as const, customPoints: [] }
+    expect(patternSpan(geometry)).toEqual({ x: 0, y: 0 })
+  })
+})
+
+describe('zSpan', () => {
+  it('sums safeZ and totalDepth', () => {
+    const geometry = { ...DEFAULT_WIZARD_PARAMS.geometry, totalDepth: 4 }
+    const feeds = { ...DEFAULT_WIZARD_PARAMS.feeds, safeZ: 5 }
+    expect(zSpan(geometry, feeds)).toBe(9)
+  })
+})
+
+describe('machineFitWarnings', () => {
+  it('is empty when the pattern fits within the machine travel', () => {
+    expect(machineFitWarnings(DEFAULT_WIZARD_PARAMS, DEFAULT_MACHINE_SETTINGS)).toEqual([])
+  })
+
+  it('flags only the axes that actually exceed travel', () => {
+    const params = {
+      ...DEFAULT_WIZARD_PARAMS,
+      geometry: { ...DEFAULT_WIZARD_PARAMS.geometry, positioning: 'grid' as const, gridX: 500, gridY: 10 },
+    }
+    const machine = { travelX: 100, travelY: 1000, travelZ: 1000 }
+    const warnings = machineFitWarnings(params, machine)
+    expect(warnings).toHaveLength(1)
+    expect(warnings[0]).toContain('X span')
+  })
+
+  it('flags the Z axis when safeZ + totalDepth exceeds Z travel', () => {
+    const params = {
+      ...DEFAULT_WIZARD_PARAMS,
+      geometry: { ...DEFAULT_WIZARD_PARAMS.geometry, totalDepth: 50 },
+      feeds: { ...DEFAULT_WIZARD_PARAMS.feeds, safeZ: 60 },
+    }
+    const machine = { ...DEFAULT_MACHINE_SETTINGS, travelZ: 100 }
+    const warnings = machineFitWarnings(params, machine)
+    expect(warnings).toHaveLength(1)
+    expect(warnings[0]).toContain('Z span')
   })
 })

@@ -445,14 +445,15 @@ nowa funkcjonalność. Nie zaczynać bez wyraźnego "przechodzimy do X".
   przy implementacji: wybór, które presety nałożyć (wszystkie sloty
   `[1]…[5]` naraz? multi-select?), i jak odróżnić je wizualnie (kolor
   per-slot?).
-- **`BL-1`** — **Górny limit (`max`) na niektórych polach liczbowych** — np. Hole
-  Count w N-Holes on Circle (`circleHoleCount`, `Step2Geometry.tsx`) nie
-  ma dziś żadnego górnego ograniczenia; wpisanie np. 1000 nie ma
-  praktycznego sensu. Dodać `max` (atrybut HTML + walidacja spójna z
-  `src/lib/validation.ts`) — punkt startowy: 100. Rozważyć przy
-  implementacji, czy inne pola bez sensownego górnego ograniczenia
-  (np. Grid X/Y, Circle Diameter) też tego potrzebują, czy tylko
-  Hole Count jest na tyle "łatwe do przesadzenia".
+- **`BL-1`** — **Górny limit (`max`) na `circleHoleCount`.** Częściowo
+  zamknięte przez `BL-9` (`0.8.6`) — Grid X/Y, Circle Diameter, Offset
+  X/Y, Total Depth i Safe Z dostały `max` wyprowadzony z Machine
+  Settings zamiast sztywnej stałej. Hole Count w N-Holes on Circle
+  (`circleHoleCount`, `Step2Geometry.tsx`) zostaje bez limitu — to
+  licznik, nie odległość, więc nie ma naturalnego związku z zakresem
+  maszyny; wpisanie np. 1000 nadal nie ma praktycznego sensu. Dodać
+  `max` (atrybut HTML + walidacja spójna z `src/lib/validation.ts`) —
+  punkt startowy: 100.
 - **`BL-8`** — **Responsywny UI na małych ekranach.** Dziś layout
   zakłada desktop: dwukolumnowy układ (akordeon wizarda + panel
   podglądu 2D/3D/G-Code obok siebie), gęste pola liczbowe w parach
@@ -464,15 +465,6 @@ nowa funkcjonalność. Nie zaczynać bez wyraźnego "przechodzimy do X".
   aktualnymi best practices frontendowymi (breakpointy Tailwind już
   są w projekcie, ale nieużywane responsywnie poza defaultową
   szerokością).
-- **`BL-9`** — **Ustawienia maszyny CNC pod nieaktywnym guzikiem
-  Settings** — zakres roboczy X/Y/Z (dziś guzik w nagłówku jest
-  `disabled`, przygotowany pod przyszłe ustawienia, patrz "Kluczowe
-  decyzje projektowe"). Rozważyć przy implementacji, czy te limity
-  powinny też ograniczać/walidować pola liczbowe w wizardzie (rect
-  size, hole size, offset, grid X/Y, circle diameter, itd.) — jeśli
-  tak, to naturalnie rozszerza/zastępuje `BL-1` (górny limit na
-  polach liczbowych) o limit wyprowadzony z realnego obszaru
-  roboczego maszyny, zamiast sztywnej stałej.
 - **`BL-10`** — **Brak zakończenia programu (`M30`/`M2`).** `buildFooter()`
   kończy plik na `M5` / `G0 X0 Y0`, bez formalnego "koniec programu" —
   część kontrolerów tego oczekuje (m.in. żeby wrócić do początku pliku i
@@ -528,10 +520,54 @@ przeglądu przez użytkownika.
   Etap 6.
 - Nagłówek ma toggle dark/light mode (działający, klasa `.dark` na
   `<html>`, Tailwind skonfigurowany przez `@custom-variant dark` w
-  `src/index.css`) oraz przycisk Settings (na razie `disabled`,
-  przygotowany pod przyszłe ustawienia). **Dark mode jest domyślny**
-  (niezależnie od preferencji systemowej) — toggle nadal pozwala
-  przełączyć na light.
+  `src/index.css`) oraz przycisk **Settings** — od `0.8.6` (`BL-9`)
+  aktywny, otwiera `SettingsModal` (patrz "Machine Settings" niżej);
+  wcześniej był `disabled`, przygotowany pod przyszłe ustawienia.
+  **Dark mode jest domyślny** (niezależnie od preferencji systemowej)
+  — toggle nadal pozwala przełączyć na light.
+- **Machine Settings (`BL-9`, `0.8.6`).** Modal (`SettingsModal.tsx`)
+  wzorowany na ustawieniach Claude: wyśrodkowana karta nad
+  przyciemnionym tłem, menu sekcji po lewej (dziś jeden wpis
+  "Machine", strukturalnie gotowe na kolejne — np. przełącznik
+  dialektu G-code, `BL-5`), treść po prawej. Trzy pola: X/Y/Z travel
+  maszyny CNC, auto-save na `onBlur` (zapis tylko przy poprawnej
+  wartości > 0, bez guzika Save — świadomie inaczej niż presety
+  wizarda, bo to żywa konfiguracja, nie "zatwierdzony gotowy preset").
+  Trwałe w osobnym kluczu `localStorage` (`simplecam.machine`,
+  `src/lib/machineStorage.ts`), celowo **nie** w `simplecam.storage`
+  (sloty presetów) — inny rodzaj danych (jeden globalny obiekt vs.
+  kilka wymiennych slotów), a rozdzielenie zostawia furtkę na
+  przyszłość (np. ewentualną bramkę na dane maszyny) bez dotykania
+  systemu presetów. Domyślnie `DEFAULT_MACHINE_SETTINGS`
+  (X=5000mm, Y=5000mm, Z=1000mm, `src/types/machine.ts`) — na tyle
+  duże, że bez konfiguracji appka zachowuje się jak wcześniej; nie ma
+  osobnej gałęzi "nieskonfigurowane", logika jest jednolita.
+
+  Sesja `/grill-me` ustaliła, że wizard nie zna pozycji zerowania
+  materiału na stole — `resolvePoints()` liczy wszystko względem
+  `(0,0)` programu, które fizycznie może leżeć gdziekolwiek na stole.
+  Jedyny niezmiennik niezależny od zerowania to **rozpiętość wzorca
+  (max−min) na osi ≤ całkowity skok maszyny na tej osi** — nie "każda
+  współrzędna ≤ ±zakres" (to dopuszczałoby wzorce z rozpiętością 2×
+  większą niż realny skok). Stąd dwa osobne mechanizmy korzystające z
+  Machine Settings:
+  - **Twardy `min`/`max` na polach przestrzennych** (Width/Height,
+    Circle Diameter, Offset X/Y w `Step2Geometry.tsx`; Total Depth w
+    `Step2Geometry.tsx`, Safe Z w `Step3Feeds.tsx`) — sanity-ceiling,
+    nie gwarantuje dopasowania (nie zna zerowania), tylko nie pozwala
+    wpisać absurdu. Częściowo zastępuje `BL-1` — nie w całości:
+    `circleHoleCount` to licznik, nie odległość, więc zostaje bez
+    limitu, `BL-1` dla tego pola nadal otwarte.
+  - **Miękki, nieblokujący warning na Step 4** (`machineFitWarnings()`
+    w `src/lib/validation.ts`, korzysta z `patternSpan()`/`zSpan()`
+    tamże) — osobny komunikat per oś, tylko dla osi, która faktycznie
+    przekracza skok maszyny (`patternSpan` liczy rozpiętość
+    `resolvePoints()` + promień otworu, świeżo w przestrzeni CNC —
+    ten sam wzór co bounding box w `buildScene.ts`, ale bez importu
+    `three`, celowo bez refaktoru tamtego pliku; `zSpan` to
+    `safeZ + totalDepth`, bo `safeZ` jest zawsze ≥ `startZ`, patrz
+    `isStartZValid`). **Nie** blokuje Generate — decyzja i
+    odpowiedzialność zostają przy operatorze.
 - **`.gitignore` musi wykluczać `.claude/`** — Tailwind v4
   (`@tailwindcss/vite`) auto-skanuje cały katalog projektu pod kątem nazw
   klas i respektuje tylko `.gitignore` jako listę wykluczeń (bez niego
@@ -598,6 +634,10 @@ bo `.claude/` jest wykluczone z gita (patrz `.gitignore` w sekcji
 ```
 src/
   types/wizard.ts          — typy WizardParams + DEFAULT_WIZARD_PARAMS
+  types/machine.ts          — MachineSettings + DEFAULT_MACHINE_SETTINGS
+                              (Machine Settings, `BL-9`) — celowo osobny plik
+                              od `wizard.ts`, to inny rodzaj danych (jeden
+                              globalny obiekt, nie WizardParams)
   config/operationMeta.ts   — rejestr metadanych per-method (Helix/Standard:
                               nazwy, ikony, etykiety, `generate()`) — jedno
                               źródło prawdy, nie hardkodować ternary po
@@ -613,6 +653,9 @@ src/
                               `lib/presetLabel.ts`), `patternSlug()`
                               (filename-safe slug, używany przez
                               `lib/download.ts`) — patrz Etap 6
+  components/SettingsModal.tsx — modal Machine Settings (`BL-9`) — patrz
+                              "Machine Settings" w sekcji "Kluczowe decyzje
+                              projektowe" wyżej po pełny opis
   components/wizard/        — komponenty poszczególnych kroków wizarda.
                               `Step1Positioning.tsx` = wyłącznie pattern
                               picker + placeholdery rodzin, nic liczbowego;
@@ -835,7 +878,11 @@ src/
                                  funkcje `(WizardParams) => string[]`
     validation.ts                — isToolDiameterValid, isStepdownValid —
                                  blokują przycisk Generate na Kroku 4 i
-                                 pokazują inline error w Kroku 2/3
+                                 pokazują inline error w Kroku 2/3. Też
+                                 (od `BL-9`): patternSpan/zSpan/
+                                 machineFitWarnings — nieblokujący
+                                 soft-warning na Kroku 4, patrz "Machine
+                                 Settings" w "Kluczowych decyzjach" wyżej
     download.ts                  — buildFilename/downloadTextFile — efekt
                                  uboczny (Blob/URL), celowo poza czystym
                                  rdzeniem lib/
@@ -851,7 +898,12 @@ src/
                                  zapisanego slotu z parametrów (operacja +
                                  ⌀otworu + głębokość), używane w
                                  tooltipach header/Step 4
-    *.test.ts                    — testy Vitest (78 testów, `npm run test`)
+    machineStorage.ts             — loadMachineSettings/saveMachineSettings
+                                 (`BL-9`), osobny klucz `simplecam.machine`,
+                                 ten sam try/catch + merge-z-defaultami co
+                                 storage.ts, ale bez systemu slotów (jeden
+                                 płaski obiekt)
+    *.test.ts                    — testy Vitest (89 testów, `npm run test`)
   App.tsx                    — orkiestracja stanu wizarda i nawigacji kroków
 ```
 

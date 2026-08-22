@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import type { WizardParams } from '../../types/wizard'
+import type { MachineSettings } from '../../types/machine'
 import { isToolDiameterValid } from '../../lib/validation'
 import { POSITIONING_META } from '../../config/positioningMeta'
 import { FieldRow, inputClass } from './FieldRow'
@@ -8,6 +9,7 @@ import { MethodPicker } from './MethodPicker'
 interface Step2GeometryProps {
   params: WizardParams
   onChange: (patch: Partial<WizardParams>) => void
+  machine: MachineSettings
 }
 
 const TOOL_DIAMETER_OPTIONS = [
@@ -38,7 +40,7 @@ function formatCustomPoints(points: { x: number; y: number }[]) {
   return points.map((p) => `${p.x},${p.y}`).join('\n')
 }
 
-export function Step2Geometry({ params, onChange }: Step2GeometryProps) {
+export function Step2Geometry({ params, onChange, machine }: Step2GeometryProps) {
   const { geometry } = params
 
   const updateGeometry = (patch: Partial<WizardParams['geometry']>) =>
@@ -93,6 +95,8 @@ export function Step2Geometry({ params, onChange }: Step2GeometryProps) {
           <input
             type="number"
             step="0.1"
+            min="0"
+            max={machine.travelZ}
             className={inputClass}
             value={geometry.totalDepth}
             onChange={(e) => updateGeometry({ totalDepth: Number(e.target.value) })}
@@ -125,6 +129,8 @@ export function Step2Geometry({ params, onChange }: Step2GeometryProps) {
                 <input
                   type="number"
                   step="0.1"
+                  min="0"
+                  max={machine.travelX}
                   className={inputClass}
                   value={geometry.gridX}
                   onChange={(e) => updateGeometry({ gridX: Number(e.target.value) })}
@@ -136,6 +142,8 @@ export function Step2Geometry({ params, onChange }: Step2GeometryProps) {
                 <input
                   type="number"
                   step="0.1"
+                  min="0"
+                  max={machine.travelY}
                   className={inputClass}
                   value={geometry.gridY}
                   onChange={(e) => updateGeometry({ gridY: Number(e.target.value) })}
@@ -162,6 +170,8 @@ export function Step2Geometry({ params, onChange }: Step2GeometryProps) {
             <input
               type="number"
               step="0.1"
+              min="0"
+              max={Math.min(machine.travelX, machine.travelY)}
               className={inputClass}
               value={geometry.circleDiameter}
               onChange={(e) => updateGeometry({ circleDiameter: Number(e.target.value) })}
@@ -202,6 +212,8 @@ export function Step2Geometry({ params, onChange }: Step2GeometryProps) {
               <input
                 type="number"
                 step="0.1"
+                min={-machine.travelX}
+                max={machine.travelX}
                 className={inputClass}
                 value={geometry.offsetX}
                 onChange={(e) => updateGeometry({ offsetX: Number(e.target.value) })}
@@ -213,6 +225,8 @@ export function Step2Geometry({ params, onChange }: Step2GeometryProps) {
               <input
                 type="number"
                 step="0.1"
+                min={-machine.travelY}
+                max={machine.travelY}
                 className={inputClass}
                 value={geometry.offsetY}
                 onChange={(e) => updateGeometry({ offsetY: Number(e.target.value) })}

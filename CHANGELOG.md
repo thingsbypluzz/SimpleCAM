@@ -7,6 +7,37 @@ zgodne z [SemVer](https://semver.org/). Ten plik pozostaje głównym, czytelnym
 thingsbypluzz/SimpleCAM), ale to infrastruktura pod izolację pracy
 (branch/worktree per zadanie), nie zamiennik tego changeloga.
 
+## [0.8.6] — 2026-08-22
+
+### Dodano
+
+- **`BL-9` — Machine Settings.** Guzik Settings w nagłówku, dotąd
+  `disabled`, otwiera teraz modal (wzorowany na ustawieniach Claude:
+  wyśrodkowana karta, menu sekcji po lewej — dziś jedna pozycja
+  "Machine" — treść po prawej) z trzema polami: X/Y/Z travel maszyny
+  CNC. Auto-save na blur (zapis tylko przy poprawnej wartości > 0),
+  bez guzika Save. Trwałe w osobnym kluczu `localStorage`
+  (`simplecam.machine`, `src/lib/machineStorage.ts`) — celowo
+  odizolowane od `simplecam.storage` (sloty presetów), inny rodzaj
+  danych, jeden globalny obiekt zamiast kilku wymiennych presetów.
+  Domyślnie X=5000mm, Y=5000mm, Z=1000mm — na tyle duże, że bez
+  konfiguracji appka zachowuje się jak dotąd; nie ma osobnej gałęzi
+  "nieskonfigurowane".
+- **Dwa mechanizmy wykorzystujące te ustawienia** (sesja `/grill-me`
+  ustaliła, że wizard nie zna pozycji zerowania materiału na stole,
+  więc jedynym sensownym sprawdzeniem jest rozpiętość wzorca, nie
+  pojedyncze współrzędne względem ±zakresu):
+  - Twardy `min`/`max` na polach przestrzennych (Width/Height,
+    Circle Diameter, Offset X/Y, Total Depth, Safe Z) — sanity-ceiling
+    wyprowadzony z realnej maszyny zamiast sztywnej stałej, częściowo
+    zastępuje `BL-1` (nie w całości — `circleHoleCount`, licznik a nie
+    odległość, zostaje bez limitu).
+  - Miękki, nieblokujący warning na Step 4 (`machineFitWarnings()` w
+    `src/lib/validation.ts`) — osobny komunikat per oś, tylko dla osi,
+    która faktycznie przekracza skok maszyny (rozpiętość wzorca
+    max−min ≤ travel, plus `safeZ + totalDepth ≤ travelZ` dla Z). Nie
+    blokuje Generate — decyzja zostaje przy operatorze.
+
 ## [0.8.5] — 2026-08-22
 
 ### Zmieniono

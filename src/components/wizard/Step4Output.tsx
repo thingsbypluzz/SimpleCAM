@@ -12,6 +12,7 @@ interface Step4OutputProps {
   canGenerate: boolean
   presetSlots: Partial<Record<PresetSlotId, WizardParams>>
   onSaveToPreset: (id: PresetSlotId) => boolean
+  warnings: string[]
 }
 
 interface CheckboxOption {
@@ -33,6 +34,7 @@ export function Step4Output({
   canGenerate,
   presetSlots,
   onSaveToPreset,
+  warnings,
 }: Step4OutputProps) {
   const { output } = params
   const [copied, setCopied] = useState(false)
@@ -100,6 +102,14 @@ export function Step4Output({
         <p className="text-sm text-red-600 dark:text-red-400">
           Fix the highlighted errors in Step 2 / Step 3 before generating.
         </p>
+      )}
+
+      {warnings.length > 0 && (
+        <div className="rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-xs text-amber-800 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-300">
+          {warnings.map((warning) => (
+            <p key={warning}>{warning}</p>
+          ))}
+        </div>
       )}
 
       <button

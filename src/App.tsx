@@ -5,6 +5,7 @@ import { Step3Feeds } from './components/wizard/Step3Feeds'
 import { Step4Output } from './components/wizard/Step4Output'
 import { MiniStat } from './components/wizard/MiniStat'
 import { ToolpathCanvas } from './components/preview/ToolpathCanvas'
+import { SettingsModal } from './components/SettingsModal'
 
 // Three.js is a large dependency (~600KB) — only pull it into a chunk when
 // the user actually opens the 3D tab, not on initial page load.
@@ -36,7 +37,13 @@ import {
   saveSlot,
   type PresetSlotId,
 } from './lib/storage'
-import { isStartZValid, isStepdownValid, isToolDiameterValid } from './lib/validation'
+import { loadMachineSettings, saveMachineSettings } from './lib/machineStorage'
+import {
+  isStartZValid,
+  isStepdownValid,
+  isToolDiameterValid,
+  machineFitWarnings,
+} from './lib/validation'
 import { DEFAULT_WIZARD_PARAMS, type GeometryParams, type WizardParams } from './types/wizard'
 
 const TOTAL_STEPS = 4
@@ -105,6 +112,8 @@ function App() {
   const [isDark, setIsDark] = useDarkMode()
   const [generatedGCode, setGeneratedGCode] = useState<string[] | null>(null)
   const [previewTab, setPreviewTab] = useState<'2d' | '3d' | 'gcode'>('3d')
+  const [machine, setMachine] = useState(loadMachineSettings)
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false)
 
   // Any parameter change invalidates the last generated snapshot — Copy/
   // Download must not act on G-code that no longer matches the current
@@ -121,6 +130,12 @@ function App() {
   const offset = offsetSummary(params.geometry)
   const isGeometryValid =
     isToolDiameterValid(params.geometry) && isStepdownValid(params.feeds) && isStartZValid(params.feeds)
+  const fitWarnings = machineFitWarnings(params, machine)
+
+  const handleSaveMachine = (next: typeof machine) => {
+    saveMachineSettings(next)
+    setMachine(next)
+  }
 
   // Generate is also the auto-save trigger for the hidden slot 0 — see
   // CLAUDE.md, Etap 5, "localStorage": persisted on Generate rather than on
@@ -232,9 +247,10 @@ function App() {
 
           <button
             type="button"
-            disabled
-            title="Settings (coming soon)"
-            className="flex h-9 w-9 cursor-not-allowed items-center justify-center rounded-md border border-slate-200 text-slate-400 dark:border-slate-700 dark:text-slate-500"
+            onClick={() => setIsSettingsOpen(true)}
+            aria-label="Settings"
+            title="Settings"
+            className="flex h-9 w-9 items-center justify-center rounded-md border border-slate-200 text-slate-600 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-900"
           >
             <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2">
               <circle cx="12" cy="12" r="3" />
@@ -260,8 +276,12 @@ function App() {
                   {step.id === 1 && (
                     <Step1Positioning params={params} onChange={updateParams} />
                   )}
-                  {step.id === 2 && <Step2Geometry params={params} onChange={updateParams} />}
-                  {step.id === 3 && <Step3Feeds params={params} onChange={updateParams} />}
+                  {step.id === 2 && (
+                    <Step2Geometry params={params} onChange={updateParams} machine={machine} />
+                  )}
+                  {step.id === 3 && (
+                    <Step3Feeds params={params} onChange={updateParams} machine={machine} />
+                  )}
                   {step.id === 4 && (
                     <>
                       {showRestoredBanner && (
@@ -277,6 +297,7 @@ function App() {
                         canGenerate={isGeometryValid}
                         presetSlots={presetSlots}
                         onSaveToPreset={handleSaveToPreset}
+                        warnings={fitWarnings}
                       />
                     </>
                   )}
@@ -481,6 +502,14 @@ function App() {
             ))}
         </div>
       </div>
+
+      {isSettingsOpen && (
+        <SettingsModal
+          machine={machine}
+          onSave={handleSaveMachine}
+          onClose={() => setIsSettingsOpen(false)}
+        />
+      )}
     </div>
   )
 }
