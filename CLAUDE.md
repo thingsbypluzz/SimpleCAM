@@ -540,16 +540,6 @@ nowa funkcjonalność. Nie zaczynać bez wyraźnego "przechodzimy do X".
   propsy do `ToolpathCanvas`/`Scene3D` zamiast dzisiejszych
   wbudowanych stałych. Styka się z odłożoną w `BL-3` decyzją o braku
   kolorów per-slot w overlay — dobry moment żeby to razem przemyśleć.
-- **`BL-13`** — **Numer wersji appki w nagłówku.** Zaraz za "SimpleCAM"
-  w `<h1>` (`App.tsx`), niewielką, szarą czcionką — np. `<span
-  className="text-xs font-normal text-slate-400">v{version}</span>`.
-  `package.json` jest już jedynym źródłem prawdy dla numeru wersji
-  (bump przy każdej zmianie, patrz konwencja w tym pliku) — potrzeba
-  tylko sposobu wciągnięcia go do runtime'u (import JSON w Vite
-  działa od razu, albo `import.meta.env` przez `define` w
-  `vite.config.ts`, żeby nie zależeć od tego, czy `resolveJsonModule`
-  jest wszędzie włączone).
-
 Nie przeskakuj etapów bez pytania — każdy kończy się checkpointem do
 przeglądu przez użytkownika.
 
@@ -604,9 +594,9 @@ przeglądu przez użytkownika.
   — toggle nadal pozwala przełączyć na light.
 - **Machine Settings (`BL-9`, `0.8.6`).** Modal (`SettingsModal.tsx`)
   wzorowany na ustawieniach Claude: wyśrodkowana karta nad
-  przyciemnionym tłem, menu sekcji po lewej (dziś jeden wpis
-  "Machine", strukturalnie gotowe na kolejne — np. przełącznik
-  dialektu G-code, `BL-5`), treść po prawej. Trzy pola: X/Y/Z travel
+  przyciemnionym tłem, menu sekcji po lewej (dziś "Machine" i "About",
+  patrz `0.8.17` niżej — strukturalnie gotowe na kolejne, np.
+  przełącznik dialektu G-code, `BL-5`), treść po prawej. Trzy pola: X/Y/Z travel
   maszyny CNC, auto-save na `onBlur` (zapis tylko przy poprawnej
   wartości > 0, bez guzika Save — świadomie inaczej niż presety
   wizarda, bo to żywa konfiguracja, nie "zatwierdzony gotowy preset").
@@ -679,6 +669,20 @@ przeglądu przez użytkownika.
   `h-6 w-6`), i tło zmienione na pastelowe `bg-orange-200` (z
   nasyconego `bg-orange-500`) — czarny symbol w środku miał za mało
   kontrastu na mocnym pomarańczu.
+
+  **`0.8.17`** — druga sekcja w nawigacji Settings: **"About"**
+  (`SECTIONS` w `SettingsModal.tsx` przestało być czysto dekoracyjne —
+  dostało realny `activeSection` state i klikalną nawigację, dotąd
+  renderowało tylko "Machine" bez względu na wybór). Pokazuje nazwę
+  appki, numer wersji i `"Envisioned by ThingsByPluzz"`. Wersja
+  wciągana z `package.json` jako `__APP_VERSION__` — stała wstrzyknięta
+  przez `define` w `vite.config.ts` (odczyt pliku w Node przy starcie
+  configu, `JSON.stringify` do stałej kompilowanej w bundlu), zamiast
+  bezpośredniego importu JSON, żeby nie wymagać `resolveJsonModule` w
+  `tsconfig.app.json` dla jednego stringa — typ deklarowany w nowym
+  `src/vite-env.d.ts`. Ten sam tekst `"Envisioned by ThingsByPluzz"`
+  (mniejszą, szarą czcionką) doszedł też w headerze appki, zaraz pod
+  podtytułem.
 - **Overlay presetów w 2D/3D Preview (`BL-3`, `0.8.13`).** W headerze,
   obok rzędu presetów `[1]…[5]`, nowa ikonka "oko" (`EyeIcon`) —
   wizualnie zgrupowana z presetami wspólnym podkreśleniem

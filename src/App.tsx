@@ -264,6 +264,7 @@ function App() {
           <p className="text-xs text-slate-500 dark:text-slate-400">
             Fast G-Code generator for your basic operations.
           </p>
+          <p className="text-[11px] text-slate-400 dark:text-slate-600">Envisioned by ThingsByPluzz</p>
         </div>
 
         <div

@@ -7,6 +7,24 @@ zgodne z [SemVer](https://semver.org/). Ten plik pozostaje głównym, czytelnym
 thingsbypluzz/SimpleCAM), ale to infrastruktura pod izolację pracy
 (branch/worktree per zadanie), nie zamiennik tego changeloga.
 
+## [0.8.18] — 2026-08-22
+
+### Dodano
+
+- **`BL-13` zamknięte — sekcja "About" w Settings.** Zamiast numeru
+  wersji w headerze (pierwotny plan `BL-13`), wersja wylądowała w
+  nowej drugiej sekcji nawigacji Settings — "About" (obok "Machine") —
+  pokazuje nazwę appki, `v<wersja>` i "Envisioned by ThingsByPluzz".
+  `SECTIONS` w `SettingsModal.tsx` dostało realny `activeSection`
+  state (dotąd czysto dekoracyjne, renderowało tylko "Machine"
+  niezależnie od wyboru). Wersja wciągana z `package.json` przez
+  `define` w `vite.config.ts` jako `__APP_VERSION__` (odczyt pliku w
+  Node przy starcie configu) zamiast bezpośredniego importu JSON —
+  nie wymaga włączania `resolveJsonModule` w `tsconfig.app.json` dla
+  jednego stringa; typ zadeklarowany w nowym `src/vite-env.d.ts`.
+- **"Envisioned by ThingsByPluzz"** doszło też w headerze appki, małą
+  szarą czcionką zaraz pod podtytułem.
+
 ## [0.8.17] — 2026-08-22
 
 ### Dodano

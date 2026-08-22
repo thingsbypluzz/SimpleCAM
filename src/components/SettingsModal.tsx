@@ -9,11 +9,12 @@ interface SettingsModalProps {
 }
 
 type TravelField = 'travelX' | 'travelY' | 'travelZ'
+type SectionId = 'machine' | 'about'
 
-// One section today ("Machine"), structured as a list so a future section
-// (e.g. G-code dialect, see CLAUDE.md BL-5) is just another array entry,
-// not a rewrite of the nav.
-const SECTIONS: { id: 'machine'; label: string }[] = [{ id: 'machine', label: 'Machine' }]
+const SECTIONS: { id: SectionId; label: string }[] = [
+  { id: 'machine', label: 'Machine' },
+  { id: 'about', label: 'About' },
+]
 
 const FIELDS: { key: TravelField; label: string }[] = [
   { key: 'travelX', label: 'X travel [mm]' },
@@ -22,6 +23,7 @@ const FIELDS: { key: TravelField; label: string }[] = [
 ]
 
 export function SettingsModal({ machine, onSave, onClose }: SettingsModalProps) {
+  const [activeSection, setActiveSection] = useState<SectionId>('machine')
   // Local text per field so an in-progress edit (e.g. typing "400" one
   // digit at a time) never round-trips through a half-valid number — only
   // committed to machine settings (and localStorage) on blur.
@@ -66,12 +68,18 @@ export function SettingsModal({ machine, onSave, onClose }: SettingsModalProps) 
             Settings
           </span>
           {SECTIONS.map((section) => (
-            <div
+            <button
               key={section.id}
-              className="rounded-md bg-indigo-50 px-2 py-1.5 text-sm font-medium text-indigo-700 dark:bg-indigo-950/40 dark:text-indigo-300"
+              type="button"
+              onClick={() => setActiveSection(section.id)}
+              className={
+                activeSection === section.id
+                  ? 'rounded-md bg-indigo-50 px-2 py-1.5 text-left text-sm font-medium text-indigo-700 dark:bg-indigo-950/40 dark:text-indigo-300'
+                  : 'rounded-md px-2 py-1.5 text-left text-sm font-medium text-slate-600 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-900'
+              }
             >
               {section.label}
-            </div>
+            </button>
           ))}
         </div>
 
@@ -85,39 +93,65 @@ export function SettingsModal({ machine, onSave, onClose }: SettingsModalProps) 
             ✕
           </button>
 
-          <h2 className="text-sm font-semibold text-slate-900 dark:text-slate-100">
-            Machine
-          </h2>
+          {activeSection === 'machine' && (
+            <>
+              <h2 className="text-sm font-semibold text-slate-900 dark:text-slate-100">
+                Machine
+              </h2>
 
-          <div className="flex flex-col gap-4">
-            {FIELDS.map((field) => (
-              <label key={field.key} className="flex flex-col gap-1">
-                <span className="flex items-center gap-2 text-sm font-medium text-slate-700 dark:text-slate-300">
-                  {field.label}
-                  {savedField === field.key && (
-                    <span className="text-xs font-normal text-emerald-600 dark:text-emerald-400">
-                      ✓ Saved
+              <div className="flex flex-col gap-4">
+                {FIELDS.map((field) => (
+                  <label key={field.key} className="flex flex-col gap-1">
+                    <span className="flex items-center gap-2 text-sm font-medium text-slate-700 dark:text-slate-300">
+                      {field.label}
+                      {savedField === field.key && (
+                        <span className="text-xs font-normal text-emerald-600 dark:text-emerald-400">
+                          ✓ Saved
+                        </span>
+                      )}
                     </span>
-                  )}
-                </span>
-                <input
-                  type="number"
-                  step="1"
-                  min="0"
-                  className={inputClass}
-                  value={text[field.key]}
-                  onChange={(e) => setText((prev) => ({ ...prev, [field.key]: e.target.value }))}
-                  onBlur={() => handleBlur(field.key)}
-                />
-              </label>
-            ))}
-          </div>
+                    <input
+                      type="number"
+                      step="1"
+                      min="0"
+                      className={inputClass}
+                      value={text[field.key]}
+                      onChange={(e) => setText((prev) => ({ ...prev, [field.key]: e.target.value }))}
+                      onBlur={() => handleBlur(field.key)}
+                    />
+                  </label>
+                ))}
+              </div>
 
-          <p className="text-sm text-slate-500 dark:text-slate-400">
-            These settings will enforce limits on values you can enter when planning your work.
-            They also introduce a soft warning when the planned work doesn't make sense within
-            these limits.
-          </p>
+              <p className="text-sm text-slate-500 dark:text-slate-400">
+                These settings will enforce limits on values you can enter when planning your work.
+                They also introduce a soft warning when the planned work doesn't make sense within
+                these limits.
+              </p>
+            </>
+          )}
+
+          {activeSection === 'about' && (
+            <>
+              <h2 className="text-sm font-semibold text-slate-900 dark:text-slate-100">About</h2>
+
+              <div className="flex flex-col gap-1">
+                <span className="text-base font-semibold text-slate-900 dark:text-slate-100">
+                  SimpleCAM
+                </span>
+                <span className="font-mono text-sm text-slate-500 dark:text-slate-400">
+                  v{__APP_VERSION__}
+                </span>
+              </div>
+
+              <p className="text-sm text-slate-500 dark:text-slate-400">
+                Fast G-Code generator for your basic operations. Client-side, no backend, no
+                accounts.
+              </p>
+
+              <p className="text-sm text-slate-400 dark:text-slate-600">Envisioned by ThingsByPluzz</p>
+            </>
+          )}
         </div>
       </div>
     </div>
