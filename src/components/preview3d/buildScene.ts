@@ -1,4 +1,5 @@
 import * as THREE from 'three'
+import { getFixedColors, getPaletteAccents, hexToThreeColor, type PaletteId } from '../../config/palettes'
 import { resolvePoints } from '../../lib/positioning'
 import { computeDepthPasses } from '../../lib/depthPasses'
 import type { WizardParams } from '../../types/wizard'
@@ -92,30 +93,32 @@ interface Theme {
   offset: number
 }
 
-const LIGHT_THEME: Theme = {
-  material: 0xe2e8f0,
-  materialOpacity: 0.5,
-  grid: 0x94a3b8,
-  toolpath: 0x16a34a,
-  rapid: 0x94a3b8,
-  origin: 0x4f46e5,
-  hole: 0x64748b,
-  axisX: 0xdc2626,
-  axisY: 0x16a34a,
-  offset: 0xd97706,
-}
+// materialOpacity isn't a color and stays fixed per light/dark mode
+// (unrelated to the BL-12 palette choice) — the plane's own accent color
+// still comes from the selected palette.
+const MATERIAL_OPACITY_LIGHT = 0.5
+const MATERIAL_OPACITY_DARK = 0.6
 
-const DARK_THEME: Theme = {
-  material: 0x1e293b,
-  materialOpacity: 0.6,
-  grid: 0x475569,
-  toolpath: 0x4ade80,
-  rapid: 0x64748b,
-  origin: 0x818cf8,
-  hole: 0x94a3b8,
-  axisX: 0xf87171,
-  axisY: 0x4ade80,
-  offset: 0xfbbf24,
+// Merges the palette-selectable accents (material/grid/toolpath/rapid/hole)
+// with the fixed CNC-convention colors (axes/origin/offset) — see
+// config/palettes.ts (BL-12). Mirrors preview/drawToolpath.ts's buildTheme,
+// just in Three.js's numeric 0xrrggbb color format instead of CSS hex
+// strings.
+function buildTheme(paletteId: PaletteId, isDark: boolean): Theme {
+  const fixed = getFixedColors(isDark)
+  const accents = getPaletteAccents(paletteId, isDark)
+  return {
+    material: hexToThreeColor(accents.background),
+    materialOpacity: isDark ? MATERIAL_OPACITY_DARK : MATERIAL_OPACITY_LIGHT,
+    grid: hexToThreeColor(accents.grid),
+    toolpath: hexToThreeColor(accents.toolpath),
+    rapid: hexToThreeColor(accents.rapid),
+    origin: hexToThreeColor(fixed.origin),
+    hole: hexToThreeColor(accents.hole),
+    axisX: hexToThreeColor(fixed.axisX),
+    axisY: hexToThreeColor(fixed.axisY),
+    offset: hexToThreeColor(fixed.offset),
+  }
 }
 
 // Small always-facing-camera text label rendered via a canvas texture — no
@@ -289,10 +292,11 @@ function buildPatternObjects(
 export function buildToolpathScene(
   params: WizardParams,
   isDark: boolean,
+  paletteId: PaletteId,
   overlayParams: WizardParams[] = [],
   showActivePattern = true,
 ): BuiltScene {
-  const theme = isDark ? DARK_THEME : LIGHT_THEME
+  const theme = buildTheme(paletteId, isDark)
 
   // Overlay patterns first, active pattern last — cosmetically inert in 3D
   // (real depth-tested geometry, add-order doesn't affect occlusion) but

@@ -7,6 +7,28 @@ zgodne z [SemVer](https://semver.org/). Ten plik pozostaje głównym, czytelnym
 thingsbypluzz/SimpleCAM), ale to infrastruktura pod izolację pracy
 (branch/worktree per zadanie), nie zamiennik tego changeloga.
 
+## [0.9.0] — 2026-08-23
+
+### Dodano
+
+- **`BL-12` zamknięte — palety kolorów podglądu 2D/3D w Settings.**
+  Sesja `/grill-me` ustaliła zakres: paleta zmienia wyłącznie kolory
+  "akcentowe" (`toolpath`/`rapid`/`hole`/`grid`/`background`), nie
+  rusza osi X/Y, origin ani wektora offsetu — to konwencja
+  CNC/semantyczna, nie stylistyka. Cztery gotowe palety
+  (`src/config/palettes.ts`): **Default** (dokładnie dzisiejsze
+  kolory, zero zmiany bez otwarcia Settings), **Ocean**, **Ember**,
+  **Violet** — każda z osobnym wariantem light/dark, przełączanym tym
+  samym dark-mode toggle'em co dziś. `palettes.ts` zastępuje dwa
+  ręcznie duplikowane `LIGHT_THEME`/`DARK_THEME` (po jednym w
+  `drawToolpath.ts` i `buildScene.ts`) jednym źródłem prawdy — 2D i 3D
+  dzielą teraz te same literały kolorów, nie tylko konwencję.
+- **Nowa sekcja "Appearance" w Settings** (`SettingsModal.tsx`) — rząd
+  swatchy palet, klik = natychmiastowa zmiana bez potwierdzenia.
+- **Nowy klucz `simplecam.appearance` w localStorage**
+  (`src/lib/appearanceStorage.ts`) — osobny od `simplecam.machine`,
+  bo wybór palety to preferencja UI, nie fizyczna cecha maszyny.
+
 ## [0.8.18] — 2026-08-22
 
 ### Dodano

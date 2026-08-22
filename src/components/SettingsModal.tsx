@@ -1,18 +1,23 @@
 import { useEffect, useState } from 'react'
+import { PALETTE_LIST } from '../config/palettes'
 import type { MachineSettings } from '../types/machine'
+import type { AppearanceSettings } from '../types/appearance'
 import { inputClass } from './wizard/FieldRow'
 
 interface SettingsModalProps {
   machine: MachineSettings
   onSave: (machine: MachineSettings) => void
+  appearance: AppearanceSettings
+  onSaveAppearance: (appearance: AppearanceSettings) => void
   onClose: () => void
 }
 
 type TravelField = 'travelX' | 'travelY' | 'travelZ'
-type SectionId = 'machine' | 'about'
+type SectionId = 'machine' | 'appearance' | 'about'
 
 const SECTIONS: { id: SectionId; label: string }[] = [
   { id: 'machine', label: 'Machine' },
+  { id: 'appearance', label: 'Appearance' },
   { id: 'about', label: 'About' },
 ]
 
@@ -22,7 +27,13 @@ const FIELDS: { key: TravelField; label: string }[] = [
   { key: 'travelZ', label: 'Z travel [mm]' },
 ]
 
-export function SettingsModal({ machine, onSave, onClose }: SettingsModalProps) {
+export function SettingsModal({
+  machine,
+  onSave,
+  appearance,
+  onSaveAppearance,
+  onClose,
+}: SettingsModalProps) {
   const [activeSection, setActiveSection] = useState<SectionId>('machine')
   // Local text per field so an in-progress edit (e.g. typing "400" one
   // digit at a time) never round-trips through a half-valid number — only
@@ -127,6 +138,57 @@ export function SettingsModal({ machine, onSave, onClose }: SettingsModalProps) 
                 These settings will enforce limits on values you can enter when planning your work.
                 They also introduce a soft warning when the planned work doesn't make sense within
                 these limits.
+              </p>
+            </>
+          )}
+
+          {activeSection === 'appearance' && (
+            <>
+              <h2 className="text-sm font-semibold text-slate-900 dark:text-slate-100">
+                Appearance
+              </h2>
+
+              <div className="flex flex-col gap-2">
+                <span className="text-sm font-medium text-slate-700 dark:text-slate-300">
+                  Preview color palette
+                </span>
+                <div className="flex flex-wrap gap-3">
+                  {PALETTE_LIST.map((palette) => {
+                    const isSelected = appearance.palette === palette.id
+                    return (
+                      <button
+                        key={palette.id}
+                        type="button"
+                        onClick={() => onSaveAppearance({ ...appearance, palette: palette.id })}
+                        title={palette.label}
+                        className={
+                          isSelected
+                            ? 'flex w-20 flex-col items-center gap-1.5 rounded-md border-2 border-indigo-600 p-2 dark:border-indigo-400'
+                            : 'flex w-20 flex-col items-center gap-1.5 rounded-md border border-slate-200 p-2 hover:bg-slate-50 dark:border-slate-700 dark:hover:bg-slate-900'
+                        }
+                      >
+                        <span className="flex gap-1">
+                          <span
+                            className="h-4 w-4 rounded-full border border-black/10 dark:border-white/10"
+                            style={{ backgroundColor: palette.light.toolpath }}
+                          />
+                          <span
+                            className="h-4 w-4 rounded-full border border-black/10 dark:border-white/10"
+                            style={{ backgroundColor: palette.dark.toolpath }}
+                          />
+                        </span>
+                        <span className="text-xs font-medium text-slate-600 dark:text-slate-300">
+                          {palette.label}
+                        </span>
+                      </button>
+                    )
+                  })}
+                </div>
+              </div>
+
+              <p className="text-sm text-slate-500 dark:text-slate-400">
+                Changes the toolpath/rapid/hole accent colors in the 2D and 3D previews. Axis
+                colors, the origin marker and the offset vector stay the same in every palette.
               </p>
             </>
           )}

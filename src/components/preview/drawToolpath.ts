@@ -1,3 +1,4 @@
+import { getFixedColors, getPaletteAccents, type PaletteId } from '../../config/palettes'
 import { resolvePoints } from '../../lib/positioning'
 import type { WizardParams } from '../../types/wizard'
 
@@ -15,37 +16,28 @@ interface Theme {
   offset: string
 }
 
-// axisX/axisY match preview3d/buildScene.ts's LIGHT_THEME/DARK_THEME exactly
-// (red X, green Y) — same visual convention in both 2D and 3D previews.
-// `offset` (amber) is deliberately a different hue family from axisX/axisY/
-// origin — it's a meta annotation (a work-offset shift), not a physical
-// axis or toolpath move.
-const LIGHT_THEME: Theme = {
-  background: '#ffffff',
-  grid: '#e2e8f0',
-  axisX: '#dc2626',
-  axisY: '#16a34a',
-  origin: '#4f46e5',
-  holeFill: 'rgba(79, 70, 229, 0.08)',
-  holeStroke: '#94a3b8',
-  toolpath: '#16a34a',
-  rapid: '#cbd5e1',
-  text: '#64748b',
-  offset: '#d97706',
-}
-
-const DARK_THEME: Theme = {
-  background: '#0f172a',
-  grid: '#1e293b',
-  axisX: '#f87171',
-  axisY: '#4ade80',
-  origin: '#818cf8',
-  holeFill: 'rgba(129, 140, 248, 0.12)',
-  holeStroke: '#475569',
-  toolpath: '#4ade80',
-  rapid: '#334155',
-  text: '#94a3b8',
-  offset: '#fbbf24',
+// Merges the palette-selectable accents (background/grid/toolpath/rapid/
+// hole) with the fixed CNC-convention colors (axes/origin/offset/text) —
+// see config/palettes.ts (BL-12) for why the two are split and where the
+// actual color values live. holeStroke maps 1:1 to the palette's `hole`
+// accent; holeFill stays a fixed, low-opacity origin tint (not palette
+// accent) since it's not meant to stand out as a distinguishing color.
+function buildTheme(paletteId: PaletteId, isDark: boolean): Theme {
+  const fixed = getFixedColors(isDark)
+  const accents = getPaletteAccents(paletteId, isDark)
+  return {
+    background: accents.background,
+    grid: accents.grid,
+    axisX: fixed.axisX,
+    axisY: fixed.axisY,
+    origin: fixed.origin,
+    holeFill: fixed.holeFill,
+    holeStroke: accents.hole,
+    toolpath: accents.toolpath,
+    rapid: accents.rapid,
+    text: fixed.text,
+    offset: fixed.offset,
+  }
 }
 
 // Arrowhead pointing along an arbitrary unit direction (dirX, dirY), tip at
@@ -198,10 +190,11 @@ export function drawToolpath(
   height: number,
   params: WizardParams,
   isDark: boolean,
+  paletteId: PaletteId,
   overlayParams: WizardParams[] = [],
   showActivePattern = true,
 ) {
-  const theme = isDark ? DARK_THEME : LIGHT_THEME
+  const theme = buildTheme(paletteId, isDark)
 
   // Overlay patterns drawn first, active pattern last — the active pattern
   // ends up on top wherever it overlaps an overlaid preset (BL-3). While

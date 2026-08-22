@@ -1,10 +1,12 @@
 import { useEffect, useRef } from 'react'
+import type { PaletteId } from '../../config/palettes'
 import type { WizardParams } from '../../types/wizard'
 import { drawToolpath } from './drawToolpath'
 
 interface ToolpathCanvasProps {
   params: WizardParams
   isDark: boolean
+  paletteId: PaletteId
   overlayParams: WizardParams[]
   showActivePattern: boolean
 }
@@ -12,6 +14,7 @@ interface ToolpathCanvasProps {
 export function ToolpathCanvas({
   params,
   isDark,
+  paletteId,
   overlayParams,
   showActivePattern,
 }: ToolpathCanvasProps) {
@@ -35,7 +38,7 @@ export function ToolpathCanvas({
       const ctx = canvas.getContext('2d')
       if (!ctx) return
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
-      drawToolpath(ctx, width, height, params, isDark, overlayParams, showActivePattern)
+      drawToolpath(ctx, width, height, params, isDark, paletteId, overlayParams, showActivePattern)
     }
 
     render()
@@ -43,7 +46,7 @@ export function ToolpathCanvas({
     const resizeObserver = new ResizeObserver(render)
     resizeObserver.observe(container)
     return () => resizeObserver.disconnect()
-  }, [params, isDark, overlayParams, showActivePattern])
+  }, [params, isDark, paletteId, overlayParams, showActivePattern])
 
   return (
     <div ref={containerRef} className="min-h-0 w-full flex-1">

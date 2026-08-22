@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react'
 import * as THREE from 'three'
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js'
+import type { PaletteId } from '../../config/palettes'
 import type { WizardParams } from '../../types/wizard'
 import { buildToolpathScene, disposeObject3D } from './buildScene'
 import { frameCamera, VIEW_PRESETS, type ViewPresetName } from './cameraPresets'
@@ -8,6 +9,7 @@ import { frameCamera, VIEW_PRESETS, type ViewPresetName } from './cameraPresets'
 interface Scene3DProps {
   params: WizardParams
   isDark: boolean
+  paletteId: PaletteId
   overlayParams: WizardParams[]
   showActivePattern: boolean
 }
@@ -19,7 +21,7 @@ const PRESET_BUTTONS: { name: ViewPresetName; label: string }[] = [
   { name: 'side', label: 'Side' },
 ]
 
-export function Scene3D({ params, isDark, overlayParams, showActivePattern }: Scene3DProps) {
+export function Scene3D({ params, isDark, paletteId, overlayParams, showActivePattern }: Scene3DProps) {
   const containerRef = useRef<HTMLDivElement>(null)
   const sceneRef = useRef<THREE.Scene | null>(null)
   const cameraRef = useRef<THREE.PerspectiveCamera | null>(null)
@@ -130,7 +132,7 @@ export function Scene3D({ params, isDark, overlayParams, showActivePattern }: Sc
       disposeObject3D(child)
     }
 
-    const { objects, bounds } = buildToolpathScene(params, isDark, overlayParams, showActivePattern)
+    const { objects, bounds } = buildToolpathScene(params, isDark, paletteId, overlayParams, showActivePattern)
     objects.forEach((obj) => contentGroup.add(obj))
     boundsRef.current = bounds
 
@@ -158,7 +160,7 @@ export function Scene3D({ params, isDark, overlayParams, showActivePattern }: Sc
         frameCamera(camera, controls, bounds, direction.normalize(), camera.up.clone())
       }
     }
-  }, [params, isDark, overlayParams, showActivePattern])
+  }, [params, isDark, paletteId, overlayParams, showActivePattern])
 
   const handlePreset = (name: ViewPresetName) => {
     const camera = cameraRef.current

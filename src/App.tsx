@@ -40,6 +40,7 @@ import {
   saveSlot,
   type PresetSlotId,
 } from './lib/storage'
+import { loadAppearanceSettings, saveAppearanceSettings } from './lib/appearanceStorage'
 import { loadMachineSettings, saveMachineSettings } from './lib/machineStorage'
 import {
   isCircleHoleCountValid,
@@ -48,6 +49,7 @@ import {
   isToolDiameterValid,
   machineFitWarnings,
 } from './lib/validation'
+import type { AppearanceSettings } from './types/appearance'
 import { DEFAULT_WIZARD_PARAMS, type GeometryParams, type WizardParams } from './types/wizard'
 
 const TOTAL_STEPS = 4
@@ -153,6 +155,7 @@ function App() {
   const [generatedGCode, setGeneratedGCode] = useState<string[] | null>(null)
   const [previewTab, setPreviewTab] = useState<'2d' | '3d' | 'gcode'>('3d')
   const [machine, setMachine] = useState(loadMachineSettings)
+  const [appearance, setAppearance] = useState(loadAppearanceSettings)
   const [isSettingsOpen, setIsSettingsOpen] = useState(false)
   const [overlayEnabled, setOverlayEnabled] = useState(false)
   const [overlaySlots, setOverlaySlots] = useState<Set<PresetSlotId>>(new Set())
@@ -191,6 +194,11 @@ function App() {
   const handleSaveMachine = (next: typeof machine) => {
     saveMachineSettings(next)
     setMachine(next)
+  }
+
+  const handleSaveAppearance = (next: AppearanceSettings) => {
+    saveAppearanceSettings(next)
+    setAppearance(next)
   }
 
   // Generate is also the auto-save trigger for the hidden slot 0 — see
@@ -607,6 +615,7 @@ function App() {
               <ToolpathCanvas
                 params={params}
                 isDark={isDark}
+                paletteId={appearance.palette}
                 overlayParams={overlayParams}
                 showActivePattern={!overlayEnabled}
               />
@@ -623,6 +632,7 @@ function App() {
                 <Scene3D
                   params={params}
                   isDark={isDark}
+                  paletteId={appearance.palette}
                   overlayParams={overlayParams}
                   showActivePattern={!overlayEnabled}
                 />
@@ -647,6 +657,8 @@ function App() {
         <SettingsModal
           machine={machine}
           onSave={handleSaveMachine}
+          appearance={appearance}
+          onSaveAppearance={handleSaveAppearance}
           onClose={() => setIsSettingsOpen(false)}
         />
       )}

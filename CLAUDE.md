@@ -530,16 +530,6 @@ nowa funkcjonalność. Nie zaczynać bez wyraźnego "przechodzimy do X".
   którego 2D dziś celowo nie ma, plus obsługi zdarzenia `wheel` i
   przeliczenia `toPx()`/bounds pod kątem tego stanu zamiast zawsze liczyć
   je na nowo z danych.
-- **`BL-12`** — **Presety kolorów renderowania 2D/3D w Settings.**
-  Dziś `drawToolpath.ts`/`buildScene.ts` mają po dwa stałe motywy
-  (`LIGHT_THEME`/`DARK_THEME`), przełączane wyłącznie dark/light
-  mode'em. Dodać do `SettingsModal.tsx` (`BL-9`) wybór spośród kilku
-  gotowych palet kolorów dla obu podglądów — wymaga zdefiniowania
-  zestawu presetów kolorystycznych, sposobu ich przechowania (nowy klucz
-  w `machineStorage.ts` czy osobny), i przekazania wybranej palety przez
-  propsy do `ToolpathCanvas`/`Scene3D` zamiast dzisiejszych
-  wbudowanych stałych. Styka się z odłożoną w `BL-3` decyzją o braku
-  kolorów per-slot w overlay — dobry moment żeby to razem przemyśleć.
 Nie przeskakuj etapów bez pytania — każdy kończy się checkpointem do
 przeglądu przez użytkownika.
 
@@ -758,6 +748,38 @@ przeglądu przez użytkownika.
   aktywny (`border-transparent` w przeciwnym razie — zmiana koloru, nie
   `border-width`, żeby nie skakał layout przy włączaniu/wyłączaniu) i
   więcej pionowego oddechu wokół ikonek (`py-1.5` → `py-2`).
+- **Palety kolorów podglądu 2D/3D w Settings (`BL-12`, `0.9.0`).** Sesja
+  `/grill-me` rozstrzygnęła zakres: paleta zmienia tylko kolory
+  "akcentowe" — `toolpath`/`rapid`/`hole`/`grid`/`background` (2D) i
+  `toolpath`/`rapid`/`hole`/`grid`/`material` (3D) — nie rusza osi
+  X/Y (czerwień/zieleń), origin (indygo) ani wektora offsetu (amber),
+  bo to konwencja CNC/semantyczna, nie stylistyka. 4 gotowe palety
+  (`src/config/palettes.ts`, `PaletteId`): **Default** (dokładnie
+  dzisiejsze kolory — brak zmiany dla kogoś, kto nigdy nie otworzy
+  Appearance), **Ocean** (cyjan/turkus), **Ember** (spalona pomarańcz —
+  celowo inna niż amber offsetu, żeby akcent ścieżki narzędzia nigdy nie
+  wyglądał jak wektor offsetu), **Violet** (fiolet) — każda z osobnym
+  wariantem light/dark, wybieranym tym samym przełącznikiem dark mode co
+  dziś (paleta i dark/light to niezależne osie). `palettes.ts` to teraz
+  jedyne źródło prawdy dla kolorów obu podglądów — zastępuje dwa ręcznie
+  duplikowane `LIGHT_THEME`/`DARK_THEME` (po jednym w
+  `drawToolpath.ts` i `buildScene.ts`, pilnowane dotąd tylko
+  komentarzem "muszą się zgadzać"); `hexToThreeColor()` konwertuje
+  jednorazowo hex-string na numeryczny kolor Three.js zamiast trzymać
+  dwie kopie każdej wartości w różnych formatach. Wybór palety
+  przechowywany w nowym, osobnym kluczu `simplecam.appearance`
+  (`src/lib/appearanceStorage.ts`, `AppearanceSettings` w
+  `src/types/appearance.ts`) — nie w `simplecam.machine` — bo to
+  preferencja UI, nie fizyczna cecha maszyny (ten sam podział co
+  `simplecam.storage` vs `simplecam.machine`); merge z walidacją
+  nieznanego/uszkodzonego `palette` w zapisanym JSON-ie (fallback do
+  `'default'`), ten sam wzorzec try/catch co `machineStorage.ts`.
+  Nowa trzecia sekcja **"Appearance"** w `SettingsModal.tsx` (obok
+  Machine/About) — rząd swatchy, klik = natychmiastowa zmiana, bez
+  potwierdzenia (spójnie z resztą appki). Świadomie **nie** rusza
+  odłożonej w `BL-3` decyzji o braku kolorów per-slot w overlay —
+  paleta reskinuje jednolicie żywy wzorzec i każdy nałożony preset,
+  bez wprowadzania nowego rozróżnienia kolorem per-slot.
 - **`.gitignore` musi wykluczać `.claude/`** — Tailwind v4
   (`@tailwindcss/vite`) auto-skanuje cały katalog projektu pod kątem nazw
   klas i respektuje tylko `.gitignore` jako listę wykluczeń (bez niego
@@ -834,6 +856,24 @@ src/
                               (Machine Settings, `BL-9`) — celowo osobny plik
                               od `wizard.ts`, to inny rodzaj danych (jeden
                               globalny obiekt, nie WizardParams)
+  types/appearance.ts       — AppearanceSettings + DEFAULT_APPEARANCE_SETTINGS
+                              (paleta kolorów podglądu, `BL-12`) — osobny od
+                              `machine.ts`: preferencja UI, nie fizyczna cecha
+                              maszyny
+  config/palettes.ts        — jedyne źródło prawdy dla kolorów podglądu 2D
+                              (`preview/drawToolpath.ts`) i 3D
+                              (`preview3d/buildScene.ts`), `BL-12`.
+                              `FIXED_COLORS_LIGHT`/`FIXED_COLORS_DARK` — osie
+                              X/Y, origin, offset, 2D-owe text/holeFill —
+                              te same we wszystkich paletach (konwencja
+                              CNC/semantyczna, nie stylistyka). `PALETTES`/
+                              `PALETTE_LIST` — 4 palety akcentów
+                              (toolpath/rapid/hole/grid/background), każda
+                              z wariantem light/dark; `default` odtwarza
+                              dokładnie przedpaletowe kolory.
+                              `hexToThreeColor()` konwertuje hex-string na
+                              numeryczny kolor Three.js — 2D i 3D dzielą też
+                              literały kolorów, nie tylko strukturę
   config/methodMeta.ts      — rejestr metadanych per-method (Helix/Standard:
                               nazwy, ikony, etykiety, `generate()`) — jedno
                               źródło prawdy, nie hardkodować ternary po
@@ -851,7 +891,9 @@ src/
                               `lib/download.ts`) — patrz Etap 6
   components/SettingsModal.tsx — modal Machine Settings (`BL-9`) — patrz
                               "Machine Settings" w sekcji "Kluczowe decyzje
-                              projektowe" wyżej po pełny opis
+                              projektowe" wyżej po pełny opis. Trzecia
+                              sekcja "Appearance" (`BL-12`) — picker palety
+                              kolorów podglądu, patrz `config/palettes.ts`
   components/wizard/        — komponenty poszczególnych kroków wizarda.
                               `Step1Positioning.tsx` = wyłącznie pattern
                               picker + placeholdery operacji, nic liczbowego;
@@ -873,15 +915,22 @@ src/
                                params/motywu
     drawToolpath.ts            — właściwe rysowanie (Canvas 2D API): siatka,
                                osie X (czerwona) / Y (zielona) — te same
-                               wartości hex co `preview3d/buildScene.ts`,
-                               każda z grotem strzałki i etykietą na
+                               wartości hex co `preview3d/buildScene.ts`
+                               (od `BL-12` dosłownie ta sama stała, obie
+                               strony importują z `config/palettes.ts`
+                               zamiast trzymać zsynchronizowane ręcznie
+                               kopie), każda z grotem strzałki i etykietą na
                                dodatnim końcu (spójny styl z 3D Preview) —
                                punkt (0,0), dla każdego otworu — obrys
                                finalnego otworu (D_hole) + ścieżka
                                narzędzia (promień = (D_hole-D_tool)/2) +
                                przejazdy szybkie (G0) między otworami.
-                               Reużywa `resolvePoints()` z `lib/positioning.ts`
-                               — geometria liczona raz, wspólnie z silnikiem
+                               `buildTheme(paletteId, isDark)` łączy stałe
+                               kolory CNC (`getFixedColors`) z akcentami
+                               wybranej palety (`getPaletteAccents`) —
+                               `BL-12`. Reużywa `resolvePoints()` z
+                               `lib/positioning.ts` — geometria liczona raz,
+                               wspólnie z silnikiem
   components/preview3d/     — podgląd 3D (Etap 4), doładowywany leniwie
     Scene3D.tsx                — React wrapper: scena/kamera/renderer/
                                OrbitControls, ResizeObserver, przyciski
@@ -1102,6 +1151,13 @@ src/
                                  ten sam try/catch + merge-z-defaultami co
                                  storage.ts, ale bez systemu slotów (jeden
                                  płaski obiekt)
+    appearanceStorage.ts          — loadAppearanceSettings/
+                                 saveAppearanceSettings (`BL-12`), osobny
+                                 klucz `simplecam.appearance` — ten sam
+                                 wzorzec co machineStorage.ts, plus walidacja
+                                 zapisanego `palette` względem znanych
+                                 `PaletteId` (fallback do `'default'` przy
+                                 nieznanej/uszkodzonej wartości)
     overlayParams.ts               — deriveOverlayParams() (`BL-3`, `0.8.13`)
                                  — jedyna czysta funkcja w overlay presetów,
                                  filtruje/mapuje overlaySlots względem
@@ -1122,7 +1178,10 @@ wszystko co zależy od wybranego patternu (Single/Grid/Grid Centered/
 N-Holes Circle/Custom — ikona, tytuł/opis karty, etykieta presetu,
 filename slug) idzie przez `POSITIONING_META`/pomocnicze funkcje w
 `config/positioningMeta.ts` (patrz Etap 6), nie przez rozproszone
-`switch (geometry.positioning)` w komponentach.
+`switch (geometry.positioning)` w komponentach. Analogicznie — wszystkie
+kolory podglądu 2D/3D (`BL-12`) idą przez `config/palettes.ts`
+(`getFixedColors()`/`getPaletteAccents()`/`hexToThreeColor()`), nie przez
+osobne stałe kolorów w `drawToolpath.ts`/`buildScene.ts`.
 
 ## Komendy
 
