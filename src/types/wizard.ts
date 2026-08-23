@@ -70,7 +70,7 @@ export const DEFAULT_WIZARD_PARAMS: WizardParams = {
     tabsEnabled: false,
     tabHeight: 1,
     tabWidth: 3,
-    tabCount: 4,
+    tabCount: 3,
   },
   feeds: {
     stepdown: 1,

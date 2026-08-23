@@ -65,4 +65,18 @@ describe('loadMachineSettings / saveMachineSettings', () => {
     )
     expect(loadMachineSettings().dialect).toBe(DEFAULT_MACHINE_SETTINGS.dialect)
   })
+
+  it('round-trips default tab sizes, and fills them in for an older saved object missing them', () => {
+    const settings = {
+      ...DEFAULT_MACHINE_SETTINGS,
+      defaultTabHeight: 2,
+      defaultTabWidth: 5,
+      defaultTabCount: 6,
+    }
+    saveMachineSettings(settings)
+    expect(loadMachineSettings()).toEqual(settings)
+
+    localStorage.setItem('simplecam.machine', JSON.stringify({ travelX: 300 }))
+    expect(loadMachineSettings()).toEqual({ ...DEFAULT_MACHINE_SETTINGS, travelX: 300 })
+  })
 })

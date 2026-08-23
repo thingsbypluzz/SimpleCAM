@@ -1089,6 +1089,26 @@ przeglądu przez użytkownika.
   (głębokość 5mm, mostek 1mm, skok 0.5mm) i liczy linie na głębokości
   szwu przed pierwszym zanurzeniem w pasmo — dokładnie 73 (72 z nowego
   przejścia czyszczącego + 1 z domkniętego ostatniego punktu spirali).
+
+  **Domyślne rozmiary mostków (kosmetyczna dołka przed mergem).** Nowe
+  pola w `MachineSettings`: `defaultTabHeight`/`defaultTabWidth`/
+  `defaultTabCount` (domyślnie `1`/`3`/`3` — te same liczby co
+  `DEFAULT_WIZARD_PARAMS.geometry` dla tabów, więc świeży wizyta i
+  nieotwarte Settings dają identyczny wynik). Nowa sekcja "Default Tab
+  Sizes" w Settings > Machine, ten sam wzorzec bufora
+  tekstu+onBlur+"✓ Saved" co pola X/Y/Z travel (`SettingsModal.tsx`,
+  typ `TravelField` poszerzony do `NumericField` — jeden generyczny
+  `handleBlur()` obsługuje teraz oba zestawy pól). Aplikowane w
+  `Step2Geometry.tsx`, gdy checkbox "Enable Tabs" przechodzi z
+  false→true (`machine` prop już tam był dostępny) — świadomie
+  **zawsze** nadpisuje `tabHeight`/`tabWidth`/`tabCount` świeżymi
+  wartościami z Settings przy każdym zaznaczeniu, także po odznaczeniu
+  i ponownym zaznaczeniu w tej samej sesji (czyli niestandardowa
+  edycja sprzed odznaczenia przepada) — brak czystego sposobu
+  odróżnienia "user to dostosował w tej sesji" od "to tylko to, co
+  ostatnio wsiane" bez nowego stanu do śledzenia, a przewidywalne
+  "zawsze zaczyna od Twojego defaultu" uznane za lepsze niż
+  półpamiętające zachowanie.
 - **`.gitignore` musi wykluczać `.claude/`** — Tailwind v4
   (`@tailwindcss/vite`) auto-skanuje cały katalog projektu pod kątem nazw
   klas i respektuje tylko `.gitignore` jako listę wykluczeń (bez niego
@@ -1214,7 +1234,9 @@ src/
                               Sekcja "Machine" ma od `0.11.0` (`BL-5`/
                               `BL-10`) też dropdown G-Code Dialect i dwa
                               `<textarea>` Start/End G-Code — patrz
-                              "G-Code Dialect + Start/End G-Code" wyżej
+                              "G-Code Dialect + Start/End G-Code" wyżej.
+                              Od `0.12.0` (`BL-14`) też "Default Tab
+                              Sizes" — patrz "Tabs (mostki)..." wyżej
   components/wizard/        — komponenty poszczególnych kroków wizarda.
                               `Step1Positioning.tsx` = wyłącznie pattern
                               picker + placeholdery operacji, nic liczbowego;

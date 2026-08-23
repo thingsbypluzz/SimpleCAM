@@ -223,7 +223,28 @@ export function Step2Geometry({ params, onChange, machine }: Step2GeometryProps)
           <input
             type="checkbox"
             checked={geometry.tabsEnabled}
-            onChange={(e) => updateGeometry({ tabsEnabled: e.target.checked })}
+            onChange={(e) => {
+              const enabled = e.target.checked
+              // Checking the box always seeds height/width/count fresh
+              // from Settings > Machine's "Default Tab Sizes" — including
+              // on a re-check after unchecking, which does mean a custom
+              // edit made before unchecking is lost, not remembered. Kept
+              // deliberately simple: there's no clean way to tell "user
+              // customized this in-session" from "just showing whatever
+              // was last seeded" without new state to track it, and a
+              // predictable "always starts from your default" beats a
+              // half-remembered one.
+              updateGeometry(
+                enabled
+                  ? {
+                      tabsEnabled: true,
+                      tabHeight: machine.defaultTabHeight,
+                      tabWidth: machine.defaultTabWidth,
+                      tabCount: machine.defaultTabCount,
+                    }
+                  : { tabsEnabled: false },
+              )
+            }}
             className="h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
           />
           Enable Tabs

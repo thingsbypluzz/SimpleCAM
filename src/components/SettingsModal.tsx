@@ -13,6 +13,11 @@ interface SettingsModalProps {
 }
 
 type TravelField = 'travelX' | 'travelY' | 'travelZ'
+type TabDefaultField = 'defaultTabHeight' | 'defaultTabWidth' | 'defaultTabCount'
+// Both groups are plain positive numbers, sharing one local-buffer/onBlur
+// mechanism (text/savedField/handleBlur below) — only the field list and
+// per-field step/label differ.
+type NumericField = TravelField | TabDefaultField
 type CodeField = 'headerText' | 'footerText'
 type SectionId = 'machine' | 'appearance' | 'about'
 
@@ -26,6 +31,14 @@ const FIELDS: { key: TravelField; label: string }[] = [
   { key: 'travelX', label: 'X travel [mm]' },
   { key: 'travelY', label: 'Y travel [mm]' },
   { key: 'travelZ', label: 'Z travel [mm]' },
+]
+
+// BL-14: template applied whenever "Enable Tabs" is checked on Step 2 —
+// see Step2Geometry.tsx and the note on MachineSettings itself.
+const TAB_DEFAULT_FIELDS: { key: TabDefaultField; label: string; step: string }[] = [
+  { key: 'defaultTabHeight', label: 'Default Tab Height [mm]', step: '0.1' },
+  { key: 'defaultTabWidth', label: 'Default Tab Width [mm]', step: '0.1' },
+  { key: 'defaultTabCount', label: 'Default Tab Count', step: '1' },
 ]
 
 const DIALECT_OPTIONS: { value: Dialect; label: string }[] = [
@@ -49,13 +62,17 @@ export function SettingsModal({
   const [activeSection, setActiveSection] = useState<SectionId>('machine')
   // Local text per field so an in-progress edit (e.g. typing "400" one
   // digit at a time) never round-trips through a half-valid number — only
-  // committed to machine settings (and localStorage) on blur.
-  const [text, setText] = useState<Record<TravelField, string>>({
+  // committed to machine settings (and localStorage) on blur. Shared by
+  // travel and default-tab-size fields alike (both plain positive numbers).
+  const [text, setText] = useState<Record<NumericField, string>>({
     travelX: String(machine.travelX),
     travelY: String(machine.travelY),
     travelZ: String(machine.travelZ),
+    defaultTabHeight: String(machine.defaultTabHeight),
+    defaultTabWidth: String(machine.defaultTabWidth),
+    defaultTabCount: String(machine.defaultTabCount),
   })
-  const [savedField, setSavedField] = useState<TravelField | null>(null)
+  const [savedField, setSavedField] = useState<NumericField | null>(null)
   // Same "local buffer, commit on blur" pattern as the numeric travel
   // fields — here purely to avoid a localStorage write per keystroke, not
   // for validation (any string is a valid header/footer).
@@ -73,7 +90,7 @@ export function SettingsModal({
     return () => window.removeEventListener('keydown', handleKeyDown)
   }, [onClose])
 
-  const handleBlur = (key: TravelField) => {
+  const handleBlur = (key: NumericField) => {
     const value = Number(text[key])
     if (!Number.isFinite(value) || value <= 0) {
       // Invalid entry — revert the field instead of persisting garbage.
@@ -224,6 +241,38 @@ export function SettingsModal({
                   Inserted verbatim — Start G-Code before the generated program, End G-Code after
                   it (before the closing {machine.dialect === 'marlin' ? 'M2' : 'M30'}). Wrapped in
                   comment markers when non-empty; left untouched when blank.
+                </p>
+              </div>
+
+              <div className="flex flex-col gap-4 border-t border-slate-200 pt-4 dark:border-slate-800">
+                <span className="text-sm font-medium text-slate-700 dark:text-slate-300">
+                  Default Tab Sizes
+                </span>
+                {TAB_DEFAULT_FIELDS.map((field) => (
+                  <label key={field.key} className="flex flex-col gap-1">
+                    <span className="flex items-center gap-2 text-sm font-medium text-slate-700 dark:text-slate-300">
+                      {field.label}
+                      {savedField === field.key && (
+                        <span className="text-xs font-normal text-emerald-600 dark:text-emerald-400">
+                          ✓ Saved
+                        </span>
+                      )}
+                    </span>
+                    <input
+                      type="number"
+                      step={field.step}
+                      min="0"
+                      className={inputClass}
+                      value={text[field.key]}
+                      onChange={(e) => setText((prev) => ({ ...prev, [field.key]: e.target.value }))}
+                      onBlur={() => handleBlur(field.key)}
+                    />
+                  </label>
+                ))}
+                <p className="text-sm text-slate-500 dark:text-slate-400">
+                  Applied whenever you check "Enable Tabs" on Step 2 — a starting point for a new
+                  job, not a live link, so editing these later doesn't change a job that already
+                  has tabs on.
                 </p>
               </div>
             </>
