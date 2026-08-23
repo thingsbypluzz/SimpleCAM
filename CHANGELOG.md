@@ -41,6 +41,19 @@ thingsbypluzz/SimpleCAM), ale to infrastruktura pod izolację pracy
   tym projekcie) — dotyka silnika G-code nową geometrią o realnym
   znaczeniu fizycznym (mostki to jedyne, co trzyma wyciętą część).
 
+  **Poprawka po przeglądzie wizualizacji przez użytkownika:** spirala
+  Helixa nie zostawia płaskiej powierzchni na granicy pasma mostków —
+  zostawia rampę śrubową (ostatni obrót schodzi ciągle od kąta 0° do
+  360°, więc tylko punkt startowy/końcowy faktycznie osiąga docelową
+  głębokość). Bez dodatkowej poprawki pierwsze płaskie przejście w
+  paśmie mostków ścinało nierówno — poprawny `stepdown` tuż przy szwie
+  spirali, ale nawet 2× tyle po drugiej stronie rampy. Naprawione:
+  dodatkowe, pełne, niedotabowane przejście dokładnie na górze pasma
+  (zero głębokości netto) — czyści rampę, zanim zacznie się właściwe
+  zagłębianie z mostkami. Ten sam mechanizm, co dotychczasowa "flat
+  finishing pass" na samym dnie niedotabowanej ścieżki, zastosowany
+  też na nowej granicy przejścia spirala→płaskie cięcie.
+
 ## [0.11.2] — 2026-08-23
 
 ### Naprawiono

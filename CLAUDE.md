@@ -1060,6 +1060,35 @@ przeglądu przez użytkownika.
   wcześniejszych sesji w tym projekcie) — świadoma decyzja użytkownika:
   ta zmiana dotyka silnika G-code nową geometrią o realnym znaczeniu
   fizycznym, warto ją odizolować do potwierdzenia.
+
+  **Trzeci bug, złapany przez użytkownika na wizualizacji (nie przez
+  przegląd przed implementacją).** Spirala Helixa nie zostawia płaskiej
+  powierzchni na granicy pasma mostków — zostawia rampę śrubową: ostatni
+  obrót spirali schodzi *ciągle* w miarę zamiatania kątem od 0° do 360°,
+  więc tylko punkt startowy/końcowy (kąt szwu) faktycznie osiąga
+  docelową głębokość (górę pasma mostków); reszta obwodu jest w tym
+  momencie płycej, aż do połowy zamierzonego `stepdown` przy samym
+  starcie ostatniego obrotu. Efekt: pierwsze płaskie przejście w paśmie
+  mostków (to, które zanurza się o kolejny `stepdown`) ścinało nierówno
+  — poprawną głębokość tuż przy szwie spirali, ale aż 2× tyle po
+  drugiej stronie rampy (np. przy `stepdown=0.5mm` realnie ścinało do
+  1mm w jednym przejściu). Poprawka: dodatkowe, w pełni płaskie,
+  niedotabowane przejście dokładnie na górze pasma (`zStart === zEnd`,
+  zero głębokości netto) wstawione **po** spirali, **przed** pętlą
+  pasma mostków — czyści rampę do jednej płaskiej powierzchni, zanim
+  zacznie się właściwe zagłębianie z pomijaniem mostków. To dokładnie
+  ten sam mechanizm, co dotychczasowa "flat finishing pass" na samym
+  dnie niedotabowanej ścieżki (istniała od zawsze właśnie po to, żeby
+  wyczyścić tę samą rampę na dnie) — tylko teraz potrzebny też na nowej
+  granicy przejścia spirala→płaskie cięcie, nie tylko na końcu. Dotyczy
+  wyłącznie Helixa (Standard Hole nigdy nie ma spirali, więc nigdy nie
+  ma rampy do czyszczenia) i wyłącznie **pierwszego** przejścia w
+  paśmie (każde kolejne płaskie przejście zawsze zostawia płaską
+  powierzchnię, więc problem się nie powiela). Test regresyjny w
+  `helix.test.ts` używa dokładnie przykładu z rozmowy z użytkownikiem
+  (głębokość 5mm, mostek 1mm, skok 0.5mm) i liczy linie na głębokości
+  szwu przed pierwszym zanurzeniem w pasmo — dokładnie 73 (72 z nowego
+  przejścia czyszczącego + 1 z domkniętego ostatniego punktu spirali).
 - **`.gitignore` musi wykluczać `.claude/`** — Tailwind v4
   (`@tailwindcss/vite`) auto-skanuje cały katalog projektu pod kątem nazw
   klas i respektuje tylko `.gitignore` jako listę wykluczeń (bez niego

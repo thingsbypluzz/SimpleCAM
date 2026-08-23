@@ -125,6 +125,14 @@ function helixPoints3D(
       currentZ -= turnDepth
     }
 
+    // Square off the helical ledge the spiral leaves behind at the tab-band
+    // top before descending into the tabbed passes — mirrors the fix in
+    // helix.ts (see its comment for the full explanation).
+    for (let i = 1; i <= SEGMENTS_PER_TURN; i++) {
+      const a = (2 * Math.PI * i) / SEGMENTS_PER_TURN
+      points.push(toThree(cx + radius * Math.cos(a), cy + radius * Math.sin(a), currentZ))
+    }
+
     for (const passDepth of computeDepthPasses(tabs.tabHeight, stepdown)) {
       currentZ -= passDepth
       points.push(toThree(cx + radius, cy, currentZ))

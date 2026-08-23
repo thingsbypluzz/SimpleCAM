@@ -57,6 +57,32 @@ function helixToolpath(cx: number, cy: number, params: WizardParams): string[] {
       currentZ = nextZ
     }
 
+    // Square off the helical ledge the spiral's last turn leaves behind —
+    // a spiral turn descends continuously as it sweeps, so what's left at
+    // the tab-band top isn't a flat surface, it's a ramp (shallow right
+    // after the seam angle, reaching the true tabBandTopZ only back at the
+    // seam itself). Without this cleanup pass, the first tab-band pass
+    // below bites unevenly: a correct `stepdown` right at the seam, but up
+    // to 2x that on the far side of the ramp, since it's cutting into
+    // whatever the spiral left rather than a flat surface one stepdown
+    // above its target. Same idea as the untabbed path's flat finishing
+    // pass below (zStart === zEnd, a pure cleanup revolution) — just
+    // needed at this new transition boundary too, not only at the true
+    // bottom.
+    lines.push(
+      ...fullCircleMove({
+        centerX: cx,
+        centerY: cy,
+        radius,
+        startX,
+        startY,
+        zStart: currentZ,
+        zEnd: currentZ,
+        feed: feeds.feedrateXY,
+        interpolation: effectiveInterpolation,
+      }),
+    )
+
     for (const passDepth of computeDepthPasses(geometry.tabHeight, feeds.stepdown)) {
       currentZ -= passDepth
       lines.push(`G1 Z${fmt(currentZ)} F${fmt(feeds.plungeRate)}`)

@@ -184,5 +184,29 @@ describe('generateHelix', () => {
       const plungeToFullDepth = lines.filter((l) => l === 'G1 Z-4 F300')
       expect(plungeToFullDepth).toHaveLength(1)
     })
+
+    it('squares off the spiral ledge at the tab-band top before descending into tabbed passes', () => {
+      // The user's own bug report numbers: depth 5, tab height 1, pitch 0.5.
+      // Without the squaring pass, the first tab-band pass (to -4.5) bites
+      // unevenly around the ledge the spiral's last turn leaves at the
+      // tab-band top (-4) — up to 1mm in one bite instead of the intended
+      // 0.5mm stepdown, depending on angle.
+      const lines = generate(
+        buildParams({
+          geometry: { totalDepth: 5, tabsEnabled: true, tabHeight: 1, tabCount: 3, tabWidth: 1 },
+          feeds: { stepdown: 0.5 },
+        }),
+      )
+      const firstBandPlungeIdx = lines.indexOf('G1 Z-4.5 F300')
+      expect(firstBandPlungeIdx).toBeGreaterThan(0)
+
+      // Everything before that plunge is either spiral motion or the new
+      // squaring pass — a full untabbed circle sitting exactly at -4 (the
+      // tab-band top), 72 segments, plus the spiral's own last (snapped)
+      // point which also lands exactly on -4.
+      const beforeBand = lines.slice(0, firstBandPlungeIdx)
+      const linesAtBandTop = beforeBand.filter((l) => l.startsWith('G1 X') && l.includes('Z-4 '))
+      expect(linesAtBandTop).toHaveLength(73)
+    })
   })
 })
