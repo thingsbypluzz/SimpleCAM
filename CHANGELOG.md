@@ -7,6 +7,19 @@ zgodne z [SemVer](https://semver.org/). Ten plik pozostaje głównym, czytelnym
 thingsbypluzz/SimpleCAM), ale to infrastruktura pod izolację pracy
 (branch/worktree per zadanie), nie zamiennik tego changeloga.
 
+## [0.11.1] — 2026-08-23
+
+### Naprawiono
+
+- **Kolor siatki płaszczyzny w 3D Preview.** `0.9.0` (BL-12) scaliło
+  osobne kolory siatki 2D i 3D w jeden współdzielony `accents.grid`,
+  zachowując subtelniejszą wartość z 2D (`#e2e8f0`/`#1e293b`) zamiast
+  wyrazistszej, jaką miał wcześniej sam 3D (`#94a3b8`/`#475569`) — przy
+  dodatkowym mnożniku `opacity: 0.4` na `GridHelper` siatka stała się w
+  praktyce prawie niewidoczna, zwłaszcza w jasnym motywie. Nowe wartości
+  `#c0bfbc` (light) / `#5e5c64` (dark), wspólne dla wszystkich 4 palet —
+  `grid` to pomoc orientacyjna, nie akcent odróżniający palety.
+
 ## [0.11.0] — 2026-08-23
 
 ### Dodano

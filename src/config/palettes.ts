@@ -61,35 +61,41 @@ export interface Palette {
   dark: PaletteAccents
 }
 
-// "Default" reproduces the pre-BL-12 LIGHT_THEME/DARK_THEME colors exactly
-// — opening Settings and never touching Appearance must look identical to
-// before this feature existed. "Ember" avoids amber (#d97706/#fbbf24 is the
-// fixed `offset` color) so its toolpath accent never gets mistaken for the
-// offset vector.
+// "Default" reproduces the pre-BL-12 LIGHT_THEME/DARK_THEME colors, with one
+// deliberate exception: `grid` was fixed post-launch (same day), not
+// reproduced. BL-12 had accidentally collapsed the 3D preview's own grid
+// color (`#94a3b8`/`#475569`) into the much subtler one 2D always used
+// (`#e2e8f0`/`#1e293b`) — at the 3D GridHelper's 0.4 opacity that read as
+// "the grid nearly disappeared", not a style choice. Fixed with a fresh
+// value (`#c0bfbc`/`#5e5c64`) shared by all four palettes — grid is a
+// utility/orientation cue, not a signature accent, so it isn't part of what
+// differentiates one palette from another. "Ember" avoids amber
+// (#d97706/#fbbf24 is the fixed `offset` color) so its toolpath accent
+// never gets mistaken for the offset vector.
 export const PALETTES: Record<PaletteId, Palette> = {
   default: {
     id: 'default',
     label: 'Default',
-    light: { background: '#ffffff', grid: '#e2e8f0', toolpath: '#16a34a', rapid: '#cbd5e1', hole: '#94a3b8' },
-    dark: { background: '#0f172a', grid: '#1e293b', toolpath: '#4ade80', rapid: '#334155', hole: '#475569' },
+    light: { background: '#ffffff', grid: '#c0bfbc', toolpath: '#16a34a', rapid: '#cbd5e1', hole: '#94a3b8' },
+    dark: { background: '#0f172a', grid: '#5e5c64', toolpath: '#4ade80', rapid: '#334155', hole: '#475569' },
   },
   ocean: {
     id: 'ocean',
     label: 'Ocean',
-    light: { background: '#ffffff', grid: '#e2e8f0', toolpath: '#0891b2', rapid: '#94a3b8', hole: '#64a0b8' },
-    dark: { background: '#0f172a', grid: '#1e293b', toolpath: '#22d3ee', rapid: '#3f4b5c', hole: '#3d5a6b' },
+    light: { background: '#ffffff', grid: '#c0bfbc', toolpath: '#0891b2', rapid: '#94a3b8', hole: '#64a0b8' },
+    dark: { background: '#0f172a', grid: '#5e5c64', toolpath: '#22d3ee', rapid: '#3f4b5c', hole: '#3d5a6b' },
   },
   ember: {
     id: 'ember',
     label: 'Ember',
-    light: { background: '#ffffff', grid: '#e2e8f0', toolpath: '#c2410c', rapid: '#a8a29e', hole: '#8a7a6d' },
-    dark: { background: '#0f172a', grid: '#1e293b', toolpath: '#fb923c', rapid: '#44403c', hole: '#57453a' },
+    light: { background: '#ffffff', grid: '#c0bfbc', toolpath: '#c2410c', rapid: '#a8a29e', hole: '#8a7a6d' },
+    dark: { background: '#0f172a', grid: '#5e5c64', toolpath: '#fb923c', rapid: '#44403c', hole: '#57453a' },
   },
   violet: {
     id: 'violet',
     label: 'Violet',
-    light: { background: '#ffffff', grid: '#e2e8f0', toolpath: '#7c3aed', rapid: '#a5a3b8', hole: '#8b7fae' },
-    dark: { background: '#0f172a', grid: '#1e293b', toolpath: '#a78bfa', rapid: '#3f3d56', hole: '#4c4166' },
+    light: { background: '#ffffff', grid: '#c0bfbc', toolpath: '#7c3aed', rapid: '#a5a3b8', hole: '#8b7fae' },
+    dark: { background: '#0f172a', grid: '#5e5c64', toolpath: '#a78bfa', rapid: '#3f3d56', hole: '#4c4166' },
   },
 }
 

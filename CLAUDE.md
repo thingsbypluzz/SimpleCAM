@@ -709,6 +709,28 @@ przeglądu przez użytkownika.
   aktywny (`border-transparent` w przeciwnym razie — zmiana koloru, nie
   `border-width`, żeby nie skakał layout przy włączaniu/wyłączaniu) i
   więcej pionowego oddechu wokół ikonek (`py-1.5` → `py-2`).
+
+  **`0.11.1`** — naprawiony realny bug wniesiony przez `0.9.0`, zgłoszony
+  przez użytkownika ("zmienił się kolor siatki płaszczyzny w 3D"). BL-12
+  scaliło osobne kolory siatki 2D i 3D w jeden współdzielony
+  `accents.grid`, zachowując wartość z 2D (`#e2e8f0`/`#1e293b`) — dużo
+  subtelniejszą niż to, co miał wcześniej sam 3D (`#94a3b8`/`#475569`).
+  Przy dodatkowym mnożniku `opacity: 0.4` na `GridHelper` w
+  `buildScene.ts` siatka płaszczyzny stała się w praktyce prawie
+  niewidoczna, zwłaszcza w jasnym motywie — czysta regresja, nie
+  świadoma decyzja (ten sam bug podważał tekst "Default odtwarza
+  dokładnie przedpaletowe kolory" kawałek wyżej — nieprawdziwy
+  akurat dla `grid`). Naprawa: świeże wartości `#c0bfbc`/`#5e5c64`,
+  wspólne dla wszystkich 4 palet (nie tylko `default`) — `grid` to
+  wizualna pomoc orientacyjna, nie akcent odróżniający palety od
+  siebie, więc nie musi się różnić między nimi tak jak `toolpath`.
+  Wartości dobrane przez użytkownika w osobnym narzędziu — publicznym
+  Artifactcie "Palette Bench" (poza repo, jednorazowy design tool),
+  który renderuje statyczny widok Front pojedynczego Helixa
+  prawdziwym, wbudowanym Three.js (przez `vite build --lib` w trybie
+  ESM z `node_modules/three`, złączonym w jeden plik bez zewnętrznych
+  importów) i pozwala edytować każdy kolor palety z podglądem na
+  żywo — nie część aplikacji, nie utrzymywane w repo.
 - **Palety kolorów podglądu 2D/3D w Settings (`BL-12`, `0.9.0`).** Sesja
   `/grill-me` rozstrzygnęła zakres: paleta zmienia tylko kolory
   "akcentowe" — `toolpath`/`rapid`/`hole`/`grid`/`background` (2D) i
@@ -971,7 +993,11 @@ src/
                               `PALETTE_LIST` — 4 palety akcentów
                               (toolpath/rapid/hole/grid/background), każda
                               z wariantem light/dark; `default` odtwarza
-                              dokładnie przedpaletowe kolory.
+                              przedpaletowe kolory — poza `grid`, naprawionym
+                              w `0.11.1` (patrz "Palety kolorów podglądu
+                              2D/3D w Settings" w "Kluczowe decyzje
+                              projektowe" po pełny opis regresji), wspólnym
+                              dla wszystkich 4 palet, nie tylko `default`.
                               `hexToThreeColor()` konwertuje hex-string na
                               numeryczny kolor Three.js — 2D i 3D dzielą też
                               literały kolorów, nie tylko strukturę
