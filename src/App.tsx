@@ -192,8 +192,18 @@ function App() {
   )
 
   const handleSaveMachine = (next: typeof machine) => {
+    // Unlike travel X/Y/Z (which only affect the soft machineFitWarnings
+    // check), dialect/header/footer feed directly into the emitted G-code
+    // (program.ts) — a stale generatedGCode snapshot would silently miss
+    // the change, the same staleness Copy/Download already guard against
+    // for WizardParams edits (see updateParams above).
+    const affectsGCode =
+      next.dialect !== machine.dialect ||
+      next.headerText !== machine.headerText ||
+      next.footerText !== machine.footerText
     saveMachineSettings(next)
     setMachine(next)
+    if (affectsGCode) setGeneratedGCode(null)
   }
 
   const handleSaveAppearance = (next: AppearanceSettings) => {
@@ -206,7 +216,7 @@ function App() {
   // every keystroke, so a snapshot only survives once the user considered
   // the params worth turning into G-code.
   const handleGenerate = () => {
-    setGeneratedGCode(activeMethod.generate(params))
+    setGeneratedGCode(activeMethod.generate(params, machine))
     saveSlot(AUTO_SAVE_SLOT, params)
     setShowRestoredBanner(false)
   }

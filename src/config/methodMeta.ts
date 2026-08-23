@@ -2,6 +2,7 @@ import type { ComponentType } from 'react'
 import { HelixIcon, StandardHoleIcon } from '../components/icons'
 import { generateHelix } from '../lib/helix'
 import { generateStandardHole } from '../lib/standardHole'
+import type { MachineSettings } from '../types/machine'
 import type { MethodType, WizardParams } from '../types/wizard'
 
 export interface MethodMeta {
@@ -10,7 +11,7 @@ export interface MethodMeta {
   shortLabel: string
   description: string
   Icon: ComponentType<{ className?: string }>
-  generate: (params: WizardParams) => string[]
+  generate: (params: WizardParams, machine: MachineSettings) => string[]
   stepdown: {
     fieldLabel: string
     shortLabel: string

@@ -7,6 +7,57 @@ zgodne z [SemVer](https://semver.org/). Ten plik pozostaje głównym, czytelnym
 thingsbypluzz/SimpleCAM), ale to infrastruktura pod izolację pracy
 (branch/worktree per zadanie), nie zamiennik tego changeloga.
 
+## [0.11.0] — 2026-08-23
+
+### Dodano
+
+- **`BL-5` i `BL-10` zamknięte — dialekt G-code + Start/End G-Code.**
+  Sesja `/grill-me`: nowe pole `MachineSettings.dialect`
+  (`grbl`/`marlin`/`mach3`, domyślnie `grbl`) w sekcji "Machine"
+  Settings. Steruje dokładnie dwiema rzeczami w silniku: wartością
+  `G4 P` (sekundy dla GRBL/Mach3, ×1000 milisekund dla Marlina —
+  naprawia realny błąd zbyt krótkiego dwellu na Marlinie, wcześniej
+  tylko udokumentowany komentarzem) oraz bezwarunkowym kodem końca
+  programu — `M30` (GRBL/Mach3) lub `M2` (Marlin), zawsze faktycznie
+  ostatnią linią pliku, bez checkboxa/opt-outu (to cecha maszyny, nie
+  wybór per-zadanie).
+- **Nowa funkcja "Start / End G-Code"** — dwa pola wolnego tekstu w tej
+  samej sekcji "Machine" (`headerText`/`footerText`), wstawiane
+  dosłownie, bez walidacji, niezależnie od dialektu (bez presetów per
+  dialekt — wcześniejszy pomysł odrzucony w `/grill-me`: nie ma
+  realnego standardu poza samym kodem końca programu, który i tak jest
+  osobnym polem). Owijane w komentarze `; --- User header ---` /
+  `; --- Application code ---` / `; --- User footer ---`, tylko gdy
+  faktycznie użyte — plik bez ustawionego header/footer jest
+  identyczny jak wcześniej (plus nowa linia `M30`/`M2`). Header trafia
+  przed preambułą aplikacji (`G21 G90 G17`...), footer po istniejącej
+  stopce (`M5`/`G0 X0 Y0`), przed kodem końca programu.
+- **`assembleProgram()` w `src/lib/program.ts`** (współdzielony przez
+  obie operacje) przyjmuje teraz `MachineSettings` i robi całe
+  owijanie — `generateHelix`/`generateStandardHole`/
+  `MethodMeta.generate` dostały nowy parametr `machine`, przekazywany
+  bez zmian dalej.
+
+### Poprawiono
+
+- **Przycisk zamknięcia (×) w Settings przestał przewijać się razem z
+  treścią.** Był potomkiem tego samego przewijalnego panelu co treść
+  sekcji — po dodaniu dialektu i Start/End G-Code sekcja "Machine"
+  urosła na tyle, że przycisk znikał poza widocznym obszarem po
+  przewinięciu. Przeniesiony na rodzeństwo panelu (kotwiczony do
+  nieprzewijalnej karty modala), zostaje teraz zawsze widoczny w
+  prawym górnym rogu.
+- **Zmiana dialektu/Start G-Code/End G-Code unieważnia wygenerowany
+  G-code**, tym samym mechanizmem co edycja parametrów wizarda
+  (`generatedGCode` czyszczone na zmianę) — inaczej Copy/Download mogły
+  po cichu działać na nieaktualnej treści, skoro te pola realnie
+  wpływają na wyjście silnika. Zmiana X/Y/Z travel (wpływa tylko na
+  miękkie ostrzeżenie `machineFitWarnings`, nie na treść pliku) celowo
+  tego nie robi.
+- **Okno Settings powiększone** (`420×640` → `640×820`) — sekcja
+  "Machine" z dialektem i dwoma polami Start/End G-Code nie mieściła
+  się wygodnie w poprzednich wymiarach.
+
 ## [0.10.0] — 2026-08-23
 
 ### Dodano

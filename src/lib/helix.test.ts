@@ -1,6 +1,13 @@
 import { describe, expect, it } from 'vitest'
 import { generateHelix } from './helix'
+import { DEFAULT_MACHINE_SETTINGS } from '../types/machine'
 import { DEFAULT_WIZARD_PARAMS, type WizardParams } from '../types/wizard'
+
+// Machine settings don't vary across these tests — see program.test.ts for
+// dialect-specific coverage (G4 P conversion, end-of-program code).
+function generate(params: WizardParams): string[] {
+  return generateHelix(params, DEFAULT_MACHINE_SETTINGS)
+}
 
 function buildParams(overrides: {
   geometry?: Partial<WizardParams['geometry']>
@@ -17,12 +24,12 @@ function buildParams(overrides: {
 
 describe('generateHelix', () => {
   it('starts with the standard preamble', () => {
-    const lines = generateHelix(buildParams())
+    const lines = generate(buildParams())
     expect(lines[0]).toBe('G21 G90 G17')
   })
 
   it('includes spindle start + dwell when enabled', () => {
-    const lines = generateHelix(
+    const lines = generate(
       buildParams({ output: { spindleStart: true, spindleSpeed: 12000, dwellSeconds: 3 } }),
     )
     expect(lines).toContain('M3 S12000')
@@ -30,14 +37,16 @@ describe('generateHelix', () => {
   })
 
   it('omits spindle lines when spindleStart is disabled', () => {
-    const lines = generateHelix(buildParams({ output: { spindleStart: false } }))
-    expect(lines.some((l) => l.startsWith('M3'))).toBe(false)
+    const lines = generate(buildParams({ output: { spindleStart: false } }))
+    // 'M3 ' (with the trailing space), not just 'M3' — the trailing M30
+    // end-of-program line also starts with 'M3' but isn't a spindle line.
+    expect(lines.some((l) => l.startsWith('M3 '))).toBe(false)
     expect(lines.some((l) => l.startsWith('G4'))).toBe(false)
   })
 
   it('produces one full circle per stepdown turn plus a flat finishing pass', () => {
     // totalDepth 4, stepdown 1 -> 4 spiral turns + 1 flat pass = 5 turns
-    const lines = generateHelix(
+    const lines = generate(
       buildParams({ geometry: { totalDepth: 4 }, feeds: { stepdown: 1 }, output: { interpolation: 'arc' } }),
     )
     const arcLines = lines.filter((l) => l.startsWith('G3'))
@@ -45,7 +54,7 @@ describe('generateHelix', () => {
   })
 
   it('reaches exactly the target depth on the last spiral turn', () => {
-    const lines = generateHelix(
+    const lines = generate(
       buildParams({ geometry: { totalDepth: 4 }, feeds: { stepdown: 1 }, output: { interpolation: 'arc' } }),
     )
     const arcLines = lines.filter((l) => l.startsWith('G3'))
@@ -56,7 +65,7 @@ describe('generateHelix', () => {
 
   it('handles a non-integer stepdown remainder on the last turn', () => {
     // totalDepth 4.5, stepdown 1 -> 4 full turns (-1..-4) + 1 partial turn (-4.5) + flat pass
-    const lines = generateHelix(
+    const lines = generate(
       buildParams({ geometry: { totalDepth: 4.5 }, feeds: { stepdown: 1 }, output: { interpolation: 'arc' } }),
     )
     const arcLines = lines.filter((l) => l.startsWith('G3'))
@@ -66,7 +75,7 @@ describe('generateHelix', () => {
   })
 
   it('uses linear (G1) segments instead of arcs when interpolation is "linear"', () => {
-    const lines = generateHelix(
+    const lines = generate(
       buildParams({
         geometry: { totalDepth: 4 },
         feeds: { stepdown: 1 },
@@ -80,7 +89,7 @@ describe('generateHelix', () => {
   })
 
   it('repeats the toolpath once per grid corner', () => {
-    const lines = generateHelix(
+    const lines = generate(
       buildParams({
         geometry: { positioning: 'grid', gridX: 50, gridY: 30, totalDepth: 1 },
         feeds: { stepdown: 1 },
@@ -96,12 +105,12 @@ describe('generateHelix', () => {
   })
 
   it('rapids straight to Z0 when startZ is 0 (default) — identical to before the feature existed', () => {
-    const lines = generateHelix(buildParams({ feeds: { startZ: 0 } }))
+    const lines = generate(buildParams({ feeds: { startZ: 0 } }))
     expect(lines).toContain('G0 Z0')
   })
 
   it('treats startZ as raising the top of the cut: spiral starts at +startZ, still ends at -totalDepth', () => {
-    const lines = generateHelix(
+    const lines = generate(
       buildParams({
         geometry: { totalDepth: 4 },
         feeds: { startZ: 0.5, stepdown: 1 },
@@ -118,17 +127,19 @@ describe('generateHelix', () => {
     expect(arcLines[5]).toContain('Z-4')
   })
 
-  it('appends M5 and origin return only when enabled', () => {
-    const withFooter = generateHelix(
+  it('appends M5 and origin return only when enabled, before the trailing M30', () => {
+    const withFooter = generate(
       buildParams({ output: { spindleStopEnd: true, returnOriginEnd: true } }),
     )
-    expect(withFooter[withFooter.length - 2]).toBe('M5')
-    expect(withFooter[withFooter.length - 1]).toBe('G0 X0 Y0')
+    expect(withFooter[withFooter.length - 3]).toBe('M5')
+    expect(withFooter[withFooter.length - 2]).toBe('G0 X0 Y0')
+    expect(withFooter[withFooter.length - 1]).toBe('M30')
 
-    const withoutFooter = generateHelix(
+    const withoutFooter = generate(
       buildParams({ output: { spindleStopEnd: false, returnOriginEnd: false } }),
     )
     expect(withoutFooter.some((l) => l === 'M5')).toBe(false)
-    expect(withoutFooter[withoutFooter.length - 1]).not.toBe('G0 X0 Y0')
+    expect(withoutFooter[withoutFooter.length - 2]).not.toBe('G0 X0 Y0')
+    expect(withoutFooter[withoutFooter.length - 1]).toBe('M30')
   })
 })

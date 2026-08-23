@@ -29,7 +29,7 @@ describe('loadMachineSettings / saveMachineSettings', () => {
   })
 
   it('round-trips a saved settings object', () => {
-    const settings = { travelX: 300, travelY: 200, travelZ: 80 }
+    const settings = { ...DEFAULT_MACHINE_SETTINGS, travelX: 300, travelY: 200, travelZ: 80 }
     saveMachineSettings(settings)
     expect(loadMachineSettings()).toEqual(settings)
   })
@@ -45,5 +45,24 @@ describe('loadMachineSettings / saveMachineSettings', () => {
   it('falls back to defaults on corrupt JSON', () => {
     localStorage.setItem('simplecam.machine', '{not json')
     expect(loadMachineSettings()).toEqual(DEFAULT_MACHINE_SETTINGS)
+  })
+
+  it('round-trips dialect and header/footer text', () => {
+    const settings = {
+      ...DEFAULT_MACHINE_SETTINGS,
+      dialect: 'marlin' as const,
+      headerText: 'G28',
+      footerText: 'M9',
+    }
+    saveMachineSettings(settings)
+    expect(loadMachineSettings()).toEqual(settings)
+  })
+
+  it('falls back to the default dialect when the saved value is unknown/corrupt', () => {
+    localStorage.setItem(
+      'simplecam.machine',
+      JSON.stringify({ ...DEFAULT_MACHINE_SETTINGS, dialect: 'reprap' }),
+    )
+    expect(loadMachineSettings().dialect).toBe(DEFAULT_MACHINE_SETTINGS.dialect)
   })
 })

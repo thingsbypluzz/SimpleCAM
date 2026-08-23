@@ -1,6 +1,13 @@
 import { describe, expect, it } from 'vitest'
 import { generateStandardHole } from './standardHole'
+import { DEFAULT_MACHINE_SETTINGS } from '../types/machine'
 import { DEFAULT_WIZARD_PARAMS, type WizardParams } from '../types/wizard'
+
+// Machine settings don't vary across these tests — see program.test.ts for
+// dialect-specific coverage (G4 P conversion, end-of-program code).
+function generate(params: WizardParams): string[] {
+  return generateStandardHole(params, DEFAULT_MACHINE_SETTINGS)
+}
 
 function buildParams(overrides: {
   geometry?: Partial<WizardParams['geometry']>
@@ -17,13 +24,13 @@ function buildParams(overrides: {
 
 describe('generateStandardHole', () => {
   it('starts with the standard preamble', () => {
-    const lines = generateStandardHole(buildParams())
+    const lines = generate(buildParams())
     expect(lines[0]).toBe('G21 G90 G17')
   })
 
   it('plunges once per pass, then sweeps one flat full circle per pass', () => {
     // totalDepth 3, stepdown 1 -> 3 passes
-    const lines = generateStandardHole(
+    const lines = generate(
       buildParams({ geometry: { totalDepth: 3 }, feeds: { stepdown: 1 }, output: { interpolation: 'arc' } }),
     )
     const plungeLines = lines.filter((l) => l.startsWith('G1 Z-'))
@@ -33,7 +40,7 @@ describe('generateStandardHole', () => {
   })
 
   it('reaches exactly the target depth on the last pass', () => {
-    const lines = generateStandardHole(
+    const lines = generate(
       buildParams({ geometry: { totalDepth: 3 }, feeds: { stepdown: 1 }, output: { interpolation: 'arc' } }),
     )
     const plungeLines = lines.filter((l) => l.startsWith('G1 Z-'))
@@ -44,14 +51,14 @@ describe('generateStandardHole', () => {
 
   it('handles a non-integer stepdown remainder on the last pass', () => {
     // totalDepth 3.5, stepdown 1 -> passes at -1, -2, -3, -3.5
-    const lines = generateStandardHole(buildParams({ geometry: { totalDepth: 3.5 }, feeds: { stepdown: 1 } }))
+    const lines = generate(buildParams({ geometry: { totalDepth: 3.5 }, feeds: { stepdown: 1 } }))
     const plungeLines = lines.filter((l) => l.startsWith('G1 Z-'))
     expect(plungeLines).toHaveLength(4)
     expect(plungeLines[3]).toContain('Z-3.5')
   })
 
   it('uses linear (G1) circle segments instead of arcs when interpolation is "linear"', () => {
-    const lines = generateStandardHole(
+    const lines = generate(
       buildParams({
         geometry: { totalDepth: 3 },
         feeds: { stepdown: 1 },
@@ -66,7 +73,7 @@ describe('generateStandardHole', () => {
   })
 
   it('repeats the toolpath once per custom point', () => {
-    const lines = generateStandardHole(
+    const lines = generate(
       buildParams({
         geometry: {
           positioning: 'custom',
@@ -85,12 +92,12 @@ describe('generateStandardHole', () => {
   })
 
   it('rapids straight to Z0 when startZ is 0 (default) — identical to before the feature existed', () => {
-    const lines = generateStandardHole(buildParams({ feeds: { startZ: 0 } }))
+    const lines = generate(buildParams({ feeds: { startZ: 0 } }))
     expect(lines).toContain('G0 Z0')
   })
 
   it('treats startZ as raising the top of the cut: passes start at +startZ, still end at -totalDepth', () => {
-    const lines = generateStandardHole(
+    const lines = generate(
       buildParams({ geometry: { totalDepth: 3 }, feeds: { startZ: 0.5, stepdown: 1 } }),
     )
     // rapid straight to the raised top — nothing but air above it
@@ -101,11 +108,12 @@ describe('generateStandardHole', () => {
     expect(plungeLines[3]).toContain('Z-3')
   })
 
-  it('omits M5 and origin return when disabled', () => {
-    const lines = generateStandardHole(
+  it('omits M5 and origin return when disabled, still ends with M30', () => {
+    const lines = generate(
       buildParams({ output: { spindleStopEnd: false, returnOriginEnd: false } }),
     )
     expect(lines.some((l) => l === 'M5')).toBe(false)
-    expect(lines[lines.length - 1]).not.toBe('G0 X0 Y0')
+    expect(lines[lines.length - 2]).not.toBe('G0 X0 Y0')
+    expect(lines[lines.length - 1]).toBe('M30')
   })
 })

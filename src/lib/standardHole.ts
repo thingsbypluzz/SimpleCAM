@@ -1,3 +1,4 @@
+import type { MachineSettings } from '../types/machine'
 import type { WizardParams } from '../types/wizard'
 import { fmt } from './format'
 import { fullCircleMove } from './circle'
@@ -38,6 +39,6 @@ function standardHoleToolpath(cx: number, cy: number, params: WizardParams): str
   return lines
 }
 
-export function generateStandardHole(params: WizardParams): string[] {
-  return assembleProgram(params, standardHoleToolpath)
+export function generateStandardHole(params: WizardParams, machine: MachineSettings): string[] {
+  return assembleProgram(params, machine, standardHoleToolpath)
 }

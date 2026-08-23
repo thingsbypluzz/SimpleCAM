@@ -1,3 +1,4 @@
+import type { MachineSettings } from '../types/machine'
 import type { WizardParams } from '../types/wizard'
 import { fmt } from './format'
 import { fullCircleMove } from './circle'
@@ -54,6 +55,6 @@ function helixToolpath(cx: number, cy: number, params: WizardParams): string[] {
   return lines
 }
 
-export function generateHelix(params: WizardParams): string[] {
-  return assembleProgram(params, helixToolpath)
+export function generateHelix(params: WizardParams, machine: MachineSettings): string[] {
+  return assembleProgram(params, machine, helixToolpath)
 }

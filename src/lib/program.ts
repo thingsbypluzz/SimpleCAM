@@ -1,3 +1,4 @@
+import type { Dialect, MachineSettings } from '../types/machine'
 import type { FeedsParams, WizardParams } from '../types/wizard'
 import { fmt } from './format'
 import { resolvePoints } from './positioning'
@@ -12,7 +13,7 @@ export function rapidToTop(feeds: FeedsParams): string {
   return `G0 Z${fmt(feeds.startZ)}`
 }
 
-export function buildHeader(params: WizardParams): string[] {
+export function buildHeader(params: WizardParams, dialect: Dialect): string[] {
   const { feeds, output } = params
   const lines = ['G21 G90 G17']
 
@@ -21,15 +22,22 @@ export function buildHeader(params: WizardParams): string[] {
     if (output.dwellSeconds > 0) {
       // GRBL/Mach3 read G4 P as seconds; Marlin reads P as milliseconds
       // (its S word means seconds but isn't supported by GRBL/Mach3), so no
-      // single P value is correct on all three. We follow the GRBL/Mach3
-      // convention — on Marlin this dwells for milliseconds instead of
-      // seconds, i.e. a shorter pause than intended, not a longer one.
-      lines.push(`G4 P${fmt(output.dwellSeconds)}`)
+      // single P value is correct on all three — convert to keep the real
+      // dwell time correct regardless of dialect.
+      const dwellValue = dialect === 'marlin' ? output.dwellSeconds * 1000 : output.dwellSeconds
+      lines.push(`G4 P${fmt(dwellValue)}`)
     }
   }
 
   lines.push(`G0 Z${fmt(feeds.safeZ)}`)
   return lines
+}
+
+// M2 also works on GRBL, but M30 (rewind) is the conventional GRBL/Mach3
+// choice; Marlin only supports M2. Always the true last line of the
+// program — nothing after it is guaranteed to run on most controllers.
+export function endOfProgramCode(dialect: Dialect): string {
+  return dialect === 'marlin' ? 'M2' : 'M30'
 }
 
 export function buildFooter(params: WizardParams): string[] {
@@ -51,17 +59,31 @@ export function buildFooter(params: WizardParams): string[] {
   return lines
 }
 
-// Shared assembly: header, then for each resolved point a rapid move to its
-// XY followed by the method-specific toolpath and a retract to Safe Z,
-// then footer. `toolpathForPoint` only needs to know about depth/feeds —
-// positioning and Safe-Z bookkeeping are handled once, here.
+// Shared assembly: user header, app header, then for each resolved point a
+// rapid move to its XY followed by the method-specific toolpath and a
+// retract to Safe Z, then app footer, user footer, and the dialect-forced
+// end-of-program code. `toolpathForPoint` only needs to know about
+// depth/feeds — positioning and Safe-Z bookkeeping are handled once, here.
 export function assembleProgram(
   params: WizardParams,
+  machine: MachineSettings,
   toolpathForPoint: (cx: number, cy: number, params: WizardParams) => string[],
 ): string[] {
   const { geometry, feeds } = params
   const points = resolvePoints(geometry)
-  const lines: string[] = [...buildHeader(params)]
+  const lines: string[] = []
+
+  // Markers only appear around non-empty content — someone who never
+  // touches Start/End G-Code in Settings gets output identical to before
+  // this feature existed, aside from the new trailing end-of-program line.
+  const header = machine.headerText.trim()
+  if (header) {
+    lines.push('; --- User header ---')
+    lines.push(...machine.headerText.split('\n'))
+    lines.push('; --- Application code ---')
+  }
+
+  lines.push(...buildHeader(params, machine.dialect))
 
   for (const point of points) {
     lines.push(`G0 X${fmt(point.x)} Y${fmt(point.y)}`)
@@ -70,5 +92,13 @@ export function assembleProgram(
   }
 
   lines.push(...buildFooter(params))
+
+  const footer = machine.footerText.trim()
+  if (footer) {
+    lines.push('; --- User footer ---')
+    lines.push(...machine.footerText.split('\n'))
+  }
+
+  lines.push(endOfProgramCode(machine.dialect))
   return lines
 }

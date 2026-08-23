@@ -458,28 +458,6 @@ Artifact pokazuje je jako osobną sekcję, nie jako kolorowe
 Większe rozszerzenia zakresu — nie polish istniejących operacji, tylko
 nowa funkcjonalność. Nie zaczynać bez wyraźnego "przechodzimy do X".
 
-- **`BL-5`** — **Przełącznik dialektu G-code (GRBL / Marlin / Mach3).**
-  Pierwotnie planowany jako pole w `WizardParams.output` (per-preset) —
-  sesja `/grill-me` 2026-08-22 przeniosła go koncepcyjnie do **Machine
-  Settings** (`MachineSettings.dialect`, `BL-9`), obok `travelX/Y/Z`:
-  dialekt sterownika jest fizyczną cechą Twojej maszyny (zmienia się,
-  gdy zmienisz kontroler, nie między zadaniami), nie parametrem
-  pojedynczego joba — ten sam podział, który już odróżnia
-  `MachineSettings` od `WizardParams` dla reszty appki. Domyślnie
-  `'grbl'` (najpopularniejszy w hobbystycznych sterownikach, zero zmiany
-  zachowania dla kogoś, kto nigdy nie otworzy Settings — ten sam wzorzec
-  co domyślne X=5000/Y=5000/Z=1000). Dziś jedyny znany, konkretny
-  przypadek użycia: `G4 P<sekundy>` (dwell po starcie wrzeciona) jest
-  poprawne dla GRBL/Mach3, ale Marlin interpretuje `P` jako milisekundy
-  — patrz notatka przy `G4 P` w "Kluczowe decyzje projektowe" niżej.
-  Styka się z `BL-10` (koniec programu `M30`/`M2`), który też może
-  zależeć od tego samego pola — patrz tam. **Nieustalone jeszcze:**
-  dokładna lista miejsc w silniku, które mają czytać to pole (na razie
-  tylko `G4 P` jest potwierdzonym przypadkiem), i czy dialekt wpływa na
-  cokolwiek poza `program.ts` (np. czy warto go pokazywać/używać gdzieś
-  w UI Kroku 3/4). Wymaga własnej implementacji: `dialect` w
-  `types/machine.ts`/`DEFAULT_MACHINE_SETTINGS`, pole wyboru w
-  `SettingsModal.tsx`, warunkowa emisja w `buildHeader()`.
 - **`BL-6`** — **Nowa metoda: "Rectangle Cut Out"** — trzecia metoda obok Helix i
   Standard Hole, wycinanie prostokątnego konturu. Parametry:
   - **Tryb cięcia:** Inside / Outside / On-line — offset ścieżki
@@ -512,15 +490,6 @@ nowa funkcjonalność. Nie zaczynać bez wyraźnego "przechodzimy do X".
   aktualnymi best practices frontendowymi (breakpointy Tailwind już
   są w projekcie, ale nieużywane responsywnie poza defaultową
   szerokością).
-- **`BL-10`** — **Brak zakończenia programu (`M30`/`M2`).** `buildFooter()`
-  kończy plik na `M5` / `G0 X0 Y0`, bez formalnego "koniec programu" —
-  część kontrolerów tego oczekuje (m.in. żeby wrócić do początku pliku i
-  zresetować stan modalny). Sama zmiana to jedna linia, ale zostawia
-  drobiazgi do rozstrzygnięcia: `M30` (koniec + rewind) czy `M2` (samo
-  zakończenie), bezwarunkowo czy pod checkboxem w Kroku 4, i czy wybór
-  zależy od `MachineSettings.dialect` (patrz `BL-5` wyżej — jeśli tak,
-  to dwie różne przyszłe implementacje czytają to samo pole Machine
-  Settings, nie dwa osobne mechanizmy).
 Nie przeskakuj etapów bez pytania — każdy kończy się checkpointem do
 przeglądu przez użytkownika.
 
@@ -528,7 +497,9 @@ przeglądu przez użytkownika.
 
 - **Jednostki:** tylko mm, bez cali.
 - **Dialekt G-code:** wspólny podzbiór GRBL/Marlin/Mach3, preambuła
-  `G21 G90 G17`.
+  `G21 G90 G17`. Realny per-dialekt wybór (`MachineSettings.dialect`)
+  od `0.11.0` — patrz "G-Code Dialect + Start/End G-Code" niżej w tej
+  sekcji.
 - **Dwie operacje:** Helix (spiralne rampowanie w dół, ruch X/Y/Z
   jednocześnie) i Standard Hole (pełny okrąg 360° na danej głębokości,
   potem stepdown w Z, powtórz).
@@ -575,10 +546,9 @@ przeglądu przez użytkownika.
   — toggle nadal pozwala przełączyć na light.
 - **Machine Settings (`BL-9`, `0.8.6`).** Modal (`SettingsModal.tsx`)
   wzorowany na ustawieniach Claude: wyśrodkowana karta nad
-  przyciemnionym tłem, menu sekcji po lewej (dziś "Machine" i "About",
-  patrz `0.8.17` niżej — strukturalnie gotowe na kolejne, np.
-  przełącznik dialektu G-code, `BL-5`), treść po prawej. Trzy pola: X/Y/Z travel
-  maszyny CNC, auto-save na `onBlur` (zapis tylko przy poprawnej
+  przyciemnionym tłem, menu sekcji po lewej (dziś "Machine", "Appearance"
+  i "About", patrz `0.8.17`/`BL-12` niżej), treść po prawej. Trzy pola
+  X/Y/Z travel maszyny CNC, auto-save na `onBlur` (zapis tylko przy poprawnej
   wartości > 0, bez guzika Save — świadomie inaczej niż presety
   wizarda, bo to żywa konfiguracja, nie "zatwierdzony gotowy preset").
   Trwałe w osobnym kluczu `localStorage` (`simplecam.machine`,
@@ -816,23 +786,108 @@ przeglądu przez użytkownika.
   danych + padding" na "krawędź widocznego canvasa - stały margines"
   (`EDGE_MARGIN`), bo po BL-11 nie ma już jednego kanonicznego
   narysowanego prostokąta do którego by się przypiąć.
+- **G-Code Dialect + Start/End G-Code (`BL-5`, `BL-10`, `0.11.0`).**
+  Propozycja użytkownika (wzorowana na sliverach: edytowalny
+  header/footer joba) trafiła na `/grill-me`, który połączył ją z
+  dwoma zawieszonymi wcześniej pozycjami backlogu — `BL-5` (dialekt
+  sterownika) i `BL-10` (brak formalnego końca programu) — w jedną
+  spójną implementację zamiast trzech osobnych. Kluczowe ustalenie: te
+  dwa mechanizmy są od siebie niezależne, nie warstwami tego samego
+  wyboru. `MachineSettings.dialect` (`'grbl' | 'marlin' | 'mach3'`,
+  domyślnie `'grbl'`, `src/types/machine.ts`) rozstrzyga wyłącznie dwie
+  rzeczy, obie w `src/lib/program.ts`:
+  - `buildHeader()` — wartość `G4 P` (sekundy dla GRBL/Mach3, ×1000
+    milisekund dla Marlina). To faktycznie **naprawia** wcześniej tylko
+    udokumentowany bug (patrz historyczna notatka przy `G4 P` niżej) —
+    dwell na Marlinie był krótszy niż zamierzony, teraz jest poprawny
+    na wszystkich trzech.
+  - Nowe `endOfProgramCode(dialect)` — `M30` dla GRBL/Mach3, `M2` dla
+    Marlina (M2 działa też na GRBL, ale M30 to konwencjonalny wybór dla
+    GRBL/Mach3). Emitowane **bezwarunkowo**, bez checkboxa na Kroku 4
+    — to cecha maszyny, nie wybór per-zadanie — zawsze jako faktycznie
+    ostatnia linia pliku (większość kontrolerów nie gwarantuje
+    wykonania czegokolwiek po `M30`/`M2`).
+
+  Start/End G-Code (`headerText`/`footerText` w `MachineSettings`) to
+  **osobna, dialekt-niezależna** para pól wolnego tekstu — `/grill-me`
+  odrzucił pierwotny pomysł "dropdown z presetami per dialekt +
+  Custom": poza samym kodem końca programu (już objętym przez
+  `dialect` powyżej) nie ma realnego, ugruntowanego standardu na
+  zawartość headera/footera per sterownik, więc wymyślanie takich
+  presetów byłoby fabrykowaniem treści bez pokrycia. Tekst wstawiany
+  **dosłownie** (`split('\n')`, zero walidacji/escapingu — spójne z
+  resztą appki, zero potwierdzeń). `assembleProgram()` w
+  `src/lib/program.ts` (współdzielone przez obie operacje, patrz
+  "Zasada" niżej) robi całe owijanie:
+  ```
+  ; --- User header ---        (tylko gdy headerText niepuste)
+  <headerText, dosłownie>
+  ; --- Application code ---   (tylko gdy headerText niepuste)
+  G21 G90 G17 ...               ← istniejący buildHeader()
+  ... pętla po punktach ...
+  ... M5 / G0 X0 Y0 ...         ← istniejący buildFooter()
+  ; --- User footer ---        (tylko gdy footerText niepuste)
+  <footerText, dosłownie>
+  M30 | M2                     (zawsze, bezwarunkowo, ostatnia linia)
+  ```
+  Znaczniki komentarzy są parą związaną wyłącznie z headerem — plik z
+  samym footerem nie dostaje osieroconego "Application code" na
+  górze, bo nie ma co nim domykać. Kolejność ustalona świadomie: `M30`/
+  `M2` musi być faktycznie ostatnią linią (większość kontrolerów
+  zatrzymuje/przewija plik na tej linii), więc user footer ląduje
+  **przed** nim, nie po — inaczej byłby martwym kodem na większości
+  sterowników. `generateHelix`/`generateStandardHole`/
+  `MethodMeta.generate` dostały nowy parametr `machine: MachineSettings`
+  (obok istniejącego `params`), przekazywany bez zmian aż do
+  `assembleProgram()` — jedyne miejsce z realną logiką owijania.
+  2D/3D Preview nie ruszone — liczą geometrię ścieżki bezpośrednio z
+  `WizardParams`, nigdy nie wołają `generate()`, a ta funkcja dotyczy
+  wyłącznie tekstowego wyjścia G-code.
+
+  UI: nowy dropdown "G-Code Dialect" i dwa `<textarea>` "Start
+  G-Code"/"End G-Code" w tej samej sekcji "Machine" w
+  `SettingsModal.tsx`, pod istniejącymi polami X/Y/Z travel, za
+  `border-t` (ten sam wzorzec wizualnego oddzielenia co Offset w
+  `Step2Geometry.tsx`). Dialekt zapisuje się natychmiast po zmianie
+  (bez stanu nieprawidłowego pośredniego, w przeciwieństwie do pól
+  liczbowych); header/footer trzymają lokalny bufor tekstu i
+  zapisują się `onBlur` — dokładnie ten sam wzorzec co pola X/Y/Z
+  travel (`text`/`savedField`), tu wyłącznie po to, żeby nie zapisywać
+  do `localStorage` przy każdym naciśnięciu klawisza, nie z powodu
+  walidacji (każdy string jest poprawną wartością). Stare zapisane
+  `simplecam.machine` bez tych pól dostają domyślne wartości przez
+  istniejący mechanizm merge w `loadMachineSettings()` — zero migracji
+  potrzebne. Dodany `isDialect()` type guard (ten sam wzorzec co
+  `isPaletteId()` w `appearanceStorage.ts`) na wypadek nieznanej/
+  uszkodzonej wartości `dialect` w zapisie — fallback do `'grbl'`.
+
+  Trzy poprawki po pierwszym realnym użyciu (feedback użytkownika, ta
+  sama sesja): **(1)** przycisk zamknięcia (×) był potomkiem
+  przewijalnego panelu treści — po dodaniu dialektu i Start/End
+  G-Code sekcja "Machine" urosła na tyle, że przycisk znikał poza
+  widocznym obszarem przy przewinięciu; przeniesiony na rodzeństwo
+  panelu (kotwiczony do nieprzewijalnej karty modala), zostaje teraz
+  zawsze widoczny w rogu, niezależnie od scrolla wewnątrz. **(2)**
+  zmiana dialektu/header/footer w `handleSaveMachine()` (`App.tsx`)
+  czyści `generatedGCode` (ten sam mechanizm co `updateParams()` już
+  robi dla parametrów wizarda) — te pola realnie wpływają na treść
+  wygenerowanego G-code, więc stary snapshot musi zostać
+  unieważniony, inaczej Copy/Download mogłyby po cichu działać na
+  nieaktualnej treści. Świadomie **nie** dotyczy X/Y/Z travel — to
+  pole wpływa tylko na miękkie `machineFitWarnings()`, nie na treść
+  pliku. **(3)** okno Settings powiększone (`420×640` → `640×820`) —
+  sekcja "Machine" nie mieściła się wygodnie w poprzednich wymiarach.
 - **`.gitignore` musi wykluczać `.claude/`** — Tailwind v4
   (`@tailwindcss/vite`) auto-skanuje cały katalog projektu pod kątem nazw
   klas i respektuje tylko `.gitignore` jako listę wykluczeń (bez niego
   dokumentacja zainstalowanych skilli w `.claude/skills/` też trafia do
   skanowania i winduje bundle CSS — realnie zaobserwowane: 16KB → 34KB).
-- **`G4 P<sekundy>`** (dwell po starcie wrzeciona) jest poprawne dla
-  GRBL/Mach3, ale Marlin interpretuje `P` jako milisekundy (jego `S` w
-  sekundach nie jest wspierane przez GRBL/Mach3) — świadomie zostawione
-  bez rozróżnienia dialektów (MVP nie ma przełącznika dialektu, `BL-5` —
-  patrz Backlog), efekt na Marlinie to krótsza pauza niż zamierzona, nie
-  dłuższa/niebezpieczna.
-
-  Sesja `/grill-me` 2026-08-22 przeniosła koncepcyjnie przyszły
-  przełącznik dialektu z `WizardParams.output` do
-  `MachineSettings.dialect` (`BL-9`) — nic tu jeszcze nie
-  zaimplementowane, pełne uzasadnienie i szczegóły przy `BL-5` w
-  "Pomysły na przyszłość" wyżej.
+- **`G4 P<sekundy>`** (dwell po starcie wrzeciona) było historycznie
+  poprawne tylko dla GRBL/Mach3 — Marlin interpretuje `P` jako
+  milisekundy, więc dostawał krótszą pauzę niż zamierzona. **Naprawione
+  w `0.11.0`** wraz z zamknięciem `BL-5`/`BL-10` — patrz pełny opis
+  "G-Code Dialect + Start/End G-Code" wyżej: `buildHeader()` konwertuje
+  wartość `G4 P` per `MachineSettings.dialect` (×1000 dla Marlina).
 - **`buildFooter()` celowo NIE robi retraktu na Safe Z** — emituje
   wyłącznie `M5` (pod `output.spindleStopEnd`) i ewentualne `G0 X0 Y0`
   (pod `returnOriginEnd`). Retrakt robi bezwarunkowo pętla po punktach w
@@ -845,7 +900,12 @@ przeglądu przez użytkownika.
   pole zbiorcze zniknęło, checkbox Kroku 4 przeszedł na `spindleStopEnd`
   i dostał etykietę "Stop spindle (M5) at the end". Jeśli kiedyś
   retrakt w stopce zacznie wyglądać na "brakujący" — to jest ten
-  komentarz, który tłumaczy, że nie brakuje.
+  komentarz, który tłumaczy, że nie brakuje. Od `0.11.0`
+  (`BL-10`, patrz "G-Code Dialect + Start/End G-Code" wyżej)
+  `assembleProgram()` dokłada po `buildFooter()` (i po ewentualnym user
+  footerze) bezwarunkową, dialekt-zależną linię `M30`/`M2` — to
+  osobny, świeżo dodany mechanizm, `buildFooter()` sam w sobie się nie
+  zmienił.
 
 ## Hosting testowy
 
@@ -891,7 +951,12 @@ src/
   types/machine.ts          — MachineSettings + DEFAULT_MACHINE_SETTINGS
                               (Machine Settings, `BL-9`) — celowo osobny plik
                               od `wizard.ts`, to inny rodzaj danych (jeden
-                              globalny obiekt, nie WizardParams)
+                              globalny obiekt, nie WizardParams). Od `0.11.0`
+                              (`BL-5`/`BL-10`) też `Dialect` (`'grbl' |
+                              'marlin' | 'mach3'`) i pola `dialect`/
+                              `headerText`/`footerText` — patrz "G-Code
+                              Dialect + Start/End G-Code" w "Kluczowe
+                              decyzje projektowe" po pełny opis
   types/appearance.ts       — AppearanceSettings + DEFAULT_APPEARANCE_SETTINGS
                               (paleta kolorów podglądu, `BL-12`) — osobny od
                               `machine.ts`: preferencja UI, nie fizyczna cecha
@@ -929,7 +994,11 @@ src/
                               "Machine Settings" w sekcji "Kluczowe decyzje
                               projektowe" wyżej po pełny opis. Trzecia
                               sekcja "Appearance" (`BL-12`) — picker palety
-                              kolorów podglądu, patrz `config/palettes.ts`
+                              kolorów podglądu, patrz `config/palettes.ts`.
+                              Sekcja "Machine" ma od `0.11.0` (`BL-5`/
+                              `BL-10`) też dropdown G-Code Dialect i dwa
+                              `<textarea>` Start/End G-Code — patrz
+                              "G-Code Dialect + Start/End G-Code" wyżej
   components/wizard/        — komponenty poszczególnych kroków wizarda.
                               `Step1Positioning.tsx` = wyłącznie pattern
                               picker + placeholdery operacji, nic liczbowego;
@@ -1177,7 +1246,15 @@ src/
                                  zakładkę przy live podglądzie 2D/3D)
     program.ts                  — buildHeader/buildFooter/assembleProgram —
                                  wspólny szkielet programu (preambuła,
-                                 pętla po punktach, retrakt, stopka)
+                                 pętla po punktach, retrakt, stopka). Od
+                                 `0.11.0` (`BL-5`/`BL-10`): buildHeader()
+                                 przyjmuje `Dialect` (konwersja G4 P sekundy/
+                                 ms), nowe endOfProgramCode(dialect) →
+                                 M30/M2, assembleProgram() przyjmuje
+                                 `MachineSettings` i owija program w user
+                                 header/footer + bezwarunkowe M30/M2 — patrz
+                                 "G-Code Dialect + Start/End G-Code" w
+                                 "Kluczowe decyzje projektowe" po pełny opis
     helix.ts / standardHole.ts   — generateHelix(params) /
                                  generateStandardHole(params) — publiczne
                                  funkcje `(WizardParams) => string[]`
@@ -1231,7 +1308,7 @@ src/
 nazwa, ikona, etykiety pól, **oraz funkcja generująca G-code**: `generate`)
 idzie przez `METHOD_META` w `config/methodMeta.ts`, nie przez
 rozproszone `method === 'helix' ? ...` w komponentach. Wywołanie
-`METHOD_META[params.method].generate(params)` to jedyne miejsce,
+`METHOD_META[params.method].generate(params, machine)` to jedyne miejsce,
 które powinno wołać silnik — nie importować `generateHelix`/
 `generateStandardHole` bezpośrednio w komponentach UI. Analogicznie —
 wszystko co zależy od wybranego patternu (Single/Grid/Grid Centered/

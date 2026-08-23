@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { PALETTE_LIST } from '../config/palettes'
-import type { MachineSettings } from '../types/machine'
+import type { Dialect, MachineSettings } from '../types/machine'
 import type { AppearanceSettings } from '../types/appearance'
 import { inputClass } from './wizard/FieldRow'
 
@@ -13,6 +13,7 @@ interface SettingsModalProps {
 }
 
 type TravelField = 'travelX' | 'travelY' | 'travelZ'
+type CodeField = 'headerText' | 'footerText'
 type SectionId = 'machine' | 'appearance' | 'about'
 
 const SECTIONS: { id: SectionId; label: string }[] = [
@@ -25,6 +26,17 @@ const FIELDS: { key: TravelField; label: string }[] = [
   { key: 'travelX', label: 'X travel [mm]' },
   { key: 'travelY', label: 'Y travel [mm]' },
   { key: 'travelZ', label: 'Z travel [mm]' },
+]
+
+const DIALECT_OPTIONS: { value: Dialect; label: string }[] = [
+  { value: 'grbl', label: 'GRBL' },
+  { value: 'marlin', label: 'Marlin' },
+  { value: 'mach3', label: 'Mach3' },
+]
+
+const CODE_FIELDS: { key: CodeField; label: string; placeholder: string }[] = [
+  { key: 'headerText', label: 'Start G-Code', placeholder: '; e.g. G28, custom homing…' },
+  { key: 'footerText', label: 'End G-Code', placeholder: '; e.g. coolant off…' },
 ]
 
 export function SettingsModal({
@@ -44,6 +56,14 @@ export function SettingsModal({
     travelZ: String(machine.travelZ),
   })
   const [savedField, setSavedField] = useState<TravelField | null>(null)
+  // Same "local buffer, commit on blur" pattern as the numeric travel
+  // fields — here purely to avoid a localStorage write per keystroke, not
+  // for validation (any string is a valid header/footer).
+  const [codeText, setCodeText] = useState<Record<CodeField, string>>({
+    headerText: machine.headerText,
+    footerText: machine.footerText,
+  })
+  const [savedCodeField, setSavedCodeField] = useState<CodeField | null>(null)
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -65,15 +85,41 @@ export function SettingsModal({
     setTimeout(() => setSavedField((f) => (f === key ? null : f)), 1500)
   }
 
+  const handleCodeBlur = (key: CodeField) => {
+    if (codeText[key] === machine[key]) return
+    onSave({ ...machine, [key]: codeText[key] })
+    setSavedCodeField(key)
+    setTimeout(() => setSavedCodeField((f) => (f === key ? null : f)), 1500)
+  }
+
+  const handleDialectChange = (dialect: Dialect) => {
+    onSave({ ...machine, dialect })
+  }
+
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
       onClick={onClose}
     >
       <div
-        className="flex h-[420px] w-[640px] overflow-hidden rounded-lg border border-slate-200 bg-white shadow-xl dark:border-slate-700 dark:bg-slate-900"
+        className="relative flex h-[640px] w-[820px] overflow-hidden rounded-lg border border-slate-200 bg-white shadow-xl dark:border-slate-700 dark:bg-slate-900"
         onClick={(e) => e.stopPropagation()}
       >
+        {/* Sibling of the scrollable content pane below, not a child of it —
+            an absolutely-positioned descendant of a scrolling container
+            scrolls right along with it, which is what made this button
+            drift out of view on a tall Machine section (dialect + Start/End
+            G-Code pushed it past the fold). Anchored to this non-scrolling
+            card instead, it now stays pinned regardless of inner scroll. */}
+        <button
+          type="button"
+          onClick={onClose}
+          aria-label="Close settings"
+          className="absolute top-4 right-4 z-10 flex h-7 w-7 items-center justify-center rounded-md text-slate-400 hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-800 dark:hover:text-slate-300"
+        >
+          ✕
+        </button>
+
         <div className="flex w-44 shrink-0 flex-col gap-1 border-r border-slate-200 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-950">
           <span className="mb-2 px-2 text-xs font-semibold tracking-wide text-slate-400 uppercase dark:text-slate-500">
             Settings
@@ -94,16 +140,7 @@ export function SettingsModal({
           ))}
         </div>
 
-        <div className="relative flex flex-1 flex-col gap-4 overflow-y-auto p-6">
-          <button
-            type="button"
-            onClick={onClose}
-            aria-label="Close settings"
-            className="absolute top-4 right-4 flex h-7 w-7 items-center justify-center rounded-md text-slate-400 hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-800 dark:hover:text-slate-300"
-          >
-            ✕
-          </button>
-
+        <div className="flex flex-1 flex-col gap-4 overflow-y-auto p-6">
           {activeSection === 'machine' && (
             <>
               <h2 className="text-sm font-semibold text-slate-900 dark:text-slate-100">
@@ -139,6 +176,56 @@ export function SettingsModal({
                 They also introduce a soft warning when the planned work doesn't make sense within
                 these limits.
               </p>
+
+              <div className="flex flex-col gap-4 border-t border-slate-200 pt-4 dark:border-slate-800">
+                <label className="flex flex-col gap-1">
+                  <span className="text-sm font-medium text-slate-700 dark:text-slate-300">
+                    G-Code Dialect
+                  </span>
+                  <select
+                    className={inputClass}
+                    value={machine.dialect}
+                    onChange={(e) => handleDialectChange(e.target.value as Dialect)}
+                  >
+                    {DIALECT_OPTIONS.map((opt) => (
+                      <option key={opt.value} value={opt.value}>
+                        {opt.label}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+
+                <span className="text-sm font-medium text-slate-700 dark:text-slate-300">
+                  Start / End G-Code
+                </span>
+                {CODE_FIELDS.map((field) => (
+                  <label key={field.key} className="flex flex-col gap-1">
+                    <span className="flex items-center gap-2 text-xs font-medium text-slate-600 dark:text-slate-400">
+                      {field.label}
+                      {savedCodeField === field.key && (
+                        <span className="text-xs font-normal text-emerald-600 dark:text-emerald-400">
+                          ✓ Saved
+                        </span>
+                      )}
+                    </span>
+                    <textarea
+                      rows={3}
+                      className={`${inputClass} resize-y font-mono text-xs`}
+                      placeholder={field.placeholder}
+                      value={codeText[field.key]}
+                      onChange={(e) =>
+                        setCodeText((prev) => ({ ...prev, [field.key]: e.target.value }))
+                      }
+                      onBlur={() => handleCodeBlur(field.key)}
+                    />
+                  </label>
+                ))}
+                <p className="text-sm text-slate-500 dark:text-slate-400">
+                  Inserted verbatim — Start G-Code before the generated program, End G-Code after
+                  it (before the closing {machine.dialect === 'marlin' ? 'M2' : 'M30'}). Wrapped in
+                  comment markers when non-empty; left untouched when blank.
+                </p>
+              </div>
             </>
           )}
 

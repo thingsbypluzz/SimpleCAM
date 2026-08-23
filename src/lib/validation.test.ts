@@ -123,7 +123,7 @@ describe('machineFitWarnings', () => {
       ...DEFAULT_WIZARD_PARAMS,
       geometry: { ...DEFAULT_WIZARD_PARAMS.geometry, positioning: 'grid' as const, gridX: 500, gridY: 10 },
     }
-    const machine = { travelX: 100, travelY: 1000, travelZ: 1000 }
+    const machine = { ...DEFAULT_MACHINE_SETTINGS, travelX: 100, travelY: 1000, travelZ: 1000 }
     const warnings = machineFitWarnings(params, machine)
     expect(warnings).toHaveLength(1)
     expect(warnings[0]).toContain('X span')
