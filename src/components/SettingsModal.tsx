@@ -19,10 +19,11 @@ type TabDefaultField = 'defaultTabHeight' | 'defaultTabWidth' | 'defaultTabCount
 // per-field step/label differ.
 type NumericField = TravelField | TabDefaultField
 type CodeField = 'headerText' | 'footerText'
-type SectionId = 'machine' | 'appearance' | 'about'
+type SectionId = 'machine' | 'tabs' | 'appearance' | 'about'
 
 const SECTIONS: { id: SectionId; label: string }[] = [
   { id: 'machine', label: 'Machine' },
+  { id: 'tabs', label: 'Tabs' },
   { id: 'appearance', label: 'Appearance' },
   { id: 'about', label: 'About' },
 ]
@@ -243,8 +244,14 @@ export function SettingsModal({
                   comment markers when non-empty; left untouched when blank.
                 </p>
               </div>
+            </>
+          )}
 
-              <div className="flex flex-col gap-4 border-t border-slate-200 pt-4 dark:border-slate-800">
+          {activeSection === 'tabs' && (
+            <>
+              <h2 className="text-sm font-semibold text-slate-900 dark:text-slate-100">Tabs</h2>
+
+              <div className="flex flex-col gap-4">
                 <span className="text-sm font-medium text-slate-700 dark:text-slate-300">
                   Default Tab Sizes
                 </span>
@@ -269,12 +276,13 @@ export function SettingsModal({
                     />
                   </label>
                 ))}
-                <p className="text-sm text-slate-500 dark:text-slate-400">
-                  Applied whenever you check "Enable Tabs" on Step 2 — a starting point for a new
-                  job, not a live link, so editing these later doesn't change a job that already
-                  has tabs on.
-                </p>
               </div>
+
+              <p className="text-sm text-slate-500 dark:text-slate-400">
+                Applied whenever you check "Enable Tabs" on Step 2 — a starting point for a new
+                job, not a live link, so editing these later doesn't change a job that already has
+                tabs on.
+              </p>
             </>
           )}
 

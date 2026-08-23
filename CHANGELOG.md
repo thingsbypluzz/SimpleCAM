@@ -54,8 +54,9 @@ thingsbypluzz/SimpleCAM), ale to infrastruktura pod izolację pracy
   finishing pass" na samym dnie niedotabowanej ścieżki, zastosowany
   też na nowej granicy przejścia spirala→płaskie cięcie.
 
-  **Domyślne rozmiary mostków w Settings.** Nowa sekcja "Default Tab
-  Sizes" w Settings > Machine (`defaultTabHeight`/`defaultTabWidth`/
+  **Domyślne rozmiary mostków w Settings.** Nowa, osobna sekcja
+  nawigacji Settings — **"Tabs"** (nie w środku "Machine") — z sekcją
+  "Default Tab Sizes" (`defaultTabHeight`/`defaultTabWidth`/
   `defaultTabCount` w `MachineSettings`, domyślnie `1mm`/`3mm`/`3` —
   wartości dla kogoś, kto nigdy nie otworzy tej sekcji Settings).
   Aplikowane, gdy zaznaczysz "Enable Tabs" na Kroku 2 — szablon dla

@@ -1094,11 +1094,15 @@ przeglądu przez użytkownika.
   pola w `MachineSettings`: `defaultTabHeight`/`defaultTabWidth`/
   `defaultTabCount` (domyślnie `1`/`3`/`3` — te same liczby co
   `DEFAULT_WIZARD_PARAMS.geometry` dla tabów, więc świeży wizyta i
-  nieotwarte Settings dają identyczny wynik). Nowa sekcja "Default Tab
-  Sizes" w Settings > Machine, ten sam wzorzec bufora
-  tekstu+onBlur+"✓ Saved" co pola X/Y/Z travel (`SettingsModal.tsx`,
-  typ `TravelField` poszerzony do `NumericField` — jeden generyczny
-  `handleBlur()` obsługuje teraz oba zestawy pól). Aplikowane w
+  nieotwarte Settings dają identyczny wynik). Własna, czwarta sekcja
+  nawigacji Settings — **"Tabs"** (`SettingsModal.tsx`, nie w środku
+  "Machine" — pierwsza wersja tak to umieściła, przeniesione na
+  wyraźną prośbę użytkownika, bo to inny rodzaj ustawienia niż
+  fizyczne cechy maszyny), z sekcją "Default Tab Sizes" w środku. Ten
+  sam wzorzec bufora tekstu+onBlur+"✓ Saved" co pola X/Y/Z travel, typ
+  `TravelField` poszerzony do `NumericField` — jeden generyczny
+  `handleBlur()` obsługuje teraz oba zestawy pól, mimo że renderują się
+  w dwóch różnych sekcjach nawigacji. Aplikowane w
   `Step2Geometry.tsx`, gdy checkbox "Enable Tabs" przechodzi z
   false→true (`machine` prop już tam był dostępny) — świadomie
   **zawsze** nadpisuje `tabHeight`/`tabWidth`/`tabCount` świeżymi
@@ -1235,8 +1239,11 @@ src/
                               `BL-10`) też dropdown G-Code Dialect i dwa
                               `<textarea>` Start/End G-Code — patrz
                               "G-Code Dialect + Start/End G-Code" wyżej.
-                              Od `0.12.0` (`BL-14`) też "Default Tab
-                              Sizes" — patrz "Tabs (mostki)..." wyżej
+                              Od `0.12.0` (`BL-14`) czwarta, osobna sekcja
+                              nawigacji **"Tabs"** — "Default Tab Sizes",
+                              świadomie nie w środku "Machine" (na
+                              wyraźną prośbę użytkownika) — patrz "Tabs
+                              (mostki)..." wyżej
   components/wizard/        — komponenty poszczególnych kroków wizarda.
                               `Step1Positioning.tsx` = wyłącznie pattern
                               picker + placeholdery operacji, nic liczbowego;
