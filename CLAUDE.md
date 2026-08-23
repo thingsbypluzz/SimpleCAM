@@ -899,6 +899,52 @@ przeglądu przez użytkownika.
   pole wpływa tylko na miękkie `machineFitWarnings()`, nie na treść
   pliku. **(3)** okno Settings powiększone (`420×640` → `640×820`) —
   sekcja "Machine" nie mieściła się wygodnie w poprzednich wymiarach.
+- **Pola liczbowe w wizardzie (`0.11.2`).** Zgłoszony przez użytkownika
+  bug: wszystkie `<input type="number">` na Kroku 2/3 były kontrolowane
+  bezpośrednio przez skonwertowaną liczbę (`value={geometry.x}` /
+  `onChange={(e) => update({ x: Number(e.target.value) })}`) —
+  `Number('')` daje `0`, więc w momencie wyczyszczenia pola (np. Tab →
+  zaznaczenie całości → Backspace, żeby wpisać nową wartość) `value`
+  natychmiast wracała do `"0"` w kolejnym renderze i pole nigdy
+  realnie się nie opróżniało; cokolwiek wpisane później lądowało za
+  tym widmowym zerem. Użytkownik zaproponował przejście na aktualizację
+  Preview przy `blur` — odrzucone: to złamałoby udokumentowaną,
+  świadomą decyzję z Etapu 3 ("2D Preview jest zawsze live"), a
+  prawdziwy problem leżał gdzie indziej — w tym, że wyświetlany tekst
+  inputa był błędnie wyprowadzany z zatwierdzonej liczby, bez żadnego
+  sposobu na reprezentację stanu "puste" pomiędzy.
+  `SettingsModal.tsx` już rozwiązuje dokładnie ten problem dla pól
+  X/Y/Z travel (osobny bufor `text`, commit dopiero w `handleBlur`) —
+  ale tamten wzorzec commituje **wyłącznie** na blur, co dla
+  konfiguracji maszyny ma sens (nie zapisywać do localStorage na
+  każde naciśnięcie klawisza), a dla pól wizarda zabiłoby live
+  reaktywność Preview.
+
+  Nowy hook `useNumberField(value, onCommit)`
+  (`src/components/wizard/useNumberField.ts`) łączy oba: lokalny
+  bufor tekstu (`text`, inicjalizowany raz z `String(value)`)
+  odizolowany od `value`/`onChange`/`onBlur` inputa, ale **commit
+  dzieje się na każdym naciśnięciu klawisza**, które parsuje się do
+  skończonej liczby (`Number.isFinite`) — dokładnie ta sama
+  częstotliwość co wcześniej, więc Preview zostaje tak samo live jak
+  było. `text` nigdy nie jest nadpisywany przez wynikowy re-render z
+  zewnątrz (dopóki komponent nie odmontuje się i nie zamontuje na
+  nowo — Step2Geometry/Step3Feeds renderują się tylko gdy dany Krok
+  jest aktywny, więc to bezpieczne, ten sam argument co przy
+  `customPointsText`), tylko `onBlur` resynchronizuje wyświetlany
+  tekst z powrotem do `String(value)` — porządkuje puste pole (wraca
+  do "0", bo `Number('')` i tak już to commitowało live) czy
+  końcowej kropki ("4." → "4"), ale **nie** bramkuje kiedy Preview się
+  aktualizuje. Zastosowany do wszystkich 9 pól na Kroku 2
+  (`holeDiameter`, `totalDepth`, `gridX`/`gridY`,
+  `circleHoleCount`/`circleDiameter`/`circleStartAngle`,
+  `offsetX`/`offsetY`) i 5 na Kroku 3 (`stepdown`, `feedrateXY`,
+  `plungeRate`, `startZ`, `safeZ`) — jedna linijka na pole (wywołanie
+  hooka + spread na istniejący `<input>`, bez ruszania jego własnych
+  `type`/`step`/`min`/`max`). `SettingsModal.tsx` świadomie
+  nieruszany — jego `onChange` już zapisuje surowy string wprost do
+  `text`, bez przechodzenia przez `Number()` przed wyświetleniem, więc
+  nigdy nie miał tego buga.
 - **`.gitignore` musi wykluczać `.claude/`** — Tailwind v4
   (`@tailwindcss/vite`) auto-skanuje cały katalog projektu pod kątem nazw
   klas i respektuje tylko `.gitignore` jako listę wykluczeń (bez niego
@@ -1038,7 +1084,17 @@ src/
                               "Pattern: <nazwa>" + generyczny opis (0.8.3),
                               pattern-specific pola (grid/circle/custom) i
                               Offset X/Y (za `border-t` od 0.8.3) — patrz
-                              Etap 6
+                              Etap 6. Wszystkie pola liczbowe na tym Kroku
+                              (i na `Step3Feeds.tsx`) idą od `0.11.2` przez
+                              `useNumberField()` — patrz niżej i "Pola
+                              liczbowe w wizardzie" w "Kluczowe decyzje
+                              projektowe"
+  components/wizard/useNumberField.ts — hook `useNumberField(value, onCommit)`
+                              (`0.11.2`) — oddziela wyświetlany tekst
+                              inputa od zatwierdzonej wartości, żeby pole
+                              dało się realnie wyczyścić. Patrz "Pola
+                              liczbowe w wizardzie" w "Kluczowe decyzje
+                              projektowe" po pełny opis
   components/icons.tsx      — zestaw ikon SVG (własne, bez zależności)
   components/preview/       — podgląd 2D (Etap 3)
     ToolpathCanvas.tsx        — React wrapper: <canvas>, devicePixelRatio,

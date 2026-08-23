@@ -9,6 +9,7 @@ import {
 import { POSITIONING_META } from '../../config/positioningMeta'
 import { FieldRow, inputClass } from './FieldRow'
 import { MethodPicker } from './MethodPicker'
+import { useNumberField } from './useNumberField'
 
 interface Step2GeometryProps {
   params: WizardParams
@@ -65,6 +66,24 @@ export function Step2Geometry({ params, onChange, machine }: Step2GeometryProps)
     updateGeometry({ customPoints: parseCustomPoints(text) })
   }
 
+  const holeDiameterField = useNumberField(geometry.holeDiameter, (v) =>
+    updateGeometry({ holeDiameter: v }),
+  )
+  const totalDepthField = useNumberField(geometry.totalDepth, (v) => updateGeometry({ totalDepth: v }))
+  const gridXField = useNumberField(geometry.gridX, (v) => updateGeometry({ gridX: v }))
+  const gridYField = useNumberField(geometry.gridY, (v) => updateGeometry({ gridY: v }))
+  const circleHoleCountField = useNumberField(geometry.circleHoleCount, (v) =>
+    updateGeometry({ circleHoleCount: v }),
+  )
+  const circleDiameterField = useNumberField(geometry.circleDiameter, (v) =>
+    updateGeometry({ circleDiameter: v }),
+  )
+  const circleStartAngleField = useNumberField(geometry.circleStartAngle, (v) =>
+    updateGeometry({ circleStartAngle: v }),
+  )
+  const offsetXField = useNumberField(geometry.offsetX, (v) => updateGeometry({ offsetX: v }))
+  const offsetYField = useNumberField(geometry.offsetY, (v) => updateGeometry({ offsetY: v }))
+
   return (
     <div className="flex flex-col gap-6">
       <div className="flex flex-col gap-4">
@@ -82,13 +101,7 @@ export function Step2Geometry({ params, onChange, machine }: Step2GeometryProps)
           </select>
         </FieldRow>
         <FieldRow label="Hole Diameter [mm]">
-          <input
-            type="number"
-            step="0.1"
-            className={inputClass}
-            value={geometry.holeDiameter}
-            onChange={(e) => updateGeometry({ holeDiameter: Number(e.target.value) })}
-          />
+          <input type="number" step="0.1" className={inputClass} {...holeDiameterField} />
         </FieldRow>
         {!isToolDiameterValid(geometry) && (
           <p className="text-sm text-red-600 dark:text-red-400">
@@ -102,8 +115,7 @@ export function Step2Geometry({ params, onChange, machine }: Step2GeometryProps)
             min="0"
             max={machine.travelZ}
             className={inputClass}
-            value={geometry.totalDepth}
-            onChange={(e) => updateGeometry({ totalDepth: Number(e.target.value) })}
+            {...totalDepthField}
           />
         </FieldRow>
       </div>
@@ -136,8 +148,7 @@ export function Step2Geometry({ params, onChange, machine }: Step2GeometryProps)
                   min="0"
                   max={machine.travelX}
                   className={inputClass}
-                  value={geometry.gridX}
-                  onChange={(e) => updateGeometry({ gridX: Number(e.target.value) })}
+                  {...gridXField}
                 />
               </FieldRow>
             </div>
@@ -149,8 +160,7 @@ export function Step2Geometry({ params, onChange, machine }: Step2GeometryProps)
                   min="0"
                   max={machine.travelY}
                   className={inputClass}
-                  value={geometry.gridY}
-                  onChange={(e) => updateGeometry({ gridY: Number(e.target.value) })}
+                  {...gridYField}
                 />
               </FieldRow>
             </div>
@@ -167,8 +177,7 @@ export function Step2Geometry({ params, onChange, machine }: Step2GeometryProps)
               min="0"
               max={MAX_CIRCLE_HOLE_COUNT}
               className={inputClass}
-              value={geometry.circleHoleCount}
-              onChange={(e) => updateGeometry({ circleHoleCount: Number(e.target.value) })}
+              {...circleHoleCountField}
             />
           </FieldRow>
           {!isCircleHoleCountValid(geometry) && (
@@ -183,18 +192,11 @@ export function Step2Geometry({ params, onChange, machine }: Step2GeometryProps)
               min="0"
               max={Math.min(machine.travelX, machine.travelY)}
               className={inputClass}
-              value={geometry.circleDiameter}
-              onChange={(e) => updateGeometry({ circleDiameter: Number(e.target.value) })}
+              {...circleDiameterField}
             />
           </FieldRow>
           <FieldRow label="Start Angle [deg]">
-            <input
-              type="number"
-              step="1"
-              className={inputClass}
-              value={geometry.circleStartAngle}
-              onChange={(e) => updateGeometry({ circleStartAngle: Number(e.target.value) })}
-            />
+            <input type="number" step="1" className={inputClass} {...circleStartAngleField} />
           </FieldRow>
         </div>
       )}
@@ -225,8 +227,7 @@ export function Step2Geometry({ params, onChange, machine }: Step2GeometryProps)
                 min={-machine.travelX}
                 max={machine.travelX}
                 className={inputClass}
-                value={geometry.offsetX}
-                onChange={(e) => updateGeometry({ offsetX: Number(e.target.value) })}
+                {...offsetXField}
               />
             </FieldRow>
           </div>
@@ -238,8 +239,7 @@ export function Step2Geometry({ params, onChange, machine }: Step2GeometryProps)
                 min={-machine.travelY}
                 max={machine.travelY}
                 className={inputClass}
-                value={geometry.offsetY}
-                onChange={(e) => updateGeometry({ offsetY: Number(e.target.value) })}
+                {...offsetYField}
               />
             </FieldRow>
           </div>

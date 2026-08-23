@@ -7,6 +7,25 @@ zgodne z [SemVer](https://semver.org/). Ten plik pozostaje głównym, czytelnym
 thingsbypluzz/SimpleCAM), ale to infrastruktura pod izolację pracy
 (branch/worktree per zadanie), nie zamiennik tego changeloga.
 
+## [0.11.2] — 2026-08-23
+
+### Naprawiono
+
+- **Nie dało się wyczyścić pól liczbowych w wizardzie.** Wszystkie
+  `<input type="number">` na Kroku 2 i 3 (Hole Diameter, Total Depth,
+  Grid X/Y, Circle Hole Count/Diameter/Start Angle, Offset X/Y,
+  Stepdown, Feedrate XY, Plunge Rate, Start Z, Safe Z) były
+  kontrolowane bezpośrednio przez `Number(e.target.value)` — po
+  wyczyszczeniu pola `Number('')` daje `0`, więc kontrolowana `value`
+  natychmiast wracała do `"0"` w następnym renderze i pole nigdy nie
+  dało się realnie opróżnić, żeby wpisać nową wartość od zera. Nowy
+  hook `useNumberField()` (`src/components/wizard/useNumberField.ts`)
+  oddziela wyświetlany tekst od zatwierdzonej wartości — commit do
+  live Preview dzieje się na każdym naciśnięciu klawisza, które
+  parsuje się do skończonej liczby (bez zmiany "zawsze live"
+  filozofii), a resync wyświetlanego tekstu do zatwierdzonej wartości
+  następuje wyłącznie na `blur`.
+
 ## [0.11.1] — 2026-08-23
 
 ### Naprawiono
