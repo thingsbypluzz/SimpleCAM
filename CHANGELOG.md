@@ -7,6 +7,40 @@ zgodne z [SemVer](https://semver.org/). Ten plik pozostaje głównym, czytelnym
 thingsbypluzz/SimpleCAM), ale to infrastruktura pod izolację pracy
 (branch/worktree per zadanie), nie zamiennik tego changeloga.
 
+## [0.12.0] — 2026-08-23
+
+### Dodano
+
+- **`BL-14` zamknięte — Tabs (mostki) dla operacji Hole(s).** Helix i
+  Standard Hole tną pojedynczy pierścień, nie czyszczą kieszeni — przy
+  przewierceniu na wylot środkowy "korek" jest całkowicie wolny, jeśli
+  nic go nie trzyma. Nowa sekcja na Kroku 2 (schowana za checkboxem
+  "Enable Tabs"): Tab Height/Width [mm]/Count, rozstawione
+  automatycznie i równomiernie dookoła okręgu. Mechanika: powyżej
+  ostatnich `tabHeight` mm cięcie bez zmian; w tym pasmie ruch
+  przechodzi na płaskie przejścia co `stepdown` (dla Helixa spirala
+  celowo skraca się dokładnie do góry pasma, zamiast dotychczasowej
+  jednej płaskiej "flat finishing pass"), a każde przejście pomija łuk
+  mostka: najazd na wysokość górnej granicy pasma, przejazd nad
+  mostkiem, powrót w dół. Mostki wymuszają interpolację G1 dla całego
+  programu (przełącznik na Kroku 4 wyszarzony z wyjaśnieniem) —
+  prostsze niż dzielone łuki G2/G3 wokół przerw. Walidacja:
+  `0 < tabHeight < totalDepth`, `tabCount × tabWidth <` obwód ścieżki
+  narzędzia. Podglądy 2D i 3D renderują realne przerwy w ścieżce (nie
+  odłożone na później) — zarówno obrys otworu, jak i sama ścieżka.
+  Nowy `src/lib/tabs.ts` (`computeTabRanges()`, `tabbedCirclePass()`) —
+  kąty mostków wymuszone jako dokładne punkty łamania w przejściu (nie
+  tylko próbkowanie co 5°), żeby wąski mostek nigdy nie został pominięty
+  ani wycięty szerzej niż zadane. Zaprojektowane w sesji `/grill-me`,
+  zweryfikowane pod kątem poprawności przez dodatkowy przegląd przed
+  implementacją (wychwycił dwa realne bugi w pierwszym szkicu: brak
+  warunku pomijającego starą "flat finishing pass" przy Helixie
+  [wycinałaby wszystkie mostki na nowo] i właśnie ten problem
+  próbkowania kątów). Zaimplementowane na osobnym branchu `add-tabs`
+  (nie prosto na `main`, w przeciwieństwie do wcześniejszych sesji w
+  tym projekcie) — dotyka silnika G-code nową geometrią o realnym
+  znaczeniu fizycznym (mostki to jedyne, co trzyma wyciętą część).
+
 ## [0.11.2] — 2026-08-23
 
 ### Naprawiono

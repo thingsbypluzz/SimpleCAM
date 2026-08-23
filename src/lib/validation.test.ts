@@ -3,6 +3,8 @@ import {
   isCircleHoleCountValid,
   isStartZValid,
   isStepdownValid,
+  isTabHeightValid,
+  isTabWidthValid,
   isToolDiameterValid,
   machineFitWarnings,
   patternSpan,
@@ -139,5 +141,68 @@ describe('machineFitWarnings', () => {
     const warnings = machineFitWarnings(params, machine)
     expect(warnings).toHaveLength(1)
     expect(warnings[0]).toContain('Z span')
+  })
+})
+
+describe('isTabHeightValid', () => {
+  it('is vacuously valid when tabs are disabled, regardless of value', () => {
+    expect(
+      isTabHeightValid({ ...DEFAULT_WIZARD_PARAMS.geometry, tabsEnabled: false, tabHeight: 0 }),
+    ).toBe(true)
+  })
+
+  it('is valid when 0 < tabHeight < totalDepth', () => {
+    expect(
+      isTabHeightValid({
+        ...DEFAULT_WIZARD_PARAMS.geometry,
+        tabsEnabled: true,
+        totalDepth: 4,
+        tabHeight: 1,
+      }),
+    ).toBe(true)
+  })
+
+  it('is invalid at or above totalDepth', () => {
+    expect(
+      isTabHeightValid({
+        ...DEFAULT_WIZARD_PARAMS.geometry,
+        tabsEnabled: true,
+        totalDepth: 4,
+        tabHeight: 4,
+      }),
+    ).toBe(false)
+  })
+
+  it('is invalid at zero or below', () => {
+    expect(
+      isTabHeightValid({
+        ...DEFAULT_WIZARD_PARAMS.geometry,
+        tabsEnabled: true,
+        totalDepth: 4,
+        tabHeight: 0,
+      }),
+    ).toBe(false)
+  })
+})
+
+describe('isTabWidthValid', () => {
+  // toolDiameter 3.175, holeDiameter 8 (defaults) -> toolPathRadius
+  // 2.4125mm -> circumference ~15.16mm.
+  it('is vacuously valid when tabs are disabled', () => {
+    expect(
+      isTabWidthValid({ ...DEFAULT_WIZARD_PARAMS.geometry, tabsEnabled: false, tabCount: 10, tabWidth: 10 }),
+    ).toBe(true)
+  })
+
+  it('is valid when tabCount * tabWidth stays under the circumference', () => {
+    expect(
+      isTabWidthValid({ ...DEFAULT_WIZARD_PARAMS.geometry, tabsEnabled: true, tabCount: 4, tabWidth: 3 }),
+    ).toBe(true)
+  })
+
+  it('is invalid once tabCount * tabWidth reaches or exceeds the circumference', () => {
+    expect(
+      isTabWidthValid({ ...DEFAULT_WIZARD_PARAMS.geometry, tabsEnabled: true, tabCount: 4, tabWidth: 4 }),
+    ).toBe(false)
   })
 })

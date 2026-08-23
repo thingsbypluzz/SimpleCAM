@@ -15,6 +15,10 @@ const base: GeometryParams = {
   customPoints: [],
   offsetX: 0,
   offsetY: 0,
+  tabsEnabled: false,
+  tabHeight: 1,
+  tabWidth: 3,
+  tabCount: 4,
 }
 
 // cos/sin at non-trivial angles (e.g. 90°) leave floating-point epsilon

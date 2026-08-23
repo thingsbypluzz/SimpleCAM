@@ -22,6 +22,10 @@ export interface GeometryParams {
   customPoints: Point2D[]
   offsetX: number
   offsetY: number
+  tabsEnabled: boolean
+  tabHeight: number
+  tabWidth: number
+  tabCount: number
 }
 
 export interface FeedsParams {
@@ -63,6 +67,10 @@ export const DEFAULT_WIZARD_PARAMS: WizardParams = {
     customPoints: [{ x: 10, y: 10 }],
     offsetX: 0,
     offsetY: 0,
+    tabsEnabled: false,
+    tabHeight: 1,
+    tabWidth: 3,
+    tabCount: 4,
   },
   feeds: {
     stepdown: 1,

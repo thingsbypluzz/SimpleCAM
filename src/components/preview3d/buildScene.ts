@@ -2,6 +2,7 @@ import * as THREE from 'three'
 import { getFixedColors, getPaletteAccents, hexToThreeColor, type PaletteId } from '../../config/palettes'
 import { resolvePoints } from '../../lib/positioning'
 import { computeDepthPasses } from '../../lib/depthPasses'
+import { computeTabRanges, type TabRange } from '../../lib/tabs'
 import type { WizardParams } from '../../types/wizard'
 
 // CNC (x, y, z) -> Three.js (x, z, -y): CNC Z (up/down into material) becomes
@@ -22,12 +23,81 @@ function toThree(x: number, y: number, z: number): THREE.Vector3 {
 }
 
 const SEGMENTS_PER_TURN = 48
+// Passes accumulate Z via repeated float subtraction — matches the
+// tolerance used for the same comparison in standardHole.ts/helix.ts.
+const TAB_BAND_EPSILON = 1e-9
+
+interface TabsConfig3D {
+  tabHeight: number
+  tabRanges: TabRange[]
+}
+
+// Mirrors tabs.ts's tabbedCirclePass, but emits Vector3 samples instead of
+// G-code lines (BL-14) — same "breakpoint union" approach (uniform
+// SEGMENTS_PER_TURN sweep plus every tab's exact start/end angle forced in
+// as a breakpoint), so a tab is never missed or drawn wider than requested
+// regardless of this file's own sampling resolution. Unlike
+// tabbedCirclePass, the caller is expected to have already pushed the
+// arrival point at (cx+radius, cy, cutZ) — mirrors how
+// standardHolePoints3D/helixPoints3D already push their own "start of this
+// pass" point before sweeping.
+function tabbedCirclePoints3D(
+  cx: number,
+  cy: number,
+  radius: number,
+  cutZ: number,
+  liftZ: number,
+  tabRanges: TabRange[],
+): THREE.Vector3[] {
+  const twoPi = 2 * Math.PI
+  const angleSet = new Set<number>([0, twoPi])
+  for (let step = 1; step < SEGMENTS_PER_TURN; step++) {
+    angleSet.add((twoPi * step) / SEGMENTS_PER_TURN)
+  }
+  for (const r of tabRanges) {
+    angleSet.add(r.startAngle)
+    angleSet.add(r.endAngle)
+  }
+  const angles = [...angleSet].sort((a, b) => a - b)
+
+  const points: THREE.Vector3[] = []
+  let prevX = cx + radius
+  let prevY = cy
+  let inTab = false
+
+  for (let idx = 1; idx < angles.length; idx++) {
+    const angle = angles[idx]
+    const midAngle = (angles[idx - 1] + angle) / 2
+    const nextInTab = tabRanges.some((r) => midAngle > r.startAngle && midAngle < r.endAngle)
+    const x = cx + radius * Math.cos(angle)
+    const y = cy + radius * Math.sin(angle)
+
+    if (nextInTab && !inTab) {
+      points.push(toThree(prevX, prevY, liftZ))
+      points.push(toThree(x, y, liftZ))
+    } else if (!nextInTab && inTab) {
+      points.push(toThree(x, y, liftZ))
+      points.push(toThree(x, y, cutZ))
+    } else {
+      points.push(toThree(x, y, nextInTab ? liftZ : cutZ))
+    }
+
+    prevX = x
+    prevY = y
+    inTab = nextInTab
+  }
+
+  return points
+}
 
 // Mirrors the descent loop in src/lib/helix.ts, but emits Vector3 samples
 // instead of G-code lines — kept separate from the engine on purpose, since
 // entangling tested G-code text generation with rendering-only geometry
 // isn't worth it for a ~10-line loop. Shares `computeDepthPasses()` though,
 // since that's where the actual infinite-loop guard (stepdown <= 0) lives.
+// `tabs`: when set (BL-14), mirrors helix.ts's two-phase split — spiral
+// turns stop exactly at the tab-band top, then flat tabbed passes take
+// over for the remainder, replacing the plain flat finishing pass below.
 function helixPoints3D(
   cx: number,
   cy: number,
@@ -35,11 +105,36 @@ function helixPoints3D(
   totalDepth: number,
   stepdown: number,
   startZ: number,
+  tabs: TabsConfig3D | null,
 ) {
   const points: THREE.Vector3[] = [toThree(cx + radius, cy, startZ)]
   let currentZ = startZ
-  let angle = 0
 
+  if (tabs) {
+    const tabBandTopZ = -(totalDepth - tabs.tabHeight)
+    const spiralDepth = totalDepth + startZ - tabs.tabHeight
+    let angle = 0
+
+    for (const turnDepth of computeDepthPasses(spiralDepth, stepdown)) {
+      for (let i = 1; i <= SEGMENTS_PER_TURN; i++) {
+        const a = angle + (2 * Math.PI * i) / SEGMENTS_PER_TURN
+        const z = currentZ - (turnDepth * i) / SEGMENTS_PER_TURN
+        points.push(toThree(cx + radius * Math.cos(a), cy + radius * Math.sin(a), z))
+      }
+      angle += 2 * Math.PI
+      currentZ -= turnDepth
+    }
+
+    for (const passDepth of computeDepthPasses(tabs.tabHeight, stepdown)) {
+      currentZ -= passDepth
+      points.push(toThree(cx + radius, cy, currentZ))
+      points.push(...tabbedCirclePoints3D(cx, cy, radius, currentZ, tabBandTopZ, tabs.tabRanges))
+    }
+
+    return points
+  }
+
+  let angle = 0
   for (const turnDepth of computeDepthPasses(totalDepth + startZ, stepdown)) {
     for (let i = 1; i <= SEGMENTS_PER_TURN; i++) {
       const a = angle + (2 * Math.PI * i) / SEGMENTS_PER_TURN
@@ -57,7 +152,9 @@ function helixPoints3D(
   return points
 }
 
-// Mirrors src/lib/standardHole.ts.
+// Mirrors src/lib/standardHole.ts. `tabs`: when set (BL-14), passes at or
+// below the tab-band top skip the tab arcs — an atomic per-pass choice,
+// same as the engine, since every pass here is already flat.
 function standardHolePoints3D(
   cx: number,
   cy: number,
@@ -65,16 +162,22 @@ function standardHolePoints3D(
   totalDepth: number,
   stepdown: number,
   startZ: number,
+  tabs: TabsConfig3D | null,
 ) {
   const points: THREE.Vector3[] = [toThree(cx + radius, cy, startZ)]
   let currentZ = startZ
+  const tabBandTopZ = tabs ? -(totalDepth - tabs.tabHeight) : 0
 
   for (const passDepth of computeDepthPasses(totalDepth + startZ, stepdown)) {
     currentZ -= passDepth
     points.push(toThree(cx + radius, cy, currentZ))
-    for (let i = 1; i <= SEGMENTS_PER_TURN; i++) {
-      const a = (2 * Math.PI * i) / SEGMENTS_PER_TURN
-      points.push(toThree(cx + radius * Math.cos(a), cy + radius * Math.sin(a), currentZ))
+    if (tabs && currentZ <= tabBandTopZ + TAB_BAND_EPSILON) {
+      points.push(...tabbedCirclePoints3D(cx, cy, radius, currentZ, tabBandTopZ, tabs.tabRanges))
+    } else {
+      for (let i = 1; i <= SEGMENTS_PER_TURN; i++) {
+        const a = (2 * Math.PI * i) / SEGMENTS_PER_TURN
+        points.push(toThree(cx + radius * Math.cos(a), cy + radius * Math.sin(a), currentZ))
+      }
     }
   }
   return points
@@ -204,6 +307,10 @@ function buildPatternObjects(
   const { geometry, feeds, method } = params
   const objects: THREE.Object3D[] = []
 
+  const tabsConfig: TabsConfig3D | null = geometry.tabsEnabled
+    ? { tabHeight: geometry.tabHeight, tabRanges: computeTabRanges(geometry.tabCount, geometry.tabWidth, toolRadius) }
+    : null
+
   // Offset vector — amber, physical origin to the shifted pattern. Hidden
   // entirely at (0,0), same rule as the collapsed Step 2 summary annotation.
   if (geometry.offsetX !== 0 || geometry.offsetY !== 0) {
@@ -279,8 +386,8 @@ function buildPatternObjects(
     // Actual tool-center toolpath
     const pathPoints =
       method === 'helix'
-        ? helixPoints3D(p.x, p.y, toolRadius, geometry.totalDepth, feeds.stepdown, feeds.startZ)
-        : standardHolePoints3D(p.x, p.y, toolRadius, geometry.totalDepth, feeds.stepdown, feeds.startZ)
+        ? helixPoints3D(p.x, p.y, toolRadius, geometry.totalDepth, feeds.stepdown, feeds.startZ, tabsConfig)
+        : standardHolePoints3D(p.x, p.y, toolRadius, geometry.totalDepth, feeds.stepdown, feeds.startZ, tabsConfig)
     const pathGeometry = new THREE.BufferGeometry().setFromPoints(pathPoints)
     const pathLine = new THREE.Line(pathGeometry, new THREE.LineBasicMaterial({ color: theme.toolpath }))
     objects.push(pathLine)

@@ -46,6 +46,8 @@ import {
   isCircleHoleCountValid,
   isStartZValid,
   isStepdownValid,
+  isTabHeightValid,
+  isTabWidthValid,
   isToolDiameterValid,
   machineFitWarnings,
 } from './lib/validation'
@@ -178,7 +180,9 @@ function App() {
     isToolDiameterValid(params.geometry) &&
     isStepdownValid(params.feeds) &&
     isStartZValid(params.feeds) &&
-    isCircleHoleCountValid(params.geometry)
+    isCircleHoleCountValid(params.geometry) &&
+    isTabHeightValid(params.geometry) &&
+    isTabWidthValid(params.geometry)
   const fitWarnings = machineFitWarnings(params, machine)
   const step4BadgeInfo = step4Badge(generatedGCode, fitWarnings)
   // Memoized: this feeds Scene3D's content-rebuild effect deps, which

@@ -3,8 +3,11 @@ import type { WizardParams } from '../../types/wizard'
 import type { MachineSettings } from '../../types/machine'
 import {
   isCircleHoleCountValid,
+  isTabHeightValid,
+  isTabWidthValid,
   isToolDiameterValid,
   MAX_CIRCLE_HOLE_COUNT,
+  MAX_TAB_COUNT,
 } from '../../lib/validation'
 import { POSITIONING_META } from '../../config/positioningMeta'
 import { FieldRow, inputClass } from './FieldRow'
@@ -83,6 +86,10 @@ export function Step2Geometry({ params, onChange, machine }: Step2GeometryProps)
   )
   const offsetXField = useNumberField(geometry.offsetX, (v) => updateGeometry({ offsetX: v }))
   const offsetYField = useNumberField(geometry.offsetY, (v) => updateGeometry({ offsetY: v }))
+
+  const tabHeightField = useNumberField(geometry.tabHeight, (v) => updateGeometry({ tabHeight: v }))
+  const tabWidthField = useNumberField(geometry.tabWidth, (v) => updateGeometry({ tabWidth: v }))
+  const tabCountField = useNumberField(geometry.tabCount, (v) => updateGeometry({ tabCount: v }))
 
   return (
     <div className="flex flex-col gap-6">
@@ -210,6 +217,52 @@ export function Step2Geometry({ params, onChange, machine }: Step2GeometryProps)
           />
         </FieldRow>
       )}
+
+      <div className="border-t border-slate-200 pt-4 dark:border-slate-800">
+        <label className="mb-2 flex items-center gap-2 text-sm font-medium text-slate-700 dark:text-slate-300">
+          <input
+            type="checkbox"
+            checked={geometry.tabsEnabled}
+            onChange={(e) => updateGeometry({ tabsEnabled: e.target.checked })}
+            className="h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+          />
+          Enable Tabs
+        </label>
+        <p className="mb-2 text-sm text-slate-500 dark:text-slate-400">
+          Small uncut bridges near the bottom of the cut, so a through-hole's center plug stays
+          attached to the stock instead of dropping free. Forces G1 interpolation (see Step 4).
+        </p>
+        {geometry.tabsEnabled && (
+          <div className="flex flex-col gap-4">
+            <FieldRow label="Tab Height [mm]">
+              <input type="number" step="0.1" min="0" className={inputClass} {...tabHeightField} />
+            </FieldRow>
+            {!isTabHeightValid(geometry) && (
+              <p className="text-sm text-red-600 dark:text-red-400">
+                Tab height must be greater than 0 and less than Total Depth.
+              </p>
+            )}
+            <FieldRow label="Tab Width [mm]">
+              <input type="number" step="0.1" min="0" className={inputClass} {...tabWidthField} />
+            </FieldRow>
+            <FieldRow label="Tab Count">
+              <input
+                type="number"
+                step="1"
+                min="1"
+                max={MAX_TAB_COUNT}
+                className={inputClass}
+                {...tabCountField}
+              />
+            </FieldRow>
+            {!isTabWidthValid(geometry) && (
+              <p className="text-sm text-red-600 dark:text-red-400">
+                Tab count × width can't reach the toolpath's full circumference.
+              </p>
+            )}
+          </div>
+        )}
+      </div>
 
       <div className="border-t border-slate-200 pt-4 dark:border-slate-800">
         <span className="mb-2 block text-sm font-medium text-slate-700 dark:text-slate-300">

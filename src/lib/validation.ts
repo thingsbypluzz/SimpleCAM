@@ -26,6 +26,30 @@ export function isCircleHoleCountValid(geometry: GeometryParams): boolean {
   return geometry.positioning !== 'circle' || geometry.circleHoleCount <= MAX_CIRCLE_HOLE_COUNT
 }
 
+// Purely arbitrary sanity ceiling (BL-14), same category as
+// MAX_CIRCLE_HOLE_COUNT above — a spinner/typing bound, not derived from
+// anything physical.
+export const MAX_TAB_COUNT = 20
+
+// BL-14: tabHeight carves out the bottom of the cut, so it must leave
+// something above it — 0 or negative is meaningless, and >= totalDepth
+// would mean the entire cut is "tab band" (no normal full-circle cutting
+// at all). Vacuously valid with tabs off, same pattern as
+// isCircleHoleCountValid above.
+export function isTabHeightValid(geometry: GeometryParams): boolean {
+  return !geometry.tabsEnabled || (geometry.tabHeight > 0 && geometry.tabHeight < geometry.totalDepth)
+}
+
+// tabCount * tabWidth is the total arc length tabs would consume around
+// the toolpath circle — at or past the full circumference, tabs overlap
+// or swallow the whole ring, leaving nothing to cut.
+export function isTabWidthValid(geometry: GeometryParams): boolean {
+  if (!geometry.tabsEnabled) return true
+  const toolPathRadius = Math.max(0, (geometry.holeDiameter - geometry.toolDiameter) / 2)
+  const circumference = 2 * Math.PI * toolPathRadius
+  return geometry.tabCount * geometry.tabWidth < circumference
+}
+
 // X/Y extent of the resolved pattern, hole footprint included (radius, not
 // just center points) — the same bounding-box math buildScene.ts uses for
 // 3D Preview framing, computed fresh in CNC space rather than reusing its

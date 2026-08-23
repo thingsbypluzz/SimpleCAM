@@ -38,7 +38,7 @@ export function Step4Output({
   onSaveToPreset,
   warnings,
 }: Step4OutputProps) {
-  const { output } = params
+  const { output, geometry } = params
   const [copied, setCopied] = useState(false)
   const [savedSlot, setSavedSlot] = useState<PresetSlotId | null>(null)
 
@@ -81,23 +81,32 @@ export function Step4Output({
         <div className="flex items-center gap-2 pt-2 text-sm text-slate-700 dark:text-slate-300">
           <span>Circle interpolation:</span>
           <div className="flex gap-2">
-            {(['arc', 'linear'] as const).map((mode) => (
-              <button
-                key={mode}
-                type="button"
-                onClick={() => updateOutput({ interpolation: mode })}
-                className={[
-                  'rounded-md border px-2.5 py-1 text-xs font-medium transition',
-                  output.interpolation === mode
-                    ? 'border-indigo-500 bg-indigo-50 text-indigo-700 dark:bg-indigo-950/40 dark:text-indigo-300'
-                    : 'border-slate-200 text-slate-600 hover:border-slate-300 dark:border-slate-700 dark:text-slate-400',
-                ].join(' ')}
-              >
-                {mode === 'arc' ? 'G2/G3 (arcs)' : 'G1 (segments)'}
-              </button>
-            ))}
+            {(['arc', 'linear'] as const).map((mode) => {
+              const isSelected = geometry.tabsEnabled ? mode === 'linear' : output.interpolation === mode
+              return (
+                <button
+                  key={mode}
+                  type="button"
+                  disabled={geometry.tabsEnabled}
+                  onClick={() => updateOutput({ interpolation: mode })}
+                  className={[
+                    'rounded-md border px-2.5 py-1 text-xs font-medium transition disabled:cursor-not-allowed disabled:opacity-50',
+                    isSelected
+                      ? 'border-indigo-500 bg-indigo-50 text-indigo-700 dark:bg-indigo-950/40 dark:text-indigo-300'
+                      : 'border-slate-200 text-slate-600 hover:border-slate-300 dark:border-slate-700 dark:text-slate-400',
+                  ].join(' ')}
+                >
+                  {mode === 'arc' ? 'G2/G3 (arcs)' : 'G1 (segments)'}
+                </button>
+              )
+            })}
           </div>
         </div>
+        {geometry.tabsEnabled && (
+          <p className="text-xs text-slate-500 dark:text-slate-400">
+            G2/G3 disabled — Tabs (Step 2) require G1 interpolation.
+          </p>
+        )}
       </div>
 
       {!canGenerate && (

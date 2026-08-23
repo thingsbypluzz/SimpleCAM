@@ -116,4 +116,46 @@ describe('generateStandardHole', () => {
     expect(lines[lines.length - 2]).not.toBe('G0 X0 Y0')
     expect(lines[lines.length - 1]).toBe('M30')
   })
+
+  describe('tabs (BL-14)', () => {
+    it('forces G1 even when arc interpolation is selected', () => {
+      const lines = generate(
+        buildParams({
+          geometry: { totalDepth: 4, tabsEnabled: true, tabHeight: 1, tabCount: 4, tabWidth: 1 },
+          feeds: { stepdown: 1 },
+          output: { interpolation: 'arc' },
+        }),
+      )
+      expect(lines.some((l) => l.startsWith('G3'))).toBe(false)
+      expect(lines.some((l) => l.startsWith('G1 X'))).toBe(true)
+    })
+
+    it('skips tab arcs on every pass at or below the tab-band top, cutting normally above it', () => {
+      const lines = generate(
+        buildParams({
+          geometry: { totalDepth: 4, tabsEnabled: true, tabHeight: 1, tabCount: 3, tabWidth: 1 },
+          feeds: { stepdown: 1 },
+        }),
+      )
+      // Tab-band top = -(4-1) = -3 — passes at -1/-2 are above it (plain
+      // full circles), passes at -3/-4 are within it (tabbed).
+      expect(lines).toContain('G1 Z-1 F300')
+      expect(lines).toContain('G1 Z-2 F300')
+      expect(lines).toContain('G1 Z-3 F300')
+      expect(lines).toContain('G1 Z-4 F300')
+      // Lift-height lines (liftZ = tab-band top = -3) only appear from the
+      // tabbed passes onward.
+      expect(lines.some((l) => l.startsWith('G1 X') && l.includes('Z-3 '))).toBe(true)
+    })
+
+    it('still reaches exactly -totalDepth on the last pass', () => {
+      const lines = generate(
+        buildParams({
+          geometry: { totalDepth: 4, tabsEnabled: true, tabHeight: 1.5, tabCount: 2, tabWidth: 1 },
+          feeds: { stepdown: 1 },
+        }),
+      )
+      expect(lines.some((l) => l.startsWith('G1 X') && l.includes('Z-4 '))).toBe(true)
+    })
+  })
 })

@@ -945,6 +945,121 @@ przeglądu przez użytkownika.
   nieruszany — jego `onChange` już zapisuje surowy string wprost do
   `text`, bez przechodzenia przez `Number()` przed wyświetleniem, więc
   nigdy nie miał tego buga.
+- **Tabs (mostki) dla operacji Hole(s) (`BL-14`, `0.12.0`).** Helix i
+  Standard Hole tną pojedynczy pierścień (promień ścieżki =
+  (holeDiameter−toolDiameter)/2), nie czyszczą kieszeni — przy
+  przewierceniu na wylot środkowy "korek" jest całkowicie wolny, gdy
+  pierścień się zamknie, chyba że coś go trzyma. Sesja `/grill-me`
+  ustaliła pełny design, dodatkowo zweryfikowany przez osobny przegląd
+  poprawności matematyki/algorytmu PRZED implementacją (wychwycił dwa
+  realne bugi w pierwszym szkicu, oba opisane niżej) — coś, czego
+  wcześniejsze sesje w tym projekcie nie robiły, uzasadnione tym, że
+  błąd tutaj ma realne znaczenie fizyczne (mostki to jedyne, co trzyma
+  wyciętą część, nie tylko kosmetyka UI).
+
+  **Zakres:** obie metody (Helix i Standard Hole), jednolicie dla
+  każdego otworu we wzorcu — jeden zestaw parametrów mostków na job,
+  spójne z resztą appki ("jedno narzędzie/operacja na wygenerowany
+  plik"). Nowa sekcja na Kroku 2 (`Step2Geometry.tsx`), schowana za
+  checkboxem "Enable Tabs", za tym samym `border-t` co Offset (Offset
+  zostaje ostatnią sekcją). Trzy pola przez istniejący
+  `useNumberField()`: **Tab Height** [mm] (jak głęboko od dna sięga
+  pasmo mostków), **Tab Width** [mm] — długość łuku, nie stopnie, bo
+  fizyczny mostek mierzy się w mm niezależnie od średnicy otworu —
+  **Tab Count**. Rozstawienie automatyczne i równomierne, bez pola na
+  kąt startowy.
+
+  **Mechanika (silnik, `src/lib/tabs.ts` + `helix.ts`/`standardHole.ts`):**
+  wszystko płycej niż `totalDepth − tabHeight` tnie się bez zmian (pełny
+  pierścień — korek trzyma jeszcze materiał poniżej). Gdy cięcie
+  dochodzi do ostatnich `tabHeight` mm ("pasmo mostków"), ruch
+  przechodzi na **płaskie** przejścia co `stepdown` (reużywa istniejący
+  parametr, żadnego nowego) — dla Standard Hole to nic nowego (jego
+  przejścia są już płaskie, wybór między pełnym okręgiem a wersją z
+  mostkami jest atomowy per-przejście, bez przebudowy pętli); dla
+  Helixa spirala celowo skraca się dokładnie do góry pasma (drugie,
+  niezależne wywołanie `computeDepthPasses()` na skróconą głębokość),
+  po czym płaskie przejścia z mostkami przejmują resztę, **zastępując**
+  dawną pojedynczą płaską "flat finishing pass" na końcu. Każde
+  przejście w paśmie pomija łuk mostka: najazd dokładnie na
+  `−(totalDepth − tabHeight)` (góra pasma — reużyta jako wysokość
+  najazdu, żadnego osobnego parametru), przejazd nad mostkiem na tej
+  wysokości, powrót w dół. Najazd/powrót to zawsze osobne, czysto
+  pionowe linie G1 przy stałym XY — nigdy ruch po przekątnej przez
+  materiał mostka.
+
+  **Interpolacja:** mostki wymuszają G1 dla **całego** programu, nie
+  tylko przejść w paśmie — prościej niż emitowanie dzielonych łuków
+  G2/G3 wokół przerw. Przełącznik interpolacji na Kroku 4
+  (`Step4Output.tsx`) wyszarza się (wymuszone G1, nieklikalne) z
+  komunikatem wyjaśniającym, gdy mostki są włączone; sama zapisana
+  wartość `output.interpolation` zostaje nietknięta (tylko ignorowana
+  na czas mostków, znów aktywna po ich wyłączeniu — bez ukrytego stanu
+  "zapamiętanej" poprzedniej wartości).
+
+  **Walidacja** (`src/lib/validation.ts`, ten sam wzorzec co reszta):
+  `isTabHeightValid()` — `0 < tabHeight < totalDepth`;
+  `isTabWidthValid()` — `tabCount × tabWidth <` obwód ścieżki narzędzia
+  (inaczej mostki nachodzą na siebie albo konsumują cały pierścień).
+  Obie prawdziwe wprost, gdy mostki wyłączone. `MAX_TAB_COUNT = 20` —
+  czysto arbitralny sufit spinnera, ta sama kategoria co
+  `MAX_CIRCLE_HOLE_COUNT` (`BL-1`).
+
+  **`src/lib/tabs.ts`** — jedyne nowe źródło geometrii.
+  `computeTabRanges(tabCount, tabWidth, radius)`: kąty mostków
+  równomierne, przesunięte w fazie o pół kroku (środek pierwszego
+  mostka na `step/2`, nie na kącie 0) — punkt startowy każdego
+  przejścia (kąt 0) nigdy nie trafia w mostek, i przy założeniu
+  walidacji (`tabCount×tabWidth < obwód`) żaden zakres mostka nigdy nie
+  wychodzi poza `[0, 2π]` — zero obsługi zawijania kąta gdziekolwiek.
+  `tabbedCirclePass()`: **nie** jest zwykłym próbkowaniem co 5° (72
+  segmenty, jak `circle.ts`) — pierwszy szkic tak robił i przegląd
+  poprawności wychwycił realny bug: mostek węższy niż jedna próbka
+  mógł wypaść między próbkami i zostać wycięty w całości, a nawet gdy
+  wykryty, najazd/powrót łapały się na najbliższą próbkę zamiast na
+  prawdziwą granicę, więc ocalałe mostki wychodziły systematycznie
+  szersze niż zadane. Naprawione: lista kątów to **suma** równomiernego
+  próbkowania (płynny ruch tnący między mostkami) **i** dokładnych
+  granic każdego mostka wymuszonych jako punkty łamania — gwarantuje
+  wykrycie i dokładny rozmiar każdego mostka niezależnie od
+  rozdzielczości próbkowania, bez potrzeby osobnej walidacji
+  "minimalnej szerokości mostka".
+
+  **Drugi bug złapany w przeglądzie:** stara, bezwarunkowa "flat
+  finishing pass" na końcu `helixToolpath()` musiała zniknąć dla ścieżki
+  z mostkami — bez tego ostatnie przejście pętli pasma mostków (już
+  poprawnie kończące się na `−totalDepth`) zostałoby przykryte jeszcze
+  jednym, zwykłym pełnym okręgiem, po cichu kasując wszystkie mostki.
+  Ustrukturyzowane jako dwie w pełni osobne gałęzie (`if (tabsEnabled)
+  {...} else {...}`, ta druga bit-identyczna z kodem sprzed tej
+  zmiany), nie warunek doklejony na wspólny ogon — żeby nie dało się
+  tego przypadkiem cofnąć. Test `helix.test.ts` sprawdza to wprost:
+  dokładnie jedna linia `G1 Z-4 F300` (jedyne miejsce, skąd taka goła
+  linia Z może pochodzić — spirala nigdy jej nie emituje).
+
+  **Podglądy 2D i 3D renderują realne przerwy** (nie odłożone na
+  później — to fizycznie istotna funkcja, nieaktualny podgląd byłby
+  tu bardziej ryzykowny niż zwykle). `drawToolpath.ts`:
+  `drawGappedCircle()` zamiast pojedynczego pełnego łuku dla obrysu
+  otworu i ścieżki narzędzia — konwertuje kąty świata (matematyczna
+  konwencja, jak w `tabs.ts`) na kąty canvasa (odwrócone, bo
+  `worldToScreen` odbija oś Y). `buildScene.ts`:
+  `tabbedCirclePoints3D()` lustrzane wobec `tabbedCirclePass()`, ta
+  sama unia próbkowania+granic, tylko emituje `Vector3` zamiast linii
+  G-code — `helixPoints3D`/`standardHolePoints3D` dostały opcjonalny
+  parametr `tabs` i te same dwie gałęzie co silnik. **Świadomie poza
+  zakresem:** bryła otworu (półprzezroczysty cylinder) zostaje pełnym,
+  niepodziurawionym kształtem — to i tak było już zgrubne przybliżenie
+  (opacity 0.12), nie dosłowny kształt; tylko **linia ścieżki narzędzia**
+  (2D i 3D) dostała dokładną geometrię przerw, bo to ona precyzyjnie
+  pokazuje, gdzie narzędzie faktycznie jedzie. Wypełnienie otworu w 2D
+  (`holeFill`) też zostaje pełnym dyskiem z tego samego powodu — sam
+  obrys (`holeStroke`) i ścieżka narzędzia dostały przerwy.
+
+  **Branch `add-tabs`**, nie prosto na `main` (w przeciwieństwie do
+  wcześniejszych sesji w tym projekcie) — świadoma decyzja użytkownika:
+  ta zmiana dotyka silnika G-code nową geometrią o realnym znaczeniu
+  fizycznym, warto ją odizolować do potwierdzenia.
 - **`.gitignore` musi wykluczać `.claude/`** — Tailwind v4
   (`@tailwindcss/vite`) auto-skanuje cały katalog projektu pod kątem nazw
   klas i respektuje tylko `.gitignore` jako listę wykluczeń (bez niego
@@ -1088,7 +1203,11 @@ src/
                               (i na `Step3Feeds.tsx`) idą od `0.11.2` przez
                               `useNumberField()` — patrz niżej i "Pola
                               liczbowe w wizardzie" w "Kluczowe decyzje
-                              projektowe"
+                              projektowe". Od `0.12.0` (`BL-14`) też sekcja
+                              Tabs (checkbox "Enable Tabs" + Height/Width/
+                              Count, za kolejnym `border-t`, przed Offset)
+                              — patrz "Tabs (mostki)..." w "Kluczowe
+                              decyzje projektowe"
   components/wizard/useNumberField.ts — hook `useNumberField(value, onCommit)`
                               (`0.11.2`) — oddziela wyświetlany tekst
                               inputa od zatwierdzonej wartości, żeby pole
@@ -1141,7 +1260,13 @@ src/
                                (mount, Fit View, zmiana selekcji overlayu).
                                Reużywa `resolvePoints()` z
                                `lib/positioning.ts` — geometria liczona raz,
-                               wspólnie z silnikiem
+                               wspólnie z silnikiem. Od `0.12.0` (`BL-14`):
+                               `drawGappedCircle()` zamiast pojedynczego
+                               pełnego `ctx.arc()` dla obrysu otworu i
+                               ścieżki narzędzia, gdy `tabsEnabled` —
+                               konwertuje kąty świata (`lib/tabs.ts`) na
+                               kąty canvasa (odwrócone, bo `worldToScreen`
+                               odbija oś Y)
   components/preview3d/     — podgląd 3D (Etap 4), doładowywany leniwie
     Scene3D.tsx                — React wrapper: scena/kamera/renderer/
                                OrbitControls, ResizeObserver, przyciski
@@ -1289,6 +1414,15 @@ src/
                                `buildScene.ts` pod kątem `.position.set(`
                                używających `p.x`/`p.y` bezpośrednio, nie tylko
                                pod kątem samej definicji `toThree()`.
+                               Od `0.12.0` (`BL-14`): `tabbedCirclePoints3D()`
+                               (lustrzane wobec `lib/tabs.ts`'s
+                               `tabbedCirclePass()`, emituje `Vector3`
+                               zamiast linii G-code) — `helixPoints3D`/
+                               `standardHolePoints3D` dostały opcjonalny
+                               parametr `tabs` i te same dwie gałęzie co
+                               silnik. Bryła otworu (cylinder) świadomie
+                               zostaje pełnym kształtem — patrz "Tabs
+                               (mostki)..." w "Kluczowe decyzje projektowe"
   lib/                       — czysta logika generowania G-code (Etap 1)
     format.ts                 — formatowanie liczb w G-code (4 miejsca po
                                  przecinku, bez zbędnych zer, bez "-0")
@@ -1339,13 +1473,40 @@ src/
                                  "Kluczowe decyzje projektowe" po pełny opis
     helix.ts / standardHole.ts   — generateHelix(params) /
                                  generateStandardHole(params) — publiczne
-                                 funkcje `(WizardParams) => string[]`
+                                 funkcje `(WizardParams) => string[]`. Od
+                                 `0.12.0` (`BL-14`): gdy
+                                 `geometry.tabsEnabled`, przełączają się na
+                                 płaskie przejścia z pominięciem łuków
+                                 mostków w ostatnich `tabHeight` mm —
+                                 `helixToolpath()` skraca spiralę dokładnie
+                                 do góry tego pasma (druga, niezależna
+                                 `computeDepthPasses()`), zastępując dawną
+                                 pojedynczą "flat finishing pass";
+                                 `standardHoleToolpath()` przełącza
+                                 pojedyncze przejścia atomowo, bez
+                                 przebudowy pętli. Patrz "Tabs (mostki) dla
+                                 operacji Hole(s)" w "Kluczowe decyzje
+                                 projektowe" po pełny opis, oraz `tabs.ts`
+                                 niżej
+    tabs.ts                      — `computeTabRanges()`/`tabbedCirclePass()`
+                                 (`BL-14`, `0.12.0`) — cała nowa geometria
+                                 mostków, współdzielona przez
+                                 `helix.ts`/`standardHole.ts`. Kąty mostków
+                                 wymuszone jako dokładne punkty łamania w
+                                 przejściu (nie tylko próbkowanie co 5°) —
+                                 patrz "Tabs..." w "Kluczowe decyzje
+                                 projektowe" po pełny opis dwóch bugów
+                                 złapanych w przeglądzie przed
+                                 implementacją
     validation.ts                — isToolDiameterValid, isStepdownValid —
                                  blokują przycisk Generate na Kroku 4 i
                                  pokazują inline error w Kroku 2/3. Też:
                                  isCircleHoleCountValid (`BL-1`, `0.8.11`)
                                  — twardy limit, arbitralne 100, wyciszony
-                                 poza trybem circle; i (od `BL-9`):
+                                 poza trybem circle; isTabHeightValid/
+                                 isTabWidthValid (`BL-14`, `0.12.0`) — ten
+                                 sam wzorzec, wyciszone gdy tabsEnabled
+                                 false; i (od `BL-9`):
                                  patternSpan/zSpan/machineFitWarnings —
                                  nieblokujący soft-warning na Kroku 4,
                                  patrz "Machine Settings" w "Kluczowych

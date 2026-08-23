@@ -142,4 +142,47 @@ describe('generateHelix', () => {
     expect(withoutFooter[withoutFooter.length - 2]).not.toBe('G0 X0 Y0')
     expect(withoutFooter[withoutFooter.length - 1]).toBe('M30')
   })
+
+  describe('tabs (BL-14)', () => {
+    it('forces G1 even when arc interpolation is selected', () => {
+      const lines = generate(
+        buildParams({
+          geometry: { totalDepth: 4, tabsEnabled: true, tabHeight: 1, tabCount: 4, tabWidth: 1 },
+          feeds: { stepdown: 1 },
+          output: { interpolation: 'arc' },
+        }),
+      )
+      expect(lines.some((l) => l.startsWith('G3'))).toBe(false)
+      expect(lines.some((l) => l.startsWith('G1 X'))).toBe(true)
+    })
+
+    it('shortens the spiral to the tab-band top, then lifts over each tab down to exactly -totalDepth', () => {
+      const lines = generate(
+        buildParams({
+          geometry: { totalDepth: 4, tabsEnabled: true, tabHeight: 1, tabCount: 3, tabWidth: 1 },
+          feeds: { stepdown: 1 },
+        }),
+      )
+      // Tab-band top = -(4-1) = -3, reused as the lift height.
+      expect(lines.some((l) => l.includes('Z-3 '))).toBe(true)
+      // The tab-band loop still reaches exactly -totalDepth on its last pass.
+      expect(lines.some((l) => l.startsWith('G1 X') && l.includes('Z-4 '))).toBe(true)
+    })
+
+    it('does not run the old flat finishing pass on top of the tabbed band (would erase every tab)', () => {
+      const lines = generate(
+        buildParams({
+          geometry: { totalDepth: 4, tabsEnabled: true, tabHeight: 1, tabCount: 3, tabWidth: 1 },
+          feeds: { stepdown: 1 },
+        }),
+      )
+      // Each tab-band pass is preceded by its own explicit bare `G1 Z<depth>
+      // F<plungeRate>` plunge line (mirroring standardHoleToolpath) — a
+      // stray old finishing pass would add a second one reaching -4, since
+      // that's the only kind of line this shape can come from (the spiral
+      // itself never emits a bare Z-only line).
+      const plungeToFullDepth = lines.filter((l) => l === 'G1 Z-4 F300')
+      expect(plungeToFullDepth).toHaveLength(1)
+    })
+  })
 })

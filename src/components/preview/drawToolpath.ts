@@ -1,5 +1,6 @@
 import { getFixedColors, getPaletteAccents, type PaletteId } from '../../config/palettes'
 import { resolvePoints } from '../../lib/positioning'
+import { computeTabRanges, type TabRange } from '../../lib/tabs'
 import type { WizardParams } from '../../types/wizard'
 import { type Camera2D, type DataBounds, worldToScreen } from './camera2d'
 
@@ -39,6 +40,43 @@ function buildTheme(paletteId: PaletteId, isDark: boolean): Theme {
     text: fixed.text,
     offset: fixed.offset,
   }
+}
+
+// Strokes a circle, skipping the angular ranges in `tabRanges` (BL-14) —
+// leaves a visible gap wherever the toolpath does. `tabRanges` are in
+// world/math angle convention (0 = +X, increasing = counterclockwise,
+// same as tabs.ts and the engine); canvas's ctx.arc takes screen angles,
+// which run the opposite way here since worldToScreen flips Y — negating
+// both bounds (and swapping them back into increasing order) converts
+// between the two without changing which points get traced.
+function drawGappedCircle(
+  ctx: CanvasRenderingContext2D,
+  px: number,
+  py: number,
+  radius: number,
+  tabRanges: TabRange[],
+) {
+  if (tabRanges.length === 0) {
+    ctx.beginPath()
+    ctx.arc(px, py, radius, 0, Math.PI * 2)
+    ctx.stroke()
+    return
+  }
+
+  const drawArc = (worldLo: number, worldHi: number) => {
+    if (worldHi <= worldLo) return
+    ctx.beginPath()
+    ctx.arc(px, py, radius, -worldHi, -worldLo)
+    ctx.stroke()
+  }
+
+  const sorted = [...tabRanges].sort((a, b) => a.startAngle - b.startAngle)
+  let cursor = 0
+  for (const range of sorted) {
+    drawArc(cursor, range.startAngle)
+    cursor = range.endAngle
+  }
+  drawArc(cursor, Math.PI * 2)
 }
 
 // Arrowhead pointing along an arbitrary unit direction (dirX, dirY), tip at
@@ -157,7 +195,17 @@ function drawPatternGeometry(
     ctx.setLineDash([])
   }
 
-  // Each hole: final bore outline (fill) + tool-center toolpath (stroke)
+  // Tab angular ranges (BL-14) — same for every hole in this pattern
+  // (angle only depends on tabWidth/toolPathRadius, not hole position),
+  // so computed once outside the loop below.
+  const tabRanges = geometry.tabsEnabled
+    ? computeTabRanges(geometry.tabCount, geometry.tabWidth, toolPathRadius)
+    : []
+
+  // Each hole: final bore outline (fill) + tool-center toolpath (stroke).
+  // The fill stays a full disc even with tabs (rough "material removed
+  // here" indicator, not literal — same simplification as the 3D bore
+  // cylinder mesh); the outline and toolpath strokes get real gaps.
   for (const p of points) {
     const [px, py] = toPx(p.x, p.y)
 
@@ -167,13 +215,11 @@ function drawPatternGeometry(
     ctx.fill()
     ctx.strokeStyle = theme.holeStroke
     ctx.lineWidth = 1
-    ctx.stroke()
+    drawGappedCircle(ctx, px, py, holeRadius * scale, tabRanges)
 
-    ctx.beginPath()
-    ctx.arc(px, py, toolPathRadius * scale, 0, Math.PI * 2)
     ctx.strokeStyle = theme.toolpath
     ctx.lineWidth = 1.5
-    ctx.stroke()
+    drawGappedCircle(ctx, px, py, toolPathRadius * scale, tabRanges)
 
     ctx.beginPath()
     ctx.arc(px, py, 2, 0, Math.PI * 2)
