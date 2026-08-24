@@ -490,6 +490,56 @@ nowa funkcjonalność. Nie zaczynać bez wyraźnego "przechodzimy do X".
   aktualnymi best practices frontendowymi (breakpointy Tailwind już
   są w projekcie, ale nieużywane responsywnie poza defaultową
   szerokością).
+
+  Doprecyzowanie od użytkownika: koncepcja akordeonu 4 kroków
+  (rozwinięty panel + zwinięte paski, patrz "Layout wizarda" w
+  "Kluczowe decyzje projektowe") zostaje — to nie jest do
+  przeprojektowania, tylko do uelastycznienia. Dziś szerokości są
+  sztywne w px (`w-[420px]` na rozwinięty panel kroku, `w-20` na
+  zwinięty pasek — `App.tsx`), nieskalujące się z oknem. Docelowo
+  proporcjonalny podział szerokości między panel kroków a panel
+  podglądu 2D/3D/G-Code (np. ok. 40%/60%), ale z twardym minimalnym
+  szerokim floorem dla panelu kroków — poniżej pewnej szerokości
+  okna czytelność/wygoda formularzy w Kroku 2/3 (gęste pola, pary
+  X/Y w jednej linii z ikoną hint) się rozpada, więc proporcja nie
+  może schodzić do zera. Dokładna wartość progu/minimalnej szerokości
+  do ustalenia przy realnej implementacji, prawdopodobnie razem z
+  sesją `/grill-me` dla całego BL-8.
+- **`BL-15`** — **Podgląd 2D: mostki (tabs) nie są w ogóle widoczne w
+  miejscu przerwy.** Zgłoszone przez użytkownika: przy włączonych
+  mostkach `drawGappedCircle()` (`preview/drawToolpath.ts`) po prostu
+  nic nie rysuje na łuku mostka, więc w 2D wygląda to jak brakujący
+  fragment ścieżki/otworu (widać tylko dolny przejazd), nie jak
+  fizyczny mostek. Dwie zaproponowane opcje do wyboru przy
+  implementacji: (a) nie pokazywać mostków w 2D w ogóle — renderować
+  pełny okrąg, ignorując przerwy (2D staje się uproszczonym
+  podglądem, dokładna geometria zostaje w 3D), albo (b) rysować łuk
+  mostka przerywaną linią (`ctx.setLineDash()`) zamiast zostawiać
+  pustkę.
+- **`BL-16`** — **Krok 3: zmienić kolejność pól.** Docelowa kolejność:
+  Feedrate, Plunge Rate, Stepdown/Pitch, Start Z, Safe Z. Dziś w
+  `Step3Feeds.tsx` Stepdown/Pitch renderuje się jako pierwsze pole, nie
+  trzecie — czysto porządkowa zmiana JSX, bez zmian w logice/typach.
+- **`BL-17`** — **Artifact z umownymi nazwami elementów UI.** Osobny
+  Artifact pokazujący układ appki z opisanymi nazwami sekcji (np.
+  "STEP 1 SUMMARY", "Preview Section", "Header"), żeby w rozmowach
+  było jasne, o którym fragmencie UI mowa, bez opisywania go za każdym
+  razem słownie. Czysto dokumentacyjne, zero zmian w kodzie appki.
+- **`BL-18`** — **Zweryfikować kompatybilność wsteczną ze starszymi
+  przeglądarkami.** Zgłoszenie użytkownika: na Windows 8, w kilku
+  przeglądarkach, tylko sekcja Preview miała kolory zgodne z ustawioną
+  paletą — reszta (header, menu, STEP-y) renderowała się na biało, a
+  `SettingsModal` był półprzezroczysty i przez to nieczytelny.
+  Podejrzenie: różnice w obsłudze nowoczesnego CSS (Tailwind v4
+  CSS-first `@theme`/`@custom-variant dark`, prawdopodobnie kolory w
+  przestrzeni `oklch`, `backdrop-blur` na modalu) przez starsze silniki
+  przeglądarek. Wymaga: ustalenia realnego zakresu wspieranych
+  przeglądarek/wersji (projekt dotąd nie miał tej decyzji spisanej),
+  zreprodukowania problemu na starszym silniku, zidentyfikowania,
+  które konkretne właściwości CSS się nie renderują, i albo dodania
+  fallbacków, albo świadomej decyzji "nie wspieramy X" udokumentowanej
+  w tym pliku.
+
 Nie przeskakuj etapów bez pytania — każdy kończy się checkpointem do
 przeglądu przez użytkownika.
 
