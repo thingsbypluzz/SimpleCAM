@@ -422,6 +422,42 @@ Artifact szybko rozjeżdża się ze stanem faktycznym, dokładnie jak
 wcześniej rozjechał się sam CLAUDE.md względem kodu (patrz poprawki z
 2026-08-21 opisane przy Etapie 4).
 
+**`BL-17` zamknięte — "Interface Anatomy", Artifact z umownymi
+nazwami elementów UI:**
+**<https://claude.ai/code/artifact/ea21c02e-41ed-4bb5-90ec-48ae9a61c23e>**.
+Wszystkie mockupy jako ręcznie napisane SVG — po pierwszym realnym
+użyciu (feedback użytkownika: pomarańczowe tagi nachodzące
+bezpośrednio na wąskie regiony bywały nieczytelne/przycięte)
+przeprojektowane na pływające etykiety odsunięte poza mockup,
+połączone przerywaną linią + kropką-znacznikiem z regionem, który
+opisują. Po drugim realnym użyciu (prośba użytkownika o pełną
+hierarchię, nie tylko dwa oddzielne mockupy) rozbudowane do
+trzypoziomowej struktury "od ogółu do szczegółu":
+- **Poziom 1 — cała strona:** jeden mockup dzielący całą appkę na
+  `Header` / `Wizard Section` / `Preview Section`.
+- **Poziom 2 — wnętrze każdej sekcji:** trzy osobne mockupy, każdy
+  zoomowany na jeden region z Poziomu 1 — Wizard Section (`Step N
+  Summary`, `Active Step Panel`, `Step Panel Header`), Preview Section
+  (`Preview Tabs`, `Preview Viewport`), i Settings Modal (`Settings
+  Nav`, `Settings Nav Item`, `Settings Content`) — Settings Modal
+  dostał tu nowy termin `Settings Nav Item` (jeden wiersz listy sekcji,
+  np. "Machine"), którego wcześniej brakowało.
+- **Poziom 3 — słownictwo komponentów:** jeden mockup z 9 generycznymi
+  kontrolkami powtarzającymi się na każdym poziomie wyżej —
+  `Entry Field`, `Drop-down`, `Section Header`, `Hint Button`,
+  `Checkbox`, `Toggle`, `Tab`, `Badge`, `Icon Button`.
+
+Dwa osobne słowniczki pod mockupami (nazwy regionów, i osobno
+słownictwo komponentów) zamiast jednej wspólnej listy — inna kategoria
+pojęć. `Step Rail` z pierwszej wersji przemianowany na `Wizard Section`
+(ten sam fizyczny region, jedna nazwa zamiast dwóch dla tego samego
+miejsca — `Wizard Section` to nazwa wprowadzona przez użytkownika na
+Poziomie 1, `Step Rail` był zbędnym duplikatem). Czysto dokumentacyjne
+— zero zmian w kodzie appki, brak bumpa wersji/CHANGELOG. Ten Artifact
+nie podlega zasadzie synchronizacji wyżej (nie jest listą backlogu) —
+aktualizować go tylko jeśli realny layout appki się zmieni na tyle, że
+mockup przestanie być wierny.
+
 ## Przyszłe operacje (`OP-#`)
 
 Osobna, celowo **nie** `BL-#` kategoria — Outline/Pocket/Surface (patrz
@@ -516,11 +552,6 @@ nowa funkcjonalność. Nie zaczynać bez wyraźnego "przechodzimy do X".
   podglądem, dokładna geometria zostaje w 3D), albo (b) rysować łuk
   mostka przerywaną linią (`ctx.setLineDash()`) zamiast zostawiać
   pustkę.
-- **`BL-17`** — **Artifact z umownymi nazwami elementów UI.** Osobny
-  Artifact pokazujący układ appki z opisanymi nazwami sekcji (np.
-  "STEP 1 SUMMARY", "Preview Section", "Header"), żeby w rozmowach
-  było jasne, o którym fragmencie UI mowa, bez opisywania go za każdym
-  razem słownie. Czysto dokumentacyjne, zero zmian w kodzie appki.
 - **`BL-18`** — **Zweryfikować kompatybilność wsteczną ze starszymi
   przeglądarkami.** Zgłoszenie użytkownika: na Windows 8, w kilku
   przeglądarkach, tylko sekcja Preview miała kolory zgodne z ustawioną
