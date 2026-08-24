@@ -7,6 +7,18 @@ zgodne z [SemVer](https://semver.org/). Ten plik pozostaje głównym, czytelnym
 thingsbypluzz/SimpleCAM), ale to infrastruktura pod izolację pracy
 (branch/worktree per zadanie), nie zamiennik tego changeloga.
 
+## [0.12.4] — 2026-08-24
+
+### Zmieniono
+
+- **Settings: Machine travel X/Y/Z i Default Tab Settings w poziomym
+  wierszu.** Ten sam wzorzec `flex gap-4`/`min-w-0 flex-1` co pola
+  Kroku 2 (`0.12.2`) — spójność wizarda i Settings. Sekcja "Default Tab
+  Sizes" przemianowana na "Default Tab Settings", etykiety pól skrócone
+  do "Height [mm]" / "Width [mm]" / "Count" (kontekst z nagłówka
+  sekcji, ten sam wzorzec co skrócenie "Tab Height [mm]" na Kroku 2 w
+  `0.12.2`). Czysto kosmetyczne, zero zmian w logice/walidacji.
+
 ## [0.12.3] — 2026-08-24
 
 ### Zmieniono

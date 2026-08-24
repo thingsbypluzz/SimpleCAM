@@ -1457,7 +1457,16 @@ src/
                               nawigacji **"Tabs"** — "Default Tab Sizes",
                               świadomie nie w środku "Machine" (na
                               wyraźną prośbę użytkownika) — patrz "Tabs
-                              (mostki)..." wyżej
+                              (mostki)..." wyżej. Od `0.12.4`: pola X/Y/Z
+                              travel (Machine) i sekcja "Default Tab
+                              Sizes" (Tabs, przemianowana na "Default
+                              Tab Settings") renderują się w poziomym
+                              wierszu, ten sam wzorzec `flex gap-4`/
+                              `min-w-0 flex-1` co Krok 2 (`0.12.2`) —
+                              spójność wizarda i Settings. Etykiety pól
+                              skrócone do "Height [mm]"/"Width [mm]"/
+                              "Count" (kontekst z nagłówka sekcji).
+                              Czysto kosmetyczne
   components/wizard/        — komponenty poszczególnych kroków wizarda.
                               `Step1Positioning.tsx` = wyłącznie pattern
                               picker + placeholdery operacji, nic liczbowego;

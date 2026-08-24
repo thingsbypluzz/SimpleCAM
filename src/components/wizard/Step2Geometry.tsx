@@ -241,7 +241,7 @@ export function Step2Geometry({ params, onChange, machine }: Step2GeometryProps)
             onChange={(e) => {
               const enabled = e.target.checked
               // Checking the box always seeds height/width/count fresh
-              // from Settings > Machine's "Default Tab Sizes" — including
+              // from Settings > Tabs's "Default Tab Settings" — including
               // on a re-check after unchecking, which does mean a custom
               // edit made before unchecking is lost, not remembered. Kept
               // deliberately simple: there's no clean way to tell "user

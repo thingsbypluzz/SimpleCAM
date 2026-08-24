@@ -37,9 +37,9 @@ const FIELDS: { key: TravelField; label: string }[] = [
 // BL-14: template applied whenever "Enable Tabs" is checked on Step 2 —
 // see Step2Geometry.tsx and the note on MachineSettings itself.
 const TAB_DEFAULT_FIELDS: { key: TabDefaultField; label: string; step: string }[] = [
-  { key: 'defaultTabHeight', label: 'Default Tab Height [mm]', step: '0.1' },
-  { key: 'defaultTabWidth', label: 'Default Tab Width [mm]', step: '0.1' },
-  { key: 'defaultTabCount', label: 'Default Tab Count', step: '1' },
+  { key: 'defaultTabHeight', label: 'Height [mm]', step: '0.1' },
+  { key: 'defaultTabWidth', label: 'Width [mm]', step: '0.1' },
+  { key: 'defaultTabCount', label: 'Count', step: '1' },
 ]
 
 const DIALECT_OPTIONS: { value: Dialect; label: string }[] = [
@@ -165,27 +165,29 @@ export function SettingsModal({
                 Machine
               </h2>
 
-              <div className="flex flex-col gap-4">
+              <div className="flex gap-4">
                 {FIELDS.map((field) => (
-                  <label key={field.key} className="flex flex-col gap-1">
-                    <span className="flex items-center gap-2 text-sm font-medium text-slate-700 dark:text-slate-300">
-                      {field.label}
-                      {savedField === field.key && (
-                        <span className="text-xs font-normal text-emerald-600 dark:text-emerald-400">
-                          ✓ Saved
-                        </span>
-                      )}
-                    </span>
-                    <input
-                      type="number"
-                      step="1"
-                      min="0"
-                      className={inputClass}
-                      value={text[field.key]}
-                      onChange={(e) => setText((prev) => ({ ...prev, [field.key]: e.target.value }))}
-                      onBlur={() => handleBlur(field.key)}
-                    />
-                  </label>
+                  <div key={field.key} className="min-w-0 flex-1">
+                    <label className="flex flex-col gap-1">
+                      <span className="flex items-center gap-2 text-sm font-medium text-slate-700 dark:text-slate-300">
+                        {field.label}
+                        {savedField === field.key && (
+                          <span className="text-xs font-normal text-emerald-600 dark:text-emerald-400">
+                            ✓ Saved
+                          </span>
+                        )}
+                      </span>
+                      <input
+                        type="number"
+                        step="1"
+                        min="0"
+                        className={inputClass}
+                        value={text[field.key]}
+                        onChange={(e) => setText((prev) => ({ ...prev, [field.key]: e.target.value }))}
+                        onBlur={() => handleBlur(field.key)}
+                      />
+                    </label>
+                  </div>
                 ))}
               </div>
 
@@ -253,29 +255,35 @@ export function SettingsModal({
 
               <div className="flex flex-col gap-4">
                 <span className="text-sm font-medium text-slate-700 dark:text-slate-300">
-                  Default Tab Sizes
+                  Default Tab Settings
                 </span>
-                {TAB_DEFAULT_FIELDS.map((field) => (
-                  <label key={field.key} className="flex flex-col gap-1">
-                    <span className="flex items-center gap-2 text-sm font-medium text-slate-700 dark:text-slate-300">
-                      {field.label}
-                      {savedField === field.key && (
-                        <span className="text-xs font-normal text-emerald-600 dark:text-emerald-400">
-                          ✓ Saved
+                <div className="flex gap-4">
+                  {TAB_DEFAULT_FIELDS.map((field) => (
+                    <div key={field.key} className="min-w-0 flex-1">
+                      <label className="flex flex-col gap-1">
+                        <span className="flex items-center gap-2 text-sm font-medium text-slate-700 dark:text-slate-300">
+                          {field.label}
+                          {savedField === field.key && (
+                            <span className="text-xs font-normal text-emerald-600 dark:text-emerald-400">
+                              ✓ Saved
+                            </span>
+                          )}
                         </span>
-                      )}
-                    </span>
-                    <input
-                      type="number"
-                      step={field.step}
-                      min="0"
-                      className={inputClass}
-                      value={text[field.key]}
-                      onChange={(e) => setText((prev) => ({ ...prev, [field.key]: e.target.value }))}
-                      onBlur={() => handleBlur(field.key)}
-                    />
-                  </label>
-                ))}
+                        <input
+                          type="number"
+                          step={field.step}
+                          min="0"
+                          className={inputClass}
+                          value={text[field.key]}
+                          onChange={(e) =>
+                            setText((prev) => ({ ...prev, [field.key]: e.target.value }))
+                          }
+                          onBlur={() => handleBlur(field.key)}
+                        />
+                      </label>
+                    </div>
+                  ))}
+                </div>
               </div>
 
               <p className="text-sm text-slate-500 dark:text-slate-400">
