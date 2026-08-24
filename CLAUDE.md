@@ -1113,6 +1113,53 @@ przeglądu przez użytkownika.
   ostatnio wsiane" bez nowego stanu do śledzenia, a przewidywalne
   "zawsze zaczyna od Twojego defaultu" uznane za lepsze niż
   półpamiętające zachowanie.
+- **Grid/Grid Centered: kolaps do 2 symetrycznych otworów (`0.12.1`).**
+  Sesja `/grill-me` — punkt wyjścia: dwa otwory oddalone o zadaną z
+  rysunku technicznego odległość dają się dziś zrobić na 3 sposoby
+  (dwa Single Hole, Custom List, 2-Holes on Circle), ale najwygodniej
+  byłoby po prostu wpisać tę odległość jako Width albo Height w
+  istniejącym Rectangular Grid i zostawić drugi wymiar na 0 —
+  wcześniej silnik tego nie rozpoznawał i wiercił ten sam punkt
+  dwu-/czterokrotnie (4 nominalne rogi nakładają się parami, gdy jeden
+  bok = 0). Rozstrzygnięcia z grilla:
+  - **Zakres:** obie odmiany prostokąta — zwykły `grid` (róg-origin) i
+    `gridCentered` — dostają ten sam kolaps, mimo że tylko
+    `gridCentered` daje geometrycznie symetryczny wynik (`grid` daje
+    parę otwór-w-origin + otwór-przesunięty, nie symetryczną wokół
+    środka) — obie i tak rozwiązują ten sam problem "dwa otwory w
+    zadanej odległości".
+  - **Mechanizm:** specjalny przypadek wewnątrz gałęzi `'grid'`/
+    `'gridCentered'` w `rawPoints()` (`lib/positioning.ts`), **nie**
+    generyczny dedup w `resolvePoints()` — świadomie ograniczone tylko
+    do tych dwóch trybów. `circle` (np. `circleDiameter=0` wiercące N
+    razy w tym samym miejscu) i `custom` (zduplikowane wiersze w
+    textarea) zostają nietknięte — osobna decyzja, żeby nie zmieniać
+    niepowiązanego, wcześniej istniejącego zachowania przy okazji.
+  - **Warunek:** porównanie dokładne (`gridX === 0` / `gridY === 0`),
+    bez epsilon — spójne z tym, że pola idą przez `useNumberField()` i
+    komponują się z resztą UI, gdzie `0` wpisane wprost znaczy `0`.
+  - **Kolaps do 1 otworu** (oba wymiary `0` naraz) dozwolony po cichu
+    — silnik i tak wierci tylko raz, bez żadnej dodatkowej walidacji
+    blokującej Generate.
+  - **Etykiety** (`config/positioningMeta.ts`, `positioningLines()`/
+    `patternLabel()`): rozpoznają kolaps do 2 otworów i pokazują
+    `"2 HOLES (Nmm apart)"` / `"2 Holes (Nmm apart)"` zamiast
+    zdegenerowanie wyglądającego `"RECTANGLE (0×N)"`. Kolaps do 1
+    otworu (oba `0`) świadomie **nie** dostaje własnej etykiety —
+    zbyt rzadki przypadek, zostaje przy zwykłym `"(0×0)"` tekście.
+  - **Bez zmian:** ikona (`RectangleIcon`/`RectangleCenteredIcon`
+    zostają kluczowane wyłącznie po `PositioningMode`, nie po
+    wartościach `gridX`/`gridY`) i `patternSlug()` (nazwa pliku dalej
+    `grid`/`grid-centered`, bez kodowania kolapsu).
+  - **2D/3D Preview i `machineFitWarnings()`/`patternSpan()` bez
+    zmian** — wszystkie wołają `resolvePoints()` jako jedyne źródło
+    prawdy, więc dziedziczą poprawkę automatycznie; bounding box
+    (max−min) jest niewrażliwy na usunięcie zduplikowanych punktów.
+  - Nowa podpowiedź w UI pod polami Width/Height na Kroku 2
+    (`Step2Geometry.tsx`, przez istniejący `hint` prop `FieldRow` —
+    ten sam mechanizm co podpowiedź `"e.g. 10,10"` przy Custom Points)
+    — bo bez niej trik "ustaw 0" nie był w żaden sposób odkrywalny z
+    samego UI.
 - **`.gitignore` musi wykluczać `.claude/`** — Tailwind v4
   (`@tailwindcss/vite`) auto-skanuje cały katalog projektu pod kątem nazw
   klas i respektuje tylko `.gitignore` jako listę wykluczeń (bez niego
@@ -1229,7 +1276,18 @@ src/
                               (jednoliniowa etykieta presetu, używana przez
                               `lib/presetLabel.ts`), `patternSlug()`
                               (filename-safe slug, używany przez
-                              `lib/download.ts`) — patrz Etap 6
+                              `lib/download.ts`) — patrz Etap 6. Od `0.12.1`:
+                              `positioningLines()`/`patternLabel()`
+                              rozpoznają kolaps grid/gridCentered do 2
+                              otworów (`gridX===0` xor `gridY===0`, patrz
+                              `lib/positioning.ts` niżej) i pokazują
+                              `"2 HOLES (Nmm apart)"` zamiast zdegenerowanego
+                              `"RECTANGLE (0×N)"`; kolaps do 1 otworu (oba
+                              wymiary 0) świadomie NIE jest tu rozpoznawany,
+                              zostaje przy zwykłym tekście `"(0×0)"` —
+                              `patternSlug()`/ikona (`RectangleIcon`/
+                              `RectangleCenteredIcon`) bez zmian w obu
+                              przypadkach
   components/SettingsModal.tsx — modal Machine Settings (`BL-9`) — patrz
                               "Machine Settings" w sekcji "Kluczowe decyzje
                               projektowe" wyżej po pełny opis. Trzecia
@@ -1504,7 +1562,23 @@ src/
                                  w kolorze pozostałych ikon paska, nie amber
                                  — to tylko subtelny znacznik "offset
                                  ustawiony", nie druga wizualizacja kierunku
-                                 (patrz CHANGELOG 0.6.14).
+                                 (patrz CHANGELOG 0.6.14). Od `0.12.1`:
+                                 `grid`/`gridCentered` kolapsują do 2 (albo
+                                 1, gdy oba wymiary są 0) rzeczywistych
+                                 punktów, kiedy `gridX` lub `gridY` wynosi
+                                 dokładnie 0 — bez tego wszystkie 4 "rogi"
+                                 nakładałyby się parami, a silnik wierciłby
+                                 to samo miejsce dwu-/czterokrotnie. Prosty
+                                 sposób na "dwa otwory oddalone o zadaną
+                                 odległość" bez sięgania po Custom List czy
+                                 N-Holes Circle. Świadomie **nie** ruszone w
+                                 `circle`/`custom` (`circleDiameter=0` czy
+                                 duplikaty w Custom List zachowują dawne
+                                 zachowanie — wiercenie tego samego miejsca
+                                 wielokrotnie) — osobna decyzja z sesji
+                                 `/grill-me`, żeby nie zmieniać
+                                 niepowiązanego zachowania przy okazji.
+                                 Porównanie dokładne (`=== 0`), bez epsilon.
     circle.ts                  — fullCircleMove() — wspólna logika pełnego
                                  okręgu (płaskiego lub helikalnego) w obu
                                  trybach interpolacji (G2/G3 vs G1), używana

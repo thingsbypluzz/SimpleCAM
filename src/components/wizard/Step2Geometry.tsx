@@ -148,7 +148,7 @@ export function Step2Geometry({ params, onChange, machine }: Step2GeometryProps)
         <div className="flex flex-col gap-4">
           <div className="flex gap-4">
             <div className="min-w-0 flex-1">
-              <FieldRow label="Width (X) [mm]">
+              <FieldRow label="Width (X) [mm]" hint="Tip: set to 0 for 2 holes spaced by Height">
                 <input
                   type="number"
                   step="0.1"
@@ -160,7 +160,7 @@ export function Step2Geometry({ params, onChange, machine }: Step2GeometryProps)
               </FieldRow>
             </div>
             <div className="min-w-0 flex-1">
-              <FieldRow label="Height (Y) [mm]">
+              <FieldRow label="Height (Y) [mm]" hint="Tip: set to 0 for 2 holes spaced by Width">
                 <input
                   type="number"
                   step="0.1"

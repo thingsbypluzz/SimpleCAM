@@ -4,20 +4,34 @@ function rawPoints(geometry: GeometryParams): Point2D[] {
   switch (geometry.positioning) {
     case 'single':
       return [{ x: 0, y: 0 }]
-    case 'grid':
+    case 'grid': {
+      const { gridX, gridY } = geometry
+      // A rectangle collapses to 2 (or 1) distinct corners when a side is
+      // exactly 0 — drilling all 4 nominal corners would just hit the same
+      // spot 2-4 times. Ergonomic shortcut for "two holes N mm apart":
+      // leave the other side at the real distance and zero this one.
+      if (gridX === 0 && gridY === 0) return [{ x: 0, y: 0 }]
+      if (gridX === 0) return [{ x: 0, y: 0 }, { x: 0, y: gridY }]
+      if (gridY === 0) return [{ x: 0, y: 0 }, { x: gridX, y: 0 }]
       return [
         { x: 0, y: 0 },
-        { x: geometry.gridX, y: 0 },
-        { x: geometry.gridX, y: geometry.gridY },
-        { x: 0, y: geometry.gridY },
+        { x: gridX, y: 0 },
+        { x: gridX, y: gridY },
+        { x: 0, y: gridY },
       ]
-    case 'gridCentered':
+    }
+    case 'gridCentered': {
+      const { gridX, gridY } = geometry
+      if (gridX === 0 && gridY === 0) return [{ x: 0, y: 0 }]
+      if (gridX === 0) return [{ x: 0, y: -gridY / 2 }, { x: 0, y: gridY / 2 }]
+      if (gridY === 0) return [{ x: -gridX / 2, y: 0 }, { x: gridX / 2, y: 0 }]
       return [
-        { x: -geometry.gridX / 2, y: -geometry.gridY / 2 },
-        { x: geometry.gridX / 2, y: -geometry.gridY / 2 },
-        { x: geometry.gridX / 2, y: geometry.gridY / 2 },
-        { x: -geometry.gridX / 2, y: geometry.gridY / 2 },
+        { x: -gridX / 2, y: -gridY / 2 },
+        { x: gridX / 2, y: -gridY / 2 },
+        { x: gridX / 2, y: gridY / 2 },
+        { x: -gridX / 2, y: gridY / 2 },
       ]
+    }
     case 'circle': {
       // Guarded against fractional/negative hole counts (same defensive
       // pattern as the toolRadius clamp in buildScene.ts) — 0 holes just

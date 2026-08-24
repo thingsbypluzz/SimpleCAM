@@ -61,6 +61,19 @@ export function positioningIcon(mode: PositioningMode) {
   return POSITIONING_META[mode].Icon
 }
 
+// grid/gridCentered collapse to 2 holes when exactly one of gridX/gridY is
+// 0 (see resolvePoints() in lib/positioning.ts) — returns the surviving
+// distance in that case, so labeling can call it out instead of showing a
+// degenerate-looking "0×N" rectangle. Both-zero collapses too (1 hole,
+// resolvePoints() handles it) but isn't relabeled here — rare enough that
+// falling back to the plain "0×0" text is fine.
+function twoHoleDistance(geometry: GeometryParams): number | null {
+  const { gridX, gridY } = geometry
+  if (gridX === 0 && gridY !== 0) return gridY
+  if (gridY === 0 && gridX !== 0) return gridX
+  return null
+}
+
 // Short lines stacked in the narrow (80px) collapsed-bar badge — broken up
 // rather than one long string so each line stays readable at the tiny font
 // size the column allows.
@@ -68,10 +81,16 @@ export function positioningLines(geometry: GeometryParams): string[] {
   switch (geometry.positioning) {
     case 'single':
       return ['SINGLE', 'HOLE']
-    case 'grid':
+    case 'grid': {
+      const twoHole = twoHoleDistance(geometry)
+      if (twoHole !== null) return ['2 HOLES', `(${fmt(twoHole)}mm apart)`]
       return ['RECTANGLE', `(${fmt(geometry.gridX)}×${fmt(geometry.gridY)})`]
-    case 'gridCentered':
+    }
+    case 'gridCentered': {
+      const twoHole = twoHoleDistance(geometry)
+      if (twoHole !== null) return ['2 HOLES', `(${fmt(twoHole)}mm apart)`]
       return ['RECTANGLE', 'CENTERED', `(${fmt(geometry.gridX)}×${fmt(geometry.gridY)})`]
+    }
     case 'circle':
       return [`${Math.round(geometry.circleHoleCount)}-HOLES`, 'CIRCLE', `(⌀${fmt(geometry.circleDiameter)})`]
     case 'custom':
@@ -90,10 +109,16 @@ export function patternLabel(geometry: GeometryParams): string {
   switch (geometry.positioning) {
     case 'single':
       return 'Single Hole'
-    case 'grid':
+    case 'grid': {
+      const twoHole = twoHoleDistance(geometry)
+      if (twoHole !== null) return `2 Holes (${fmt(twoHole)}mm apart)`
       return `Rectangle ${fmt(geometry.gridX)}×${fmt(geometry.gridY)}`
-    case 'gridCentered':
+    }
+    case 'gridCentered': {
+      const twoHole = twoHoleDistance(geometry)
+      if (twoHole !== null) return `2 Holes (${fmt(twoHole)}mm apart)`
       return `Rectangle Centered ${fmt(geometry.gridX)}×${fmt(geometry.gridY)}`
+    }
     case 'circle':
       return `${Math.round(geometry.circleHoleCount)}-Holes Circle`
     case 'custom':

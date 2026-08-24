@@ -120,6 +120,46 @@ describe('resolvePoints', () => {
     ])
   })
 
+  it('grid collapses to 2 holes when gridX is 0', () => {
+    expect(resolvePoints({ ...base, positioning: 'grid', gridX: 0, gridY: 30 })).toEqual([
+      { x: 0, y: 0 },
+      { x: 0, y: 30 },
+    ])
+  })
+
+  it('grid collapses to 2 holes when gridY is 0', () => {
+    expect(resolvePoints({ ...base, positioning: 'grid', gridX: 50, gridY: 0 })).toEqual([
+      { x: 0, y: 0 },
+      { x: 50, y: 0 },
+    ])
+  })
+
+  it('grid collapses to 1 hole when gridX and gridY are both 0', () => {
+    expect(resolvePoints({ ...base, positioning: 'grid', gridX: 0, gridY: 0 })).toEqual([
+      { x: 0, y: 0 },
+    ])
+  })
+
+  it('gridCentered collapses to 2 symmetric holes when gridX is 0', () => {
+    expect(resolvePoints({ ...base, positioning: 'gridCentered', gridX: 0, gridY: 30 })).toEqual([
+      { x: 0, y: -15 },
+      { x: 0, y: 15 },
+    ])
+  })
+
+  it('gridCentered collapses to 2 symmetric holes when gridY is 0', () => {
+    expect(resolvePoints({ ...base, positioning: 'gridCentered', gridX: 50, gridY: 0 })).toEqual([
+      { x: -25, y: 0 },
+      { x: 25, y: 0 },
+    ])
+  })
+
+  it('gridCentered collapses to 1 hole when gridX and gridY are both 0', () => {
+    expect(
+      resolvePoints({ ...base, positioning: 'gridCentered', gridX: 0, gridY: 0 }),
+    ).toEqual([{ x: 0, y: 0 }])
+  })
+
   it('offset shifts every grid corner uniformly', () => {
     expect(resolvePoints({ ...base, positioning: 'grid', offsetX: 5, offsetY: 10 })).toEqual([
       { x: 5, y: 10 },

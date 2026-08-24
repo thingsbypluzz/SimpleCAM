@@ -21,6 +21,30 @@ describe('patternLabel', () => {
     ).toBe('Rectangle Centered 50×30')
   })
 
+  it('labels grid as 2 holes when gridX is 0', () => {
+    expect(patternLabel({ ...geometry, positioning: 'grid', gridX: 0, gridY: 30 })).toBe(
+      '2 Holes (30mm apart)',
+    )
+  })
+
+  it('labels grid as 2 holes when gridY is 0', () => {
+    expect(patternLabel({ ...geometry, positioning: 'grid', gridX: 50, gridY: 0 })).toBe(
+      '2 Holes (50mm apart)',
+    )
+  })
+
+  it('falls back to plain dimensions when grid gridX and gridY are both 0', () => {
+    expect(patternLabel({ ...geometry, positioning: 'grid', gridX: 0, gridY: 0 })).toBe(
+      'Rectangle 0×0',
+    )
+  })
+
+  it('labels gridCentered as 2 holes when gridX is 0', () => {
+    expect(
+      patternLabel({ ...geometry, positioning: 'gridCentered', gridX: 0, gridY: 30 }),
+    ).toBe('2 Holes (30mm apart)')
+  })
+
   it('labels circle with hole count', () => {
     expect(patternLabel({ ...geometry, positioning: 'circle', circleHoleCount: 5 })).toBe(
       '5-Holes Circle',

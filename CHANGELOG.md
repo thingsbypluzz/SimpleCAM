@@ -7,6 +7,30 @@ zgodne z [SemVer](https://semver.org/). Ten plik pozostaje głównym, czytelnym
 thingsbypluzz/SimpleCAM), ale to infrastruktura pod izolację pracy
 (branch/worktree per zadanie), nie zamiennik tego changeloga.
 
+## [0.12.1] — 2026-08-24
+
+### Dodano
+
+- **Grid / Grid Centered: kolaps do 2 symetrycznych otworów, gdy Width
+  lub Height wynosi 0.** Ergonomiczny skrót dla "dwa otwory oddalone o
+  zadaną odległość" — dotąd wymagało to dwóch Single Hole, Custom List
+  albo 2-Holes on Circle; teraz wystarczy wpisać tę odległość jako
+  Width albo Height w istniejącym Rectangular Grid (zwykłym lub
+  Centered) i zostawić drugi wymiar na 0. Wcześniej silnik tego nie
+  rozpoznawał: 4 nominalne rogi nakładały się parami, a program wiercił
+  ten sam punkt dwu-/czterokrotnie. Specjalny przypadek w
+  `rawPoints()` (`lib/positioning.ts`), świadomie ograniczony tylko do
+  `grid`/`gridCentered` — Circle (`circleDiameter=0`) i Custom List
+  (zduplikowane wiersze) zachowują dotychczasowe zachowanie.
+  Porównanie dokładne (`=== 0`, bez epsilon). Oba wymiary równe 0
+  kolapsują po cichu do 1 otworu. Etykiety (`positioningLines()`/
+  `patternLabel()` w `config/positioningMeta.ts`) rozpoznają kolaps do
+  2 otworów i pokazują `"2 HOLES (Nmm apart)"` zamiast zdegenerowanego
+  `"RECTANGLE (0×N)"`; kolaps do 1 otworu zostaje przy zwykłym tekście.
+  Nowa podpowiedź w UI pod polami Width/Height na Kroku 2. 2D/3D
+  Preview i `machineFitWarnings()` bez zmian — wołają `resolvePoints()`
+  jako jedyne źródło prawdy, dziedziczą poprawkę automatycznie.
+
 ## [0.12.0] — 2026-08-23
 
 ### Dodano
