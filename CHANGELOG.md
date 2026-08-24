@@ -7,6 +7,16 @@ zgodne z [SemVer](https://semver.org/). Ten plik pozostaje głównym, czytelnym
 thingsbypluzz/SimpleCAM), ale to infrastruktura pod izolację pracy
 (branch/worktree per zadanie), nie zamiennik tego changeloga.
 
+## [0.12.3] — 2026-08-24
+
+### Zmieniono
+
+- **`BL-16` zamknięte — Krok 3: nowa kolejność pól.** Feedrate XY,
+  Plunge Rate, Stepdown/Pitch, Start Z, Safe Z (dotąd Stepdown/Pitch
+  było pierwsze, nie trzecie). Kolejność ikon w zwiniętym pasku Kroku
+  3 ujednolicona do tej samej kolejności (FEED, PLUNGE, STEPDOWN,
+  STARTZ). Czysto porządkowa zmiana, zero zmian w logice/typach.
+
 ## [0.12.2] — 2026-08-24
 
 ### Zmieniono

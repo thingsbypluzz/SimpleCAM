@@ -564,6 +564,13 @@ function App() {
                       unit="mm/min"
                       title={`Plunge Rate: ${params.feeds.plungeRate} mm/min`}
                     />
+                    <MiniStat
+                      icon={<StepdownIcon className="h-6 w-6" />}
+                      label={activeMethod.stepdown.shortLabel}
+                      value={`${params.feeds.stepdown}`}
+                      unit="mm"
+                      title={`Stepdown: ${params.feeds.stepdown} mm`}
+                    />
                     {params.feeds.startZ !== 0 && (
                       <MiniStat
                         icon={<StartZIcon className="h-6 w-6" />}
@@ -573,13 +580,6 @@ function App() {
                         title={`Start Z: ${params.feeds.startZ} mm`}
                       />
                     )}
-                    <MiniStat
-                      icon={<StepdownIcon className="h-6 w-6" />}
-                      label={activeMethod.stepdown.shortLabel}
-                      value={`${params.feeds.stepdown}`}
-                      unit="mm"
-                      title={`Stepdown: ${params.feeds.stepdown} mm`}
-                    />
                   </div>
                 )}
 

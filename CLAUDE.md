@@ -516,10 +516,6 @@ nowa funkcjonalność. Nie zaczynać bez wyraźnego "przechodzimy do X".
   podglądem, dokładna geometria zostaje w 3D), albo (b) rysować łuk
   mostka przerywaną linią (`ctx.setLineDash()`) zamiast zostawiać
   pustkę.
-- **`BL-16`** — **Krok 3: zmienić kolejność pól.** Docelowa kolejność:
-  Feedrate, Plunge Rate, Stepdown/Pitch, Start Z, Safe Z. Dziś w
-  `Step3Feeds.tsx` Stepdown/Pitch renderuje się jako pierwsze pole, nie
-  trzecie — czysto porządkowa zmiana JSX, bez zmian w logice/typach.
 - **`BL-17`** — **Artifact z umownymi nazwami elementów UI.** Osobny
   Artifact pokazujący układ appki z opisanymi nazwami sekcji (np.
   "STEP 1 SUMMARY", "Preview Section", "Header"), żeby w rozmowach
@@ -1163,6 +1159,16 @@ przeglądu przez użytkownika.
   ostatnio wsiane" bez nowego stanu do śledzenia, a przewidywalne
   "zawsze zaczyna od Twojego defaultu" uznane za lepsze niż
   półpamiętające zachowanie.
+- **`BL-16` zamknięte — Krok 3: kolejność pól (`0.12.3`).** Nowa
+  kolejność w `Step3Feeds.tsx`: Feedrate XY, Plunge Rate, Stepdown/
+  Pitch, Start Z, Safe Z — dotąd Stepdown/Pitch renderował się jako
+  pierwsze pole, nie trzecie. Walidacje (`isStepdownValid`,
+  `isStartZValid`) przeniosły się razem ze swoimi polami, bez zmian
+  treści. Kolejność ikon w zwiniętym pasku Kroku 3 (`App.tsx`)
+  ujednolicona do tej samej kolejności: FEED, PLUNGE, STEPDOWN, STARTZ
+  (Safe Z nie ma tam odpowiednika MiniStat — bez zmian, nie dodawano
+  nowego). Czysto porządkowa zmiana JSX, zero zmian w logice/typach/
+  testach.
 - **Step 2: pogrupowanie pól w poziome wiersze, tipy jako popover pod
   ikoną "?", TABS w zwiniętym pasku Kroku 2 (`0.12.2`).** Sesja
   `/grill-me` — wyłącznie oszczędność miejsca na Krokach (mniej
