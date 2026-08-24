@@ -229,3 +229,28 @@ export function WarningIcon({ className }: IconProps) {
     </svg>
   )
 }
+
+// Toggle button for HintPopover — a circle with a question mark, same
+// outline-plus-filled-dot construction as WarningIcon, distinguished by the
+// curved stroke instead of a straight vertical bar.
+export function HintIcon({ className }: IconProps) {
+  return (
+    <svg {...base} className={className}>
+      <circle cx="12" cy="12" r="9" />
+      <path d="M9.6 9.5a2.4 2.4 0 1 1 3.4 2.2c-.9.5-1 1-1 2" />
+      <circle cx="12" cy="16.7" r="0.9" fill="currentColor" stroke="none" />
+    </svg>
+  )
+}
+
+// Step 2 collapsed-bar "TABS" MiniStat — a simplified cross-section
+// profile: floor level, a raised notch in the middle (the uncut tab
+// bridge), back to floor level. Same single-path staircase construction as
+// StepdownIcon.
+export function TabBridgeIcon({ className }: IconProps) {
+  return (
+    <svg {...base} className={className}>
+      <path d="M3 17h5v-6h8v6h5" />
+    </svg>
+  )
+}

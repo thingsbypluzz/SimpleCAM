@@ -7,6 +7,51 @@ zgodne z [SemVer](https://semver.org/). Ten plik pozostaje głównym, czytelnym
 thingsbypluzz/SimpleCAM), ale to infrastruktura pod izolację pracy
 (branch/worktree per zadanie), nie zamiennik tego changeloga.
 
+## [0.12.2] — 2026-08-24
+
+### Zmieniono
+
+- **Krok 2: pogrupowanie pól w poziome wiersze, tipy jako popover pod
+  ikoną "?", TABS w zwiniętym pasku Kroku 2.** Wyłącznie oszczędność
+  miejsca na Krokach (mniej scrollowania) — bez zmian w logice. Hole
+  Diameter + Total Depth, Circle (Hole Count/Diameter/Start Angle) i
+  Tabs (Height/Width/Count) renderują się teraz w jednym poziomym
+  wierszu (ten sam wzorzec `flex gap-4`/`min-w-0 flex-1` co
+  Width/Height, Offset X/Y); komunikaty walidacji przeniesione pod cały
+  wiersz, nie przypięte do jednej kolumny. Dotychczasowe zawsze
+  widoczne podpowiedzi (Width, Height, Custom Points) oraz opis pod
+  checkboxem "Enable Tabs" zamienione na klikalną ikonę "?"
+  (`HintIcon`, nowy `components/wizard/HintPopover.tsx`) — popover pod
+  ikoną, tylko jeden otwarty naraz, zamyka się na kliknięcie na
+  zewnątrz/Escape. `FieldRow.tsx` przebudowany: `hint` renderuje się
+  teraz jako ikona obok pola (nie tekst pod spodem) — `inputClass`
+  dostał jawne `w-full`, bo input przestał być bezpośrednim dzieckiem
+  `flex-col` labela (traci domyślny `align-items: stretch`). Opis
+  "Pattern: `<nazwa>`" świadomie **nie** przeszedł konwersji — zostaje
+  zwykłym tekstem. Nowa ikona `TabBridgeIcon` (profil
+  niski-podniesiony-niski, jak mostek) w zwiniętym pasku Kroku 2, zaraz
+  po DEPTH — widoczna tylko gdy `tabsEnabled`, ten sam wzorzec co
+  istniejące OFFSET. Zero zmian w `src/lib/`, typach czy testach.
+
+  Dwie poprawki po pierwszym realnym użyciu (feedback użytkownika, ta
+  sama sesja): **(1)** popover chował się/przycinał pod zwiniętym
+  paskiem Kroku 1 — panel Kroku 2 ma `overflow-y-auto`, co per spec CSS
+  wymusza też `overflow-x: auto`, więc wszystko wystające poza lewą
+  krawędź panelu było po cichu przycinane. `HintPopover.tsx` renderuje
+  teraz treść przez `createPortal` do `document.body` z
+  `position: fixed`, pozycjonowaną z `getBoundingClientRect()` ikony —
+  omija przycinającego przodka całkowicie — plus przesuwanie w granicach
+  viewportu (pion i poziom), gdyby ikona siedziała blisko krawędzi
+  ekranu; zamyka się dodatkowo na scroll (capture phase, łapie scroll
+  panelu Kroku 2, nie tylko okna). **(2)** "Circle Diameter [mm]" (20
+  znaków) łamał się na dwie linie w wąskiej 1/3 kolumnie trzy-polowego
+  wiersza Circle — skrócone do "Diameter [mm]" (kontekst już daje
+  nagłówek "Pattern: N-Holes on Circle"). Ten sam ryzykowny rozmiar
+  miały "Tab Height [mm]"/"Tab Width [mm]" w grupie Tabs (nie
+  zrzutowane w zgłoszeniu, bo tabs były wyłączone, ale identyczna
+  szerokość kolumny) — skrócone prewencyjnie do "Height [mm]"/
+  "Width [mm]", kontekst z nagłówka "Enable Tabs".
+
 ## [0.12.1] — 2026-08-24
 
 ### Dodano

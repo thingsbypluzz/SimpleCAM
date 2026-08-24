@@ -23,6 +23,7 @@ import {
   PlungeIcon,
   StartZIcon,
   StepdownIcon,
+  TabBridgeIcon,
   WarningIcon,
   XIcon,
 } from './components/icons'
@@ -536,6 +537,14 @@ function App() {
                       unit="mm"
                       title={`Total Depth: ${params.geometry.totalDepth} mm`}
                     />
+                    {params.geometry.tabsEnabled && (
+                      <MiniStat
+                        icon={<TabBridgeIcon className="h-6 w-6" />}
+                        label="TABS"
+                        value="YES"
+                        title="Tabs: enabled"
+                      />
+                    )}
                   </div>
                 )}
 

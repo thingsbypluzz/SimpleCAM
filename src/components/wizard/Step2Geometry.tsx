@@ -11,6 +11,7 @@ import {
 } from '../../lib/validation'
 import { POSITIONING_META } from '../../config/positioningMeta'
 import { FieldRow, inputClass } from './FieldRow'
+import { HintPopover } from './HintPopover'
 import { MethodPicker } from './MethodPicker'
 import { useNumberField } from './useNumberField'
 
@@ -107,24 +108,30 @@ export function Step2Geometry({ params, onChange, machine }: Step2GeometryProps)
             ))}
           </select>
         </FieldRow>
-        <FieldRow label="Hole Diameter [mm]">
-          <input type="number" step="0.1" className={inputClass} {...holeDiameterField} />
-        </FieldRow>
+        <div className="flex gap-4">
+          <div className="min-w-0 flex-1">
+            <FieldRow label="Hole Diameter [mm]">
+              <input type="number" step="0.1" className={inputClass} {...holeDiameterField} />
+            </FieldRow>
+          </div>
+          <div className="min-w-0 flex-1">
+            <FieldRow label="Total Depth [mm]">
+              <input
+                type="number"
+                step="0.1"
+                min="0"
+                max={machine.travelZ}
+                className={inputClass}
+                {...totalDepthField}
+              />
+            </FieldRow>
+          </div>
+        </div>
         {!isToolDiameterValid(geometry) && (
           <p className="text-sm text-red-600 dark:text-red-400">
             Tool diameter can't be larger than the hole diameter.
           </p>
         )}
-        <FieldRow label="Total Depth [mm]">
-          <input
-            type="number"
-            step="0.1"
-            min="0"
-            max={machine.travelZ}
-            className={inputClass}
-            {...totalDepthField}
-          />
-        </FieldRow>
       </div>
 
       <div className="flex items-center gap-2 text-sm text-slate-700 dark:text-slate-300">
@@ -177,34 +184,42 @@ export function Step2Geometry({ params, onChange, machine }: Step2GeometryProps)
 
       {geometry.positioning === 'circle' && (
         <div className="flex flex-col gap-4">
-          <FieldRow label="Hole Count">
-            <input
-              type="number"
-              step="1"
-              min="0"
-              max={MAX_CIRCLE_HOLE_COUNT}
-              className={inputClass}
-              {...circleHoleCountField}
-            />
-          </FieldRow>
+          <div className="flex gap-4">
+            <div className="min-w-0 flex-1">
+              <FieldRow label="Hole Count">
+                <input
+                  type="number"
+                  step="1"
+                  min="0"
+                  max={MAX_CIRCLE_HOLE_COUNT}
+                  className={inputClass}
+                  {...circleHoleCountField}
+                />
+              </FieldRow>
+            </div>
+            <div className="min-w-0 flex-1">
+              <FieldRow label="Diameter [mm]">
+                <input
+                  type="number"
+                  step="0.1"
+                  min="0"
+                  max={Math.min(machine.travelX, machine.travelY)}
+                  className={inputClass}
+                  {...circleDiameterField}
+                />
+              </FieldRow>
+            </div>
+            <div className="min-w-0 flex-1">
+              <FieldRow label="Start Angle [deg]">
+                <input type="number" step="1" className={inputClass} {...circleStartAngleField} />
+              </FieldRow>
+            </div>
+          </div>
           {!isCircleHoleCountValid(geometry) && (
             <p className="text-sm text-red-600 dark:text-red-400">
               Hole count can't exceed {MAX_CIRCLE_HOLE_COUNT}.
             </p>
           )}
-          <FieldRow label="Circle Diameter [mm]">
-            <input
-              type="number"
-              step="0.1"
-              min="0"
-              max={Math.min(machine.travelX, machine.travelY)}
-              className={inputClass}
-              {...circleDiameterField}
-            />
-          </FieldRow>
-          <FieldRow label="Start Angle [deg]">
-            <input type="number" step="1" className={inputClass} {...circleStartAngleField} />
-          </FieldRow>
         </div>
       )}
 
@@ -248,34 +263,39 @@ export function Step2Geometry({ params, onChange, machine }: Step2GeometryProps)
             className="h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
           />
           Enable Tabs
+          <HintPopover text="Small uncut bridges near the bottom of the cut, so a through-hole's center plug stays attached to the stock instead of dropping free. Forces G1 interpolation (see Step 4)." />
         </label>
-        <p className="mb-2 text-sm text-slate-500 dark:text-slate-400">
-          Small uncut bridges near the bottom of the cut, so a through-hole's center plug stays
-          attached to the stock instead of dropping free. Forces G1 interpolation (see Step 4).
-        </p>
         {geometry.tabsEnabled && (
           <div className="flex flex-col gap-4">
-            <FieldRow label="Tab Height [mm]">
-              <input type="number" step="0.1" min="0" className={inputClass} {...tabHeightField} />
-            </FieldRow>
+            <div className="flex gap-4">
+              <div className="min-w-0 flex-1">
+                <FieldRow label="Height [mm]">
+                  <input type="number" step="0.1" min="0" className={inputClass} {...tabHeightField} />
+                </FieldRow>
+              </div>
+              <div className="min-w-0 flex-1">
+                <FieldRow label="Width [mm]">
+                  <input type="number" step="0.1" min="0" className={inputClass} {...tabWidthField} />
+                </FieldRow>
+              </div>
+              <div className="min-w-0 flex-1">
+                <FieldRow label="Tab Count">
+                  <input
+                    type="number"
+                    step="1"
+                    min="1"
+                    max={MAX_TAB_COUNT}
+                    className={inputClass}
+                    {...tabCountField}
+                  />
+                </FieldRow>
+              </div>
+            </div>
             {!isTabHeightValid(geometry) && (
               <p className="text-sm text-red-600 dark:text-red-400">
                 Tab height must be greater than 0 and less than Total Depth.
               </p>
             )}
-            <FieldRow label="Tab Width [mm]">
-              <input type="number" step="0.1" min="0" className={inputClass} {...tabWidthField} />
-            </FieldRow>
-            <FieldRow label="Tab Count">
-              <input
-                type="number"
-                step="1"
-                min="1"
-                max={MAX_TAB_COUNT}
-                className={inputClass}
-                {...tabCountField}
-              />
-            </FieldRow>
             {!isTabWidthValid(geometry) && (
               <p className="text-sm text-red-600 dark:text-red-400">
                 Tab count × width can't reach the toolpath's full circumference.

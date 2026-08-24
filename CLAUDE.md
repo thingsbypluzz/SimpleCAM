@@ -1113,6 +1113,75 @@ przeglądu przez użytkownika.
   ostatnio wsiane" bez nowego stanu do śledzenia, a przewidywalne
   "zawsze zaczyna od Twojego defaultu" uznane za lepsze niż
   półpamiętające zachowanie.
+- **Step 2: pogrupowanie pól w poziome wiersze, tipy jako popover pod
+  ikoną "?", TABS w zwiniętym pasku Kroku 2 (`0.12.2`).** Sesja
+  `/grill-me` — wyłącznie oszczędność miejsca na Krokach (mniej
+  scrollowania, zwłaszcza na Kroku 2), zero zmian w logice/typach/
+  testach. Trzy niezależne decyzje:
+  - **Poziome pary/trójki pól**, ten sam wzorzec `flex gap-4`/
+    `min-w-0 flex-1` co istniejące Width/Height i Offset X/Y: Hole
+    Diameter + Total Depth (mimo że nie są parą X/Y — czysto
+    oszczędność miejsca), Circle (Hole Count + Circle Diameter + Start
+    Angle, wszystkie 3 w jednym wierszu, nie 2+1), Tabs (Tab Height +
+    Tab Width + Tab Count, też wszystkie 3 w wierszu). Komunikaty
+    walidacji (`isToolDiameterValid`, `isCircleHoleCountValid`,
+    `isTabHeightValid`, `isTabWidthValid`) przeniesione pod cały
+    wiersz (pełna szerokość), nie przypięte do jednej kolumny.
+  - **Podpowiedzi jako popover pod ikoną "?".** Konwersji podlegają
+    dokładnie 4 rzeczy: hint Width, hint Height, hint Custom Points
+    (`"e.g. 10,10"`) i opis pod checkboxem "Enable Tabs" — świadomie
+    **nie** opis "Pattern: `<nazwa>`", który zostaje zwykłym, zawsze
+    widocznym tekstem (user: CNC-owiec i tak wie co to Pattern, ale
+    "Enable Tabs" też uznany za wystarczająco znany, żeby schować pod
+    popover — decyzja o zakresie, nie o wiedzy usera). Dla pól: ikona
+    `HintIcon` (nowa w `icons.tsx`) siedzi na prawo od samego inputa,
+    w tym samym wierszu (input się zwęża) — nie pod labelem jak
+    dotąd. Dla "Enable Tabs": ikona na prawo od tekstu nagłówka, w
+    tym samym `<label className="flex items-center gap-2">`. Klik
+    otwiera/zamyka (nie hover), popover renderuje się pod ikoną, tylko
+    jeden otwarty naraz (zamyka pozostałe), zamyka się też na klik na
+    zewnątrz/Escape. Nowy `components/wizard/HintPopover.tsx` —
+    "tylko jeden otwarty naraz" wychodzi "za darmo" z per-instancyjnego
+    `mousedown`-poza-komponentem nasłuchu (klik w inną ikonę zamyka
+    poprzedni popover, zanim otworzy nowy — bez współdzielonego stanu
+    między instancjami). `FieldRow.tsx` przebudowany: `hint` prop
+    (sygnatura bez zmian) renderuje teraz `HintPopover` zamiast
+    tekstu pod inputem — `inputClass` dostał jawne `w-full`, bo input
+    przestał być bezpośrednim dzieckiem `flex-col` labela (traci
+    domyślny `align-items: stretch`), które dotąd rozciągało go do
+    pełnej szerokości bez potrzeby jawnej klasy.
+  - **TABS w zwiniętym pasku Kroku 2** (`App.tsx`) — nowy `MiniStat`
+    zaraz po DEPTH: etykieta "TABS", nowa ikona `TabBridgeIcon`
+    (profil niski-podniesiony-niski, jak przekrój mostka), wartość
+    "YES". Widoczny tylko gdy `tabsEnabled` — ten sam warunkowy wzorzec
+    co istniejące OFFSET (nie zawsze YES/NO). Wcześniej pasek Kroku 2
+    nie miał żadnej wzmianki o tabs.
+  Brak nowego `BL-#` — zaimplementowane od razu w tej samej sesji, nie
+  odłożone do Backlogu.
+
+  Dwie poprawki po pierwszym realnym użyciu (feedback użytkownika, ta
+  sama sesja). **(1)** Popover przycinał się pod zwiniętym paskiem
+  Kroku 1 — panel Kroku 2 ma `overflow-y-auto`, co per spec CSS
+  wymusza `overflow-x: auto` na tym samym elemencie (nie da się mieć
+  jednej osi `auto` a drugiej faktycznie `visible`), więc treść
+  wystająca poza lewą krawędź panelu była po cichu przycinana; sam
+  wyższy `z-index` by tego nie naprawił, bo to przycinający przodek,
+  nie problem kolejności warstw. Naprawione renderowaniem popovera
+  przez `createPortal` do `document.body`, `position: fixed`
+  pozycjonowane z `getBoundingClientRect()` ikony — omija
+  przycinającego przodka całkowicie — plus przesuwanie w granicach
+  viewportu (pion: flip nad ikonę gdy brak miejsca poniżej; poziom:
+  clamp do `[EDGE_MARGIN, innerWidth-width-EDGE_MARGIN]`), więc
+  popover zostaje w pełni na ekranie niezależnie od pozycji ikony.
+  Zamyka się dodatkowo na scroll (`capture: true`, łapie scroll panelu
+  Kroku 2, nie tylko okna) — prostsze niż śledzenie pozycji w locie.
+  **(2)** "Circle Diameter [mm]" (20 znaków) łamał się na dwie linie w
+  wąskiej 1/3 kolumnie trzy-polowego wiersza Circle — skrócone do
+  "Diameter [mm]" (kontekst z nagłówka "Pattern: N-Holes on Circle").
+  Ten sam ryzykowny rozmiar miały "Tab Height [mm]"/"Tab Width [mm]" w
+  grupie Tabs (nie zrzutowane w zgłoszeniu, bo tabs były wyłączone, ale
+  identyczna szerokość kolumny) — skrócone prewencyjnie do
+  "Height [mm]"/"Width [mm]", kontekst z nagłówka "Enable Tabs".
 - **Grid/Grid Centered: kolaps do 2 symetrycznych otworów (`0.12.1`).**
   Sesja `/grill-me` — punkt wyjścia: dwa otwory oddalone o zadaną z
   rysunku technicznego odległość dają się dziś zrobić na 3 sposoby
@@ -1323,14 +1392,53 @@ src/
                               Tabs (checkbox "Enable Tabs" + Height/Width/
                               Count, za kolejnym `border-t`, przed Offset)
                               — patrz "Tabs (mostki)..." w "Kluczowe
-                              decyzje projektowe"
+                              decyzje projektowe". Od `0.12.2`: Hole
+                              Diameter+Total Depth, Circle
+                              (Count/Diameter/Start Angle) i Tabs
+                              (Height/Width/Count) renderują się w
+                              poziomym wierszu (`flex gap-4`/`min-w-0
+                              flex-1`, jak Width/Height); Width/Height/
+                              Custom Points hint i opis "Enable Tabs"
+                              przez `HintPopover` zamiast zawsze
+                              widocznego tekstu — patrz "Step 2:
+                              pogrupowanie pól..." w "Kluczowe decyzje
+                              projektowe"
   components/wizard/useNumberField.ts — hook `useNumberField(value, onCommit)`
                               (`0.11.2`) — oddziela wyświetlany tekst
                               inputa od zatwierdzonej wartości, żeby pole
                               dało się realnie wyczyścić. Patrz "Pola
                               liczbowe w wizardzie" w "Kluczowe decyzje
                               projektowe" po pełny opis
-  components/icons.tsx      — zestaw ikon SVG (własne, bez zależności)
+  components/wizard/FieldRow.tsx — `label`/pole/`hint` per wiersz formularza,
+                              `inputClass` (współdzielone stylowanie
+                              inputów). Od `0.12.2`: `hint` renderuje się
+                              jako ikona `HintPopover` obok pola (nie tekst
+                              pod spodem) — `inputClass` dostał jawne
+                              `w-full`, bo input przestał być
+                              bezpośrednim dzieckiem `flex-col` labela
+                              (traci domyślny `align-items: stretch`)
+  components/wizard/HintPopover.tsx — (`0.12.2`) klikalna ikona "?"
+                              (`HintIcon`) + popover z tekstem podpowiedzi,
+                              renderowany przez `createPortal` do
+                              `document.body` (`position: fixed`,
+                              pozycjonowany z `getBoundingClientRect()`
+                              ikony + clamp do granic viewportu) — omija
+                              przycinanie przez `overflow-y-auto` panelu
+                              Kroku 2 (patrz "Step 2: pogrupowanie
+                              pól..." w "Kluczowe decyzje projektowe" po
+                              pełny opis buga i poprawki). Zamyka się na
+                              klik na zewnątrz/Escape/scroll
+                              (`useEffect`+`document.addEventListener`,
+                              ten sam wzorzec co `SettingsModal.tsx`/
+                              `ToolpathCanvas.tsx`); tylko jeden otwarty
+                              naraz — konsekwencja per-instancyjnego
+                              nasłuchu na `mousedown`, bez współdzielonego
+                              stanu
+  components/icons.tsx      — zestaw ikon SVG (własne, bez zależności). Od
+                              `0.12.2`: `HintIcon` (kółko + znak zapytania,
+                              dla `HintPopover`), `TabBridgeIcon` (profil
+                              niski-podniesiony-niski, dla TABS w zwiniętym
+                              pasku Kroku 2)
   components/preview/       — podgląd 2D (Etap 3)
     ToolpathCanvas.tsx        — React wrapper: <canvas>, devicePixelRatio,
                                ResizeObserver, przerysowanie przy zmianie
