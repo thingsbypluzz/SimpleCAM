@@ -98,6 +98,35 @@ describe('tabbedCirclePass', () => {
     }
   })
 
+  it('plunges back to cutZ exactly at the tab\'s own end angle, not the next sample point', () => {
+    // Regression test for BL-21: the exit transition used to travel all
+    // the way to the NEXT breakpoint while still lifted before plunging,
+    // instead of plunging immediately at the tab's own end boundary.
+    // With SEGMENTS_PER_TURN=72 sampling this was small (~5°) and went
+    // unnoticed here, but it's the same bug that was very visible in the
+    // rectangle case (see outlineRectangleTabs.test.ts).
+    const tabRanges = computeTabRanges(1, 5, base.radius)
+    const lines = tabbedCirclePass({ ...base, tabRanges })
+
+    const liftLines = lines.map((l, i) => ({ l, i })).filter(({ l }) => l.includes(`Z${base.liftZ} `))
+    const lastLiftIdx = liftLines[liftLines.length - 1].i
+    const plungeLine = lines[lastLiftIdx + 1]
+
+    const expectedX = base.centerX + base.radius * Math.cos(tabRanges[0].endAngle)
+    const expectedY = base.centerY + base.radius * Math.sin(tabRanges[0].endAngle)
+    const plungeMatch = /X(-?[\d.]+) Y(-?[\d.]+) Z(-?[\d.]+)/.exec(plungeLine)
+    // Compared at G-code output precision (fmt() rounds to 4 decimals).
+    expect(Number(plungeMatch?.[1])).toBeCloseTo(expectedX, 3)
+    expect(Number(plungeMatch?.[2])).toBeCloseTo(expectedY, 3)
+    expect(Number(plungeMatch?.[3])).toBeCloseTo(base.cutZ, 3)
+
+    // The lift line right before it must sit at that exact same position
+    // — a pure vertical plunge at the tab boundary, not a lifted detour.
+    const liftMatch = /X(-?[\d.]+) Y(-?[\d.]+)/.exec(lines[lastLiftIdx])
+    expect(liftMatch?.[1]).toBe(plungeMatch?.[1])
+    expect(liftMatch?.[2]).toBe(plungeMatch?.[2])
+  })
+
   it('cw direction still ends on the start point, but sweeps the opposite way', () => {
     const tabRanges = computeTabRanges(1, 5, base.radius)
     const ccw = tabbedCirclePass({ ...base, tabRanges })

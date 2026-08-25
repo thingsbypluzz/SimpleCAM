@@ -7,6 +7,48 @@ zgodne z [SemVer](https://semver.org/). Ten plik pozostaje głównym, czytelnym
 thingsbypluzz/SimpleCAM), ale to infrastruktura pod izolację pracy
 (branch/worktree per zadanie), nie zamiennik tego changeloga.
 
+## [0.13.2] — 2026-08-25
+
+### Zmieniono
+
+- **`BL-15`** — mostki (tabs) w podglądzie 2D renderowały się jako pusta
+  przerwa w linii obróbki (nic nie rysowane na łuku/odcinku mostka),
+  co wyglądało jak brakujący fragment ścieżki, nie jak fizyczny mostek.
+  Naprawione przerywaną linią (`ctx.setLineDash()`, nowa stała
+  `TAB_DASH`) w tym samym kolorze co reszta konturu — bez wprowadzania
+  nowego koloru w `config/palettes.ts`. Dotyczy `drawGappedCircle()`
+  (Hole(s), Circle Outline) i `drawGappedRectangle()` (Rectangle
+  Outline), oba w `src/components/preview/drawToolpath.ts`.
+
+## [0.13.1] — 2026-08-25
+
+### Naprawiono
+
+- **`BL-21`** — mostki (tabs) w Rectangle Outline nie generowały się
+  poprawnie. Prawdziwa przyczyna: przejście "opuszczam mostek" w
+  `tabbedRectanglePass()` (`src/lib/outlineRectangleTabs.ts`)
+  przejeżdżało cały dystans do KOLEJNEGO breakpointu wciąż podniesione,
+  dopiero tam zanurzając narzędzie z powrotem — zamiast zanurzyć się od
+  razu na własnej granicy mostka. Dla prostokąta (bez próbkowania
+  pośredniego między granicami mostków) przy jednym mostku
+  wyśrodkowanym na 50% boku dawało to podniesiony odcinek sięgający od
+  końca mostka aż do rogu — z grubsza połowę długości boku, dokładnie
+  jak w zgłoszeniu. Ten sam wzorzec kodu (skopiowany przy budowie OP-1)
+  istniał też w `src/lib/tabs.ts`'s `tabbedCirclePass()` (mostki
+  Hole(s) i Circle Outline) — tam błąd był niewidoczny, bo gęste
+  próbkowanie kątowe (`SEGMENTS_PER_TURN=72`) ograniczało go do ~5°
+  łuku, ale to ten sam realny defekt. Naprawione we wszystkich 4
+  miejscach: obu generatorach G-code (`outlineRectangleTabs.ts`,
+  `tabs.ts`) oraz ich odpowiednikach w podglądzie 3D
+  (`buildScene.ts`'s `tabbedRectanglePoints3D`/`tabbedCirclePoints3D`).
+  Podgląd 2D (`drawToolpath.ts`) nie był dotknięty — rysuje przerwy
+  wprost z zakresów, bez symulacji przejść linia po linii, stąd
+  zgłoszenie użytkownika dało się zreprodukować dopiero w 3D/G-code, nie
+  w 2D. Dodane testy regresyjne w `outlineRectangleTabs.test.ts`/
+  `tabs.test.ts` pinują dokładną pozycję zanurzenia (dotychczasowe testy
+  sprawdzały tylko liczbę przejść i pionowość ruchu, nie samą pozycję —
+  stąd bug przeszedł niezauważony). 221 testów po tej poprawce.
+
 ## [0.13.0] — 2026-08-25
 
 ### Dodano

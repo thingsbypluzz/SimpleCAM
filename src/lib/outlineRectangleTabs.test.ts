@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { computeRectTabRanges, tabbedRectanglePass } from './outlineRectangleTabs'
 import { rectCorners } from './outlineRectangleGeometry'
+import { fmt } from './format'
 
 describe('computeRectTabRanges', () => {
   it('returns tabCountPerSide ranges, evenly spaced and phase-shifted by half a step', () => {
@@ -88,6 +89,38 @@ describe('tabbedRectanglePass', () => {
     const ranges = computeRectTabRanges(2, 3, 40)
     const lines = tabbedRectanglePass({ corners, sideRanges: [ranges, [], [], []], cutZ, liftZ, feed })
     expect(lines[lines.length - 1]).toBe(`G1 X${corners[0].x} Y${corners[0].y} Z${cutZ} F${feed}`)
+  })
+
+  it('plunges back to cutZ exactly at the tab\'s own end boundary, not the side\'s far corner', () => {
+    // Regression test for BL-21: the exit transition used to travel all
+    // the way to the NEXT breakpoint (here, the far corner — a rectangle
+    // has no intermediate sampling between tab boundaries) while still
+    // lifted, before plunging — so a single centered tab left roughly
+    // half the side lifted instead of just the tab's own width.
+    const oneTabOnSide0 = computeRectTabRanges(1, 10, 40)
+    const lines = tabbedRectanglePass({
+      corners,
+      sideRanges: [oneTabOnSide0, [], [], []],
+      cutZ,
+      liftZ,
+      feed,
+    })
+
+    const liftLines = lines.map((l, i) => ({ l, i })).filter(({ l }) => l.includes(`Z${liftZ} `))
+    const lastLiftIdx = liftLines[liftLines.length - 1].i
+    const plungeLine = lines[lastLiftIdx + 1]
+
+    const p0 = corners[0]
+    const p1 = corners[1]
+    const endFrac = oneTabOnSide0[0].endFrac
+    const expectedX = p0.x + (p1.x - p0.x) * endFrac
+    const expectedY = p0.y + (p1.y - p0.y) * endFrac
+    expect(plungeLine).toBe(`G1 X${fmt(expectedX)} Y${fmt(expectedY)} Z${cutZ} F${feed}`)
+
+    // The lift line right before it must sit at that exact same position
+    // — a pure vertical plunge at the tab boundary, not a lifted detour
+    // all the way to the far corner (X40).
+    expect(lines[lastLiftIdx]).toBe(`G1 X${fmt(expectedX)} Y${fmt(expectedY)} Z${liftZ} F${feed}`)
   })
 
   it('never emits a diagonal move through a tab (lift/plunge are vertical-only)', () => {

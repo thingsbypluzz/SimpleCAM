@@ -528,12 +528,15 @@ function App() {
                         : `Pattern: ${positioningSummary(params.geometry)}`
                     }
                   >
+                    <span className="text-[10px] font-semibold uppercase text-slate-400 dark:text-slate-500">
+                      {params.operation === 'outline' ? 'Outline' : 'Hole(s)'}
+                    </span>
                     {(() => {
                       const Icon =
                         params.operation === 'outline'
                           ? outlineShapeIcon(params.outline.shape)
                           : positioningIcon(params.geometry.positioning)
-                      return <Icon className="h-6 w-6 text-slate-500 dark:text-slate-400" />
+                      return <Icon className="h-8 w-8 text-slate-500 dark:text-slate-400" />
                     })()}
                     <div className="flex flex-col items-center">
                       {(params.operation === 'outline'
@@ -554,7 +557,7 @@ function App() {
                 {step.id === 2 && params.operation === 'outline' && (
                   <div className="flex flex-col items-center gap-4">
                     <MiniStat
-                      icon={<activeMethodDisplay.Icon className="h-6 w-6" />}
+                      icon={<activeMethodDisplay.Icon className="h-8 w-8" />}
                       label="METHOD"
                       value={activeMethodDisplay.shortLabel}
                       title={`Method: ${activeMethodDisplay.title}`}
@@ -562,7 +565,7 @@ function App() {
                     <MiniStat
                       icon={(() => {
                         const ShapeIcon = outlineShapeIcon(params.outline.shape)
-                        return <ShapeIcon className="h-6 w-6" />
+                        return <ShapeIcon className="h-8 w-8" />
                       })()}
                       label="SIZE"
                       value={outlineSizeValue(params.outline)}
@@ -571,21 +574,21 @@ function App() {
                     />
                     {offset && (
                       <MiniStat
-                        icon={<OffsetIcon className="h-6 w-6" />}
+                        icon={<OffsetIcon className="h-8 w-8" />}
                         label="OFFSET"
                         value={offset}
                         title={`Offset: ${offset}`}
                       />
                     )}
                     <MiniStat
-                      icon={<BitIcon className="h-6 w-6" />}
+                      icon={<BitIcon className="h-8 w-8" />}
                       label="BIT"
                       value={`${params.outline.toolDiameter}`}
                       unit="mm"
                       title={`Tool Diameter: ${params.outline.toolDiameter} mm`}
                     />
                     <MiniStat
-                      icon={<DepthIcon className="h-6 w-6" />}
+                      icon={<DepthIcon className="h-8 w-8" />}
                       label="DEPTH"
                       value={`${params.outline.totalDepth}`}
                       unit="mm"
@@ -593,7 +596,7 @@ function App() {
                     />
                     {params.outline.tabsEnabled && (
                       <MiniStat
-                        icon={<TabBridgeIcon className="h-6 w-6" />}
+                        icon={<TabBridgeIcon className="h-8 w-8" />}
                         label="TABS"
                         value="YES"
                         title="Tabs: enabled"
@@ -605,35 +608,35 @@ function App() {
                 {step.id === 2 && params.operation === 'holes' && (
                   <div className="flex flex-col items-center gap-4">
                     <MiniStat
-                      icon={<activeMethodDisplay.Icon className="h-6 w-6" />}
+                      icon={<activeMethodDisplay.Icon className="h-8 w-8" />}
                       label="METHOD"
                       value={activeMethodDisplay.shortLabel}
                       title={`Method: ${activeMethodDisplay.title}`}
                     />
                     {offset && (
                       <MiniStat
-                        icon={<OffsetIcon className="h-6 w-6" />}
+                        icon={<OffsetIcon className="h-8 w-8" />}
                         label="OFFSET"
                         value={offset}
                         title={`Offset: ${offset}`}
                       />
                     )}
                     <MiniStat
-                      icon={<BitIcon className="h-6 w-6" />}
+                      icon={<BitIcon className="h-8 w-8" />}
                       label="BIT"
                       value={`${params.geometry.toolDiameter}`}
                       unit="mm"
                       title={`Tool Diameter: ${params.geometry.toolDiameter} mm`}
                     />
                     <MiniStat
-                      icon={<DiameterIcon className="h-6 w-6" />}
+                      icon={<DiameterIcon className="h-8 w-8" />}
                       label="HOLE"
                       value={`${params.geometry.holeDiameter}`}
                       unit="mm"
                       title={`Hole Diameter: ${params.geometry.holeDiameter} mm`}
                     />
                     <MiniStat
-                      icon={<DepthIcon className="h-6 w-6" />}
+                      icon={<DepthIcon className="h-8 w-8" />}
                       label="DEPTH"
                       value={`${params.geometry.totalDepth}`}
                       unit="mm"
@@ -641,7 +644,7 @@ function App() {
                     />
                     {params.geometry.tabsEnabled && (
                       <MiniStat
-                        icon={<TabBridgeIcon className="h-6 w-6" />}
+                        icon={<TabBridgeIcon className="h-8 w-8" />}
                         label="TABS"
                         value="YES"
                         title="Tabs: enabled"
@@ -653,21 +656,21 @@ function App() {
                 {step.id === 3 && (
                   <div className="flex flex-col items-center gap-4">
                     <MiniStat
-                      icon={<FeedIcon className="h-6 w-6" />}
+                      icon={<FeedIcon className="h-8 w-8" />}
                       label="FEED"
                       value={`${params.feeds.feedrateXY}`}
                       unit="mm/min"
                       title={`Feedrate XY: ${params.feeds.feedrateXY} mm/min`}
                     />
                     <MiniStat
-                      icon={<PlungeIcon className="h-6 w-6" />}
+                      icon={<PlungeIcon className="h-8 w-8" />}
                       label="PLUNGE"
                       value={`${params.feeds.plungeRate}`}
                       unit="mm/min"
                       title={`Plunge Rate: ${params.feeds.plungeRate} mm/min`}
                     />
                     <MiniStat
-                      icon={<StepdownIcon className="h-6 w-6" />}
+                      icon={<StepdownIcon className="h-8 w-8" />}
                       label={activeMethodDisplay.stepdown.shortLabel}
                       value={`${params.feeds.stepdown}`}
                       unit="mm"
@@ -675,7 +678,7 @@ function App() {
                     />
                     {params.feeds.startZ !== 0 && (
                       <MiniStat
-                        icon={<StartZIcon className="h-6 w-6" />}
+                        icon={<StartZIcon className="h-8 w-8" />}
                         label="STARTZ"
                         value={`${params.feeds.startZ}`}
                         unit="mm"
@@ -688,10 +691,10 @@ function App() {
                 {step.id === 4 && (
                   <>
                     <span
-                      className={`flex h-8 w-8 items-center justify-center rounded-full ${step4BadgeInfo.colorClassName}`}
+                      className={`flex h-10 w-10 items-center justify-center rounded-full ${step4BadgeInfo.colorClassName}`}
                       title={step4BadgeInfo.title}
                     >
-                      <step4BadgeInfo.Icon className="h-4 w-4" />
+                      <step4BadgeInfo.Icon className="h-5 w-5" />
                     </span>
                     <span className="[writing-mode:vertical-rl] rotate-180 text-xs font-medium text-slate-500 dark:text-slate-400">
                       {step.title}

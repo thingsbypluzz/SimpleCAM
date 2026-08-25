@@ -100,9 +100,11 @@ export function tabbedCirclePass(p: TabbedCirclePassParams): string[] {
       lines.push(`G1 X${fmt(prevX)} Y${fmt(prevY)} Z${fmt(p.liftZ)} F${fmt(p.feed)}`)
       lines.push(`G1 X${fmt(x)} Y${fmt(y)} Z${fmt(p.liftZ)} F${fmt(p.feed)}`)
     } else if (!nextInTab && inTab) {
-      // Leaving a tab: arrive at this breakpoint still lifted, then
-      // plunge straight down to resume cutting.
-      lines.push(`G1 X${fmt(x)} Y${fmt(y)} Z${fmt(p.liftZ)} F${fmt(p.feed)}`)
+      // Leaving a tab: plunge straight down where we already are (the
+      // tab's own end boundary), then move across to this breakpoint at
+      // cutZ, resuming normal cutting immediately instead of only after
+      // reaching the next breakpoint.
+      lines.push(`G1 X${fmt(prevX)} Y${fmt(prevY)} Z${fmt(p.cutZ)} F${fmt(p.feed)}`)
       lines.push(`G1 X${fmt(x)} Y${fmt(y)} Z${fmt(p.cutZ)} F${fmt(p.feed)}`)
     } else {
       lines.push(`G1 X${fmt(x)} Y${fmt(y)} Z${fmt(nextInTab ? p.liftZ : p.cutZ)} F${fmt(p.feed)}`)

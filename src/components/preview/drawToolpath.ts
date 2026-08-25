@@ -45,13 +45,21 @@ function buildTheme(paletteId: PaletteId, isDark: boolean): Theme {
   }
 }
 
-// Strokes a circle, skipping the angular ranges in `tabRanges` (BL-14) —
-// leaves a visible gap wherever the toolpath does. `tabRanges` are in
-// world/math angle convention (0 = +X, increasing = counterclockwise,
-// same as tabs.ts and the engine); canvas's ctx.arc takes screen angles,
-// which run the opposite way here since worldToScreen flips Y — negating
-// both bounds (and swapping them back into increasing order) converts
-// between the two without changing which points get traced.
+// Dash pattern (px) used for the tab arcs/segments below — BL-15: a gap
+// with nothing drawn read as a missing piece of the toolpath/outline, not
+// a physical bridge. Dashing the tab span in the same stroke color (no
+// new palette color needed, see BL-15's CLAUDE.md note) keeps it visually
+// distinct from the solid cut line while still tracing the true geometry.
+const TAB_DASH: [number, number] = [3, 3]
+
+// Strokes a circle, dashing the angular ranges in `tabRanges` (BL-14) —
+// a dashed arc wherever the toolpath skips cutting (BL-15), solid
+// elsewhere. `tabRanges` are in world/math angle convention (0 = +X,
+// increasing = counterclockwise, same as tabs.ts and the engine);
+// canvas's ctx.arc takes screen angles, which run the opposite way here
+// since worldToScreen flips Y — negating both bounds (and swapping them
+// back into increasing order) converts between the two without changing
+// which points get traced.
 function drawGappedCircle(
   ctx: CanvasRenderingContext2D,
   px: number,
@@ -66,8 +74,9 @@ function drawGappedCircle(
     return
   }
 
-  const drawArc = (worldLo: number, worldHi: number) => {
+  const drawArc = (worldLo: number, worldHi: number, dashed: boolean) => {
     if (worldHi <= worldLo) return
+    ctx.setLineDash(dashed ? TAB_DASH : [])
     ctx.beginPath()
     ctx.arc(px, py, radius, -worldHi, -worldLo)
     ctx.stroke()
@@ -76,28 +85,32 @@ function drawGappedCircle(
   const sorted = [...tabRanges].sort((a, b) => a.startAngle - b.startAngle)
   let cursor = 0
   for (const range of sorted) {
-    drawArc(cursor, range.startAngle)
+    drawArc(cursor, range.startAngle, false)
+    drawArc(range.startAngle, range.endAngle, true)
     cursor = range.endAngle
   }
-  drawArc(cursor, Math.PI * 2)
+  drawArc(cursor, Math.PI * 2, false)
+  ctx.setLineDash([])
 }
 
 // Rectangle analog of drawGappedCircle — walks the 4-corner perimeter in
-// world space, skipping the fractional ranges in `sideRanges[edge]` per
-// edge (BL-14 for Outline — see lib/outlineRectangleTabs.ts). Takes
-// `toPx` directly rather than pre-converted screen coordinates, since
-// (unlike a circle) each segment spans two different world points that
-// both need converting.
+// world space, dashing the fractional ranges in `sideRanges[edge]` per
+// edge (BL-14 for Outline — see lib/outlineRectangleTabs.ts; dashing
+// itself is BL-15, same treatment as the circle). Takes `toPx` directly
+// rather than pre-converted screen coordinates, since (unlike a circle)
+// each segment spans two different world points that both need
+// converting.
 function drawGappedRectangle(
   ctx: CanvasRenderingContext2D,
   toPx: (x: number, y: number) => [number, number],
   corners: Point2D[],
   sideRanges: SideTabRange[][],
 ) {
-  const drawSegment = (p0: Point2D, p1: Point2D, fracLo: number, fracHi: number) => {
+  const drawSegment = (p0: Point2D, p1: Point2D, fracLo: number, fracHi: number, dashed: boolean) => {
     if (fracHi <= fracLo) return
     const [xa, ya] = toPx(p0.x + (p1.x - p0.x) * fracLo, p0.y + (p1.y - p0.y) * fracLo)
     const [xb, yb] = toPx(p0.x + (p1.x - p0.x) * fracHi, p0.y + (p1.y - p0.y) * fracHi)
+    ctx.setLineDash(dashed ? TAB_DASH : [])
     ctx.beginPath()
     ctx.moveTo(xa, ya)
     ctx.lineTo(xb, yb)
@@ -109,17 +122,19 @@ function drawGappedRectangle(
     const p1 = corners[(edge + 1) % 4]
     const ranges = sideRanges[edge]
     if (ranges.length === 0) {
-      drawSegment(p0, p1, 0, 1)
+      drawSegment(p0, p1, 0, 1, false)
       continue
     }
     const sorted = [...ranges].sort((a, b) => a.startFrac - b.startFrac)
     let cursor = 0
     for (const range of sorted) {
-      drawSegment(p0, p1, cursor, range.startFrac)
+      drawSegment(p0, p1, cursor, range.startFrac, false)
+      drawSegment(p0, p1, range.startFrac, range.endFrac, true)
       cursor = range.endFrac
     }
-    drawSegment(p0, p1, cursor, 1)
+    drawSegment(p0, p1, cursor, 1, false)
   }
+  ctx.setLineDash([])
 }
 
 // Arrowhead pointing along an arbitrary unit direction (dirX, dirY), tip at

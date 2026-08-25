@@ -95,7 +95,7 @@ export function tabbedRectanglePass(p: TabbedRectanglePassParams): string[] {
         lines.push(`G1 X${fmt(prevX)} Y${fmt(prevY)} Z${fmt(liftZ)} F${fmt(feed)}`)
         lines.push(`G1 X${fmt(x)} Y${fmt(y)} Z${fmt(liftZ)} F${fmt(feed)}`)
       } else if (!nextInTab && inTab) {
-        lines.push(`G1 X${fmt(x)} Y${fmt(y)} Z${fmt(liftZ)} F${fmt(feed)}`)
+        lines.push(`G1 X${fmt(prevX)} Y${fmt(prevY)} Z${fmt(cutZ)} F${fmt(feed)}`)
         lines.push(`G1 X${fmt(x)} Y${fmt(y)} Z${fmt(cutZ)} F${fmt(feed)}`)
       } else {
         lines.push(`G1 X${fmt(x)} Y${fmt(y)} Z${fmt(nextInTab ? liftZ : cutZ)} F${fmt(feed)}`)

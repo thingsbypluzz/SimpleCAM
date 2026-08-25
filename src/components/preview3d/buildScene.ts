@@ -88,7 +88,7 @@ function tabbedCirclePoints3D(
       points.push(toThree(prevX, prevY, liftZ))
       points.push(toThree(x, y, liftZ))
     } else if (!nextInTab && inTab) {
-      points.push(toThree(x, y, liftZ))
+      points.push(toThree(prevX, prevY, cutZ))
       points.push(toThree(x, y, cutZ))
     } else {
       points.push(toThree(x, y, nextInTab ? liftZ : cutZ))
@@ -246,7 +246,7 @@ function tabbedRectanglePoints3D(
         points.push(toThree(prevX, prevY, liftZ))
         points.push(toThree(x, y, liftZ))
       } else if (!nextInTab && inTab) {
-        points.push(toThree(x, y, liftZ))
+        points.push(toThree(prevX, prevY, cutZ))
         points.push(toThree(x, y, cutZ))
       } else {
         points.push(toThree(x, y, nextInTab ? liftZ : cutZ))

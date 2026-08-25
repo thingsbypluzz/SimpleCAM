@@ -266,3 +266,28 @@ export function CircleOutlineIcon({ className }: IconProps) {
     </svg>
   )
 }
+
+// Outline Rectangle Cornered: same 4-corner outline as RectangleIcon, but
+// dot-free — Outline cuts a perimeter, not drilled points, so the corner
+// dots (which mean "hole position" for Hole(s)' Grid pattern) don't apply.
+// A small crosshair at the origin corner keeps the Cornered/Centered
+// distinction alive without looking like a hole marker.
+export function RectangleOutlineIcon({ className }: IconProps) {
+  return (
+    <svg {...base} className={className}>
+      <path d="M6 18h12M18 18V6M18 6H6M6 6v12" strokeWidth={1} />
+      <path d="M4.5 18h3M6 16.5v3" strokeWidth={1} />
+    </svg>
+  )
+}
+
+// Outline Rectangle Centered: same outline, crosshair moved to the
+// rectangle's center to match RectangleOutlineIcon's origin convention.
+export function RectangleOutlineCenteredIcon({ className }: IconProps) {
+  return (
+    <svg {...base} className={className}>
+      <path d="M6 18h12M18 18V6M18 6H6M6 6v12" strokeWidth={1} />
+      <path d="M10.5 12h3M12 10.5v3" strokeWidth={1} />
+    </svg>
+  )
+}

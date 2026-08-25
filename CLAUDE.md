@@ -461,11 +461,17 @@ Projekt budowany etapami z checkpointami do akceptacji. Aktualny stan:
       (`computeRectTabRanges()`, ułamki wzdłuż boku zamiast kątów;
       `tabbedRectanglePass()`, ta sama logika "unii breakpointów" co
       `tabbedCirclePass()`, ale bez potrzeby próbkowania kątowego —
-      prosta krawędź nie wymaga aproksymacji wielokątem). **Znany bug,
-      zapisany jako `BL-21`:** przy zgłoszonej przez użytkownika
-      kombinacji wymiarów mostek wychodzi szerszy niż skonfigurowany
-      (przyczyna jeszcze niezdiagnozowana) — wymaga naprawy przed
-      uznaniem Rectangle Outline tabs za w pełni zaufane.
+      prosta krawędź nie wymaga aproksymacji wielokątem). **`BL-21`
+      (naprawione w `0.13.1`):** przejście "opuszczam mostek" w
+      `tabbedRectanglePass()` przejeżdżało do KOLEJNEGO breakpointu
+      wciąż podniesione, zamiast zanurzyć się od razu na własnej
+      granicy mostka — przy jednym mostku na środku boku dawało to
+      podniesiony odcinek sięgający niemal do rogu. Ten sam wzorzec
+      (skopiowany przy budowie OP-1) istniał też w `lib/tabs.ts`'s
+      `tabbedCirclePass()` (Hole(s)/Circle Outline), tam niewidoczny
+      dzięki gęstemu próbkowaniu kątowemu. Naprawione w obu
+      generatorach G-code i ich odpowiednikach w `buildScene.ts` — pełny
+      opis w CHANGELOG `0.13.1`.
 
       **UI:** Krok 1 (`Step1Positioning.tsx`) — "Outline" przestaje być
       wyszarzonym placeholderem, rozwija się w listę 3 kształtów tym
@@ -635,17 +641,6 @@ nowa funkcjonalność. Nie zaczynać bez wyraźnego "przechodzimy do X".
   może schodzić do zera. Dokładna wartość progu/minimalnej szerokości
   do ustalenia przy realnej implementacji, prawdopodobnie razem z
   sesją `/grill-me` dla całego BL-8.
-- **`BL-15`** — **Podgląd 2D: mostki (tabs) nie są w ogóle widoczne w
-  miejscu przerwy.** Zgłoszone przez użytkownika: przy włączonych
-  mostkach `drawGappedCircle()` (`preview/drawToolpath.ts`) po prostu
-  nic nie rysuje na łuku mostka, więc w 2D wygląda to jak brakujący
-  fragment ścieżki/otworu (widać tylko dolny przejazd), nie jak
-  fizyczny mostek. Dwie zaproponowane opcje do wyboru przy
-  implementacji: (a) nie pokazywać mostków w 2D w ogóle — renderować
-  pełny okrąg, ignorując przerwy (2D staje się uproszczonym
-  podglądem, dokładna geometria zostaje w 3D), albo (b) rysować łuk
-  mostka przerywaną linią (`ctx.setLineDash()`) zamiast zostawiać
-  pustkę.
 - **`BL-18`** — **Zweryfikować kompatybilność wsteczną ze starszymi
   przeglądarkami.** Zgłoszenie użytkownika: na Windows 8, w kilku
   przeglądarkach, tylko sekcja Preview miała kolory zgodne z ustawioną
@@ -683,17 +678,6 @@ nowa funkcjonalność. Nie zaczynać bez wyraźnego "przechodzimy do X".
   rozważenia też: "unikalne IP" to tylko przybliżenie "unikalnych ludzi"
   (NAT zaniża, rotacja IP zawyża), oraz implikacje RODO przy liczeniu po
   IP (strona hostowana na `.pl`).
-- **`BL-21`** — **Bug: mostki (tabs) w Rectangle Outline nie generują się
-  poprawnie.** Zgłoszenie użytkownika: przy Tab Height 1mm, Tab Width
-  2mm, Count 1 (per side) powstały mostek zajmuje z grubsza połowę
-  długości boku, nie skonfigurowane 2mm. Podejrzany obszar:
-  `computeRectTabRanges()`/`sideRangesFor()` w
-  `src/lib/outlineRectangleTabs.ts` — `widthFrac = tabWidth / sideLength`
-  dałoby dokładnie 0.5 tylko przy zbiegu okoliczności, chyba że gdzieś
-  jest realne pomieszanie jednostek/odniesienia. Wymaga reprodukcji z
-  konkretnymi wymiarami kształtu użytymi przez usera, potem przeglądu
-  `outlineRectangleTabs.ts`/`outlineRectangleTabs.test.ts` przed
-  dotknięciem kodu.
 - **`BL-22`** — **Wyraźniejszy ślad obrabianego materiału w podglądzie
   (Outline i Hole(s)), może suwak opacity.** Dzisiejsze stałe, niskie
   wypełnienie (`theme.holeFill`, `opacity: 0.12` w `buildScene.ts`,
@@ -701,22 +685,6 @@ nowa funkcjonalność. Nie zaczynać bez wyraźnego "przechodzimy do X".
   rozwiązaniem jest mocniejszy default, suwak opacity dla użytkownika,
   czy coś innego — otwarte, wymaga sesji do przedyskutowania przed
   dopracowaniem zakresu.
-- **`BL-23`** — **Pasek Kroku 1: pokazać aktywną operację (Hole(s)/
-  Outline) nad ikoną patternu.** Dziś zwinięty pasek Kroku 1
-  (`App.tsx`) pokazuje tylko ikonę/linijki patternu/kształtu — samą
-  operację da się dziś wywnioskować wyłącznie z podglądu 2D/3D. Dodać
-  małą etykietę nad istniejącym blokiem ikony.
-- **`BL-24`** — **Nowe ikonki patternu dla kształtów Rectangle w
-  Outline, bez kropek w rogach.** Outline reużywa dziś
-  `RectangleIcon`/`RectangleCenteredIcon` z Hole(s)
-  (`src/components/icons.tsx`) razem z ich kropkami w rogach — te
-  reprezentują pozycje wierconych otworów we wzorcu Grid, nie mają
-  sensu dla samego obrysu prostokąta. Nowy `CircleOutlineIcon` (dodany
-  przy OP-1) użytkownik potwierdził jako dobry bez zmian — potrzebne
-  tylko warianty prostokątne bez kropek, podpięte przez
-  `OUTLINE_SHAPE_META` w `config/outlineMeta.ts` zamiast reużywania
-  ikon Hole(s). Użyć wszędzie: submenu Outline na Kroku 1, ikonki
-  zapisanych presetów, paski podsumowania Kroku 1/2.
 - **`BL-25`** — **Tryb edycji przywołanego presetu.** Pomysł: wczytanie
   presetu z headera podświetla/zaznacza go; póki jest zaznaczony,
   dalsze zmiany zapisują się automatycznie z powrotem do tego slotu
@@ -727,10 +695,6 @@ nowa funkcjonalność. Nie zaczynać bez wyraźnego "przechodzimy do X".
   ustalonej, świadomej decyzji projektowej (presety są dziś jawnie
   zapisywane wyłącznie ręcznie, bez auto-nadpisywania) — wymaga pełnej
   dyskusji przed dopracowaniem zakresu, nie drobna poprawka.
-- **`BL-26`** — **Powiększyć wszystkie ikonki w każdym pasku
-  podsumowania Kroku.** Kosmetyczny przegląd rozmiarów w zwiniętych
-  paskach Kroków 1-4 appki (`App.tsx`, dziś `h-6 w-6` dla ikon
-  MiniStat/patternu, `h-4 w-4` dla badge'a Kroku 4) i `MiniStat.tsx`.
 
 Nie przeskakuj etapów bez pytania — każdy kończy się checkpointem do
 przeglądu przez użytkownika.
@@ -1297,6 +1261,17 @@ przeglądu przez użytkownika.
   pokazuje, gdzie narzędzie faktycznie jedzie. Wypełnienie otworu w 2D
   (`holeFill`) też zostaje pełnym dyskiem z tego samego powodu — sam
   obrys (`holeStroke`) i ścieżka narzędzia dostały przerwy.
+
+  **`BL-15` zamknięte w `0.13.2`:** te przerwy w 2D renderowały się jako
+  zwykła pustka (nic nie rysowane na łuku/odcinku mostka) — czytało się
+  jak brakujący fragment ścieżki, nie jak fizyczny mostek. Naprawione
+  przerywaną linią (`ctx.setLineDash()`) w tym samym kolorze co reszta
+  łuku/odcinka — zero nowego koloru w `config/palettes.ts` (rozważana
+  alternatywa: osobny kolor per paleta/motyw, odrzucona jako niepotrzebny
+  narzut utrzymaniowy dla czysto kosmetycznej poprawki). Dotyczy obu
+  `drawGappedCircle()`/`drawGappedRectangle()` (ten drugi doszedł przy
+  OP-1, po oryginalnym zgłoszeniu BL-15 — dostał tę samą poprawkę od
+  razu, jednym współdzielonym stałym `TAB_DASH`).
 
   **Branch `add-tabs`**, nie prosto na `main` (w przeciwieństwie do
   wcześniejszych sesji w tym projekcie) — świadoma decyzja użytkownika:

@@ -1,5 +1,5 @@
 import type { ComponentType } from 'react'
-import { CircleOutlineIcon, HelixIcon, RectangleCenteredIcon, RectangleIcon, StandardHoleIcon } from '../components/icons'
+import { CircleOutlineIcon, HelixIcon, RectangleOutlineCenteredIcon, RectangleOutlineIcon, StandardHoleIcon } from '../components/icons'
 import { fmt } from '../lib/format'
 import { METHOD_META } from './methodMeta'
 import type { OffsetMode, OutlineParams, OutlineShape, OutlineMethod } from '../types/wizard'
@@ -16,13 +16,13 @@ export const OUTLINE_SHAPE_META: Record<OutlineShape, OutlineShapeMeta> = {
     value: 'rectCornered',
     title: 'Rectangle Cornered',
     description: 'Rectangle outline, origin at the bottom-left corner.',
-    Icon: RectangleIcon,
+    Icon: RectangleOutlineIcon,
   },
   rectCentered: {
     value: 'rectCentered',
     title: 'Rectangle Centered',
     description: 'Rectangle outline, origin at the center.',
-    Icon: RectangleCenteredIcon,
+    Icon: RectangleOutlineCenteredIcon,
   },
   circle: {
     value: 'circle',
