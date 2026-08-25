@@ -31,7 +31,17 @@ describe('computeTabRanges', () => {
 })
 
 describe('tabbedCirclePass', () => {
-  const base = { centerX: 0, centerY: 0, radius: 10, startX: 10, startY: 0, cutZ: -5, liftZ: -3, feed: 800 }
+  const base = {
+    centerX: 0,
+    centerY: 0,
+    radius: 10,
+    startX: 10,
+    startY: 0,
+    cutZ: -5,
+    liftZ: -3,
+    feed: 800,
+    direction: 'ccw' as const,
+  }
 
   it('behaves like a plain 72-segment sweep with no tabs', () => {
     const lines = tabbedCirclePass({ ...base, tabRanges: [] })
@@ -86,5 +96,13 @@ describe('tabbedCirclePass', () => {
         expect(curXY?.[2]).toBe(prevXY?.[2])
       }
     }
+  })
+
+  it('cw direction still ends on the start point, but sweeps the opposite way', () => {
+    const tabRanges = computeTabRanges(1, 5, base.radius)
+    const ccw = tabbedCirclePass({ ...base, tabRanges })
+    const cw = tabbedCirclePass({ ...base, tabRanges, direction: 'cw' })
+    expect(cw[cw.length - 1]).toBe(`G1 X${base.startX} Y${base.startY} Z${base.cutZ} F${base.feed}`)
+    expect(cw[0]).not.toBe(ccw[0])
   })
 })

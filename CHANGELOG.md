@@ -7,6 +7,30 @@ zgodne z [SemVer](https://semver.org/). Ten plik pozostaje głównym, czytelnym
 thingsbypluzz/SimpleCAM), ale to infrastruktura pod izolację pracy
 (branch/worktree per zadanie), nie zamiennik tego changeloga.
 
+## [0.13.0] — 2026-08-25
+
+### Dodano
+
+- **Etap 7 — OP-1: Outline (Rectangle Cornered/Centered + Circle
+  cut-out).** Trzecia operacja obok Hole(s), poprzedzona pełną sesją
+  `/grill-me`. Trzy kształty (Rectangle Cornered, Rectangle Centered,
+  Circle), każdy z trybem offsetu Inside/Outside/On-line; kierunek
+  ruchu (CW/CCW) wyprowadzony z trybu cięcia pod konwencjonalne
+  frezowanie (stałe `M3`). Circle reużywa silnika Helix/Standard
+  Hole(s) wprost; Rectangle dostaje nową metodę Ramp (ciągłe zejście
+  wzdłuż dłuższego boku, mirror spirali Helixa) obok Standard. Tabs
+  (mostki) dla Rectangle liczone per bok, nie razem jak w Circle/
+  Hole(s). Domyka `BL-6` ("Rectangle Cut Out"). Pełny opis architektury
+  (nowe pole `WizardParams.operation`, nowe moduły silnika/UI/
+  walidacji/podglądu 2D-3D) w CLAUDE.md, "Status / Etapy" → Etap 7.
+  219 testów po tej zmianie (ze 150 przed).
+
+### Znane problemy
+
+- **`BL-21`** — mostki (tabs) w Rectangle Outline nie generują się
+  poprawnie przy niektórych kombinacjach wymiarów (zgłoszenie
+  użytkownika, przyczyna jeszcze niezdiagnozowana).
+
 ## [0.12.4] — 2026-08-24
 
 ### Zmieniono

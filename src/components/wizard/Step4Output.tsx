@@ -38,12 +38,19 @@ export function Step4Output({
   onSaveToPreset,
   warnings,
 }: Step4OutputProps) {
-  const { output, geometry } = params
+  const { output, geometry, outline } = params
   const [copied, setCopied] = useState(false)
   const [savedSlot, setSavedSlot] = useState<PresetSlotId | null>(null)
 
   const updateOutput = (patch: Partial<WizardParams['output']>) =>
     onChange({ output: { ...output, ...patch } })
+
+  // Rectangle Outline is always straight-edge G1, independent of tabs — no
+  // arc/circle geometry involved at all. Circle Outline follows the same
+  // tabs-force-G1 rule as Hole(s). See CLAUDE.md's Outline design notes.
+  const isRectOutline = params.operation === 'outline' && outline.shape !== 'circle'
+  const tabsForceLinear = params.operation === 'outline' ? outline.tabsEnabled : geometry.tabsEnabled
+  const forcedLinear = isRectOutline || tabsForceLinear
 
   const handleCopy = async () => {
     if (!generatedGCode) return
@@ -82,12 +89,12 @@ export function Step4Output({
           <span>Circle interpolation:</span>
           <div className="flex gap-2">
             {(['arc', 'linear'] as const).map((mode) => {
-              const isSelected = geometry.tabsEnabled ? mode === 'linear' : output.interpolation === mode
+              const isSelected = forcedLinear ? mode === 'linear' : output.interpolation === mode
               return (
                 <button
                   key={mode}
                   type="button"
-                  disabled={geometry.tabsEnabled}
+                  disabled={forcedLinear}
                   onClick={() => updateOutput({ interpolation: mode })}
                   className={[
                     'rounded-md border px-2.5 py-1 text-xs font-medium transition disabled:cursor-not-allowed disabled:opacity-50',
@@ -102,9 +109,11 @@ export function Step4Output({
             })}
           </div>
         </div>
-        {geometry.tabsEnabled && (
+        {forcedLinear && (
           <p className="text-xs text-slate-500 dark:text-slate-400">
-            G2/G3 disabled — Tabs (Step 2) require G1 interpolation.
+            {isRectOutline
+              ? 'G2/G3 disabled — Rectangle outlines are always straight-edge (G1).'
+              : 'G2/G3 disabled — Tabs (Step 2) require G1 interpolation.'}
           </p>
         )}
       </div>

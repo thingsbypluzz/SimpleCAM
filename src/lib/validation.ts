@@ -1,6 +1,8 @@
 import type { MachineSettings } from '../types/machine'
-import type { FeedsParams, GeometryParams, WizardParams } from '../types/wizard'
+import type { FeedsParams, GeometryParams, OutlineParams, WizardParams } from '../types/wizard'
 import { resolvePoints } from './positioning'
+import { rectToolDimensions } from './outlineRectangleGeometry'
+import { circleOutlineRadiusAndDirection } from './outlineCircle'
 
 export function isToolDiameterValid(geometry: GeometryParams): boolean {
   return geometry.toolDiameter <= geometry.holeDiameter
@@ -50,6 +52,74 @@ export function isTabWidthValid(geometry: GeometryParams): boolean {
   return geometry.tabCount * geometry.tabWidth < circumference
 }
 
+// Outline validators — same "vacuously valid when not applicable"
+// convention as the Hole(s) validators above, reading params.outline
+// instead of params.geometry.
+
+function outlineCircleRadius(outline: OutlineParams): number {
+  return circleOutlineRadiusAndDirection(outline).radius
+}
+
+// Inside cuts remove material up to the tool's own width — a tool as wide
+// as (or wider than) the shape leaves nothing behind. Outside/On-line
+// never "don't fit" the same way (Outside only ever grows the cut,
+// On-line uses nominal dimensions untouched), so they're always valid.
+export function isOutlineToolDiameterValid(outline: OutlineParams): boolean {
+  if (outline.offsetMode !== 'inside') return true
+  if (outline.shape === 'circle') return outline.toolDiameter <= outline.diameter
+  return outline.toolDiameter < Math.min(outline.width, outline.height)
+}
+
+// Same rule as isTabHeightValid above, reading outline.* fields.
+export function isOutlineTabHeightValid(outline: OutlineParams): boolean {
+  return !outline.tabsEnabled || (outline.tabHeight > 0 && outline.tabHeight < outline.totalDepth)
+}
+
+// Circle: same formula as isTabWidthValid (tabCount * tabWidth against the
+// full circumference — tabCount is total-around-perimeter here, matching
+// Hole(s)' semantics). Rectangle: tabCount is per SIDE (not total around
+// the perimeter — see CLAUDE.md's Outline design notes), so the check is
+// against a single side's length rather than the full perimeter; the
+// shortest tool-corrected side is the binding constraint, since the same
+// tabCount/tabWidth apply to every side regardless of that side's length.
+export function isOutlineTabWidthValid(outline: OutlineParams): boolean {
+  if (!outline.tabsEnabled) return true
+  if (outline.shape === 'circle') {
+    const circumference = 2 * Math.PI * Math.max(0, outlineCircleRadius(outline))
+    return outline.tabCount * outline.tabWidth < circumference
+  }
+  const { toolWidth, toolHeight } = rectToolDimensions(
+    outline.width,
+    outline.height,
+    outline.toolDiameter,
+    outline.offsetMode,
+  )
+  return outline.tabCount * outline.tabWidth < Math.min(toolWidth, toolHeight)
+}
+
+// Outline's counterpart to patternSpan()/zSpan() below, for
+// machineFitWarnings() — a single shape's own extent instead of a
+// multi-point pattern's bounding box. Offset (outline.offsetX/offsetY)
+// only translates the shape, so — like patternSpan()'s max-min span — it
+// never affects footprint size, only where it sits.
+export function outlineFootprint(outline: OutlineParams): { x: number; y: number } {
+  if (outline.shape === 'circle') {
+    const diameter = 2 * Math.max(0, outlineCircleRadius(outline))
+    return { x: diameter, y: diameter }
+  }
+  const { toolWidth, toolHeight } = rectToolDimensions(
+    outline.width,
+    outline.height,
+    outline.toolDiameter,
+    outline.offsetMode,
+  )
+  return { x: Math.max(0, toolWidth), y: Math.max(0, toolHeight) }
+}
+
+export function outlineZSpan(outline: OutlineParams, feeds: FeedsParams): number {
+  return feeds.safeZ + outline.totalDepth
+}
+
 // X/Y extent of the resolved pattern, hole footprint included (radius, not
 // just center points) — the same bounding-box math buildScene.ts uses for
 // 3D Preview framing, computed fresh in CNC space rather than reusing its
@@ -80,7 +150,8 @@ export function zSpan(geometry: GeometryParams, feeds: FeedsParams): number {
 // it's clamped, so this is the only thing worth flagging. One message per
 // axis that actually fails; empty array once everything fits.
 export function machineFitWarnings(params: WizardParams, machine: MachineSettings): string[] {
-  const span = patternSpan(params.geometry)
+  const span =
+    params.operation === 'outline' ? outlineFootprint(params.outline) : patternSpan(params.geometry)
   const warnings: string[] = []
   if (span.x > machine.travelX) {
     warnings.push(
@@ -92,7 +163,10 @@ export function machineFitWarnings(params: WizardParams, machine: MachineSetting
       `Y span ${span.y.toFixed(1)}mm exceeds the machine's Y travel (${machine.travelY}mm).`,
     )
   }
-  const totalZ = zSpan(params.geometry, params.feeds)
+  const totalZ =
+    params.operation === 'outline'
+      ? outlineZSpan(params.outline, params.feeds)
+      : zSpan(params.geometry, params.feeds)
   if (totalZ > machine.travelZ) {
     warnings.push(
       `Z span ${totalZ.toFixed(1)}mm exceeds the machine's Z travel (${machine.travelZ}mm).`,

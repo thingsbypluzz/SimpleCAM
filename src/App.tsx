@@ -29,8 +29,17 @@ import {
 } from './components/icons'
 import { METHOD_META } from './config/methodMeta'
 import { positioningIcon, positioningLines, positioningSummary } from './config/positioningMeta'
+import {
+  activeOutlineMethodMeta,
+  offsetModeLabel,
+  OUTLINE_SHAPE_META,
+  outlineShapeIcon,
+  outlineShapeLines,
+  outlineSummary,
+} from './config/outlineMeta'
 import { fmt } from './lib/format'
 import { deriveOverlayParams } from './lib/overlayParams'
+import { generateOutline } from './lib/outline'
 import { presetLabel } from './lib/presetLabel'
 import {
   AUTO_SAVE_SLOT,
@@ -45,6 +54,9 @@ import { loadAppearanceSettings, saveAppearanceSettings } from './lib/appearance
 import { loadMachineSettings, saveMachineSettings } from './lib/machineStorage'
 import {
   isCircleHoleCountValid,
+  isOutlineTabHeightValid,
+  isOutlineTabWidthValid,
+  isOutlineToolDiameterValid,
   isStartZValid,
   isStepdownValid,
   isTabHeightValid,
@@ -53,7 +65,7 @@ import {
   machineFitWarnings,
 } from './lib/validation'
 import type { AppearanceSettings } from './types/appearance'
-import { DEFAULT_WIZARD_PARAMS, type GeometryParams, type WizardParams } from './types/wizard'
+import { DEFAULT_WIZARD_PARAMS, type WizardParams } from './types/wizard'
 
 const TOTAL_STEPS = 4
 
@@ -69,10 +81,16 @@ const STEP_META = [
 const STEPS_WITH_NEXT_BUTTON = new Set([1, 2, 3])
 
 // null when there's no offset to show — the collapsed-bar annotation is
-// hidden entirely at the (0,0) default, not just zeroed out.
-function offsetSummary(geometry: GeometryParams): string | null {
-  if (geometry.offsetX === 0 && geometry.offsetY === 0) return null
-  return `(${fmt(geometry.offsetX)};${fmt(geometry.offsetY)})mm`
+// hidden entirely at the (0,0) default, not just zeroed out. Structural
+// param type (not GeometryParams) — both geometry and outline carry their
+// own offsetX/offsetY, this reads either.
+function offsetSummary(offset: { offsetX: number; offsetY: number }): string | null {
+  if (offset.offsetX === 0 && offset.offsetY === 0) return null
+  return `(${fmt(offset.offsetX)};${fmt(offset.offsetY)})mm`
+}
+
+function outlineSizeValue(outline: WizardParams['outline']): string {
+  return outline.shape === 'circle' ? `⌀${outline.diameter}` : `${outline.width}×${outline.height}`
 }
 
 interface Step4Badge {
@@ -114,8 +132,15 @@ function step4Badge(generatedGCode: string[] | null, warnings: string[]): Step4B
 function collapsedStepTitle(stepId: number, params: WizardParams): string {
   switch (stepId) {
     case 1:
-      return `Pattern — ${positioningSummary(params.geometry)}`
+      return params.operation === 'outline'
+        ? `Shape — ${outlineSummary(params.outline)}`
+        : `Pattern — ${positioningSummary(params.geometry)}`
     case 2: {
+      if (params.operation === 'outline') {
+        const { outline } = params
+        const offset = offsetSummary(outline)
+        return `Geometry — Tool ⌀${outline.toolDiameter}mm, ${OUTLINE_SHAPE_META[outline.shape].title} ${outlineSizeValue(outline)}mm, Depth ${outline.totalDepth}mm (${offsetModeLabel(outline.offsetMode)})${offset ? ` — Offset ${offset}` : ''} — Method: ${activeOutlineMethodMeta(outline).title}`
+      }
       const offset = offsetSummary(params.geometry)
       return `Geometry — Tool ⌀${params.geometry.toolDiameter}mm, Hole ⌀${params.geometry.holeDiameter}mm, Depth ${params.geometry.totalDepth}mm${offset ? ` — Offset ${offset}` : ''} — Method: ${METHOD_META[params.method].title}`
     }
@@ -175,15 +200,25 @@ function App() {
 
   const goForward = () => setActiveStep((s) => Math.min(s + 1, TOTAL_STEPS))
 
-  const activeMethod = METHOD_META[params.method]
-  const offset = offsetSummary(params.geometry)
+  // Display-only method info (Icon/shortLabel/title/stepdown), resolved
+  // per operation — NOT the same as the generate() dispatch below, since
+  // OutlineMethodMeta has no `generate` of its own (see lib/outline.ts).
+  const activeMethodDisplay =
+    params.operation === 'outline' ? activeOutlineMethodMeta(params.outline) : METHOD_META[params.method]
+  const offset = offsetSummary(params.operation === 'outline' ? params.outline : params.geometry)
   const isGeometryValid =
-    isToolDiameterValid(params.geometry) &&
-    isStepdownValid(params.feeds) &&
-    isStartZValid(params.feeds) &&
-    isCircleHoleCountValid(params.geometry) &&
-    isTabHeightValid(params.geometry) &&
-    isTabWidthValid(params.geometry)
+    params.operation === 'outline'
+      ? isOutlineToolDiameterValid(params.outline) &&
+        isStepdownValid(params.feeds) &&
+        isStartZValid(params.feeds) &&
+        isOutlineTabHeightValid(params.outline) &&
+        isOutlineTabWidthValid(params.outline)
+      : isToolDiameterValid(params.geometry) &&
+        isStepdownValid(params.feeds) &&
+        isStartZValid(params.feeds) &&
+        isCircleHoleCountValid(params.geometry) &&
+        isTabHeightValid(params.geometry) &&
+        isTabWidthValid(params.geometry)
   const fitWarnings = machineFitWarnings(params, machine)
   const step4BadgeInfo = step4Badge(generatedGCode, fitWarnings)
   // Memoized: this feeds Scene3D's content-rebuild effect deps, which
@@ -221,7 +256,11 @@ function App() {
   // every keystroke, so a snapshot only survives once the user considered
   // the params worth turning into G-code.
   const handleGenerate = () => {
-    setGeneratedGCode(activeMethod.generate(params, machine))
+    const gcode =
+      params.operation === 'outline'
+        ? generateOutline(params, machine)
+        : METHOD_META[params.method].generate(params, machine)
+    setGeneratedGCode(gcode)
     saveSlot(AUTO_SAVE_SLOT, params)
     setShowRestoredBanner(false)
   }
@@ -298,7 +337,11 @@ function App() {
         >
           {PRESET_SLOT_IDS.map((id) => {
             const preset = presetSlots[id]
-            const PresetIcon = preset ? positioningIcon(preset.geometry.positioning) : null
+            const PresetIcon = preset
+              ? preset.operation === 'outline'
+                ? outlineShapeIcon(preset.outline.shape)
+                : positioningIcon(preset.geometry.positioning)
+              : null
             const isOverlaySelected = overlayEnabled && overlaySlots.has(id)
             const isJustLoaded = !overlayEnabled && justLoadedSlot === id
             const baseClassName = !preset
@@ -479,16 +522,24 @@ function App() {
                 {step.id === 1 && (
                   <div
                     className="flex flex-col items-center gap-1"
-                    title={`Pattern: ${positioningSummary(params.geometry)}`}
+                    title={
+                      params.operation === 'outline'
+                        ? `Shape: ${outlineSummary(params.outline)}`
+                        : `Pattern: ${positioningSummary(params.geometry)}`
+                    }
                   >
                     {(() => {
-                      const PositioningIcon = positioningIcon(params.geometry.positioning)
-                      return (
-                        <PositioningIcon className="h-6 w-6 text-slate-500 dark:text-slate-400" />
-                      )
+                      const Icon =
+                        params.operation === 'outline'
+                          ? outlineShapeIcon(params.outline.shape)
+                          : positioningIcon(params.geometry.positioning)
+                      return <Icon className="h-6 w-6 text-slate-500 dark:text-slate-400" />
                     })()}
                     <div className="flex flex-col items-center">
-                      {positioningLines(params.geometry).map((line, i) => (
+                      {(params.operation === 'outline'
+                        ? outlineShapeLines(params.outline)
+                        : positioningLines(params.geometry)
+                      ).map((line, i) => (
                         <span
                           key={i}
                           className="text-center text-[9px] leading-tight font-semibold whitespace-nowrap text-slate-600 dark:text-slate-300"
@@ -500,13 +551,64 @@ function App() {
                   </div>
                 )}
 
-                {step.id === 2 && (
+                {step.id === 2 && params.operation === 'outline' && (
                   <div className="flex flex-col items-center gap-4">
                     <MiniStat
-                      icon={<activeMethod.Icon className="h-6 w-6" />}
+                      icon={<activeMethodDisplay.Icon className="h-6 w-6" />}
                       label="METHOD"
-                      value={activeMethod.shortLabel}
-                      title={`Method: ${activeMethod.title}`}
+                      value={activeMethodDisplay.shortLabel}
+                      title={`Method: ${activeMethodDisplay.title}`}
+                    />
+                    <MiniStat
+                      icon={(() => {
+                        const ShapeIcon = outlineShapeIcon(params.outline.shape)
+                        return <ShapeIcon className="h-6 w-6" />
+                      })()}
+                      label="SIZE"
+                      value={outlineSizeValue(params.outline)}
+                      unit="mm"
+                      title={`${OUTLINE_SHAPE_META[params.outline.shape].title}: ${outlineSizeValue(params.outline)}mm — ${offsetModeLabel(params.outline.offsetMode)}`}
+                    />
+                    {offset && (
+                      <MiniStat
+                        icon={<OffsetIcon className="h-6 w-6" />}
+                        label="OFFSET"
+                        value={offset}
+                        title={`Offset: ${offset}`}
+                      />
+                    )}
+                    <MiniStat
+                      icon={<BitIcon className="h-6 w-6" />}
+                      label="BIT"
+                      value={`${params.outline.toolDiameter}`}
+                      unit="mm"
+                      title={`Tool Diameter: ${params.outline.toolDiameter} mm`}
+                    />
+                    <MiniStat
+                      icon={<DepthIcon className="h-6 w-6" />}
+                      label="DEPTH"
+                      value={`${params.outline.totalDepth}`}
+                      unit="mm"
+                      title={`Cutting Depth: ${params.outline.totalDepth} mm`}
+                    />
+                    {params.outline.tabsEnabled && (
+                      <MiniStat
+                        icon={<TabBridgeIcon className="h-6 w-6" />}
+                        label="TABS"
+                        value="YES"
+                        title="Tabs: enabled"
+                      />
+                    )}
+                  </div>
+                )}
+
+                {step.id === 2 && params.operation === 'holes' && (
+                  <div className="flex flex-col items-center gap-4">
+                    <MiniStat
+                      icon={<activeMethodDisplay.Icon className="h-6 w-6" />}
+                      label="METHOD"
+                      value={activeMethodDisplay.shortLabel}
+                      title={`Method: ${activeMethodDisplay.title}`}
                     />
                     {offset && (
                       <MiniStat
@@ -566,7 +668,7 @@ function App() {
                     />
                     <MiniStat
                       icon={<StepdownIcon className="h-6 w-6" />}
-                      label={activeMethod.stepdown.shortLabel}
+                      label={activeMethodDisplay.stepdown.shortLabel}
                       value={`${params.feeds.stepdown}`}
                       unit="mm"
                       title={`Stepdown: ${params.feeds.stepdown} mm`}

@@ -48,8 +48,10 @@ function writeStorage(storage: StorageShape): void {
 // picking up defaults for whatever it doesn't have.
 function mergeWithDefaults(saved: Partial<WizardParams> | undefined): WizardParams {
   return {
+    operation: saved?.operation ?? DEFAULT_WIZARD_PARAMS.operation,
     method: saved?.method ?? DEFAULT_WIZARD_PARAMS.method,
     geometry: { ...DEFAULT_WIZARD_PARAMS.geometry, ...saved?.geometry },
+    outline: { ...DEFAULT_WIZARD_PARAMS.outline, ...saved?.outline },
     feeds: { ...DEFAULT_WIZARD_PARAMS.feeds, ...saved?.feeds },
     output: { ...DEFAULT_WIZARD_PARAMS.output, ...saved?.output },
   }

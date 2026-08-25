@@ -254,3 +254,15 @@ export function TabBridgeIcon({ className }: IconProps) {
     </svg>
   )
 }
+
+// Circle Outline: a single bold circle, no holes/dots — distinct from
+// CircleHolesIcon (which depicts several small holes arranged around a
+// circle's circumference for Hole(s)' N-Holes-on-Circle pattern). This one
+// represents the cut shape itself, not a placement pattern.
+export function CircleOutlineIcon({ className }: IconProps) {
+  return (
+    <svg {...base} className={className}>
+      <circle cx="12" cy="12" r="8" />
+    </svg>
+  )
+}

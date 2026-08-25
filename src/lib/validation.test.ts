@@ -1,12 +1,17 @@
 import { describe, expect, it } from 'vitest'
 import {
   isCircleHoleCountValid,
+  isOutlineTabHeightValid,
+  isOutlineTabWidthValid,
+  isOutlineToolDiameterValid,
   isStartZValid,
   isStepdownValid,
   isTabHeightValid,
   isTabWidthValid,
   isToolDiameterValid,
   machineFitWarnings,
+  outlineFootprint,
+  outlineZSpan,
   patternSpan,
   zSpan,
 } from './validation'
@@ -204,5 +209,121 @@ describe('isTabWidthValid', () => {
     expect(
       isTabWidthValid({ ...DEFAULT_WIZARD_PARAMS.geometry, tabsEnabled: true, tabCount: 4, tabWidth: 4 }),
     ).toBe(false)
+  })
+})
+
+describe('isOutlineToolDiameterValid', () => {
+  const outline = DEFAULT_WIZARD_PARAMS.outline
+
+  it('rectangle inside: valid when tool is smaller than the shorter side', () => {
+    expect(
+      isOutlineToolDiameterValid({ ...outline, shape: 'rectCornered', offsetMode: 'inside', width: 50, height: 30, toolDiameter: 4 }),
+    ).toBe(true)
+  })
+
+  it('rectangle inside: invalid when tool reaches or exceeds the shorter side', () => {
+    expect(
+      isOutlineToolDiameterValid({ ...outline, shape: 'rectCornered', offsetMode: 'inside', width: 50, height: 30, toolDiameter: 30 }),
+    ).toBe(false)
+  })
+
+  it('circle inside: valid when tool exactly equals the diameter', () => {
+    expect(
+      isOutlineToolDiameterValid({ ...outline, shape: 'circle', offsetMode: 'inside', diameter: 8, toolDiameter: 8 }),
+    ).toBe(true)
+  })
+
+  it('circle inside: invalid when tool exceeds the diameter', () => {
+    expect(
+      isOutlineToolDiameterValid({ ...outline, shape: 'circle', offsetMode: 'inside', diameter: 8, toolDiameter: 9 }),
+    ).toBe(false)
+  })
+
+  it('outside and onLine are always valid, regardless of tool size', () => {
+    expect(
+      isOutlineToolDiameterValid({ ...outline, shape: 'rectCornered', offsetMode: 'outside', width: 5, height: 5, toolDiameter: 50 }),
+    ).toBe(true)
+    expect(
+      isOutlineToolDiameterValid({ ...outline, shape: 'circle', offsetMode: 'onLine', diameter: 5, toolDiameter: 50 }),
+    ).toBe(true)
+  })
+})
+
+describe('isOutlineTabHeightValid', () => {
+  const outline = DEFAULT_WIZARD_PARAMS.outline
+
+  it('is vacuously valid when tabs are disabled', () => {
+    expect(isOutlineTabHeightValid({ ...outline, tabsEnabled: false, tabHeight: 0 })).toBe(true)
+  })
+
+  it('is valid when 0 < tabHeight < totalDepth', () => {
+    expect(isOutlineTabHeightValid({ ...outline, tabsEnabled: true, totalDepth: 4, tabHeight: 1 })).toBe(true)
+  })
+
+  it('is invalid at or above totalDepth', () => {
+    expect(isOutlineTabHeightValid({ ...outline, tabsEnabled: true, totalDepth: 4, tabHeight: 4 })).toBe(false)
+  })
+})
+
+describe('isOutlineTabWidthValid', () => {
+  const outline = DEFAULT_WIZARD_PARAMS.outline
+
+  it('is vacuously valid when tabs are disabled', () => {
+    expect(isOutlineTabWidthValid({ ...outline, tabsEnabled: false, tabCount: 10, tabWidth: 10 })).toBe(true)
+  })
+
+  it('circle: valid when tabCount * tabWidth stays under the circumference', () => {
+    expect(
+      isOutlineTabWidthValid({ ...outline, shape: 'circle', offsetMode: 'onLine', diameter: 40, tabsEnabled: true, tabCount: 4, tabWidth: 3 }),
+    ).toBe(true)
+  })
+
+  it('circle: invalid once tabCount * tabWidth reaches the circumference', () => {
+    // circumference = pi*40 ~ 125.7
+    expect(
+      isOutlineTabWidthValid({ ...outline, shape: 'circle', offsetMode: 'onLine', diameter: 40, tabsEnabled: true, tabCount: 4, tabWidth: 32 }),
+    ).toBe(false)
+  })
+
+  it('rectangle: checked against the shortest tool-corrected side, per side (not total perimeter)', () => {
+    // onLine 50x20 -> toolWidth 50, toolHeight 20 (shortest = 20).
+    // 3 tabs * 6mm = 18 < 20 -> valid; 3 * 7 = 21 >= 20 -> invalid.
+    const base = { ...outline, shape: 'rectCornered' as const, offsetMode: 'onLine' as const, width: 50, height: 20, tabsEnabled: true, tabCount: 3 }
+    expect(isOutlineTabWidthValid({ ...base, tabWidth: 6 })).toBe(true)
+    expect(isOutlineTabWidthValid({ ...base, tabWidth: 7 })).toBe(false)
+  })
+})
+
+describe('outlineFootprint', () => {
+  it('rectangle: tool-corrected width/height, offset-independent', () => {
+    const outline = { ...DEFAULT_WIZARD_PARAMS.outline, shape: 'rectCornered' as const, offsetMode: 'inside' as const, width: 50, height: 30, toolDiameter: 4, offsetX: 100, offsetY: -50 }
+    expect(outlineFootprint(outline)).toEqual({ x: 46, y: 26 })
+  })
+
+  it('circle: tool-corrected diameter on both axes', () => {
+    const outline = { ...DEFAULT_WIZARD_PARAMS.outline, shape: 'circle' as const, offsetMode: 'outside' as const, diameter: 40, toolDiameter: 4 }
+    expect(outlineFootprint(outline)).toEqual({ x: 44, y: 44 })
+  })
+})
+
+describe('outlineZSpan', () => {
+  it('sums safeZ and totalDepth', () => {
+    const outline = { ...DEFAULT_WIZARD_PARAMS.outline, totalDepth: 4 }
+    const feeds = { ...DEFAULT_WIZARD_PARAMS.feeds, safeZ: 5 }
+    expect(outlineZSpan(outline, feeds)).toBe(9)
+  })
+})
+
+describe('machineFitWarnings — Outline', () => {
+  it('uses outlineFootprint/outlineZSpan when operation is outline', () => {
+    const params = {
+      ...DEFAULT_WIZARD_PARAMS,
+      operation: 'outline' as const,
+      outline: { ...DEFAULT_WIZARD_PARAMS.outline, shape: 'rectCornered' as const, offsetMode: 'onLine' as const, width: 500, height: 10 },
+    }
+    const machine = { ...DEFAULT_MACHINE_SETTINGS, travelX: 100, travelY: 1000, travelZ: 1000 }
+    const warnings = machineFitWarnings(params, machine)
+    expect(warnings).toHaveLength(1)
+    expect(warnings[0]).toContain('X span')
   })
 })

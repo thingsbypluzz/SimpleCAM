@@ -3,7 +3,15 @@ import { getFixedColors, getPaletteAccents, hexToThreeColor, type PaletteId } fr
 import { resolvePoints } from '../../lib/positioning'
 import { computeDepthPasses } from '../../lib/depthPasses'
 import { computeTabRanges, type TabRange } from '../../lib/tabs'
-import type { WizardParams } from '../../types/wizard'
+import { circleOutlineRadiusAndDirection } from '../../lib/outlineCircle'
+import {
+  longerEdgeIndex,
+  rectCorners,
+  rectToolDimensions,
+} from '../../lib/outlineRectangleGeometry'
+import { sideRangesFor, type SideTabRange } from '../../lib/outlineRectangleTabs'
+import { outlineDirectionForOffsetMode } from '../../lib/outlineRectangle'
+import type { Point2D, WizardParams } from '../../types/wizard'
 
 // CNC (x, y, z) -> Three.js (x, z, -y): CNC Z (up/down into material) becomes
 // the Three.js Y (vertical) axis, so an orbit camera gives an intuitive
@@ -40,7 +48,9 @@ interface TabsConfig3D {
 // tabbedCirclePass, the caller is expected to have already pushed the
 // arrival point at (cx+radius, cy, cutZ) — mirrors how
 // standardHolePoints3D/helixPoints3D already push their own "start of this
-// pass" point before sweeping.
+// pass" point before sweeping. `direction`: same sign-flip treatment as
+// circle.ts/tabs.ts — Hole(s) always passes 'ccw' (unchanged behavior);
+// Circle Outline needs both (see lib/outlineCircle.ts).
 function tabbedCirclePoints3D(
   cx: number,
   cy: number,
@@ -48,7 +58,9 @@ function tabbedCirclePoints3D(
   cutZ: number,
   liftZ: number,
   tabRanges: TabRange[],
+  direction: 'cw' | 'ccw',
 ): THREE.Vector3[] {
+  const sign = direction === 'cw' ? -1 : 1
   const twoPi = 2 * Math.PI
   const angleSet = new Set<number>([0, twoPi])
   for (let step = 1; step < SEGMENTS_PER_TURN; step++) {
@@ -69,8 +81,8 @@ function tabbedCirclePoints3D(
     const angle = angles[idx]
     const midAngle = (angles[idx - 1] + angle) / 2
     const nextInTab = tabRanges.some((r) => midAngle > r.startAngle && midAngle < r.endAngle)
-    const x = cx + radius * Math.cos(angle)
-    const y = cy + radius * Math.sin(angle)
+    const x = cx + radius * Math.cos(sign * angle)
+    const y = cy + radius * Math.sin(sign * angle)
 
     if (nextInTab && !inTab) {
       points.push(toThree(prevX, prevY, liftZ))
@@ -98,6 +110,7 @@ function tabbedCirclePoints3D(
 // `tabs`: when set (BL-14), mirrors helix.ts's two-phase split — spiral
 // turns stop exactly at the tab-band top, then flat tabbed passes take
 // over for the remainder, replacing the plain flat finishing pass below.
+// `direction`: Hole(s) always passes 'ccw'; Circle Outline needs both.
 function helixPoints3D(
   cx: number,
   cy: number,
@@ -106,7 +119,9 @@ function helixPoints3D(
   stepdown: number,
   startZ: number,
   tabs: TabsConfig3D | null,
+  direction: 'cw' | 'ccw',
 ) {
+  const sign = direction === 'cw' ? -1 : 1
   const points: THREE.Vector3[] = [toThree(cx + radius, cy, startZ)]
   let currentZ = startZ
 
@@ -119,7 +134,7 @@ function helixPoints3D(
       for (let i = 1; i <= SEGMENTS_PER_TURN; i++) {
         const a = angle + (2 * Math.PI * i) / SEGMENTS_PER_TURN
         const z = currentZ - (turnDepth * i) / SEGMENTS_PER_TURN
-        points.push(toThree(cx + radius * Math.cos(a), cy + radius * Math.sin(a), z))
+        points.push(toThree(cx + radius * Math.cos(sign * a), cy + radius * Math.sin(sign * a), z))
       }
       angle += 2 * Math.PI
       currentZ -= turnDepth
@@ -130,13 +145,13 @@ function helixPoints3D(
     // helix.ts (see its comment for the full explanation).
     for (let i = 1; i <= SEGMENTS_PER_TURN; i++) {
       const a = (2 * Math.PI * i) / SEGMENTS_PER_TURN
-      points.push(toThree(cx + radius * Math.cos(a), cy + radius * Math.sin(a), currentZ))
+      points.push(toThree(cx + radius * Math.cos(sign * a), cy + radius * Math.sin(sign * a), currentZ))
     }
 
     for (const passDepth of computeDepthPasses(tabs.tabHeight, stepdown)) {
       currentZ -= passDepth
       points.push(toThree(cx + radius, cy, currentZ))
-      points.push(...tabbedCirclePoints3D(cx, cy, radius, currentZ, tabBandTopZ, tabs.tabRanges))
+      points.push(...tabbedCirclePoints3D(cx, cy, radius, currentZ, tabBandTopZ, tabs.tabRanges, direction))
     }
 
     return points
@@ -147,7 +162,7 @@ function helixPoints3D(
     for (let i = 1; i <= SEGMENTS_PER_TURN; i++) {
       const a = angle + (2 * Math.PI * i) / SEGMENTS_PER_TURN
       const z = currentZ - (turnDepth * i) / SEGMENTS_PER_TURN
-      points.push(toThree(cx + radius * Math.cos(a), cy + radius * Math.sin(a), z))
+      points.push(toThree(cx + radius * Math.cos(sign * a), cy + radius * Math.sin(sign * a), z))
     }
     angle += 2 * Math.PI
     currentZ -= turnDepth
@@ -155,14 +170,15 @@ function helixPoints3D(
 
   for (let i = 1; i <= SEGMENTS_PER_TURN; i++) {
     const a = angle + (2 * Math.PI * i) / SEGMENTS_PER_TURN
-    points.push(toThree(cx + radius * Math.cos(a), cy + radius * Math.sin(a), currentZ))
+    points.push(toThree(cx + radius * Math.cos(sign * a), cy + radius * Math.sin(sign * a), currentZ))
   }
   return points
 }
 
 // Mirrors src/lib/standardHole.ts. `tabs`: when set (BL-14), passes at or
 // below the tab-band top skip the tab arcs — an atomic per-pass choice,
-// same as the engine, since every pass here is already flat.
+// same as the engine, since every pass here is already flat. `direction`:
+// Hole(s) always passes 'ccw'; Circle Outline needs both.
 function standardHolePoints3D(
   cx: number,
   cy: number,
@@ -171,7 +187,9 @@ function standardHolePoints3D(
   stepdown: number,
   startZ: number,
   tabs: TabsConfig3D | null,
+  direction: 'cw' | 'ccw',
 ) {
+  const sign = direction === 'cw' ? -1 : 1
   const points: THREE.Vector3[] = [toThree(cx + radius, cy, startZ)]
   let currentZ = startZ
   const tabBandTopZ = tabs ? -(totalDepth - tabs.tabHeight) : 0
@@ -180,14 +198,150 @@ function standardHolePoints3D(
     currentZ -= passDepth
     points.push(toThree(cx + radius, cy, currentZ))
     if (tabs && currentZ <= tabBandTopZ + TAB_BAND_EPSILON) {
-      points.push(...tabbedCirclePoints3D(cx, cy, radius, currentZ, tabBandTopZ, tabs.tabRanges))
+      points.push(...tabbedCirclePoints3D(cx, cy, radius, currentZ, tabBandTopZ, tabs.tabRanges, direction))
     } else {
       for (let i = 1; i <= SEGMENTS_PER_TURN; i++) {
         const a = (2 * Math.PI * i) / SEGMENTS_PER_TURN
-        points.push(toThree(cx + radius * Math.cos(a), cy + radius * Math.sin(a), currentZ))
+        points.push(toThree(cx + radius * Math.cos(sign * a), cy + radius * Math.sin(sign * a), currentZ))
       }
     }
   }
+  return points
+}
+
+// Rectangle analog of tabbedCirclePoints3D — walks the 4-corner perimeter,
+// skipping tabs per edge (BL-14 for Outline). Same lift/plunge
+// point-doubling at transitions, same "caller already pushed the arrival
+// point" contract.
+function tabbedRectanglePoints3D(
+  corners: Point2D[],
+  sideRanges: SideTabRange[][],
+  cutZ: number,
+  liftZ: number,
+): THREE.Vector3[] {
+  const points: THREE.Vector3[] = []
+  let prevX = corners[0].x
+  let prevY = corners[0].y
+  let inTab = false
+
+  for (let edge = 0; edge < 4; edge++) {
+    const p0 = corners[edge]
+    const p1 = corners[(edge + 1) % 4]
+    const ranges = sideRanges[edge]
+    const fracs = new Set<number>([0, 1])
+    for (const r of ranges) {
+      fracs.add(r.startFrac)
+      fracs.add(r.endFrac)
+    }
+    const sorted = [...fracs].sort((a, b) => a - b)
+
+    for (let idx = 1; idx < sorted.length; idx++) {
+      const frac = sorted[idx]
+      const midFrac = (sorted[idx - 1] + frac) / 2
+      const nextInTab = ranges.some((r) => midFrac > r.startFrac && midFrac < r.endFrac)
+      const x = p0.x + (p1.x - p0.x) * frac
+      const y = p0.y + (p1.y - p0.y) * frac
+
+      if (nextInTab && !inTab) {
+        points.push(toThree(prevX, prevY, liftZ))
+        points.push(toThree(x, y, liftZ))
+      } else if (!nextInTab && inTab) {
+        points.push(toThree(x, y, liftZ))
+        points.push(toThree(x, y, cutZ))
+      } else {
+        points.push(toThree(x, y, nextInTab ? liftZ : cutZ))
+      }
+
+      prevX = x
+      prevY = y
+      inTab = nextInTab
+    }
+  }
+
+  return points
+}
+
+interface RectTabsConfig3D {
+  tabHeight: number
+  tabCount: number
+  tabWidth: number
+}
+
+// Mirrors lib/outlineRectangle.ts's rectStandardToolpath.
+function rectStandardPoints3D(
+  corners: Point2D[],
+  totalDepth: number,
+  stepdown: number,
+  startZ: number,
+  tabs: RectTabsConfig3D | null,
+): THREE.Vector3[] {
+  const points: THREE.Vector3[] = [toThree(corners[0].x, corners[0].y, startZ)]
+  const tabBandTopZ = tabs ? -(totalDepth - tabs.tabHeight) : 0
+  const sideRanges = tabs ? sideRangesFor(corners, tabs.tabCount, tabs.tabWidth) : [[], [], [], []]
+
+  let currentZ = startZ
+  for (const passDepth of computeDepthPasses(totalDepth + startZ, stepdown)) {
+    currentZ -= passDepth
+    points.push(toThree(corners[0].x, corners[0].y, currentZ))
+    if (tabs && currentZ <= tabBandTopZ + TAB_BAND_EPSILON) {
+      points.push(...tabbedRectanglePoints3D(corners, sideRanges, currentZ, tabBandTopZ))
+    } else {
+      points.push(...tabbedRectanglePoints3D(corners, [[], [], [], []], currentZ, currentZ))
+    }
+  }
+  return points
+}
+
+// Mirrors lib/outlineRectangle.ts's rectRampToolpath — same ramp-edge
+// rotation (`ordered`), same "single lap = 4 lines, ramp edge carries the
+// Z drop" structure, same cleanup-lap reasoning (see the engine's own
+// comments for the full explanation of why only the ramp edge needs it).
+function rectRampPoints3D(
+  corners: Point2D[],
+  rampEdge: 0 | 1,
+  totalDepth: number,
+  stepdown: number,
+  startZ: number,
+  tabs: RectTabsConfig3D | null,
+): THREE.Vector3[] {
+  const ordered = [0, 1, 2, 3].map((i) => corners[(i + rampEdge) % 4])
+  const points: THREE.Vector3[] = [toThree(ordered[0].x, ordered[0].y, startZ)]
+  let currentZ = startZ
+
+  const lap = (nextZ: number) => {
+    points.push(toThree(ordered[1].x, ordered[1].y, nextZ))
+    for (let i = 1; i < 4; i++) {
+      const p = ordered[(i + 1) % 4]
+      points.push(toThree(p.x, p.y, nextZ))
+    }
+  }
+
+  if (tabs) {
+    const tabBandTopZ = -(totalDepth - tabs.tabHeight)
+    const rampDepth = totalDepth + startZ - tabs.tabHeight
+    const sideRanges = sideRangesFor(ordered, tabs.tabCount, tabs.tabWidth)
+
+    for (const turnDepth of computeDepthPasses(rampDepth, stepdown)) {
+      const nextZ = currentZ - turnDepth
+      lap(nextZ)
+      currentZ = nextZ
+    }
+    lap(currentZ)
+
+    for (const passDepth of computeDepthPasses(tabs.tabHeight, stepdown)) {
+      currentZ -= passDepth
+      points.push(toThree(ordered[0].x, ordered[0].y, currentZ))
+      points.push(...tabbedRectanglePoints3D(ordered, sideRanges, currentZ, tabBandTopZ))
+    }
+  } else {
+    for (const turnDepth of computeDepthPasses(totalDepth + startZ, stepdown)) {
+      const nextZ = currentZ - turnDepth
+      lap(nextZ)
+      currentZ = nextZ
+    }
+    lap(currentZ)
+  }
+
   return points
 }
 
@@ -271,14 +425,68 @@ export interface BuiltScene {
   bounds: THREE.Box3
 }
 
-interface ResolvedPattern {
-  params: WizardParams
-  points: { x: number; y: number }[]
-  holeRadius: number
-  toolRadius: number
-}
+// Discriminated by operation/shape — same split as preview/drawToolpath.ts.
+// Hole(s) is a repeated point pattern; Outline is a single shape (circle,
+// or a 4-corner rectangle).
+type ResolvedPattern =
+  | { kind: 'holes'; params: WizardParams; points: Point2D[]; holeRadius: number; toolRadius: number }
+  | {
+      kind: 'outlineCircle'
+      params: WizardParams
+      center: Point2D
+      nominalRadius: number
+      toolRadius: number
+      direction: 'cw' | 'ccw'
+    }
+  | {
+      kind: 'outlineRect'
+      params: WizardParams
+      nominalCorners: Point2D[]
+      toolCorners: Point2D[]
+      rampEdge: 0 | 1
+    }
 
 function resolvePattern(params: WizardParams): ResolvedPattern {
+  if (params.operation === 'outline') {
+    const { outline } = params
+    if (outline.shape === 'circle') {
+      const { radius: toolRadius, direction } = circleOutlineRadiusAndDirection(outline)
+      return {
+        kind: 'outlineCircle',
+        params,
+        center: { x: outline.offsetX, y: outline.offsetY },
+        nominalRadius: outline.diameter / 2,
+        toolRadius: Math.max(0, toolRadius),
+        direction,
+      }
+    }
+    const nominalCorners = rectCorners(
+      outline.shape,
+      outline.width,
+      outline.height,
+      outline.offsetX,
+      outline.offsetY,
+      'ccw',
+    )
+    const { toolWidth, toolHeight } = rectToolDimensions(
+      outline.width,
+      outline.height,
+      outline.toolDiameter,
+      outline.offsetMode,
+    )
+    const direction = outlineDirectionForOffsetMode(outline.offsetMode)
+    const toolCorners = rectCorners(
+      outline.shape,
+      Math.max(0, toolWidth),
+      Math.max(0, toolHeight),
+      outline.offsetX,
+      outline.offsetY,
+      direction,
+    )
+    const rampEdge = longerEdgeIndex(Math.max(0, toolWidth), Math.max(0, toolHeight), direction)
+    return { kind: 'outlineRect', params, nominalCorners, toolCorners, rampEdge }
+  }
+
   const { geometry } = params
   const points = resolvePoints(geometry)
   const holeRadius = geometry.holeDiameter / 2
@@ -286,7 +494,7 @@ function resolvePattern(params: WizardParams): ResolvedPattern {
   // validation covers every entry point) — CylinderGeometry with a
   // negative radius throws.
   const toolRadius = Math.max(0, (geometry.holeDiameter - geometry.toolDiameter) / 2)
-  return { params, points, holeRadius, toolRadius }
+  return { kind: 'holes', params, points, holeRadius, toolRadius }
 }
 
 // Expands `bounds` (in place, matching THREE.Box3's mutable API already used
@@ -294,19 +502,68 @@ function resolvePattern(params: WizardParams): ResolvedPattern {
 // pattern's own totalDepth/safeZ, since overlaid presets (BL-3) can have a
 // different depth/Safe Z than the active one.
 function expandBoundsForPattern(bounds: THREE.Box3, pattern: ResolvedPattern) {
-  const { geometry, feeds } = pattern.params
-  for (const p of pattern.points) {
-    bounds.expandByPoint(toThree(p.x - pattern.holeRadius, p.y - pattern.holeRadius, -geometry.totalDepth))
-    bounds.expandByPoint(toThree(p.x + pattern.holeRadius, p.y + pattern.holeRadius, feeds.safeZ))
+  if (pattern.kind === 'holes') {
+    const { geometry, feeds } = pattern.params
+    for (const p of pattern.points) {
+      bounds.expandByPoint(toThree(p.x - pattern.holeRadius, p.y - pattern.holeRadius, -geometry.totalDepth))
+      bounds.expandByPoint(toThree(p.x + pattern.holeRadius, p.y + pattern.holeRadius, feeds.safeZ))
+    }
+    return
   }
+  const { outline, feeds } = pattern.params
+  if (pattern.kind === 'outlineCircle') {
+    const r = Math.max(pattern.nominalRadius, pattern.toolRadius)
+    bounds.expandByPoint(toThree(pattern.center.x - r, pattern.center.y - r, -outline.totalDepth))
+    bounds.expandByPoint(toThree(pattern.center.x + r, pattern.center.y + r, feeds.safeZ))
+    return
+  }
+  for (const p of [...pattern.nominalCorners, ...pattern.toolCorners]) {
+    bounds.expandByPoint(toThree(p.x, p.y, -outline.totalDepth))
+    bounds.expandByPoint(toThree(p.x, p.y, feeds.safeZ))
+  }
+}
+
+// Offset vector — amber, physical origin to the shifted pattern/shape.
+// Hidden entirely at (0,0), same rule as the collapsed Step 2 summary
+// annotation. Shared by every pattern kind below.
+function buildOffsetVectorObjects(offsetX: number, offsetY: number, theme: Theme, arrowSize: number): THREE.Object3D[] {
+  if (offsetX === 0 && offsetY === 0) return []
+  const offsetTip = toThree(offsetX, offsetY, 0)
+  const offsetDir = offsetTip.clone().normalize()
+  return [
+    new THREE.Line(
+      new THREE.BufferGeometry().setFromPoints([toThree(0, 0, 0), offsetTip]),
+      new THREE.LineBasicMaterial({ color: theme.offset }),
+    ),
+    createArrowhead(theme.offset, arrowSize, offsetTip, offsetDir),
+  ]
+}
+
+function rapidZLineObjects(x: number, y: number, safeZ: number, startZ: number, bottomZ: number, theme: Theme, span: number) {
+  const rapidZMaterial = () =>
+    new THREE.LineDashedMaterial({ color: theme.rapid, dashSize: span * 0.02, gapSize: span * 0.01 })
+
+  const descentLine = new THREE.Line(
+    new THREE.BufferGeometry().setFromPoints([toThree(x, y, safeZ), toThree(x, y, startZ)]),
+    rapidZMaterial(),
+  )
+  descentLine.computeLineDistances()
+
+  const retractLine = new THREE.Line(
+    new THREE.BufferGeometry().setFromPoints([toThree(x, y, bottomZ), toThree(x, y, safeZ)]),
+    rapidZMaterial(),
+  )
+  retractLine.computeLineDistances()
+
+  return [descentLine, retractLine]
 }
 
 // Builds everything that's per-pattern (BL-3 overlay): offset vector, rapid
 // XY traverse, and per-hole rapid-Z lines + bore cylinder + toolpath line.
 // The material plane/grid/origin/axes are NOT per-pattern — built once by
 // the caller from the combined bounds.
-function buildPatternObjects(
-  pattern: ResolvedPattern,
+function buildHolesPatternObjects(
+  pattern: Extract<ResolvedPattern, { kind: 'holes' }>,
   theme: Theme,
   span: number,
   arrowSize: number,
@@ -319,19 +576,7 @@ function buildPatternObjects(
     ? { tabHeight: geometry.tabHeight, tabRanges: computeTabRanges(geometry.tabCount, geometry.tabWidth, toolRadius) }
     : null
 
-  // Offset vector — amber, physical origin to the shifted pattern. Hidden
-  // entirely at (0,0), same rule as the collapsed Step 2 summary annotation.
-  if (geometry.offsetX !== 0 || geometry.offsetY !== 0) {
-    const offsetTip = toThree(geometry.offsetX, geometry.offsetY, 0)
-    const offsetDir = offsetTip.clone().normalize()
-    objects.push(
-      new THREE.Line(
-        new THREE.BufferGeometry().setFromPoints([toThree(0, 0, 0), offsetTip]),
-        new THREE.LineBasicMaterial({ color: theme.offset }),
-      ),
-    )
-    objects.push(createArrowhead(theme.offset, arrowSize, offsetTip, offsetDir))
-  }
+  objects.push(...buildOffsetVectorObjects(geometry.offsetX, geometry.offsetY, theme, arrowSize))
 
   // Rapid traverse between holes, at Safe Z
   if (points.length > 1) {
@@ -345,9 +590,6 @@ function buildPatternObjects(
     objects.push(rapidLine)
   }
 
-  const rapidZMaterial = () =>
-    new THREE.LineDashedMaterial({ color: theme.rapid, dashSize: span * 0.02, gapSize: span * 0.01 })
-
   for (const p of points) {
     const startX = p.x + toolRadius
 
@@ -356,25 +598,9 @@ function buildPatternObjects(
     // retract from full depth back to Safe Z (the actual "G0 Z5"-style moves
     // the engine emits) — previously only the lateral travel between holes
     // was drawn, not these.
-    const descentLine = new THREE.Line(
-      new THREE.BufferGeometry().setFromPoints([
-        toThree(startX, p.y, feeds.safeZ),
-        toThree(startX, p.y, feeds.startZ),
-      ]),
-      rapidZMaterial(),
+    objects.push(
+      ...rapidZLineObjects(startX, p.y, feeds.safeZ, feeds.startZ, -geometry.totalDepth, theme, span),
     )
-    descentLine.computeLineDistances()
-    objects.push(descentLine)
-
-    const retractLine = new THREE.Line(
-      new THREE.BufferGeometry().setFromPoints([
-        toThree(startX, p.y, -geometry.totalDepth),
-        toThree(startX, p.y, feeds.safeZ),
-      ]),
-      rapidZMaterial(),
-    )
-    retractLine.computeLineDistances()
-    objects.push(retractLine)
 
     // Final bore (semi-transparent cylinder, top at +startZ down to
     // -totalDepth — startZ treats the material as taller by that amount).
@@ -394,14 +620,134 @@ function buildPatternObjects(
     // Actual tool-center toolpath
     const pathPoints =
       method === 'helix'
-        ? helixPoints3D(p.x, p.y, toolRadius, geometry.totalDepth, feeds.stepdown, feeds.startZ, tabsConfig)
-        : standardHolePoints3D(p.x, p.y, toolRadius, geometry.totalDepth, feeds.stepdown, feeds.startZ, tabsConfig)
+        ? helixPoints3D(p.x, p.y, toolRadius, geometry.totalDepth, feeds.stepdown, feeds.startZ, tabsConfig, 'ccw')
+        : standardHolePoints3D(
+            p.x,
+            p.y,
+            toolRadius,
+            geometry.totalDepth,
+            feeds.stepdown,
+            feeds.startZ,
+            tabsConfig,
+            'ccw',
+          )
     const pathGeometry = new THREE.BufferGeometry().setFromPoints(pathPoints)
     const pathLine = new THREE.Line(pathGeometry, new THREE.LineBasicMaterial({ color: theme.toolpath }))
     objects.push(pathLine)
   }
 
   return objects
+}
+
+function buildOutlineCirclePatternObjects(
+  pattern: Extract<ResolvedPattern, { kind: 'outlineCircle' }>,
+  theme: Theme,
+  span: number,
+  arrowSize: number,
+): THREE.Object3D[] {
+  const { center, nominalRadius, toolRadius, direction, params } = pattern
+  const { outline, feeds } = params
+  const objects: THREE.Object3D[] = []
+
+  objects.push(...buildOffsetVectorObjects(outline.offsetX, outline.offsetY, theme, arrowSize))
+
+  const startX = center.x + toolRadius
+  objects.push(...rapidZLineObjects(startX, center.y, feeds.safeZ, feeds.startZ, -outline.totalDepth, theme, span))
+
+  // Nominal shape (semi-transparent cylinder) — same convention as Hole(s):
+  // the finished material boundary, not the tool-corrected path.
+  const boreHeight = outline.totalDepth + feeds.startZ
+  const shape = new THREE.Mesh(
+    new THREE.CylinderGeometry(nominalRadius, nominalRadius, boreHeight, 32, 1, true),
+    new THREE.MeshBasicMaterial({ color: theme.hole, transparent: true, opacity: 0.12, side: THREE.DoubleSide }),
+  )
+  shape.position.copy(toThree(center.x, center.y, (feeds.startZ - outline.totalDepth) / 2))
+  objects.push(shape)
+
+  const tabsConfig: TabsConfig3D | null = outline.tabsEnabled
+    ? { tabHeight: outline.tabHeight, tabRanges: computeTabRanges(outline.tabCount, outline.tabWidth, toolRadius) }
+    : null
+
+  const pathPoints =
+    outline.method === 'helix'
+      ? helixPoints3D(center.x, center.y, toolRadius, outline.totalDepth, feeds.stepdown, feeds.startZ, tabsConfig, direction)
+      : standardHolePoints3D(
+          center.x,
+          center.y,
+          toolRadius,
+          outline.totalDepth,
+          feeds.stepdown,
+          feeds.startZ,
+          tabsConfig,
+          direction,
+        )
+  const pathGeometry = new THREE.BufferGeometry().setFromPoints(pathPoints)
+  objects.push(new THREE.Line(pathGeometry, new THREE.LineBasicMaterial({ color: theme.toolpath })))
+
+  return objects
+}
+
+function boundingCenter(points: Point2D[]): Point2D {
+  const xs = points.map((p) => p.x)
+  const ys = points.map((p) => p.y)
+  return { x: (Math.min(...xs) + Math.max(...xs)) / 2, y: (Math.min(...ys) + Math.max(...ys)) / 2 }
+}
+
+function buildOutlineRectPatternObjects(
+  pattern: Extract<ResolvedPattern, { kind: 'outlineRect' }>,
+  theme: Theme,
+  span: number,
+  arrowSize: number,
+): THREE.Object3D[] {
+  const { nominalCorners, toolCorners, rampEdge, params } = pattern
+  const { outline, feeds } = params
+  const objects: THREE.Object3D[] = []
+
+  objects.push(...buildOffsetVectorObjects(outline.offsetX, outline.offsetY, theme, arrowSize))
+  objects.push(
+    ...rapidZLineObjects(toolCorners[0].x, toolCorners[0].y, feeds.safeZ, feeds.startZ, -outline.totalDepth, theme, span),
+  )
+
+  // Nominal shape (semi-transparent box, aligned with CNC X/Y — BoxGeometry's
+  // own local X/Y/Z axes need no rotation here, unlike ExtrudeGeometry,
+  // since our fixed toThree() mapping is a pure axis permutation+negation:
+  // Three's box-X == CNC width, box-Y == vertical bore height, box-Z ==
+  // CNC height (mirrored in position by the -y term, but a centered box's
+  // extent along an axis is symmetric either way)).
+  const nominalCenter = boundingCenter(nominalCorners)
+  const width = Math.max(...nominalCorners.map((p) => p.x)) - Math.min(...nominalCorners.map((p) => p.x))
+  const height = Math.max(...nominalCorners.map((p) => p.y)) - Math.min(...nominalCorners.map((p) => p.y))
+  const boreHeight = outline.totalDepth + feeds.startZ
+  const shape = new THREE.Mesh(
+    new THREE.BoxGeometry(width, boreHeight, height),
+    new THREE.MeshBasicMaterial({ color: theme.hole, transparent: true, opacity: 0.12, side: THREE.DoubleSide }),
+  )
+  shape.position.copy(toThree(nominalCenter.x, nominalCenter.y, (feeds.startZ - outline.totalDepth) / 2))
+  objects.push(shape)
+
+  const tabs = outline.tabsEnabled
+    ? { tabHeight: outline.tabHeight, tabCount: outline.tabCount, tabWidth: outline.tabWidth }
+    : null
+
+  const pathPoints =
+    outline.method === 'ramp'
+      ? rectRampPoints3D(toolCorners, rampEdge, outline.totalDepth, feeds.stepdown, feeds.startZ, tabs)
+      : rectStandardPoints3D(toolCorners, outline.totalDepth, feeds.stepdown, feeds.startZ, tabs)
+  const pathGeometry = new THREE.BufferGeometry().setFromPoints(pathPoints)
+  objects.push(new THREE.Line(pathGeometry, new THREE.LineBasicMaterial({ color: theme.toolpath })))
+
+  return objects
+}
+
+function buildPatternObjects(pattern: ResolvedPattern, theme: Theme, span: number, arrowSize: number): THREE.Object3D[] {
+  switch (pattern.kind) {
+    case 'holes':
+      return buildHolesPatternObjects(pattern, theme, span, arrowSize)
+    case 'outlineCircle':
+      return buildOutlineCirclePatternObjects(pattern, theme, span, arrowSize)
+    case 'outlineRect':
+      return buildOutlineRectPatternObjects(pattern, theme, span, arrowSize)
+  }
 }
 
 export function buildToolpathScene(

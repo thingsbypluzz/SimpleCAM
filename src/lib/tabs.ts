@@ -47,6 +47,7 @@ interface TabbedCirclePassParams {
   liftZ: number
   feed: number
   tabRanges: TabRange[]
+  direction: 'cw' | 'ccw'
 }
 
 // One full 360° flat pass around (centerX, centerY) at `cutZ`, skipping
@@ -75,6 +76,11 @@ export function tabbedCirclePass(p: TabbedCirclePassParams): string[] {
     angles.add(r.endAngle)
   }
   const sortedAngles = [...angles].sort((a, b) => a - b)
+  // Tab ranges (from computeTabRanges) and the breakpoint sweep above are
+  // always defined as an ascending-angle walk from 0 to 2π, independent of
+  // cutting direction — only the physical XY position each angle maps to
+  // flips sign for 'cw', mirroring fullCircleMove's `sign` treatment.
+  const sign = p.direction === 'cw' ? -1 : 1
 
   const lines: string[] = []
   let prevX = p.startX
@@ -85,8 +91,8 @@ export function tabbedCirclePass(p: TabbedCirclePassParams): string[] {
     const angle = sortedAngles[idx]
     const midAngle = (sortedAngles[idx - 1] + angle) / 2
     const nextInTab = isInsideTab(midAngle, p.tabRanges)
-    const x = p.centerX + p.radius * Math.cos(angle)
-    const y = p.centerY + p.radius * Math.sin(angle)
+    const x = p.centerX + p.radius * Math.cos(sign * angle)
+    const y = p.centerY + p.radius * Math.sin(sign * angle)
 
     if (nextInTab && !inTab) {
       // Entering a tab: retract straight up where we already are, then

@@ -1,7 +1,10 @@
 import { getFixedColors, getPaletteAccents, type PaletteId } from '../../config/palettes'
 import { resolvePoints } from '../../lib/positioning'
 import { computeTabRanges, type TabRange } from '../../lib/tabs'
-import type { WizardParams } from '../../types/wizard'
+import { circleOutlineRadiusAndDirection } from '../../lib/outlineCircle'
+import { rectCorners, rectToolDimensions } from '../../lib/outlineRectangleGeometry'
+import { sideRangesFor, type SideTabRange } from '../../lib/outlineRectangleTabs'
+import type { Point2D, WizardParams } from '../../types/wizard'
 import { type Camera2D, type DataBounds, worldToScreen } from './camera2d'
 
 interface Theme {
@@ -79,6 +82,46 @@ function drawGappedCircle(
   drawArc(cursor, Math.PI * 2)
 }
 
+// Rectangle analog of drawGappedCircle — walks the 4-corner perimeter in
+// world space, skipping the fractional ranges in `sideRanges[edge]` per
+// edge (BL-14 for Outline — see lib/outlineRectangleTabs.ts). Takes
+// `toPx` directly rather than pre-converted screen coordinates, since
+// (unlike a circle) each segment spans two different world points that
+// both need converting.
+function drawGappedRectangle(
+  ctx: CanvasRenderingContext2D,
+  toPx: (x: number, y: number) => [number, number],
+  corners: Point2D[],
+  sideRanges: SideTabRange[][],
+) {
+  const drawSegment = (p0: Point2D, p1: Point2D, fracLo: number, fracHi: number) => {
+    if (fracHi <= fracLo) return
+    const [xa, ya] = toPx(p0.x + (p1.x - p0.x) * fracLo, p0.y + (p1.y - p0.y) * fracLo)
+    const [xb, yb] = toPx(p0.x + (p1.x - p0.x) * fracHi, p0.y + (p1.y - p0.y) * fracHi)
+    ctx.beginPath()
+    ctx.moveTo(xa, ya)
+    ctx.lineTo(xb, yb)
+    ctx.stroke()
+  }
+
+  for (let edge = 0; edge < 4; edge++) {
+    const p0 = corners[edge]
+    const p1 = corners[(edge + 1) % 4]
+    const ranges = sideRanges[edge]
+    if (ranges.length === 0) {
+      drawSegment(p0, p1, 0, 1)
+      continue
+    }
+    const sorted = [...ranges].sort((a, b) => a.startFrac - b.startFrac)
+    let cursor = 0
+    for (const range of sorted) {
+      drawSegment(p0, p1, cursor, range.startFrac)
+      cursor = range.endFrac
+    }
+    drawSegment(p0, p1, cursor, 1)
+  }
+}
+
 // Arrowhead pointing along an arbitrary unit direction (dirX, dirY), tip at
 // (tipX, tipY) — unlike the X/Y axis arrowheads (always horizontal/
 // vertical, hand-coded inline), the offset vector can point any way.
@@ -104,6 +147,34 @@ function drawArrowhead(
   ctx.fill()
 }
 
+// Offset vector — amber, physical origin to the shifted pattern/shape.
+// Hidden entirely at (0,0), same rule as the collapsed Step 2 summary
+// annotation. Shared by every pattern kind below (Hole(s) and both
+// Outline shapes all carry their own offsetX/offsetY).
+function drawOffsetVector(
+  ctx: CanvasRenderingContext2D,
+  toPx: (x: number, y: number) => [number, number],
+  offsetX: number,
+  offsetY: number,
+  theme: Theme,
+  arrowSize: number,
+) {
+  if (offsetX === 0 && offsetY === 0) return
+  const [vecTailX, vecTailY] = toPx(0, 0)
+  const [vecTipX, vecTipY] = toPx(offsetX, offsetY)
+  const vecDx = vecTipX - vecTailX
+  const vecDy = vecTipY - vecTailY
+  const vecLen = Math.hypot(vecDx, vecDy) || 1
+
+  ctx.strokeStyle = theme.offset
+  ctx.lineWidth = 1.5
+  ctx.beginPath()
+  ctx.moveTo(vecTailX, vecTailY)
+  ctx.lineTo(vecTipX, vecTipY)
+  ctx.stroke()
+  drawArrowhead(ctx, vecTipX, vecTipY, vecDx / vecLen, vecDy / vecLen, arrowSize, theme.offset)
+}
+
 // "1-2-5" sequence — picks a round step (1, 2, 5, 10, 20, 50, 100 mm, ...)
 // close to the raw target so grid lines land on human-friendly values.
 function niceStep(rawStep: number): number {
@@ -113,33 +184,109 @@ function niceStep(rawStep: number): number {
   return niceFraction * 10 ** exponent
 }
 
-interface ResolvedPattern {
-  params: WizardParams
-  points: { x: number; y: number }[]
-  holeRadius: number
-  toolPathRadius: number
-}
+// Discriminated by operation/shape — Hole(s) is a repeated point pattern,
+// Outline is a single shape (circle, or a 4-corner rectangle). Each
+// variant carries exactly what its own draw function needs; bounds
+// computation and drawing both switch on `kind`.
+type ResolvedPattern =
+  | { kind: 'holes'; params: WizardParams; points: Point2D[]; holeRadius: number; toolPathRadius: number }
+  | {
+      kind: 'outlineCircle'
+      params: WizardParams
+      center: Point2D
+      nominalRadius: number
+      toolRadius: number
+      tabRanges: TabRange[]
+    }
+  | {
+      kind: 'outlineRect'
+      params: WizardParams
+      nominalCorners: Point2D[]
+      toolCorners: Point2D[]
+      sideTabRanges: SideTabRange[][]
+    }
 
 function resolvePattern(params: WizardParams): ResolvedPattern {
+  if (params.operation === 'outline') {
+    const { outline } = params
+    if (outline.shape === 'circle') {
+      const { radius: toolRadius } = circleOutlineRadiusAndDirection(outline)
+      const tabRanges = outline.tabsEnabled
+        ? computeTabRanges(outline.tabCount, outline.tabWidth, Math.max(0, toolRadius))
+        : []
+      return {
+        kind: 'outlineCircle',
+        params,
+        center: { x: outline.offsetX, y: outline.offsetY },
+        nominalRadius: outline.diameter / 2,
+        toolRadius: Math.max(0, toolRadius),
+        tabRanges,
+      }
+    }
+    // Direction never affects what gets drawn (a filled/stroked closed
+    // shape looks identical regardless of which way its perimeter was
+    // walked) — 'ccw' is an arbitrary, fixed choice for rendering only.
+    const nominalCorners = rectCorners(
+      outline.shape,
+      outline.width,
+      outline.height,
+      outline.offsetX,
+      outline.offsetY,
+      'ccw',
+    )
+    const { toolWidth, toolHeight } = rectToolDimensions(
+      outline.width,
+      outline.height,
+      outline.toolDiameter,
+      outline.offsetMode,
+    )
+    const toolCorners = rectCorners(
+      outline.shape,
+      Math.max(0, toolWidth),
+      Math.max(0, toolHeight),
+      outline.offsetX,
+      outline.offsetY,
+      'ccw',
+    )
+    const sideTabRanges = outline.tabsEnabled
+      ? sideRangesFor(toolCorners, outline.tabCount, outline.tabWidth)
+      : [[], [], [], []]
+    return { kind: 'outlineRect', params, nominalCorners, toolCorners, sideTabRanges }
+  }
+
   const { geometry } = params
   const points = resolvePoints(geometry)
   const holeRadius = geometry.holeDiameter / 2
   // Guarded against a tool larger than the hole (allowed until Etap 5
   // validation exists) — a negative radius would throw in ctx.arc().
   const toolPathRadius = Math.max(0, (geometry.holeDiameter - geometry.toolDiameter) / 2)
-  return { params, points, holeRadius, toolPathRadius }
+  return { kind: 'holes', params, points, holeRadius, toolPathRadius }
 }
 
 // Bounds spanning every rendered pattern (BL-3 overlay) — each pattern's
-// points are padded by its OWN holeRadius, since overlaid presets can have
-// a different hole diameter than the active one.
+// own extent is padded by its own radius/corner set, since overlaid
+// presets can differ in dimensions from the active one.
 function computeCombinedBounds(patterns: ResolvedPattern[]): DataBounds {
   const allX = [0]
   const allY = [0]
   for (const pattern of patterns) {
-    for (const p of pattern.points) {
-      allX.push(p.x - pattern.holeRadius, p.x + pattern.holeRadius)
-      allY.push(p.y - pattern.holeRadius, p.y + pattern.holeRadius)
+    if (pattern.kind === 'holes') {
+      for (const p of pattern.points) {
+        allX.push(p.x - pattern.holeRadius, p.x + pattern.holeRadius)
+        allY.push(p.y - pattern.holeRadius, p.y + pattern.holeRadius)
+      }
+    } else if (pattern.kind === 'outlineCircle') {
+      // Whichever of nominal/tool radius is larger is the true physical
+      // extent — Outside grows the tool path beyond nominal, Inside
+      // shrinks it below nominal, On-line keeps them equal.
+      const r = Math.max(pattern.nominalRadius, pattern.toolRadius)
+      allX.push(pattern.center.x - r, pattern.center.x + r)
+      allY.push(pattern.center.y - r, pattern.center.y + r)
+    } else {
+      for (const p of [...pattern.nominalCorners, ...pattern.toolCorners]) {
+        allX.push(p.x)
+        allY.push(p.y)
+      }
     }
   }
   return {
@@ -165,22 +312,22 @@ export function computeToolpathDataBounds(
   return computeCombinedBounds(allPatterns)
 }
 
-// Draws one pattern's full geometry (rapid traverse, holes, offset vector)
-// as one atomic unit — this is what makes pattern-level (not element-level)
-// draw ordering control occlusion between overlaid presets and the active
-// pattern (see BL-3: active pattern is always drawn last, on top).
-function drawPatternGeometry(
+// Hole(s): rapid traverse between holes, then each hole's bore
+// outline (fill) + tool-center toolpath (stroke) + offset vector. The
+// fill stays a full disc even with tabs (rough "material removed here"
+// indicator, not literal — same simplification as the 3D bore cylinder
+// mesh); the outline and toolpath strokes get real gaps.
+function drawHolesGeometry(
   ctx: CanvasRenderingContext2D,
   toPx: (x: number, y: number) => [number, number],
   scale: number,
-  pattern: ResolvedPattern,
+  pattern: Extract<ResolvedPattern, { kind: 'holes' }>,
   theme: Theme,
   arrowSize: number,
 ) {
   const { points, holeRadius, toolPathRadius, params } = pattern
   const { geometry } = params
 
-  // Rapid traverse between holes (G0 XY order)
   if (points.length > 1) {
     ctx.strokeStyle = theme.rapid
     ctx.lineWidth = 1
@@ -202,10 +349,6 @@ function drawPatternGeometry(
     ? computeTabRanges(geometry.tabCount, geometry.tabWidth, toolPathRadius)
     : []
 
-  // Each hole: final bore outline (fill) + tool-center toolpath (stroke).
-  // The fill stays a full disc even with tabs (rough "material removed
-  // here" indicator, not literal — same simplification as the 3D bore
-  // cylinder mesh); the outline and toolpath strokes get real gaps.
   for (const p of points) {
     const [px, py] = toPx(p.x, p.y)
 
@@ -227,22 +370,101 @@ function drawPatternGeometry(
     ctx.fill()
   }
 
-  // Offset vector — amber, physical origin to the shifted pattern. Hidden
-  // entirely at (0,0), same rule as the collapsed Step 2 summary annotation.
-  if (geometry.offsetX !== 0 || geometry.offsetY !== 0) {
-    const [vecTailX, vecTailY] = toPx(0, 0)
-    const [vecTipX, vecTipY] = toPx(geometry.offsetX, geometry.offsetY)
-    const vecDx = vecTipX - vecTailX
-    const vecDy = vecTipY - vecTailY
-    const vecLen = Math.hypot(vecDx, vecDy) || 1
+  drawOffsetVector(ctx, toPx, geometry.offsetX, geometry.offsetY, theme, arrowSize)
+}
 
-    ctx.strokeStyle = theme.offset
-    ctx.lineWidth = 1.5
-    ctx.beginPath()
-    ctx.moveTo(vecTailX, vecTailY)
-    ctx.lineTo(vecTipX, vecTipY)
-    ctx.stroke()
-    drawArrowhead(ctx, vecTipX, vecTipY, vecDx / vecLen, vecDy / vecLen, arrowSize, theme.offset)
+// Circle Outline: nominal shape boundary (fill) + tool-center toolpath
+// (stroke), both with tab gaps, same layering convention as Hole(s).
+function drawOutlineCircleGeometry(
+  ctx: CanvasRenderingContext2D,
+  toPx: (x: number, y: number) => [number, number],
+  scale: number,
+  pattern: Extract<ResolvedPattern, { kind: 'outlineCircle' }>,
+  theme: Theme,
+  arrowSize: number,
+) {
+  const { center, nominalRadius, toolRadius, tabRanges, params } = pattern
+  const [px, py] = toPx(center.x, center.y)
+
+  ctx.beginPath()
+  ctx.arc(px, py, nominalRadius * scale, 0, Math.PI * 2)
+  ctx.fillStyle = theme.holeFill
+  ctx.fill()
+  ctx.strokeStyle = theme.holeStroke
+  ctx.lineWidth = 1
+  drawGappedCircle(ctx, px, py, nominalRadius * scale, tabRanges)
+
+  ctx.strokeStyle = theme.toolpath
+  ctx.lineWidth = 1.5
+  drawGappedCircle(ctx, px, py, toolRadius * scale, tabRanges)
+
+  ctx.beginPath()
+  ctx.arc(px + toolRadius * scale, py, 2, 0, Math.PI * 2)
+  ctx.fillStyle = theme.toolpath
+  ctx.fill()
+
+  drawOffsetVector(ctx, toPx, params.outline.offsetX, params.outline.offsetY, theme, arrowSize)
+}
+
+// Rectangle Outline: same nominal-boundary-fill + tool-path-stroke
+// layering as Circle Outline, walking 4 corners instead of a radius.
+function drawOutlineRectGeometry(
+  ctx: CanvasRenderingContext2D,
+  toPx: (x: number, y: number) => [number, number],
+  pattern: Extract<ResolvedPattern, { kind: 'outlineRect' }>,
+  theme: Theme,
+  arrowSize: number,
+) {
+  const { nominalCorners, toolCorners, sideTabRanges, params } = pattern
+
+  ctx.beginPath()
+  nominalCorners.forEach((p, i) => {
+    const [x, y] = toPx(p.x, p.y)
+    if (i === 0) ctx.moveTo(x, y)
+    else ctx.lineTo(x, y)
+  })
+  ctx.closePath()
+  ctx.fillStyle = theme.holeFill
+  ctx.fill()
+  ctx.strokeStyle = theme.holeStroke
+  ctx.lineWidth = 1
+  drawGappedRectangle(ctx, toPx, nominalCorners, sideTabRanges)
+
+  ctx.strokeStyle = theme.toolpath
+  ctx.lineWidth = 1.5
+  drawGappedRectangle(ctx, toPx, toolCorners, sideTabRanges)
+
+  const [startX, startY] = toPx(toolCorners[0].x, toolCorners[0].y)
+  ctx.beginPath()
+  ctx.arc(startX, startY, 2, 0, Math.PI * 2)
+  ctx.fillStyle = theme.toolpath
+  ctx.fill()
+
+  drawOffsetVector(ctx, toPx, params.outline.offsetX, params.outline.offsetY, theme, arrowSize)
+}
+
+// Draws one pattern's full geometry as one atomic unit — this is what
+// makes pattern-level (not element-level) draw ordering control occlusion
+// between overlaid presets and the active pattern (see BL-3: active
+// pattern is always drawn last, on top).
+function drawPatternGeometry(
+  ctx: CanvasRenderingContext2D,
+  toPx: (x: number, y: number) => [number, number],
+  scale: number,
+  pattern: ResolvedPattern,
+  theme: Theme,
+  arrowSize: number,
+) {
+  switch (pattern.kind) {
+    case 'holes':
+      drawHolesGeometry(ctx, toPx, scale, pattern, theme, arrowSize)
+      break
+    case 'outlineCircle':
+      drawOutlineCircleGeometry(ctx, toPx, scale, pattern, theme, arrowSize)
+      break
+    case 'outlineRect':
+      drawOutlineRectGeometry(ctx, toPx, pattern, theme, arrowSize)
+      break
   }
 }
 
@@ -281,7 +503,10 @@ export function drawToolpath(
   ctx.fillStyle = theme.background
   ctx.fillRect(0, 0, width, height)
 
-  if (allPatterns.every((p) => p.points.length === 0)) return
+  const hasNothingToDraw = allPatterns.every(
+    (p) => (p.kind === 'holes' ? p.points.length === 0 : false),
+  )
+  if (hasNothingToDraw) return
 
   const toPx = (x: number, y: number): [number, number] => worldToScreen(camera, width, height, x, y)
 

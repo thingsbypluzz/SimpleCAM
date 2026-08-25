@@ -392,6 +392,125 @@ Projekt budowany etapami z checkpointami do akceptacji. Aktualny stan:
         Helix/Standard) dostały dopisek disambiguujący — to inny,
         wcześniejszy byt niż dzisiejsze znaczenie słowa "Operation", nie
         pomyłka.
+- [x] **Etap 7** — **OP-1: Outline (Rectangle Cornered/Centered + Circle
+      cut-out), `0.13.0`.** Trzecia operacja obok Hole(s) — pierwsza z
+      rodziny `OP-#` domknięta (po tym zostają tam już tylko OP-2/OP-3,
+      patrz "Przyszłe operacje" niżej). Poprzedzony pełną sesją
+      `/grill-me` (wymóg dla każdego `OP-#`), w tym research-em nt.
+      dobrych praktyk CNC odnośnie ramp entry (potwierdził: ramping na
+      każdym przejściu głębokości, nie tylko na pierwszym zanurzeniu —
+      patrz "Method" niżej). Domyka też `BL-6` ("Rectangle Cut Out") —
+      ten sam pomysł, zaimplementowany jako część OP-1 zamiast osobnej
+      trzeciej metody Hole(s).
+
+      **Zakres:** trzy kształty, bez dowolnego konturu — **Rectangle
+      Cornered** (origin w lewym dolnym rogu), **Rectangle Centered**
+      (origin w środku), **Circle** (tylko wyśrodkowany). Każdy z
+      trybem offsetu **Inside / Outside / On-line**. Zaokrąglone rogi
+      prostokąta świadomie poza zakresem — do przypisania jako nowy
+      `BL-#` przy okazji kolejnej sesji `/grill-me`.
+
+      **Nowe pole `WizardParams.operation: 'holes' | 'outline'`**
+      (`src/types/wizard.ts`) — pierwsze realne użycie dawnego
+      placeholdera `OPERATION_PLACEHOLDERS` w `Step1Positioning.tsx`
+      (Etap 6). Uwaga historyczna: nazwa `operation` była już raz użyta
+      w tym projekcie — przed Etapem 6 tak nazywało się dzisiejsze
+      `method` (Helix/Standard), zanim zostało przemianowane (patrz
+      nota przy `0.8.12` wyżej). To nowe użycie to celowo inny,
+      niezwiązany koncept (Hole(s) vs Outline) — nie pomyłka, nie
+      powrót starego znaczenia. Nowa sekcja `OutlineParams`
+      (shape/offsetMode/method/toolDiameter/totalDepth/width/height/
+      diameter/offsetX/Y/tabs*) żyje **obok**, nie zamiast, istniejącego
+      `geometry`/`method` — Hole(s) nietknięty, zero zmian w zachowaniu
+      domyślnym (`operation: 'holes'`).
+
+      **Offset i kierunek nawrotu (winding):** Circle reużywa wprost
+      matematyki promienia Hole(s) (`(D ∓ toolDiameter)/2`). Rectangle
+      insetuje/offsetuje każdy bok o promień narzędzia. Kierunek ruchu
+      wyprowadzony z trybu cięcia pod stałe `M3` (CW): Outside → CW,
+      Inside → CCW (konwencjonalne frezowanie, zasada dla słabszych,
+      hobbystycznych maszyn), On-line → CW (arbitralnie, brak
+      fizycznego znaczenia przy zerowym offsecie). Wymagało dodania
+      parametru `direction: 'cw'|'ccw'` do `fullCircleMove()`/
+      `tabbedCirclePass()` (`lib/circle.ts`/`lib/tabs.ts`, wcześniej
+      zawsze CCW) — zero zmian w zachowaniu Hole(s) (wszystkie miejsca
+      wywołania jawnie przekazują `'ccw'`).
+
+      **Method:** Circle reużywa silnika Helix/Standard Hole(s)
+      dosłownie — `helixToolpath`/`standardHoleToolpath` w
+      `lib/helix.ts`/`lib/standardHole.ts` przepisane na przyjmowanie
+      jawnego obiektu opcji (`CircleToolpathOptions`) zamiast czytania
+      `params.geometry` bezpośrednio, eksportowane jako
+      `helixCircleToolpath`/`standardCircleToolpath` i reużyte przez
+      nowy `lib/outlineCircle.ts`. Rectangle dostaje nową parę
+      **Ramp / Standard** (`lib/outlineRectangle.ts`): Ramp = ciągłe
+      zejście wzdłuż dłuższego boku, jeden `stepdown` na okrążenie
+      (mirror spirali Helixa, bez parametru kąta rampy — kąt niejawny,
+      ten sam pryncyp co niejawny skok Helixa), z okrążeniem
+      czyszczącym przed pasmem mostków i na samym dnie (ten sam
+      mechanizm co Helix+tabs, patrz `0.12.0`/`BL-14`) — ramp edge
+      zawsze ta sama fizyczna krawędź (`longerEdgeIndex()`,
+      `lib/outlineRectangleGeometry.ts`). Standard = prosty odpowiednik
+      `standardHoleToolpath` dla 4 boków.
+
+      **Tabs:** Circle bez zmian (reużywa `lib/tabs.ts`). Rectangle
+      liczy tabs **per bok** (nie razem, jak Circle) — `tabCount=2`
+      daje 8 mostków (2×4 boki), z tym samym trikiem przesunięcia fazy
+      o pół kroku co Circle (środek pierwszego mostka na środku boku,
+      nie na jego krawędzi) — nowy `lib/outlineRectangleTabs.ts`
+      (`computeRectTabRanges()`, ułamki wzdłuż boku zamiast kątów;
+      `tabbedRectanglePass()`, ta sama logika "unii breakpointów" co
+      `tabbedCirclePass()`, ale bez potrzeby próbkowania kątowego —
+      prosta krawędź nie wymaga aproksymacji wielokątem). **Znany bug,
+      zapisany jako `BL-21`:** przy zgłoszonej przez użytkownika
+      kombinacji wymiarów mostek wychodzi szerszy niż skonfigurowany
+      (przyczyna jeszcze niezdiagnozowana) — wymaga naprawy przed
+      uznaniem Rectangle Outline tabs za w pełni zaufane.
+
+      **UI:** Krok 1 (`Step1Positioning.tsx`) — "Outline" przestaje być
+      wyszarzonym placeholderem, rozwija się w listę 3 kształtów tym
+      samym wzorcem co "Hole(s)". Krok 2 (`Step2Geometry.tsx`) to teraz
+      cienki router na `params.operation` — dotychczasowa zawartość
+      wyekstrahowana bez zmian do `Step2GeometryHoles.tsx`, nowy
+      `Step2GeometryOutline.tsx` z kolejnością pól: Tool Diameter →
+      Cutting Depth → Offset Mode → Method → wymiary kształtu → Tabs →
+      Offset X/Y. Nowe `OffsetModePicker.tsx`/`OutlineMethodPicker.tsx`
+      (ten sam wzorzec toggle co `MethodPicker.tsx`). Wspólny
+      `TOOL_DIAMETER_OPTIONS` wydzielony do
+      `config/toolDiameterOptions.ts` (reużywany przez oba Kroki 2,
+      pierwszy krok w stronę `BL-19`).
+
+      **Walidacja/presety/nazwy plików:** nowe
+      `isOutlineToolDiameterValid`/`isOutlineTabHeightValid`/
+      `isOutlineTabWidthValid`/`outlineFootprint`/`outlineZSpan` w
+      `lib/validation.ts`, `machineFitWarnings()` rozgałęziona na
+      `operation`. `presetLabel()`/`buildFilename()` mają teraz gałąź
+      Outline (`config/outlineMeta.ts`'s `outlineShapeLabel()`/
+      `outlineShapeSlug()`) — etykieta presetu Outline:
+      `"Rectangle 50×30 (Inside) • Ramp"`, bez końcowej średnicy (w
+      przeciwieństwie do Hole(s), gdzie `outlineShapeLabel` już
+      zawiera wymiary).
+
+      **Podgląd 2D/3D:** oba pliki (`preview/drawToolpath.ts`,
+      `preview3d/buildScene.ts`) dostały dyskryminowany typ
+      `ResolvedPattern` (`'holes' | 'outlineCircle' | 'outlineRect'`)
+      zamiast zakładać tylko okrąg. Bryła materiału w 3D: Circle
+      reużywa `CylinderGeometry` (jak Hole(s)), Rectangle dostał
+      `BoxGeometry` — działa bez żadnej dodatkowej rotacji, bo stałe
+      mapowanie CNC→Three (`toThree()`) to czysta permutacja osi +
+      negacja, więc oś-wyrównany box nie wymaga ręcznych wierzchołków
+      (odrzucona wcześniej rozważana opcja `ExtrudeGeometry`).
+
+      **Testy:** każdy nowy moduł silnika ma własny plik testowy
+      (`outlineCircle.test.ts`, `outlineRectangleGeometry.test.ts`,
+      `outlineRectangleTabs.test.ts`, `outlineRectangle.test.ts`,
+      `outline.test.ts`, `config/outlineMeta.test.ts`), plus
+      rozszerzone istniejące (`circle.test.ts`/`tabs.test.ts` o
+      kierunek, `program.test.ts` o jawną listę punktów,
+      `validation.test.ts`/`presetLabel.test.ts` o Outline) — 219
+      testów łącznie po OP-1 (ze 150 przed). Brak nowych testów dla
+      `drawToolpath.ts`/`buildScene.ts` — zgodnie z dotychczasową
+      konwencją (weryfikacja wzrokowa, nie unit testy renderowania).
 
 ## Backlog (`BL-#`)
 
@@ -460,20 +579,16 @@ mockup przestanie być wierny.
 
 ## Przyszłe operacje (`OP-#`)
 
-Osobna, celowo **nie** `BL-#` kategoria — Outline/Pocket/Surface (patrz
+Osobna, celowo **nie** `BL-#` kategoria — Pocket/Surface (patrz
 placeholdery w `Step1Positioning.tsx`, Etap 6) to nie drobne poprawki
 tylko kamienie milowe wielkości całego Etapu, każdy z własną, dziś
 nieznaną taksonomią (operacja → pattern/sub-choice → parametry, patrz
 `ideas.md`). Numer `OP-#` jest identyfikatorem, nie kolejnością
-realizacji — żadna z trzech nie jest dziś zaplanowana jako "następna"
-względem pozostałych. (Do `0.8.12` ten schemat nazywał się `FAM-#`
-["family"] — patrz nota niżej przy Etapie 6 po pełne uzasadnienie
-zmiany.)
+realizacji — żadna z dwóch nie jest dziś zaplanowana jako "następna"
+względem drugiej. (Do `0.8.12` ten schemat nazywał się `FAM-#`
+["family"] — patrz nota przy Etapie 6 po pełne uzasadnienie zmiany.)
+`OP-1` (Outline) zamknięte w Etapie 7 — patrz "Status / Etapy" wyżej.
 
-- **`OP-1` — Outline.** Frezowanie po konturze (kontur zamknięty lub
-  otwarty) — najbliższe koncepcyjnie już zaplanowanemu `BL-6` (Rectangle
-  Cut Out), który można traktować jako pierwszy, najprostszy przypadek
-  tej operacji (prostokąt = szczególny przypadek konturu).
 - **`OP-2` — Pocket.** Kieszeniowanie — wybieranie materiału wewnątrz
   zamkniętego konturu (nie tylko po samej linii), wymaga strategii
   wypełnienia (np. zigzag/spiral) nieobecnej dziś w silniku w ogóle.
@@ -494,27 +609,6 @@ Artifact pokazuje je jako osobną sekcję, nie jako kolorowe
 Większe rozszerzenia zakresu — nie polish istniejących operacji, tylko
 nowa funkcjonalność. Nie zaczynać bez wyraźnego "przechodzimy do X".
 
-- **`BL-6`** — **Nowa metoda: "Rectangle Cut Out"** — trzecia metoda obok Helix i
-  Standard Hole, wycinanie prostokątnego konturu. Parametry:
-  - **Tryb cięcia:** Inside / Outside / On-line — offset ścieżki
-    narzędzia względem narysowanego prostokąta (Inside: ścieżka do środka
-    o promień narzędzia — dla wycinania kieszeni/otworu prostokątnego;
-    Outside: ścieżka na zewnątrz — dla wycinania gotowej części o zadanych
-    wymiarach zewnętrznych; On-line: środek narzędzia dokładnie na linii).
-  - **Tabs (mostki podtrzymujące):** opcja włącz/wyłącz + prawdopodobnie
-    liczba i szerokość — standardowa funkcja przy wycinaniu profilu, żeby
-    część nie odpadła/nie przesunęła się przed końcem cięcia.
-  - **Punkt odniesienia prostokąta:** offset od **środka** prostokąta albo
-    od **lewego dolnego rogu** — do wyboru (analogicznie do pomysłu
-    "Rectangular Grid centered at 0,0" wyżej, ale tu dla samego kształtu
-    wycinanego, nie dla pozycjonowania wielu otworów).
-  - Wymaga: nowej wartości `MethodType` (`'rectangleCutOut'`), nowego
-    wpisu w `METHOD_META`, nowego modułu w `src/lib/` (z własnymi
-    testami — offset/tabs to nietrywialna geometria, inna niż okrąg),
-    nowej sekcji parametrów w UI (prawdopodobnie nowy krok albo
-    rozszerzenie Kroku 2), oraz sprawdzenia czy podgląd 2D/3D (które dziś
-    zakładają "okrąg" jako kształt operacji) w ogóle się do tego nadają
-    czy potrzebują osobnej ścieżki rysowania.
 - **`BL-8`** — **Responsywny UI na małych ekranach.** Dziś layout
   zakłada desktop: dwukolumnowy układ (akordeon wizarda + panel
   podglądu 2D/3D/G-Code obok siebie), gęste pola liczbowe w parach
@@ -566,6 +660,77 @@ nowa funkcjonalność. Nie zaczynać bez wyraźnego "przechodzimy do X".
   które konkretne właściwości CSS się nie renderują, i albo dodania
   fallbacków, albo świadomej decyzji "nie wspieramy X" udokumentowanej
   w tym pliku.
+- **`BL-19`** — **Własna lista średnic narzędzia w Settings.** Dziś
+  `TOOL_DIAMETER_OPTIONS` (`Step2Geometry.tsx`: 1–8mm całe mm + 1/8" i
+  1/4") jest zaszyta na sztywno w kodzie. Pomysł: nowa sekcja w
+  `SettingsModal.tsx` pozwalająca edytować tę listę (dodawać/usuwać
+  wartości), zapisywana w localStorage (nowy klucz albo rozszerzenie
+  istniejącego wzorca Machine/Appearance/Tabs), plus przycisk "Reset to
+  default" przywracający dzisiejszą, sztywną listę jako wartość
+  domyślną.
+- **`BL-20`** — **Licznik użytkowników (unikalne IP).** 🔒 Wymaga
+  własnej, pełnej sesji `/grill-me` przed jakąkolwiek decyzją
+  implementacyjną — pomysł bezpośrednio dotyka fundamentalnej zasady
+  projektu ("Zero backendu. Zero bazy danych."), nie jest to dopracowanie
+  szczegółów. Wstępny, nierozstrzygnięty szkic z przerwanej sesji
+  `/grill-me`: najpierw sprawdzić, czy obecny hosting cPanel udostępnia
+  już AWStats/Webalizer/surowe logi Apache (sekcja Metrics) — jeśli tak,
+  temat może rozwiązać się bez żadnych zmian w kodzie appki. Jeśli nie,
+  realne opcje to własny licznik po stronie serwera (prawdziwy wyłom od
+  "zero backendu") albo lekki skrypt analityki trzeciej strony w stylu
+  Plausible/Fathom/GoatCounter (żądanie sieciowe przy każdym wejściu —
+  też odejście od dzisiejszej appki bez jakiegokolwiek trackingu). Do
+  rozważenia też: "unikalne IP" to tylko przybliżenie "unikalnych ludzi"
+  (NAT zaniża, rotacja IP zawyża), oraz implikacje RODO przy liczeniu po
+  IP (strona hostowana na `.pl`).
+- **`BL-21`** — **Bug: mostki (tabs) w Rectangle Outline nie generują się
+  poprawnie.** Zgłoszenie użytkownika: przy Tab Height 1mm, Tab Width
+  2mm, Count 1 (per side) powstały mostek zajmuje z grubsza połowę
+  długości boku, nie skonfigurowane 2mm. Podejrzany obszar:
+  `computeRectTabRanges()`/`sideRangesFor()` w
+  `src/lib/outlineRectangleTabs.ts` — `widthFrac = tabWidth / sideLength`
+  dałoby dokładnie 0.5 tylko przy zbiegu okoliczności, chyba że gdzieś
+  jest realne pomieszanie jednostek/odniesienia. Wymaga reprodukcji z
+  konkretnymi wymiarami kształtu użytymi przez usera, potem przeglądu
+  `outlineRectangleTabs.ts`/`outlineRectangleTabs.test.ts` przed
+  dotknięciem kodu.
+- **`BL-22`** — **Wyraźniejszy ślad obrabianego materiału w podglądzie
+  (Outline i Hole(s)), może suwak opacity.** Dzisiejsze stałe, niskie
+  wypełnienie (`theme.holeFill`, `opacity: 0.12` w `buildScene.ts`,
+  analogicznie `holeFill` w `drawToolpath.ts`) czyta się za słabo. Czy
+  rozwiązaniem jest mocniejszy default, suwak opacity dla użytkownika,
+  czy coś innego — otwarte, wymaga sesji do przedyskutowania przed
+  dopracowaniem zakresu.
+- **`BL-23`** — **Pasek Kroku 1: pokazać aktywną operację (Hole(s)/
+  Outline) nad ikoną patternu.** Dziś zwinięty pasek Kroku 1
+  (`App.tsx`) pokazuje tylko ikonę/linijki patternu/kształtu — samą
+  operację da się dziś wywnioskować wyłącznie z podglądu 2D/3D. Dodać
+  małą etykietę nad istniejącym blokiem ikony.
+- **`BL-24`** — **Nowe ikonki patternu dla kształtów Rectangle w
+  Outline, bez kropek w rogach.** Outline reużywa dziś
+  `RectangleIcon`/`RectangleCenteredIcon` z Hole(s)
+  (`src/components/icons.tsx`) razem z ich kropkami w rogach — te
+  reprezentują pozycje wierconych otworów we wzorcu Grid, nie mają
+  sensu dla samego obrysu prostokąta. Nowy `CircleOutlineIcon` (dodany
+  przy OP-1) użytkownik potwierdził jako dobry bez zmian — potrzebne
+  tylko warianty prostokątne bez kropek, podpięte przez
+  `OUTLINE_SHAPE_META` w `config/outlineMeta.ts` zamiast reużywania
+  ikon Hole(s). Użyć wszędzie: submenu Outline na Kroku 1, ikonki
+  zapisanych presetów, paski podsumowania Kroku 1/2.
+- **`BL-25`** — **Tryb edycji przywołanego presetu.** Pomysł: wczytanie
+  presetu z headera podświetla/zaznacza go; póki jest zaznaczony,
+  dalsze zmiany zapisują się automatycznie z powrotem do tego slotu
+  presetu, zamiast tylko do ukrytego slotu sesji (dzisiejsze zachowanie
+  auto-save wyłącznie do `AUTO_SAVE_SLOT`, `lib/storage.ts`). Ponowny
+  klik w ten sam preset odznacza go, wracając do dzisiejszego
+  zachowania (zmiany trafiają tylko do slotu sesji 0). To realna zmiana
+  ustalonej, świadomej decyzji projektowej (presety są dziś jawnie
+  zapisywane wyłącznie ręcznie, bez auto-nadpisywania) — wymaga pełnej
+  dyskusji przed dopracowaniem zakresu, nie drobna poprawka.
+- **`BL-26`** — **Powiększyć wszystkie ikonki w każdym pasku
+  podsumowania Kroku.** Kosmetyczny przegląd rozmiarów w zwiniętych
+  paskach Kroków 1-4 appki (`App.tsx`, dziś `h-6 w-6` dla ikon
+  MiniStat/patternu, `h-4 w-4` dla badge'a Kroku 4) i `MiniStat.tsx`.
 
 Nie przeskakuj etapów bez pytania — każdy kończy się checkpointem do
 przeglądu przez użytkownika.

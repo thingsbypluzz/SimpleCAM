@@ -95,3 +95,26 @@ describe('assembleProgram — user header/footer wrapping', () => {
     expect(lines[lines.length - 2]).toBe('M9')
   })
 })
+
+describe('assembleProgram — explicit points', () => {
+  // returnOriginEnd off in both, so buildFooter's own 'G0 X0 Y0' doesn't
+  // also match the "G0 X" rapid filter below.
+  it('uses the passed-in points instead of resolving geometry.positioning, for a single-shape cut', () => {
+    const params = buildParams({ output: { returnOriginEnd: false } })
+    const lines = assembleProgram(params, DEFAULT_MACHINE_SETTINGS, noopToolpath, [{ x: 12, y: -7 }])
+    expect(lines).toContain('G0 X12 Y-7')
+    // Exactly one point visited, regardless of the default single-hole pattern also being one point —
+    // confirm no dependency on resolvePoints(geometry) by using coordinates that pattern would never produce.
+    expect(lines.filter((l) => l.startsWith('G0 X')).length).toBe(1)
+  })
+
+  it('omitting points still resolves geometry.positioning as before (Hole(s) behavior unchanged)', () => {
+    const params = buildParams({
+      geometry: { positioning: 'grid', gridX: 10, gridY: 10 },
+      output: { returnOriginEnd: false },
+    })
+    const lines = assembleProgram(params, DEFAULT_MACHINE_SETTINGS, noopToolpath)
+    const rapids = lines.filter((l) => l.startsWith('G0 X'))
+    expect(rapids).toHaveLength(4)
+  })
+})

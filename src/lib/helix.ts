@@ -1,10 +1,28 @@
 import type { MachineSettings } from '../types/machine'
-import type { WizardParams } from '../types/wizard'
+import type { InterpolationMode, WizardParams } from '../types/wizard'
 import { fmt } from './format'
 import { fullCircleMove } from './circle'
 import { assembleProgram, rapidToTop } from './program'
 import { computeDepthPasses } from './depthPasses'
 import { computeTabRanges, tabbedCirclePass } from './tabs'
+
+export interface CircleTabsOptions {
+  tabHeight: number
+  tabWidth: number
+  tabCount: number
+}
+
+export interface CircleToolpathOptions {
+  radius: number
+  totalDepth: number
+  stepdown: number
+  startZ: number
+  feedrateXY: number
+  plungeRate: number
+  interpolation: InterpolationMode
+  direction: 'cw' | 'ccw'
+  tabs: CircleTabsOptions | null
+}
 
 // Spiral ramping: the tool sweeps a full 360° turn while descending by
 // `stepdown` (the pitch), repeating until the target depth is reached, then
@@ -21,25 +39,30 @@ import { computeTabRanges, tabbedCirclePass } from './tabs'
 // branches on purpose: bolting a tab-skip condition onto a shared tail
 // risks the old finishing pass silently running anyway and cutting one
 // final untabbed circle right through every tab.
-function helixToolpath(cx: number, cy: number, params: WizardParams): string[] {
-  const { geometry, feeds, output } = params
-  const radius = (geometry.holeDiameter - geometry.toolDiameter) / 2
+//
+// Shared by Hole(s) (helixToolpath below, always radius = (holeDiameter -
+// toolDiameter)/2, direction 'ccw') and Circle Outline
+// (outlineCircle.ts's generateCircleOutlineHelix, radius/direction derived
+// from offsetMode) — extracted so both read from an explicit options object
+// instead of `params.geometry`, which only Hole(s) has.
+export function helixCircleToolpath(cx: number, cy: number, opts: CircleToolpathOptions): string[] {
+  const { radius, tabs } = opts
   const startX = cx + radius
   const startY = cy
 
-  const lines: string[] = [`G0 X${fmt(startX)} Y${fmt(startY)}`, rapidToTop(feeds)]
+  const lines: string[] = [`G0 X${fmt(startX)} Y${fmt(startY)}`, rapidToTop(opts.startZ)]
   // Tabs force G1 for the whole program, not just the tab-band passes —
   // simpler than emitting split G2/G3 arcs around each gap.
-  const effectiveInterpolation = geometry.tabsEnabled ? 'linear' : output.interpolation
+  const effectiveInterpolation = tabs ? 'linear' : opts.interpolation
 
-  let currentZ = feeds.startZ
+  let currentZ = opts.startZ
 
-  if (geometry.tabsEnabled) {
-    const tabBandTopZ = -(geometry.totalDepth - geometry.tabHeight)
-    const spiralDepth = geometry.totalDepth + feeds.startZ - geometry.tabHeight
-    const tabRanges = computeTabRanges(geometry.tabCount, geometry.tabWidth, radius)
+  if (tabs) {
+    const tabBandTopZ = -(opts.totalDepth - tabs.tabHeight)
+    const spiralDepth = opts.totalDepth + opts.startZ - tabs.tabHeight
+    const tabRanges = computeTabRanges(tabs.tabCount, tabs.tabWidth, radius)
 
-    for (const turnDepth of computeDepthPasses(spiralDepth, feeds.stepdown)) {
+    for (const turnDepth of computeDepthPasses(spiralDepth, opts.stepdown)) {
       const nextZ = currentZ - turnDepth
       lines.push(
         ...fullCircleMove({
@@ -50,8 +73,9 @@ function helixToolpath(cx: number, cy: number, params: WizardParams): string[] {
           startY,
           zStart: currentZ,
           zEnd: nextZ,
-          feed: feeds.feedrateXY,
+          feed: opts.feedrateXY,
           interpolation: effectiveInterpolation,
+          direction: opts.direction,
         }),
       )
       currentZ = nextZ
@@ -78,14 +102,15 @@ function helixToolpath(cx: number, cy: number, params: WizardParams): string[] {
         startY,
         zStart: currentZ,
         zEnd: currentZ,
-        feed: feeds.feedrateXY,
+        feed: opts.feedrateXY,
         interpolation: effectiveInterpolation,
+        direction: opts.direction,
       }),
     )
 
-    for (const passDepth of computeDepthPasses(geometry.tabHeight, feeds.stepdown)) {
+    for (const passDepth of computeDepthPasses(tabs.tabHeight, opts.stepdown)) {
       currentZ -= passDepth
-      lines.push(`G1 Z${fmt(currentZ)} F${fmt(feeds.plungeRate)}`)
+      lines.push(`G1 Z${fmt(currentZ)} F${fmt(opts.plungeRate)}`)
       lines.push(
         ...tabbedCirclePass({
           centerX: cx,
@@ -95,13 +120,14 @@ function helixToolpath(cx: number, cy: number, params: WizardParams): string[] {
           startY,
           cutZ: currentZ,
           liftZ: tabBandTopZ,
-          feed: feeds.feedrateXY,
+          feed: opts.feedrateXY,
           tabRanges,
+          direction: opts.direction,
         }),
       )
     }
   } else {
-    for (const turnDepth of computeDepthPasses(geometry.totalDepth + feeds.startZ, feeds.stepdown)) {
+    for (const turnDepth of computeDepthPasses(opts.totalDepth + opts.startZ, opts.stepdown)) {
       const nextZ = currentZ - turnDepth
       lines.push(
         ...fullCircleMove({
@@ -112,8 +138,9 @@ function helixToolpath(cx: number, cy: number, params: WizardParams): string[] {
           startY,
           zStart: currentZ,
           zEnd: nextZ,
-          feed: feeds.feedrateXY,
+          feed: opts.feedrateXY,
           interpolation: effectiveInterpolation,
+          direction: opts.direction,
         }),
       )
       currentZ = nextZ
@@ -129,13 +156,32 @@ function helixToolpath(cx: number, cy: number, params: WizardParams): string[] {
         startY,
         zStart: currentZ,
         zEnd: currentZ,
-        feed: feeds.feedrateXY,
+        feed: opts.feedrateXY,
         interpolation: effectiveInterpolation,
+        direction: opts.direction,
       }),
     )
   }
 
   return lines
+}
+
+function helixToolpath(cx: number, cy: number, params: WizardParams): string[] {
+  const { geometry, feeds, output } = params
+  const radius = (geometry.holeDiameter - geometry.toolDiameter) / 2
+  return helixCircleToolpath(cx, cy, {
+    radius,
+    totalDepth: geometry.totalDepth,
+    stepdown: feeds.stepdown,
+    startZ: feeds.startZ,
+    feedrateXY: feeds.feedrateXY,
+    plungeRate: feeds.plungeRate,
+    interpolation: output.interpolation,
+    direction: 'ccw',
+    tabs: geometry.tabsEnabled
+      ? { tabHeight: geometry.tabHeight, tabWidth: geometry.tabWidth, tabCount: geometry.tabCount }
+      : null,
+  })
 }
 
 export function generateHelix(params: WizardParams, machine: MachineSettings): string[] {

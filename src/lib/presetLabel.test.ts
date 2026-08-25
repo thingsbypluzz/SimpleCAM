@@ -40,4 +40,35 @@ describe('presetLabel', () => {
     expect(presetLabel(single)).not.toBe(presetLabel(circle))
     expect(presetLabel(circle)).toBe('5-Holes Circle • Helix • ⌀8mm')
   })
+
+  it('labels an outline preset with shape/dimensions/offset mode, then method — no trailing diameter', () => {
+    const params = {
+      ...DEFAULT_WIZARD_PARAMS,
+      operation: 'outline' as const,
+      outline: {
+        ...DEFAULT_WIZARD_PARAMS.outline,
+        shape: 'rectCornered' as const,
+        offsetMode: 'inside' as const,
+        method: 'ramp' as const,
+        width: 50,
+        height: 30,
+      },
+    }
+    expect(presetLabel(params)).toBe('Rectangle 50×30 (Inside) • Ramp')
+  })
+
+  it('labels a circle outline preset reusing the Helix/Standard shortLabel', () => {
+    const params = {
+      ...DEFAULT_WIZARD_PARAMS,
+      operation: 'outline' as const,
+      outline: {
+        ...DEFAULT_WIZARD_PARAMS.outline,
+        shape: 'circle' as const,
+        offsetMode: 'outside' as const,
+        method: 'helix' as const,
+        diameter: 45,
+      },
+    }
+    expect(presetLabel(params)).toBe('Circle ⌀45 (Outside) • Helix')
+  })
 })

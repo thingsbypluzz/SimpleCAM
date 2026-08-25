@@ -1,5 +1,5 @@
 import type { Dialect, MachineSettings } from '../types/machine'
-import type { FeedsParams, WizardParams } from '../types/wizard'
+import type { Point2D, WizardParams } from '../types/wizard'
 import { fmt } from './format'
 import { resolvePoints } from './positioning'
 
@@ -7,10 +7,12 @@ import { resolvePoints } from './positioning'
 // the actual top of stock sits at +startZ, cutting still ends at the usual
 // -totalDepth. Above +startZ is open air, so a rapid straight there is
 // always safe (and at the default startZ=0 this is exactly the original
-// `G0 Z0`, i.e. no behavior change at all). Shared by helix.ts and
-// standardHole.ts, which otherwise duplicated this as a hardcoded `'G0 Z0'`.
-export function rapidToTop(feeds: FeedsParams): string {
-  return `G0 Z${fmt(feeds.startZ)}`
+// `G0 Z0`, i.e. no behavior change at all). Shared by every toolpath
+// generator (helix.ts/standardHole.ts for Hole(s), outlineCircle.ts/
+// outlineRectangle.ts for Outline), which would otherwise each duplicate
+// this as a hardcoded format string.
+export function rapidToTop(startZ: number): string {
+  return `G0 Z${fmt(startZ)}`
 }
 
 export function buildHeader(params: WizardParams, dialect: Dialect): string[] {
@@ -64,13 +66,18 @@ export function buildFooter(params: WizardParams): string[] {
 // retract to Safe Z, then app footer, user footer, and the dialect-forced
 // end-of-program code. `toolpathForPoint` only needs to know about
 // depth/feeds — positioning and Safe-Z bookkeeping are handled once, here.
+//
+// `points` defaults to Hole(s)' pattern resolution (`resolvePoints`) — every
+// existing Hole(s) call site omits it and is unaffected. Outline cutting
+// (a single shape, not a repeated pattern) passes its own one-element array
+// explicitly instead, reusing this same header/footer/retract wrapping.
 export function assembleProgram(
   params: WizardParams,
   machine: MachineSettings,
   toolpathForPoint: (cx: number, cy: number, params: WizardParams) => string[],
+  points: Point2D[] = resolvePoints(params.geometry),
 ): string[] {
-  const { geometry, feeds } = params
-  const points = resolvePoints(geometry)
+  const { feeds } = params
   const lines: string[] = []
 
   // Markers only appear around non-empty content — someone who never
