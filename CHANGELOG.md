@@ -7,6 +7,49 @@ zgodne z [SemVer](https://semver.org/). Ten plik pozostaje głównym, czytelnym
 thingsbypluzz/SimpleCAM), ale to infrastruktura pod izolację pracy
 (branch/worktree per zadanie), nie zamiennik tego changeloga.
 
+## [0.13.5] — 2026-08-28
+
+### Dodano
+
+- **`BL-28`** — iluzoryczny "stock" w podglądzie 3D. Rozwinięcie
+  `BL-27`: bryła ściany otworu/wycięcia wyglądała jak pływający obiekt
+  bez odniesienia do materiału. Dodana płaska "podkładka" (cap) na
+  wysokości `Z=+startZ`, ograniczona do tego samego zasięgu widocznej
+  siatki co istniejąca płaszczyzna Z=0, z wyciętym otworem tam, gdzie
+  faktycznie usuwamy materiał — zbudowana przez `THREE.Shape` +
+  `shape.holes` (natywne Three.js, bez CSG), nowa funkcja
+  `buildStockCapObject()` w `buildScene.ts`. Hole(s) (jedna podkładka,
+  N otworów — po jednym na wywiercony punkt) i Outline Inside (jeden
+  otwór w kształcie nominalnej granicy) dostają podkładkę zawsze;
+  Outline Outside nigdy (już zamknięta bryła wystarcza). Outline
+  On-line dostaje traktowanie hybrydowe: narzędzie porusza się środkiem
+  dokładnie po nominalnej linii, więc zostawia dwie realne krawędzie —
+  wewnętrzną (`nominal − toolRadius`, teraz renderowaną jak Outside:
+  zamknięta, samodzielna bryła) i zewnętrzną (`nominal + toolRadius`,
+  jak Inside: otwarta ściana + podkładka z otworem na tym promieniu).
+  Dzisiejsza pojedyncza ściana na promieniu nominalnym dla On-line
+  została **zastąpiona** tymi dwiema — nie odpowiadała żadnej realnej
+  krawędzi fizycznej. Nowe czyste funkcje `onLineCircleEdges()`
+  (`lib/outlineCircle.ts`) i `onLineRectDimensions()`
+  (`lib/outlineRectangleGeometry.ts`) liczą obie krawędzie, reużywając
+  dokładnie tej samej matematyki delty, którą już liczą Inside/Outside
+  — czysto wizualne rozszerzenie, rzeczywista ścieżka G-code dla
+  On-line pozostaje nietknięta (nadal tnie po jednej, nominalnej
+  linii). Przy okazji naprawiony realny bug w `expandBoundsForPattern`:
+  bez rozszerzenia granic o nowy zewnętrzny promień/wymiary On-line,
+  siatka/płaszczyzna/podkładka byłyby za małe, żeby w pełni pomieścić
+  nową zewnętrzną ścianę. Kolor podkładki: `theme.hole` przy opacity
+  0.3 — dokładnie ten sam, co ściany. Pierwsza wersja użyła
+  `theme.material`/`materialOpacity` (subtelny odcień tła, jak
+  istniejąca płaszczyzna Z=0) w oparciu o ustalenie z sesji `/grill-me`,
+  ale w praktyce półprzezroczysta płaszczyzna "w kolorze tła" na tle
+  była ledwie widoczna — zgłoszone przez użytkownika po realnym
+  obejrzeniu, poprawione na dopasowanie do ściany.
+  Podkładka i ściany ignorują tabs (mostki) — spójnie z istniejącym
+  uproszczeniem, że bryły otworu/kształtu już dziś ignorują tabs.
+  Podkładka celowo pomijana w trybie overlay (`BL-3`) — każdy nałożony
+  preset ma już własną ścianę pokazującą swój zasięg.
+
 ## [0.13.4] — 2026-08-28
 
 ### Naprawiono

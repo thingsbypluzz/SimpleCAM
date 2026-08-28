@@ -16,6 +16,25 @@ export function rectToolDimensions(
   return { toolWidth: width + delta, toolHeight: height + delta }
 }
 
+// Rectangle analog of outlineCircle.ts's onLineCircleEdges (BL-28) —
+// reuses rectToolDimensions's own 'inside'/'outside' delta twice instead
+// of once, same display-only reasoning (3D preview only, the real
+// toolpath still runs at the single nominal dimensions).
+export function onLineRectDimensions(
+  width: number,
+  height: number,
+  toolDiameter: number,
+): { innerWidth: number; innerHeight: number; outerWidth: number; outerHeight: number } {
+  const inner = rectToolDimensions(width, height, toolDiameter, 'inside')
+  const outer = rectToolDimensions(width, height, toolDiameter, 'outside')
+  return {
+    innerWidth: Math.max(0, inner.toolWidth),
+    innerHeight: Math.max(0, inner.toolHeight),
+    outerWidth: outer.toolWidth,
+    outerHeight: outer.toolHeight,
+  }
+}
+
 // Four tool-center corners, in traversal order. 'rectCornered' has its
 // origin at the bottom-left corner (mirrors Hole(s)' Grid); 'rectCentered'
 // is centered on the origin (mirrors Grid Centered). `direction` picks the

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { generateCircleOutlineHelix, generateCircleOutlineStandard } from './outlineCircle'
+import { generateCircleOutlineHelix, generateCircleOutlineStandard, onLineCircleEdges } from './outlineCircle'
 import { DEFAULT_MACHINE_SETTINGS } from '../types/machine'
 import { DEFAULT_WIZARD_PARAMS, type WizardParams } from '../types/wizard'
 
@@ -70,6 +70,28 @@ describe('generateCircleOutlineStandard / Helix — single-shape cut, not a repe
     })
     const lines = generateCircleOutlineHelix(params, DEFAULT_MACHINE_SETTINGS)
     expect(lines.filter((l) => l.startsWith('G3'))).toHaveLength(5)
+  })
+})
+
+describe('onLineCircleEdges — BL-28 3D preview boundaries', () => {
+  it('splits the nominal diameter into an inner and outer radius, one toolRadius apart each side', () => {
+    const { innerRadius, outerRadius } = onLineCircleEdges({
+      ...DEFAULT_WIZARD_PARAMS.outline,
+      diameter: 40,
+      toolDiameter: 4,
+    })
+    expect(innerRadius).toBe(18)
+    expect(outerRadius).toBe(22)
+  })
+
+  it('clamps the inner radius to 0 instead of going negative when the tool is wider than the shape', () => {
+    const { innerRadius, outerRadius } = onLineCircleEdges({
+      ...DEFAULT_WIZARD_PARAMS.outline,
+      diameter: 4,
+      toolDiameter: 10,
+    })
+    expect(innerRadius).toBe(0)
+    expect(outerRadius).toBe(7)
   })
 })
 

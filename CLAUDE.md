@@ -755,82 +755,6 @@ nowa funkcjonalność. Nie zaczynać bez wyraźnego "przechodzimy do X".
   ustalonej, świadomej decyzji projektowej (presety są dziś jawnie
   zapisywane wyłącznie ręcznie, bez auto-nadpisywania) — wymaga pełnej
   dyskusji przed dopracowaniem zakresu, nie drobna poprawka.
-- **`BL-28`** — **Podgląd 3D: iluzoryczny "stock" (blok materiału) dla
-  cięć pozostawiających pustkę.** Sesja `/grill-me` 2026-08-28, czysto
-  koncepcyjna — rozwinięcie `BL-27`. Punkt wyjścia: `BL-27` zamknął
-  temat "ściany" (bryły nominalnego kształtu) dla otworu/wycięcia, ale
-  sama ściana wygląda jak pływający, odcięty od niczego obiekt — bez
-  wizualnego odniesienia do materiału, z którego rzekomo została
-  wycięta. Cel: dorysować płaską "podkładkę" (washer) symbolizującą
-  materiał wokół cięcia, ograniczoną do widocznej siatki X/Y, z
-  wyciętym otworem tam, gdzie faktycznie usuwamy materiał.
-
-  **Mechanizm — świadomie NIE CSG.** Pierwszy odruch sesji sugerował
-  operację boolean (subtrakcja bryły), co byłoby dużym skokiem kosztu
-  (nowa zależność, prawdziwe modelowanie bryły per metoda/tabs, koszt
-  przeliczania przy live-preview). Po doprecyzowaniu okazało się, że
-  wystarczy dużo lżejsza operacja: płaska "podkładka" na wysokości
-  `Z=+startZ`, zbudowana przez `THREE.Shape` + `shape.holes` (tablica
-  `THREE.Path`) — natywna technika Three.js, automatycznie
-  tesselowana, zero nowej zależności, zero subtrakcji bryły. Rozmiar
-  podkładki to ten sam `planeSize`/`center`, które dziś liczy
-  `buildToolpathScene()` dla istniejącej płaszczyzny/siatki Z=0
-  (`src/components/preview3d/buildScene.ts`). Istniejące ściany
-  otworu/kształtu (zbudowane już przez `BL-27`) zostają bez zmian —
-  służą jako "boki" wycięcia, nowa jest tylko płaska podkładka na
-  górze.
-
-  **Zakres:**
-  - **Hole(s)** — zawsze dostaje podkładkę. Jedna wspólna podkładka na
-    wzorzec (ograniczona do łącznego zasięgu siatki), z N okrągłymi
-    otworami wyciętymi — po jednym na każdy wywiercony punkt
-    (`resolvePoints()`), wszystkie o wspólnej `holeDiameter` wzorca.
-  - **Outline Inside** — zawsze dostaje podkładkę, jeden otwór w
-    kształcie nominalnej granicy (promień koła albo rogi prostokąta).
-  - **Outline Outside** — bez podkładki. Renderuje się już jako
-    zamknięta bryła (`BL-27`) — to wystarcza, bez dokładania podkładki.
-  - **Outline On-line** — traktowanie hybrydowe. Narzędzie porusza się
-    środkiem dokładnie po nominalnej linii, więc zostawia DWIE realne
-    krawędzie, nie jedną: wewnętrzną na `nominal − toolRadius` i
-    zewnętrzną na `nominal + toolRadius`. To dokładnie ta sama
-    matematyka delty, którą już liczą `Inside`/`Outside`
-    (`±toolDiameter` na bok w `rectToolDimensions`, analogicznie
-    `±toolRadius` dla koła) — nie nowa matematyka, nowe jej
-    zastosowanie przy innym promieniu odniesienia:
-    - krawędź wewnętrzna → renderowana **jak Outside**: zamknięta,
-      samodzielna bryła/ściana. Bez mostków (tabs) to fizycznie
-      odseparowana wyspa materiału — świadomie zamierzone, uczciwie
-      pokazuje dlaczego mostki mają znaczenie właśnie tutaj.
-    - krawędź zewnętrzna → renderowana **jak Inside**: otwarta ściana +
-      podkładka z otworem o tym większym promieniu, sięgająca do
-      granic siatki.
-    - dzisiejsza pojedyncza ściana na promieniu nominalnym zostaje
-      **zastąpiona** tymi dwiema — nie odpowiada żadnej realnej
-      krawędzi fizycznej dla On-line.
-    - rzeczywista ścieżka G-code pozostaje nietknięta (nadal tnie po
-      jednej, nominalnej linii) — to czysto wizualne rozszerzenie
-      podglądu.
-
-  **Detale wizualne:** kolor/opacity podkładki — `theme.material` /
-  `materialOpacity` (ten sam subtelny odcień tła co istniejąca
-  płaszczyzna Z=0), nie `theme.hole` — podkładka ma czytać się jako
-  "to jest materiał", odróżniona od akcentu ściany/kształtu ("to jest
-  granica cięcia"). Mostki (tabs): podkładka i ściany zostają ciągłe,
-  ignorując przerwy mostków — spójnie z istniejącym, już
-  udokumentowanym uproszczeniem, że bryły otworu/kształtu ignorują
-  tabs już dziś (tylko linia ścieżki narzędzia rysuje przerwy).
-  Przypadek `startZ=0` (najczęstszy/domyślny): podkładka pokrywa się
-  dokładnie z istniejącą płaszczyzną Z=0 — zaakceptowane bez zmian,
-  oba się renderują, nieszkodliwe podwójne półprzezroczyste nałożenie.
-
-  **Świadomie odłożone — tryb overlay (`BL-3`).** Podkładka całkowicie
-  pomijana, gdy overlay jest aktywny — każdy nałożony preset ma już
-  własną bryłę otworu/kształtu pokazującą jego zasięg, a wspólna
-  podkładka dla wielu nałożonych presetów o różnym `startZ`/geometrii
-  nie ma jednoznacznej odpowiedzi (jaka wysokość Z? czyje otwory?).
-  Do rewizji po wdrożeniu i wizualnej walidacji wersji bez overlay —
-  możliwe, że kilka nałożonych podkładek naraz będzie wyglądać dobrze,
-  ale najpierw prosty przypadek.
 Nie przeskakuj etapów bez pytania — każdy kończy się checkpointem do
 przeglądu przez użytkownika.
 
@@ -1154,6 +1078,57 @@ przeglądu przez użytkownika.
   grill-me: osobny obiekt "stock" (cały widoczny grid jako blok
   materiału) — reguła open/closed per offset mode okazała się
   wystarczająca.
+- **`BL-28` zamknięte w `0.13.5` — iluzoryczny "stock" w podglądzie 3D.**
+  Sesja `/grill-me` 2026-08-28 (czysto koncepcyjna) rozwinęła `BL-27`:
+  ściana otworu/wycięcia wyglądała jak pływający obiekt bez odniesienia
+  do materiału. Zaimplementowana od razu tego samego dnia. Rozwiązanie
+  **świadomie NIE CSG** — płaska "podkładka" (cap) na wysokości
+  `Z=+startZ`, zbudowana `THREE.Shape` + `shape.holes` (natywna
+  tesselacja Three.js, zero nowej zależności), ograniczona do tego
+  samego `planeSize`/`center`, które `buildToolpathScene()` już liczy
+  dla istniejącej płaszczyzny/siatki Z=0. Nowa funkcja
+  `buildStockCapObject()` (`src/components/preview3d/buildScene.ts`).
+
+  **Zakres:** Hole(s) — zawsze, jedna wspólna podkładka z N okrągłymi
+  otworami (po jednym na wywiercony punkt). Outline Inside — zawsze,
+  jeden otwór w kształcie nominalnej granicy (dokładnie ten sam
+  promień/rogi co istniejąca ściana — brak szwu na styku). Outline
+  Outside — bez podkładki, zamknięta bryła (`BL-27`) wystarcza sama.
+  Outline On-line — hybrydowo: dwie realne krawędzie (`nominal −
+  toolRadius` i `nominal + toolRadius`), wewnętrzna renderowana **jak
+  Outside** (zamknięta, samodzielna bryła — bez mostków fizycznie
+  odseparowana wyspa, uczciwie pokazuje po co są mostki), zewnętrzna
+  **jak Inside** (otwarta ściana + podkładka z otworem na tym
+  promieniu). Dzisiejsza pojedyncza ściana na promieniu nominalnym dla
+  On-line została **zastąpiona** tymi dwiema. Nowe czyste funkcje
+  `onLineCircleEdges()` (`lib/outlineCircle.ts`, z testami) i
+  `onLineRectDimensions()` (`lib/outlineRectangleGeometry.ts`, z
+  testami) liczą obie krawędzie, reużywając dokładnie tej samej
+  matematyki delty co `Inside`/`Outside` (`rectToolDimensions`
+  wywołane dwukrotnie zamiast raz) — czysto wizualne, rzeczywista
+  ścieżka G-code dla On-line pozostaje nietknięta.
+
+  **Poprawka przy okazji:** `expandBoundsForPattern()` nie liczył się z
+  nowym zewnętrznym promieniem/wymiarami On-line — bez tego siatka/
+  płaszczyzna/podkładka byłyby za małe, żeby pomieścić nową zewnętrzną
+  ścianę (dotąd `toolRadius`/`toolCorners` dla On-line pokrywały się z
+  wartością nominalną, zero offsetu). Naprawione fałdowaniem
+  `onLineCircleEdges`/`onLineRectDimensions`'s zewnętrznej wartości do
+  bounds, gdy `offsetMode === 'onLine'`.
+
+  **Detale:** kolor podkładki `theme.hole` przy opacity 0.3 —
+  dokładnie ten sam co ściany. Pierwsza wersja użyła `theme.material`/
+  `materialOpacity` (jak płaszczyzna Z=0, per ustalenie z sesji
+  `/grill-me`) — w praktyce niemal niewidoczna, bo `theme.material` to
+  dosłownie kolor tła sceny, więc półprzezroczysta płaszczyzna "w
+  kolorze tła" na tym samym tle prawie znika. Zgłoszone przez
+  użytkownika po realnym obejrzeniu, poprawione na dopasowanie do
+  ściany. Podkładka i ściany ignorują tabs (mostki) — spójnie z
+  istniejącym uproszczeniem, że bryły otworu/
+  kształtu już dziś ignorują tabs. Podkładka pomijana w trybie overlay
+  (`BL-3`) — `showActivePattern` już rozstrzyga to bez dodatkowej
+  logiki, bo `allPatterns` zawsze pcha aktywny wzorzec jako ostatni
+  element wyłącznie gdy `showActivePattern` jest prawdziwe.
 - **Zoom/pan na 2D Preview (`BL-11`, `0.10.0`).** Sesja `/grill-me`
   ustaliła zakres: scroll = zoom-to-cursor (punkt pod kursorem zostaje
   na miejscu), prawy przycisk myszy + przeciąganie = pan (kontekstowe

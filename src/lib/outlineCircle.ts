@@ -28,6 +28,21 @@ export function circleOutlineRadiusAndDirection(outline: OutlineParams): { radiu
   }
 }
 
+// On-line leaves two real physical edges (BL-28), not one — the tool
+// travels centered on the nominal line, removing a band from
+// (nominal - toolRadius) to (nominal + toolRadius). Same delta as
+// Inside/Outside's own radius formulas above, just both applied together
+// instead of picking one — display-only (3D preview), the real toolpath
+// still runs at the single nominal radius (circleOutlineRadiusAndDirection
+// above, unchanged).
+export function onLineCircleEdges(outline: OutlineParams): { innerRadius: number; outerRadius: number } {
+  const toolR = outline.toolDiameter / 2
+  return {
+    innerRadius: Math.max(0, outline.diameter / 2 - toolR),
+    outerRadius: outline.diameter / 2 + toolR,
+  }
+}
+
 function outlineTabs(outline: OutlineParams): CircleTabsOptions | null {
   return outline.tabsEnabled
     ? { tabHeight: outline.tabHeight, tabWidth: outline.tabWidth, tabCount: outline.tabCount }

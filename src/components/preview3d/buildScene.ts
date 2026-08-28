@@ -3,9 +3,10 @@ import { getFixedColors, getPaletteAccents, hexToThreeColor, type PaletteId } fr
 import { resolvePoints } from '../../lib/positioning'
 import { computeDepthPasses } from '../../lib/depthPasses'
 import { computeTabRanges, type TabRange } from '../../lib/tabs'
-import { circleOutlineRadiusAndDirection } from '../../lib/outlineCircle'
+import { circleOutlineRadiusAndDirection, onLineCircleEdges } from '../../lib/outlineCircle'
 import {
   longerEdgeIndex,
+  onLineRectDimensions,
   rectCorners,
   rectToolDimensions,
 } from '../../lib/outlineRectangleGeometry'
@@ -512,12 +513,26 @@ function expandBoundsForPattern(bounds: THREE.Box3, pattern: ResolvedPattern) {
   }
   const { outline, feeds } = pattern.params
   if (pattern.kind === 'outlineCircle') {
-    const r = Math.max(pattern.nominalRadius, pattern.toolRadius)
+    let r = Math.max(pattern.nominalRadius, pattern.toolRadius)
+    // On-line's new outer wall (BL-28) reaches past the nominal radius —
+    // today's toolRadius/nominalRadius alone (both equal to the nominal
+    // radius for On-line) would under-count the bounds otherwise.
+    if (outline.offsetMode === 'onLine') {
+      r = Math.max(r, onLineCircleEdges(outline).outerRadius)
+    }
     bounds.expandByPoint(toThree(pattern.center.x - r, pattern.center.y - r, -outline.totalDepth))
     bounds.expandByPoint(toThree(pattern.center.x + r, pattern.center.y + r, feeds.safeZ))
     return
   }
-  for (const p of [...pattern.nominalCorners, ...pattern.toolCorners]) {
+  const corners = [...pattern.nominalCorners, ...pattern.toolCorners]
+  // Same on-line under-count fix as Circle above, for the new outer wall.
+  // outline.shape !== 'circle' always holds here (pattern.kind === 'outlineRect'
+  // guarantees it), the check is only to narrow the type for rectCorners.
+  if (outline.offsetMode === 'onLine' && outline.shape !== 'circle') {
+    const { outerWidth, outerHeight } = onLineRectDimensions(outline.width, outline.height, outline.toolDiameter)
+    corners.push(...rectCorners(outline.shape, outerWidth, outerHeight, outline.offsetX, outline.offsetY, 'ccw'))
+  }
+  for (const p of corners) {
     bounds.expandByPoint(toThree(p.x, p.y, -outline.totalDepth))
     bounds.expandByPoint(toThree(p.x, p.y, feeds.safeZ))
   }
@@ -658,16 +673,43 @@ function buildOutlineCirclePatternObjects(
   // the finished material boundary, not the tool-corrected path. Open/closed
   // follows the offset mode's physical meaning (BL-27): Outside means this
   // shape IS the kept, solid part (closed); Inside means material is removed
-  // from the interior, a void like a hole/pocket (open, no caps); On-line has
-  // no physical meaning at zero offset and stays open.
-  const openEnded = outline.offsetMode !== 'outside'
+  // from the interior, a void like a hole/pocket (open, no caps).
+  //
+  // On-line (BL-28) gets two walls instead of one: the tool travels centered
+  // on the nominal line, so it leaves two real physical edges — an inner
+  // edge (a standalone island, rendered Outside-style/closed) and an outer
+  // edge (still connected to the surrounding stock, rendered Inside-style/
+  // open) — replacing the single nominal-radius wall, which doesn't
+  // correspond to any real edge for On-line.
   const boreHeight = outline.totalDepth + feeds.startZ
-  const shape = new THREE.Mesh(
-    new THREE.CylinderGeometry(nominalRadius, nominalRadius, boreHeight, 32, 1, openEnded),
-    new THREE.MeshBasicMaterial({ color: theme.hole, transparent: true, opacity: 0.3, side: THREE.DoubleSide }),
-  )
-  shape.position.copy(toThree(center.x, center.y, (feeds.startZ - outline.totalDepth) / 2))
-  objects.push(shape)
+  const boreCenterZ = (feeds.startZ - outline.totalDepth) / 2
+  const wallMaterial = () =>
+    new THREE.MeshBasicMaterial({ color: theme.hole, transparent: true, opacity: 0.3, side: THREE.DoubleSide })
+
+  if (outline.offsetMode === 'onLine') {
+    const { innerRadius, outerRadius } = onLineCircleEdges(outline)
+    const innerWall = new THREE.Mesh(
+      new THREE.CylinderGeometry(innerRadius, innerRadius, boreHeight, 32, 1, false),
+      wallMaterial(),
+    )
+    innerWall.position.copy(toThree(center.x, center.y, boreCenterZ))
+    objects.push(innerWall)
+
+    const outerWall = new THREE.Mesh(
+      new THREE.CylinderGeometry(outerRadius, outerRadius, boreHeight, 32, 1, true),
+      wallMaterial(),
+    )
+    outerWall.position.copy(toThree(center.x, center.y, boreCenterZ))
+    objects.push(outerWall)
+  } else {
+    const openEnded = outline.offsetMode !== 'outside'
+    const shape = new THREE.Mesh(
+      new THREE.CylinderGeometry(nominalRadius, nominalRadius, boreHeight, 32, 1, openEnded),
+      wallMaterial(),
+    )
+    shape.position.copy(toThree(center.x, center.y, boreCenterZ))
+    objects.push(shape)
+  }
 
   const tabsConfig: TabsConfig3D | null = outline.tabsEnabled
     ? { tabHeight: outline.tabHeight, tabRanges: computeTabRanges(outline.tabCount, outline.tabWidth, toolRadius) }
@@ -698,6 +740,29 @@ function boundingCenter(points: Point2D[]): Point2D {
   return { x: (Math.min(...xs) + Math.max(...xs)) / 2, y: (Math.min(...ys) + Math.max(...ys)) / 2 }
 }
 
+// Builds one semi-transparent box wall from a set of corners — aligned with
+// CNC X/Y, no rotation needed (see the comment at its call site below for
+// why). Open/closed follows BL-27's rule: BoxGeometry has no `openEnded`
+// like CylinderGeometry, so "open" hides the top/bottom cap faces (indices
+// 2/3 of BoxGeometry's default [+x,-x,+y,-y,+z,-z] groups — box-local Y is
+// already the vertical bore axis here) via a per-face material array,
+// instead of a hand-built tunnel BufferGeometry. Factored out (BL-28) since
+// On-line now needs this twice (inner + outer wall) in addition to the
+// single-wall case every other offset mode still uses.
+function buildRectWallMesh(corners: Point2D[], boreHeight: number, centerZ: number, closed: boolean, theme: Theme): THREE.Mesh {
+  const center = boundingCenter(corners)
+  const width = Math.max(...corners.map((p) => p.x)) - Math.min(...corners.map((p) => p.x))
+  const height = Math.max(...corners.map((p) => p.y)) - Math.min(...corners.map((p) => p.y))
+  const sideMaterial = new THREE.MeshBasicMaterial({ color: theme.hole, transparent: true, opacity: 0.3, side: THREE.DoubleSide })
+  const capMaterial = closed ? sideMaterial : new THREE.MeshBasicMaterial({ visible: false })
+  const mesh = new THREE.Mesh(
+    new THREE.BoxGeometry(width, boreHeight, height),
+    [sideMaterial, sideMaterial, capMaterial, capMaterial, sideMaterial, sideMaterial],
+  )
+  mesh.position.copy(toThree(center.x, center.y, centerZ))
+  return mesh
+}
+
 function buildOutlineRectPatternObjects(
   pattern: Extract<ResolvedPattern, { kind: 'outlineRect' }>,
   theme: Theme,
@@ -719,27 +784,30 @@ function buildOutlineRectPatternObjects(
   // Three's box-X == CNC width, box-Y == vertical bore height, box-Z ==
   // CNC height (mirrored in position by the -y term, but a centered box's
   // extent along an axis is symmetric either way)).
-  const nominalCenter = boundingCenter(nominalCorners)
-  const width = Math.max(...nominalCorners.map((p) => p.x)) - Math.min(...nominalCorners.map((p) => p.x))
-  const height = Math.max(...nominalCorners.map((p) => p.y)) - Math.min(...nominalCorners.map((p) => p.y))
+  //
+  // Open/closed follows BL-27's offset-mode rule (see buildRectWallMesh).
+  // On-line (BL-28) gets two walls instead of one, same reasoning as
+  // Circle above: the tool travels centered on the nominal line, leaving
+  // an inner edge (standalone island, closed) and an outer edge (still
+  // connected to stock, open) — replacing the single nominal-corner wall,
+  // which doesn't correspond to a real edge for On-line.
   const boreHeight = outline.totalDepth + feeds.startZ
-  // Open/closed follows the offset mode's physical meaning (BL-27), same
-  // rule as Circle above. BoxGeometry has no `openEnded` option like
-  // CylinderGeometry, so "open" is built by hiding the top/bottom cap faces
-  // instead: BoxGeometry's default face-group order is [+x,-x,+y,-y,+z,-z],
-  // and box-local Y is already the vertical bore axis here (see comment
-  // above) — so groups 2/3 are exactly the caps a cylinder's openEnded
-  // would drop. A material array maps 1:1 onto those groups, no need for a
-  // hand-built tunnel BufferGeometry.
-  const closed = outline.offsetMode === 'outside'
-  const sideMaterial = new THREE.MeshBasicMaterial({ color: theme.hole, transparent: true, opacity: 0.3, side: THREE.DoubleSide })
-  const capMaterial = closed ? sideMaterial : new THREE.MeshBasicMaterial({ visible: false })
-  const shape = new THREE.Mesh(
-    new THREE.BoxGeometry(width, boreHeight, height),
-    [sideMaterial, sideMaterial, capMaterial, capMaterial, sideMaterial, sideMaterial],
-  )
-  shape.position.copy(toThree(nominalCenter.x, nominalCenter.y, (feeds.startZ - outline.totalDepth) / 2))
-  objects.push(shape)
+  const boreCenterZ = (feeds.startZ - outline.totalDepth) / 2
+
+  if (outline.offsetMode === 'onLine' && outline.shape !== 'circle') {
+    const { innerWidth, innerHeight, outerWidth, outerHeight } = onLineRectDimensions(
+      outline.width,
+      outline.height,
+      outline.toolDiameter,
+    )
+    const innerCorners = rectCorners(outline.shape, innerWidth, innerHeight, outline.offsetX, outline.offsetY, 'ccw')
+    const outerCorners = rectCorners(outline.shape, outerWidth, outerHeight, outline.offsetX, outline.offsetY, 'ccw')
+    objects.push(buildRectWallMesh(innerCorners, boreHeight, boreCenterZ, true, theme))
+    objects.push(buildRectWallMesh(outerCorners, boreHeight, boreCenterZ, false, theme))
+  } else {
+    const closed = outline.offsetMode === 'outside'
+    objects.push(buildRectWallMesh(nominalCorners, boreHeight, boreCenterZ, closed, theme))
+  }
 
   const tabs = outline.tabsEnabled
     ? { tabHeight: outline.tabHeight, tabCount: outline.tabCount, tabWidth: outline.tabWidth }
@@ -764,6 +832,95 @@ function buildPatternObjects(pattern: ResolvedPattern, theme: Theme, span: numbe
     case 'outlineRect':
       return buildOutlineRectPatternObjects(pattern, theme, span, arrowSize)
   }
+}
+
+function circlePath(cx: number, cy: number, radius: number): THREE.Path {
+  const path = new THREE.Path()
+  path.absarc(cx, cy, radius, 0, Math.PI * 2, false)
+  return path
+}
+
+function rectPath(corners: Point2D[]): THREE.Path {
+  const path = new THREE.Path()
+  path.moveTo(corners[0].x, corners[0].y)
+  for (let i = 1; i < corners.length; i++) path.lineTo(corners[i].x, corners[i].y)
+  path.closePath()
+  return path
+}
+
+// The illusory "stock" cap (BL-28) — a flat plate bounded by the same
+// visible-grid extent as the material plane/GridHelper, with a hole cut
+// where material is actually removed, so the existing bore/wall meshes
+// (BL-27) read as "a hole in a plate" instead of a floating wall. Built
+// with THREE.Shape + shape.holes (native Three.js tessellation) — not CSG,
+// just a flat cap, since the existing wall already provides the "sides".
+//
+// Scope: Hole(s) always gets one shared cap with N holes (one per drilled
+// point). Outline Inside always gets one cap, hole = the nominal boundary
+// (matches the existing wall's footprint exactly, no seam at the rim).
+// Outline Outside gets no cap — already a closed solid (BL-27), that's the
+// whole "stock" on its own. Outline On-line gets one cap too, hole = the
+// NEW outer wall's footprint (onLineCircleEdges/onLineRectDimensions,
+// same as the wall above) — the inner island's own wall is now fully
+// closed, so it already has its own top cap for free, no separate hole
+// needed for it here.
+//
+// Coordinate mapping: THREE.Shape/Path points are consumed as raw CNC
+// (x, y) — after rotating the mesh by rotation.x = -Math.PI/2 (the same
+// rotation the existing flat material plane below already uses), local
+// shape-X becomes world-X and local shape-Y becomes world -Z, which is
+// exactly toThree(x, y, 0)'s (x, 0, -y) mapping. No extra transform.
+function buildStockCapObject(
+  pattern: ResolvedPattern,
+  theme: Theme,
+  planeSize: number,
+  centerCNC: Point2D,
+): THREE.Object3D | null {
+  let startZ: number
+  let holePaths: THREE.Path[]
+
+  if (pattern.kind === 'holes') {
+    startZ = pattern.params.feeds.startZ
+    holePaths = pattern.points.map((p) => circlePath(p.x, p.y, pattern.holeRadius))
+  } else {
+    const { outline, feeds } = pattern.params
+    if (outline.offsetMode === 'outside') return null
+    startZ = feeds.startZ
+
+    if (pattern.kind === 'outlineCircle') {
+      const radius = outline.offsetMode === 'onLine' ? onLineCircleEdges(outline).outerRadius : pattern.nominalRadius
+      holePaths = [circlePath(pattern.center.x, pattern.center.y, radius)]
+    } else {
+      if (outline.offsetMode === 'onLine' && outline.shape !== 'circle') {
+        const { outerWidth, outerHeight } = onLineRectDimensions(outline.width, outline.height, outline.toolDiameter)
+        holePaths = [rectPath(rectCorners(outline.shape, outerWidth, outerHeight, outline.offsetX, outline.offsetY, 'ccw'))]
+      } else {
+        holePaths = [rectPath(pattern.nominalCorners)]
+      }
+    }
+  }
+
+  const half = planeSize / 2
+  const outer = new THREE.Shape()
+  outer.moveTo(centerCNC.x - half, centerCNC.y - half)
+  outer.lineTo(centerCNC.x + half, centerCNC.y - half)
+  outer.lineTo(centerCNC.x + half, centerCNC.y + half)
+  outer.lineTo(centerCNC.x - half, centerCNC.y + half)
+  outer.closePath()
+  outer.holes = holePaths
+
+  // Same color/opacity as the wall meshes (theme.hole, 0.3) — not
+  // theme.material/materialOpacity as first tried. theme.material equals
+  // the scene's own background color, so a semi-transparent plane of "the
+  // background color" over the background was barely visible in practice;
+  // matching the wall exactly is what actually reads as "this is stock".
+  const cap = new THREE.Mesh(
+    new THREE.ShapeGeometry(outer),
+    new THREE.MeshBasicMaterial({ color: theme.hole, transparent: true, opacity: 0.3, side: THREE.DoubleSide }),
+  )
+  cap.rotation.x = -Math.PI / 2
+  cap.position.set(0, startZ, 0)
+  return cap
 }
 
 export function buildToolpathScene(
@@ -821,6 +978,22 @@ export function buildToolpathScene(
   ;(grid.material as THREE.Material).transparent = true
   ;(grid.material as THREE.Material).opacity = 0.4
   objects.push(grid)
+
+  // Illusory stock cap (BL-28) — only for the live/active pattern, never
+  // for BL-3 overlay presets (each already shows its own footprint via its
+  // own wall; a shared cap across presets with different startZ/geometry
+  // has no single obvious answer — deferred per the BL-28 grill-me).
+  // allPatterns always pushes the active pattern last when
+  // showActivePattern is true (see the array literal above), so this is
+  // always exactly resolvePattern(params), never an overlay entry.
+  if (showActivePattern) {
+    // Inverse of toThree's CNC->world Z mapping (world.z = -CNC.y), so the
+    // cap's outer boundary can be built directly in CNC (x, y) coordinates,
+    // matching the grid/plane's own center.
+    const centerCNC: Point2D = { x: center.x, y: -center.z }
+    const cap = buildStockCapObject(allPatterns[allPatterns.length - 1], theme, planeSize, centerCNC)
+    if (cap) objects.push(cap)
+  }
 
   // Origin marker + label
   const origin = new THREE.Mesh(

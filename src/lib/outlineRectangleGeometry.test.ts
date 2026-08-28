@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest'
-import { longerEdgeIndex, rectCorners, rectPerimeter, rectToolDimensions } from './outlineRectangleGeometry'
+import {
+  longerEdgeIndex,
+  onLineRectDimensions,
+  rectCorners,
+  rectPerimeter,
+  rectToolDimensions,
+} from './outlineRectangleGeometry'
 
 describe('rectToolDimensions', () => {
   it('inside insets both dimensions by toolDiameter', () => {
@@ -12,6 +18,26 @@ describe('rectToolDimensions', () => {
 
   it('onLine leaves nominal dimensions untouched', () => {
     expect(rectToolDimensions(50, 30, 4, 'onLine')).toEqual({ toolWidth: 50, toolHeight: 30 })
+  })
+})
+
+describe('onLineRectDimensions — BL-28 3D preview boundaries', () => {
+  it('splits nominal width/height into an inner and outer pair, one toolRadius apart each side', () => {
+    expect(onLineRectDimensions(40, 20, 4)).toEqual({
+      innerWidth: 36,
+      innerHeight: 16,
+      outerWidth: 44,
+      outerHeight: 24,
+    })
+  })
+
+  it('clamps inner dimensions to 0 instead of going negative when the tool is wider than the shape', () => {
+    expect(onLineRectDimensions(4, 4, 10)).toEqual({
+      innerWidth: 0,
+      innerHeight: 0,
+      outerWidth: 14,
+      outerHeight: 14,
+    })
   })
 })
 
