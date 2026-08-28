@@ -7,6 +7,42 @@ zgodne z [SemVer](https://semver.org/). Ten plik pozostaje głównym, czytelnym
 thingsbypluzz/SimpleCAM), ale to infrastruktura pod izolację pracy
 (branch/worktree per zadanie), nie zamiennik tego changeloga.
 
+## [0.13.4] — 2026-08-28
+
+### Naprawiono
+
+- **`BL-27`** — bryła kształtu Outline (Circle/Rectangle) w podglądzie
+  3D była otwarta/zamknięta w zależności od klasy geometrii Three.js
+  (`CylinderGeometry` zawsze otwarta, `BoxGeometry` zawsze zamknięta),
+  nie od faktycznego trybu offsetu — niespójność, nie świadoma decyzja.
+  Naprawione regułą wg fizycznego znaczenia offsetu, jednolitą dla
+  Circle i Rectangle: **Outside** = kształt to lita, zachowana część
+  → zamknięta geometria; **Inside** = materiał usunięty ze środka,
+  pustka jak otwór/kieszeń → otwarta geometria; **On-line** = bez
+  znaczenia fizycznego przy zerowym offsecie → zostaje otwarta. Przy
+  okazji naprawiony utajony bug: Circle był dotąd otwarty nawet dla
+  Outside. `buildOutlineCirclePatternObjects()` — `openEnded` w
+  `CylinderGeometry` liczony z `outline.offsetMode` zamiast stałego
+  `true`. `buildOutlineRectPatternObjects()` — `BoxGeometry` nie ma
+  odpowiednika `openEnded`, więc "otwarcie" zrealizowane przez ukrycie
+  górnej/dolnej ściany (indeksy 2/3 domyślnych grup materiałów boxa,
+  `+y`/`-y` — dokładnie oś pionowa/głębokości w naszym mapowaniu
+  `toThree()`) osobnym, niewidocznym materiałem przekazanym w tablicy
+  materiałów `Mesh`, zamiast budowania ręcznej geometrii "tunelu".
+  Hole(s) bez zmian (brak konceptu offset mode, zawsze otwarte). Oba
+  w `src/components/preview3d/buildScene.ts`.
+
+## [0.13.3] — 2026-08-25
+
+### Zmieniono
+
+- **`BL-22`** — mocniejsze wypełnienie materiału/otworu w podglądzie
+  2D/3D (Hole(s), Outline Circle, Outline Rectangle). Stałe
+  `opacity: 0.12` w `buildScene.ts` i `holeFill` w `config/palettes.ts`
+  (0.08 light / 0.12 dark) czytały się za słabo. Wartość dobrana
+  wzrokowo w Palette Bench (nowy suwak opacity dodany do tego
+  narzędzia): jednolite **0.3** dla obu podglądów i obu motywów.
+
 ## [0.13.2] — 2026-08-25
 
 ### Zmieniono

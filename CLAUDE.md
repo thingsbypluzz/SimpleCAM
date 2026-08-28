@@ -610,6 +610,73 @@ Artifact pokazuje je jako osobną sekcję, nie jako kolorowe
 łatwe/średnie/trudne zadania — trudność jest dziś celowo nieoszacowana,
 `/grill-me` to część definiowania zakresu, nie coś do zgadnięcia z góry.
 
+## Przyszłe usprawnienia biznesowe (`FI-#`)
+
+Osobna kategoria — `FI-#` ("Future Improvement") — dla większych,
+spekulatywnych kierunków rozwoju **produktowego/biznesowego**, nie
+technicznego długu (`BL-#`) ani nowej operacji CNC (`OP-#`). Numer jest
+identyfikatorem, nie deklaracją "robimy to". Jak przy `OP-#`: każda
+pozycja wymaga własnej, pełnej sesji `/grill-me` przed jakąkolwiek
+implementacją — tu nawet bardziej, bo dotyka decyzji poza samym kodem
+(cennik, platforma sprzedażowa, podatki).
+
+- **`FI-1` — Model premium/freemium.** Sesja `/grill-me` 2026-08-25,
+  czysto koncepcyjna, bez implementacji — ustalenia:
+  - **"Zero backendu" to węższy warunek niż dosłowne brzmienie w tym
+    pliku sugeruje.** Chodzi o to, żeby generowanie G-code i podglądy
+    2D/3D zawsze zostawały w 100% po stronie klienta (nie obciążać CPU/
+    transferu współdzielonego hostingu) — to niezmienne niezależnie od
+    monetyzacji. To **nie** znaczy "żadnego kodu server-side w ogóle":
+    użytkownik prowadzi już PHP+MySQL dla innych stron WordPress, więc
+    lekki backend gdzie indziej (np. do sprawdzania licencji) nie jest
+    wykluczony filozoficznie — po prostu nie jest potrzebny w kierunku
+    poniżej.
+  - **Kandydaci na funkcje premium (dzisiejsze myślenie, niewyczerpujące):**
+    własna lista średnic narzędzia (`BL-19`), więcej niż dzisiejsze 5
+    slotów presetów, edytowalne/własne palety kolorów (poza 4 gotowymi z
+    `BL-12`) — wszystko czysto client-side, "może coś jeszcze w
+    przyszłości". Świadomie **nie** wybrano niczego wymagającego chmury
+    (synchronizacja/współdzielenie presetów między urządzeniami) — to
+    wymagałoby backendu z powodów niezależnych od monetyzacji.
+  - **Mechanizm: klucz licencyjny przez platformę trzecią**
+    (Gumroad/LemonSqueezy i podobne), nie własny backend, nie
+    konto/login. Wybrane zamiast własnego sklepu PHP+DB, bo użytkownik
+    **nie ma dziś żadnej infrastruktury e-commerce** do wykorzystania
+    (WordPressy bez wtyczki sklepowej) — budowanie obsługi płatności i
+    zgodności z VAT od zera tylko dla tego tematu byłoby dużą, osobną
+    inwestycją. Platforma hostowana działa jako merchant-of-record
+    (rozlicza VAT/podatki za sprzedawcę), wystawia klucz przy zakupie i
+    udostępnia publiczne API do weryfikacji, które appka odpytuje raz i
+    cachuje wynik w `localStorage` — niektóre platformy (np. Gumroad)
+    wspierają też limit aktywacji per licencja (np. "max 3 urządzenia")
+    przez własne API, co załatwia pytanie o wiele urządzeń bez
+    własnego backendu.
+  - **Odrzucona alternatywa: unikalny/dynamiczny URL per klient.**
+    Pomysł własny użytkownika, od razu z trafnym pytaniem "jak nie
+    dopuścić do współdzielenia?". Słabszy niż klucz licencyjny: URL
+    wycieka dużo łatwiej niż hasło (historia przeglądarki, zrzuty
+    ekranu, zgłoszenia do supportu, wklejone linki) i nie da się go
+    unieważnić/limitować bez serwera sprawdzającego przy każdej
+    wizycie — a to i tak oznacza budowę backendu, tylko gorzej
+    ukształtowanego (bez odróżnienia "legalna zmiana urządzenia" od
+    "udostępnione znajomemu").
+  - **Otwarty wątek, świadomie nierozstrzygnięty — rozliczenia
+    transgraniczne.** Użytkownik jest zlokalizowany w Polsce, ale
+    spodziewa się, że głównym rynkiem klientów będzie UK/US, nie PL/EU.
+    To zmienia, który merchant-of-record faktycznie pasuje — nie każda
+    platforma z tej kategorii równie dobrze obsługuje sprzedawcę z PL
+    sprzedającego głównie do UK/US (rejestracja VAT/OSS, VAT w UK po
+    Brexicie, amerykański sales tax nexus, waluta/bank wypłat, różnice
+    w wymogach fakturowania US vs UE itd.). Zaznaczone jako konkretne
+    pytanie do dedykowanej sesji `/grill-me` poprzedzającej realną
+    implementację — świadomie nieanalizowane w tym czysto koncepcyjnym
+    przebiegu.
+  - **Zakres dokumentacji na dziś:** tylko ten jeden wpis `FI-1` —
+    świadomie **nie** oznaczono `BL-19` ani żadnej innej dzisiejszej
+    pozycji backlogu jako "kandydat premium". Backlog zostaje
+    nietknięty, łatwo to zmienić później, jeśli/gdy ten kierunek
+    faktycznie dojrzeje do realnego scope'owania.
+
 ## Pomysły na przyszłość (poza MVP, poza Etapem 5)
 
 Większe rozszerzenia zakresu — nie polish istniejących operacji, tylko
@@ -678,13 +745,6 @@ nowa funkcjonalność. Nie zaczynać bez wyraźnego "przechodzimy do X".
   rozważenia też: "unikalne IP" to tylko przybliżenie "unikalnych ludzi"
   (NAT zaniża, rotacja IP zawyża), oraz implikacje RODO przy liczeniu po
   IP (strona hostowana na `.pl`).
-- **`BL-22`** — **Wyraźniejszy ślad obrabianego materiału w podglądzie
-  (Outline i Hole(s)), może suwak opacity.** Dzisiejsze stałe, niskie
-  wypełnienie (`theme.holeFill`, `opacity: 0.12` w `buildScene.ts`,
-  analogicznie `holeFill` w `drawToolpath.ts`) czyta się za słabo. Czy
-  rozwiązaniem jest mocniejszy default, suwak opacity dla użytkownika,
-  czy coś innego — otwarte, wymaga sesji do przedyskutowania przed
-  dopracowaniem zakresu.
 - **`BL-25`** — **Tryb edycji przywołanego presetu.** Pomysł: wczytanie
   presetu z headera podświetla/zaznacza go; póki jest zaznaczony,
   dalsze zmiany zapisują się automatycznie z powrotem do tego slotu
@@ -695,7 +755,82 @@ nowa funkcjonalność. Nie zaczynać bez wyraźnego "przechodzimy do X".
   ustalonej, świadomej decyzji projektowej (presety są dziś jawnie
   zapisywane wyłącznie ręcznie, bez auto-nadpisywania) — wymaga pełnej
   dyskusji przed dopracowaniem zakresu, nie drobna poprawka.
+- **`BL-28`** — **Podgląd 3D: iluzoryczny "stock" (blok materiału) dla
+  cięć pozostawiających pustkę.** Sesja `/grill-me` 2026-08-28, czysto
+  koncepcyjna — rozwinięcie `BL-27`. Punkt wyjścia: `BL-27` zamknął
+  temat "ściany" (bryły nominalnego kształtu) dla otworu/wycięcia, ale
+  sama ściana wygląda jak pływający, odcięty od niczego obiekt — bez
+  wizualnego odniesienia do materiału, z którego rzekomo została
+  wycięta. Cel: dorysować płaską "podkładkę" (washer) symbolizującą
+  materiał wokół cięcia, ograniczoną do widocznej siatki X/Y, z
+  wyciętym otworem tam, gdzie faktycznie usuwamy materiał.
 
+  **Mechanizm — świadomie NIE CSG.** Pierwszy odruch sesji sugerował
+  operację boolean (subtrakcja bryły), co byłoby dużym skokiem kosztu
+  (nowa zależność, prawdziwe modelowanie bryły per metoda/tabs, koszt
+  przeliczania przy live-preview). Po doprecyzowaniu okazało się, że
+  wystarczy dużo lżejsza operacja: płaska "podkładka" na wysokości
+  `Z=+startZ`, zbudowana przez `THREE.Shape` + `shape.holes` (tablica
+  `THREE.Path`) — natywna technika Three.js, automatycznie
+  tesselowana, zero nowej zależności, zero subtrakcji bryły. Rozmiar
+  podkładki to ten sam `planeSize`/`center`, które dziś liczy
+  `buildToolpathScene()` dla istniejącej płaszczyzny/siatki Z=0
+  (`src/components/preview3d/buildScene.ts`). Istniejące ściany
+  otworu/kształtu (zbudowane już przez `BL-27`) zostają bez zmian —
+  służą jako "boki" wycięcia, nowa jest tylko płaska podkładka na
+  górze.
+
+  **Zakres:**
+  - **Hole(s)** — zawsze dostaje podkładkę. Jedna wspólna podkładka na
+    wzorzec (ograniczona do łącznego zasięgu siatki), z N okrągłymi
+    otworami wyciętymi — po jednym na każdy wywiercony punkt
+    (`resolvePoints()`), wszystkie o wspólnej `holeDiameter` wzorca.
+  - **Outline Inside** — zawsze dostaje podkładkę, jeden otwór w
+    kształcie nominalnej granicy (promień koła albo rogi prostokąta).
+  - **Outline Outside** — bez podkładki. Renderuje się już jako
+    zamknięta bryła (`BL-27`) — to wystarcza, bez dokładania podkładki.
+  - **Outline On-line** — traktowanie hybrydowe. Narzędzie porusza się
+    środkiem dokładnie po nominalnej linii, więc zostawia DWIE realne
+    krawędzie, nie jedną: wewnętrzną na `nominal − toolRadius` i
+    zewnętrzną na `nominal + toolRadius`. To dokładnie ta sama
+    matematyka delty, którą już liczą `Inside`/`Outside`
+    (`±toolDiameter` na bok w `rectToolDimensions`, analogicznie
+    `±toolRadius` dla koła) — nie nowa matematyka, nowe jej
+    zastosowanie przy innym promieniu odniesienia:
+    - krawędź wewnętrzna → renderowana **jak Outside**: zamknięta,
+      samodzielna bryła/ściana. Bez mostków (tabs) to fizycznie
+      odseparowana wyspa materiału — świadomie zamierzone, uczciwie
+      pokazuje dlaczego mostki mają znaczenie właśnie tutaj.
+    - krawędź zewnętrzna → renderowana **jak Inside**: otwarta ściana +
+      podkładka z otworem o tym większym promieniu, sięgająca do
+      granic siatki.
+    - dzisiejsza pojedyncza ściana na promieniu nominalnym zostaje
+      **zastąpiona** tymi dwiema — nie odpowiada żadnej realnej
+      krawędzi fizycznej dla On-line.
+    - rzeczywista ścieżka G-code pozostaje nietknięta (nadal tnie po
+      jednej, nominalnej linii) — to czysto wizualne rozszerzenie
+      podglądu.
+
+  **Detale wizualne:** kolor/opacity podkładki — `theme.material` /
+  `materialOpacity` (ten sam subtelny odcień tła co istniejąca
+  płaszczyzna Z=0), nie `theme.hole` — podkładka ma czytać się jako
+  "to jest materiał", odróżniona od akcentu ściany/kształtu ("to jest
+  granica cięcia"). Mostki (tabs): podkładka i ściany zostają ciągłe,
+  ignorując przerwy mostków — spójnie z istniejącym, już
+  udokumentowanym uproszczeniem, że bryły otworu/kształtu ignorują
+  tabs już dziś (tylko linia ścieżki narzędzia rysuje przerwy).
+  Przypadek `startZ=0` (najczęstszy/domyślny): podkładka pokrywa się
+  dokładnie z istniejącą płaszczyzną Z=0 — zaakceptowane bez zmian,
+  oba się renderują, nieszkodliwe podwójne półprzezroczyste nałożenie.
+
+  **Świadomie odłożone — tryb overlay (`BL-3`).** Podkładka całkowicie
+  pomijana, gdy overlay jest aktywny — każdy nałożony preset ma już
+  własną bryłę otworu/kształtu pokazującą jego zasięg, a wspólna
+  podkładka dla wielu nałożonych presetów o różnym `startZ`/geometrii
+  nie ma jednoznacznej odpowiedzi (jaka wysokość Z? czyje otwory?).
+  Do rewizji po wdrożeniu i wizualnej walidacji wersji bez overlay —
+  możliwe, że kilka nałożonych podkładek naraz będzie wyglądać dobrze,
+  ale najpierw prosty przypadek.
 Nie przeskakuj etapów bez pytania — każdy kończy się checkpointem do
 przeglądu przez użytkownika.
 
@@ -969,6 +1104,56 @@ przeglądu przez użytkownika.
   odłożonej w `BL-3` decyzji o braku kolorów per-slot w overlay —
   paleta reskinuje jednolicie żywy wzorzec i każdy nałożony preset,
   bez wprowadzania nowego rozróżnienia kolorem per-slot.
+- **`BL-22` zamknięte w `0.13.3` — mocniejsze wypełnienie materiału/
+  otworu.** Dzisiejsze stałe `opacity: 0.12` (3D, `buildScene.ts` — bryła
+  otworu Hole(s), kształt nominalny Outline Circle i Outline Rectangle)
+  oraz `holeFill` (2D, `FIXED_COLORS_LIGHT`/`FIXED_COLORS_DARK` w
+  `config/palettes.ts`) czytały się za słabo. Wartość dobrana wzrokowo
+  przez użytkownika w **Palette Bench** (poza repo, patrz `0.11.1` wyżej)
+  — dostał nowy suwak opacity (0–1, start na 0.5) obok istniejącego
+  edytora palet, renderujący na tej samej próbce co kolory. Finalna
+  wartość: **0.3**, jednolita dla obu podglądów i obu motywów (2D-owe
+  `holeFill` miało dotąd różny alpha per motyw — 0.08 light / 0.12 dark —
+  teraz oba 0.3, spójnie z jedną wartością z suwaka). Świadomie **nie**
+  wprowadzono suwaka opacity w samej appce (rozważana alternatywa z
+  pierwotnego zgłoszenia BL-22) — mocniejszy stały default wystarczył,
+  bez dokładania nowego stanu/ustawienia do zapisywania.
+- **`BL-27` zamknięte w `0.13.4` — otwarta/zamknięta geometria bryły
+  Outline w 3D wg trybu offsetu.** Sesja `/grill-me` 2026-08-25
+  ustaliła regułę (patrz notatka projektowa niżej), zaimplementowana
+  osobno 2026-08-28. Przyczyna oryginalnego zgłoszenia: Outline
+  Rectangle w 3D renderował się jako zamknięty kształt (widoczna górna
+  powierzchnia), inaczej niż Hole(s)/Outline Circle (otwarta rurka) —
+  bo Rectangle używał `THREE.BoxGeometry` (zawsze 6 zamkniętych ścian,
+  brak odpowiednika `openEnded`), nie świadoma decyzja tylko
+  niespójność klas geometrii Three.js. Ustalona reguła: otwarte/
+  zamknięte zależy od **fizycznego znaczenia trybu offsetu**, nie
+  kształtu — **Outside** = kształt to lita, zachowana część → zamknięta
+  geometria; **Inside** = materiał usunięty ze środka, pustka jak
+  otwór/kieszeń → otwarta geometria; **On-line** = bez znaczenia
+  fizycznego przy zerowym offsecie → zostaje otwarta. Jednolicie dla
+  Circle i Rectangle; Hole(s) bez zmian (brak konceptu offset mode,
+  zawsze otwarte). Naprawiła też utajony, nigdy niezgłoszony bug:
+  Circle był dotąd otwarty nawet dla Outside.
+
+  **Implementacja** (`src/components/preview3d/buildScene.ts`):
+  `buildOutlineCirclePatternObjects()` — `openEnded` w
+  `CylinderGeometry` liczony z `outline.offsetMode !== 'outside'`
+  zamiast stałego `true`. `buildOutlineRectPatternObjects()` — zamiast
+  budowania osobnej geometrii "otwartego tunelu" (rozważana podczas
+  grill-me: 4 boczne `PlaneGeometry` albo ręczna `BufferGeometry`),
+  prostsze rozwiązanie: `BoxGeometry` ma domyślnie 6 grup materiałów w
+  stałej kolejności `[+x,-x,+y,-y,+z,-z]` — a lokalna oś Y boxa to już
+  oś pionowa/głębokości w naszym mapowaniu `toThree()` (bez rotacji,
+  patrz komentarz przy tej geometrii), więc grupy 2/3 (`+y`/`-y`) to
+  dokładnie te same "pokrywy", które `openEnded` usuwa z cylindra.
+  Tablica materiałów przekazana do `Mesh` (zamiast pojedynczego
+  materiału) mapuje się 1:1 na te grupy — dla trybu otwartego pokrywy
+  dostają osobny, niewidoczny materiał (`visible: false`) zamiast
+  wspólnego półprzezroczystego. Świadomie **odrzucona** alternatywa z
+  grill-me: osobny obiekt "stock" (cały widoczny grid jako blok
+  materiału) — reguła open/closed per offset mode okazała się
+  wystarczająca.
 - **Zoom/pan na 2D Preview (`BL-11`, `0.10.0`).** Sesja `/grill-me`
   ustaliła zakres: scroll = zoom-to-cursor (punkt pod kursorem zostaje
   na miejscu), prawy przycisk myszy + przeciąganie = pan (kontekstowe

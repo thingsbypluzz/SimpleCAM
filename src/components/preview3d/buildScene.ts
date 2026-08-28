@@ -610,7 +610,7 @@ function buildHolesPatternObjects(
       new THREE.MeshBasicMaterial({
         color: theme.hole,
         transparent: true,
-        opacity: 0.12,
+        opacity: 0.3,
         side: THREE.DoubleSide,
       }),
     )
@@ -655,11 +655,16 @@ function buildOutlineCirclePatternObjects(
   objects.push(...rapidZLineObjects(startX, center.y, feeds.safeZ, feeds.startZ, -outline.totalDepth, theme, span))
 
   // Nominal shape (semi-transparent cylinder) — same convention as Hole(s):
-  // the finished material boundary, not the tool-corrected path.
+  // the finished material boundary, not the tool-corrected path. Open/closed
+  // follows the offset mode's physical meaning (BL-27): Outside means this
+  // shape IS the kept, solid part (closed); Inside means material is removed
+  // from the interior, a void like a hole/pocket (open, no caps); On-line has
+  // no physical meaning at zero offset and stays open.
+  const openEnded = outline.offsetMode !== 'outside'
   const boreHeight = outline.totalDepth + feeds.startZ
   const shape = new THREE.Mesh(
-    new THREE.CylinderGeometry(nominalRadius, nominalRadius, boreHeight, 32, 1, true),
-    new THREE.MeshBasicMaterial({ color: theme.hole, transparent: true, opacity: 0.12, side: THREE.DoubleSide }),
+    new THREE.CylinderGeometry(nominalRadius, nominalRadius, boreHeight, 32, 1, openEnded),
+    new THREE.MeshBasicMaterial({ color: theme.hole, transparent: true, opacity: 0.3, side: THREE.DoubleSide }),
   )
   shape.position.copy(toThree(center.x, center.y, (feeds.startZ - outline.totalDepth) / 2))
   objects.push(shape)
@@ -718,9 +723,20 @@ function buildOutlineRectPatternObjects(
   const width = Math.max(...nominalCorners.map((p) => p.x)) - Math.min(...nominalCorners.map((p) => p.x))
   const height = Math.max(...nominalCorners.map((p) => p.y)) - Math.min(...nominalCorners.map((p) => p.y))
   const boreHeight = outline.totalDepth + feeds.startZ
+  // Open/closed follows the offset mode's physical meaning (BL-27), same
+  // rule as Circle above. BoxGeometry has no `openEnded` option like
+  // CylinderGeometry, so "open" is built by hiding the top/bottom cap faces
+  // instead: BoxGeometry's default face-group order is [+x,-x,+y,-y,+z,-z],
+  // and box-local Y is already the vertical bore axis here (see comment
+  // above) — so groups 2/3 are exactly the caps a cylinder's openEnded
+  // would drop. A material array maps 1:1 onto those groups, no need for a
+  // hand-built tunnel BufferGeometry.
+  const closed = outline.offsetMode === 'outside'
+  const sideMaterial = new THREE.MeshBasicMaterial({ color: theme.hole, transparent: true, opacity: 0.3, side: THREE.DoubleSide })
+  const capMaterial = closed ? sideMaterial : new THREE.MeshBasicMaterial({ visible: false })
   const shape = new THREE.Mesh(
     new THREE.BoxGeometry(width, boreHeight, height),
-    new THREE.MeshBasicMaterial({ color: theme.hole, transparent: true, opacity: 0.12, side: THREE.DoubleSide }),
+    [sideMaterial, sideMaterial, capMaterial, capMaterial, sideMaterial, sideMaterial],
   )
   shape.position.copy(toThree(nominalCenter.x, nominalCenter.y, (feeds.startZ - outline.totalDepth) / 2))
   objects.push(shape)

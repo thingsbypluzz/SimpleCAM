@@ -28,7 +28,7 @@ export const FIXED_COLORS_LIGHT: FixedColors = {
   origin: '#4f46e5',
   offset: '#d97706',
   text: '#64748b',
-  holeFill: 'rgba(79, 70, 229, 0.08)',
+  holeFill: 'rgba(79, 70, 229, 0.3)',
 }
 
 export const FIXED_COLORS_DARK: FixedColors = {
@@ -37,7 +37,7 @@ export const FIXED_COLORS_DARK: FixedColors = {
   origin: '#818cf8',
   offset: '#fbbf24',
   text: '#94a3b8',
-  holeFill: 'rgba(129, 140, 248, 0.12)',
+  holeFill: 'rgba(129, 140, 248, 0.3)',
 }
 
 export function getFixedColors(isDark: boolean): FixedColors {
