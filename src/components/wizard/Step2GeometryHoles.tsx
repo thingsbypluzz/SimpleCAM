@@ -122,18 +122,16 @@ export function Step2GeometryHoles({ params, onChange, machine }: Step2GeometryH
         )}
       </div>
 
-      <div className="flex items-center gap-2 text-sm text-slate-700 dark:text-slate-300">
-        <span>Method:</span>
+      <div className="flex flex-col gap-1">
+        <span className="text-sm font-medium text-slate-700 dark:text-slate-300">Method</span>
         <MethodPicker params={params} onChange={onChange} />
       </div>
 
       <div className="flex flex-col gap-1">
-        <div className="flex items-center gap-2 text-sm text-slate-700 dark:text-slate-300">
-          <span>Pattern:</span>
-          <span className="font-medium text-slate-900 dark:text-slate-100">
-            {POSITIONING_META[geometry.positioning].title}
-          </span>
-        </div>
+        <span className="text-sm font-medium text-slate-700 dark:text-slate-300">Pattern</span>
+        <p className="text-sm text-slate-900 dark:text-slate-100">
+          {POSITIONING_META[geometry.positioning].title}
+        </p>
         <p className="text-sm text-slate-500 dark:text-slate-400">
           {POSITIONING_META[geometry.positioning].description}
         </p>

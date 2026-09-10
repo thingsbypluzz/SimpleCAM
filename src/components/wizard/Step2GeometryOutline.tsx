@@ -78,13 +78,13 @@ export function Step2GeometryOutline({ params, onChange, machine }: Step2Geometr
         )}
       </div>
 
-      <div className="flex items-center gap-2 text-sm text-slate-700 dark:text-slate-300">
-        <span>Offset Mode:</span>
+      <div className="flex flex-col gap-1">
+        <span className="text-sm font-medium text-slate-700 dark:text-slate-300">Offset Mode</span>
         <OffsetModePicker params={params} onChange={onChange} />
       </div>
 
-      <div className="flex items-center gap-2 text-sm text-slate-700 dark:text-slate-300">
-        <span>Method:</span>
+      <div className="flex flex-col gap-1">
+        <span className="text-sm font-medium text-slate-700 dark:text-slate-300">Method</span>
         <OutlineMethodPicker params={params} onChange={onChange} />
       </div>
 

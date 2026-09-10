@@ -223,8 +223,8 @@ export function EyeIcon({ className }: IconProps) {
 
 export function WarningIcon({ className }: IconProps) {
   return (
-    <svg {...base} strokeWidth={3.2} className={className}>
-      <path d="M12 7.5v5.5" />
+    <svg {...base} className={className}>
+      <path d="M12 6.5v6.5" />
       <circle cx="12" cy="16.5" r="1.1" fill="currentColor" stroke="none" />
     </svg>
   )

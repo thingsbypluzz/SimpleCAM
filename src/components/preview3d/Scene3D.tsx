@@ -190,16 +190,23 @@ export function Scene3D({ params, isDark, paletteId, overlayParams, showActivePa
     <div className="relative min-h-0 w-full flex-1">
       <div ref={containerRef} className="h-full w-full" />
       <div className="absolute right-3 bottom-3 flex flex-wrap items-center justify-end gap-1.5">
-        {PRESET_BUTTONS.map((preset) => (
-          <button
-            key={preset.name}
-            type="button"
-            onClick={() => handlePreset(preset.name)}
-            className={buttonClass}
-          >
-            {preset.label}
-          </button>
-        ))}
+        {/* Two different kinds of action, grouped and separated by a hairline:
+            the presets set a specific viewing angle, Fit View keeps whatever
+            angle is current and only refits distance/target — visually
+            identical buttons made that distinction invisible. */}
+        <div className="flex flex-wrap items-center justify-end gap-1.5">
+          {PRESET_BUTTONS.map((preset) => (
+            <button
+              key={preset.name}
+              type="button"
+              onClick={() => handlePreset(preset.name)}
+              className={buttonClass}
+            >
+              {preset.label}
+            </button>
+          ))}
+        </div>
+        <div className="h-5 w-px bg-slate-300 dark:bg-slate-700" aria-hidden="true" />
         <button type="button" onClick={handleFitView} className={buttonClass}>
           Fit View
         </button>

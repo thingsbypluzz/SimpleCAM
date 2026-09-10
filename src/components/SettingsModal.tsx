@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { PALETTE_LIST } from '../config/palettes'
 import type { Dialect, MachineSettings } from '../types/machine'
 import type { AppearanceSettings } from '../types/appearance'
@@ -83,9 +83,47 @@ export function SettingsModal({
   })
   const [savedCodeField, setSavedCodeField] = useState<CodeField | null>(null)
 
+  const modalRef = useRef<HTMLDivElement>(null)
+  const closeButtonRef = useRef<HTMLButtonElement>(null)
+
+  // Moves focus into the modal on open and restores it to whatever was
+  // focused before (the Settings button in the header, in practice) once
+  // the modal unmounts — without this a keyboard user's focus silently
+  // drops back to <body> on close.
+  useEffect(() => {
+    const previouslyFocused = document.activeElement as HTMLElement | null
+    closeButtonRef.current?.focus()
+    return () => {
+      previouslyFocused?.focus?.()
+    }
+  }, [])
+
+  // Escape closes the modal; Tab/Shift+Tab wraps focus within it instead of
+  // escaping to the page behind the backdrop. Not portaled to document.body
+  // (renders inline in App's tree), so `inert` on sibling content isn't a
+  // practical option here — a plain keydown-based trap covers the same
+  // requirement (modality.md: give people an obvious, contained way to
+  // interact with a modal view) without a new dependency.
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose()
+      if (e.key === 'Escape') {
+        onClose()
+        return
+      }
+      if (e.key !== 'Tab' || !modalRef.current) return
+      const focusable = modalRef.current.querySelectorAll<HTMLElement>(
+        'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])',
+      )
+      if (focusable.length === 0) return
+      const first = focusable[0]
+      const last = focusable[focusable.length - 1]
+      if (e.shiftKey && document.activeElement === first) {
+        e.preventDefault()
+        last.focus()
+      } else if (!e.shiftKey && document.activeElement === last) {
+        e.preventDefault()
+        first.focus()
+      }
     }
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
@@ -120,6 +158,10 @@ export function SettingsModal({
       onClick={onClose}
     >
       <div
+        ref={modalRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="settings-modal-title"
         className="relative flex h-[640px] w-[820px] overflow-hidden rounded-lg border border-slate-200 bg-white shadow-xl dark:border-slate-700 dark:bg-slate-900"
         onClick={(e) => e.stopPropagation()}
       >
@@ -130,6 +172,7 @@ export function SettingsModal({
             G-Code pushed it past the fold). Anchored to this non-scrolling
             card instead, it now stays pinned regardless of inner scroll. */}
         <button
+          ref={closeButtonRef}
           type="button"
           onClick={onClose}
           aria-label="Close settings"
@@ -139,7 +182,10 @@ export function SettingsModal({
         </button>
 
         <div className="flex w-44 shrink-0 flex-col gap-1 border-r border-slate-200 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-950">
-          <span className="mb-2 px-2 text-xs font-semibold tracking-wide text-slate-400 uppercase dark:text-slate-500">
+          <span
+            id="settings-modal-title"
+            className="mb-2 px-2 text-xs font-semibold tracking-wide text-slate-500 uppercase dark:text-slate-400"
+          >
             Settings
           </span>
           {SECTIONS.map((section) => (
@@ -363,7 +409,7 @@ export function SettingsModal({
                 accounts.
               </p>
 
-              <p className="text-sm text-slate-400 dark:text-slate-600">Envisioned by ThingsByPluzz</p>
+              <p className="text-sm text-slate-500 dark:text-slate-400">Envisioned by ThingsByPluzz</p>
             </>
           )}
         </div>

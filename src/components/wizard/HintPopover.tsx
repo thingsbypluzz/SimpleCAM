@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { useEffect, useId, useLayoutEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { HintIcon } from '../icons'
 
@@ -19,6 +19,7 @@ const GAP = 4
 const ESTIMATED_HEIGHT = 90
 
 export function HintPopover({ text }: HintPopoverProps) {
+  const popoverId = useId()
   const [open, setOpen] = useState(false)
   const [position, setPosition] = useState<{ top: number; left: number } | null>(null)
   const buttonRef = useRef<HTMLButtonElement>(null)
@@ -79,6 +80,7 @@ export function HintPopover({ text }: HintPopoverProps) {
         type="button"
         onClick={() => setOpen((v) => !v)}
         aria-expanded={open}
+        aria-controls={open ? popoverId : undefined}
         aria-label={`Hint: ${text}`}
         className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-slate-400 hover:text-slate-600 dark:text-slate-500 dark:hover:text-slate-300"
       >
@@ -87,9 +89,16 @@ export function HintPopover({ text }: HintPopoverProps) {
       {open &&
         position &&
         createPortal(
+          // Click-toggled and dismissed explicitly (outside click/Escape/
+          // scroll) rather than hover-driven and transient — that's a
+          // disclosure/popover interaction, not what role="tooltip" implies
+          // to a screen reader. `group`/aria-label keeps it self-describing
+          // without claiming a role it doesn't behave like.
           <div
+            id={popoverId}
             ref={popoverRef}
-            role="tooltip"
+            role="group"
+            aria-label={text}
             style={{ top: position.top, left: position.left }}
             className="fixed z-50 w-56 rounded-md border border-slate-200 bg-white p-2 text-xs text-slate-600 shadow-lg dark:border-slate-700 dark:bg-slate-900 dark:text-slate-400"
           >

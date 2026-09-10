@@ -111,7 +111,7 @@ function step4Badge(generatedGCode: string[] | null, warnings: string[]): Step4B
   if (warnings.length > 0) {
     return {
       Icon: generatedGCode ? CheckIcon : WarningIcon,
-      colorClassName: 'bg-orange-200 text-black',
+      colorClassName: 'bg-orange-200 text-black dark:bg-orange-950/60 dark:text-orange-300',
       title: warnings.join(' '),
     }
   }
@@ -326,7 +326,7 @@ function App() {
           <p className="text-xs text-slate-500 dark:text-slate-400">
             Fast G-Code generator for your basic operations.
           </p>
-          <p className="text-[11px] text-slate-400 dark:text-slate-600">Envisioned by ThingsByPluzz</p>
+          <p className="text-[11px] text-slate-500 dark:text-slate-400">Envisioned by ThingsByPluzz</p>
         </div>
 
         <div
@@ -364,7 +364,7 @@ function App() {
                   }
                   className={`${baseClassName} transition-shadow duration-700${isJustLoaded ? ' ring-2 ring-indigo-400 ring-offset-2 dark:ring-offset-slate-950' : ''}`}
                 >
-                  {PresetIcon ? <PresetIcon className="h-6 w-6" /> : id}
+                  {PresetIcon ? <PresetIcon className="h-7 w-7" /> : id}
                 </button>
                 {preset && isOverlaySelected && (
                   <span
@@ -380,7 +380,7 @@ function App() {
                     onClick={() => handleDeletePreset(id)}
                     aria-label={`Delete preset ${id}`}
                     title="Delete preset"
-                    className="absolute -top-1 -right-1 hidden h-4 w-4 items-center justify-center rounded-full bg-red-100 text-[10px] leading-none font-bold text-red-600 group-hover:flex dark:bg-red-950 dark:text-red-400"
+                    className="absolute -top-1.5 -right-1.5 flex h-5 w-5 items-center justify-center rounded-full bg-red-100 text-xs leading-none font-bold text-red-600 opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100 focus-visible:opacity-100 dark:bg-red-950 dark:text-red-400"
                   >
                     ×
                   </button>
@@ -528,7 +528,7 @@ function App() {
                         : `Pattern: ${positioningSummary(params.geometry)}`
                     }
                   >
-                    <span className="text-[10px] font-semibold uppercase text-slate-400 dark:text-slate-500">
+                    <span className="text-[10px] font-semibold uppercase text-slate-500 dark:text-slate-400">
                       {params.operation === 'outline' ? 'Outline' : 'Hole(s)'}
                     </span>
                     {(() => {
@@ -536,7 +536,7 @@ function App() {
                         params.operation === 'outline'
                           ? outlineShapeIcon(params.outline.shape)
                           : positioningIcon(params.geometry.positioning)
-                      return <Icon className="h-8 w-8 text-slate-500 dark:text-slate-400" />
+                      return <Icon className="h-8 w-8 text-indigo-600 dark:text-indigo-400" />
                     })()}
                     <div className="flex flex-col items-center">
                       {(params.operation === 'outline'
@@ -556,8 +556,11 @@ function App() {
 
                 {step.id === 2 && params.operation === 'outline' && (
                   <div className="flex flex-col items-center gap-4">
+                    <span className="text-[10px] font-semibold uppercase text-slate-500 dark:text-slate-400">
+                      {step.title}
+                    </span>
                     <MiniStat
-                      icon={<activeMethodDisplay.Icon className="h-8 w-8" />}
+                      icon={<activeMethodDisplay.Icon className="h-8 w-8 text-indigo-600 dark:text-indigo-400" />}
                       label="METHOD"
                       value={activeMethodDisplay.shortLabel}
                       title={`Method: ${activeMethodDisplay.title}`}
@@ -607,8 +610,11 @@ function App() {
 
                 {step.id === 2 && params.operation === 'holes' && (
                   <div className="flex flex-col items-center gap-4">
+                    <span className="text-[10px] font-semibold uppercase text-slate-500 dark:text-slate-400">
+                      {step.title}
+                    </span>
                     <MiniStat
-                      icon={<activeMethodDisplay.Icon className="h-8 w-8" />}
+                      icon={<activeMethodDisplay.Icon className="h-8 w-8 text-indigo-600 dark:text-indigo-400" />}
                       label="METHOD"
                       value={activeMethodDisplay.shortLabel}
                       title={`Method: ${activeMethodDisplay.title}`}
@@ -655,6 +661,9 @@ function App() {
 
                 {step.id === 3 && (
                   <div className="flex flex-col items-center gap-4">
+                    <span className="text-[10px] font-semibold uppercase text-slate-500 dark:text-slate-400">
+                      {step.title}
+                    </span>
                     <MiniStat
                       icon={<FeedIcon className="h-8 w-8" />}
                       label="FEED"
@@ -726,7 +735,7 @@ function App() {
               ))}
             </div>
             {previewTab === 'gcode' && generatedGCode && (
-              <span className="text-xs text-slate-400 dark:text-slate-500">
+              <span className="text-xs text-slate-500 dark:text-slate-400">
                 {generatedGCode.length} lines
               </span>
             )}
@@ -752,7 +761,7 @@ function App() {
             {previewTab === '3d' && (
               <Suspense
                 fallback={
-                  <div className="flex flex-1 items-center justify-center text-sm text-slate-400 dark:text-slate-500">
+                  <div className="flex flex-1 items-center justify-center text-sm text-slate-500 dark:text-slate-400">
                     Loading 3D viewer…
                   </div>
                 }
@@ -773,7 +782,7 @@ function App() {
                   {generatedGCode.join('\n')}
                 </pre>
               ) : (
-                <div className="flex flex-1 items-center justify-center p-6 text-center text-sm text-slate-400 dark:text-slate-500">
+                <div className="flex flex-1 items-center justify-center p-6 text-center text-sm text-slate-500 dark:text-slate-400">
                   Go to Step 4 and click "Generate" to preview the G-code.
                 </div>
               ))}
