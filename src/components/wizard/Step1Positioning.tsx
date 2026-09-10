@@ -34,16 +34,16 @@ function OperationBlock({
       <button
         type="button"
         onClick={onActivate}
-        className="flex items-center rounded-lg border border-transparent px-3 py-2 text-left transition hover:border-slate-200 dark:hover:border-slate-700"
+        className="flex items-center rounded-lg border border-transparent px-3 py-2 text-left transition hover:border-border"
       >
-        <span className="text-base font-semibold text-slate-500 dark:text-slate-400">{title}</span>
+        <span className="text-base font-semibold text-muted">{title}</span>
       </button>
     )
   }
 
   return (
-    <div className="rounded-lg border border-indigo-500 bg-indigo-50 p-3 dark:bg-indigo-950/40">
-      <span className="text-base font-semibold text-indigo-700 dark:text-indigo-300">{title}</span>
+    <div className="rounded-lg border border-accent-strong bg-accent-bg p-3">
+      <span className="text-base font-semibold text-accent-fg">{title}</span>
       <div className="mt-2 flex flex-col gap-1">{children}</div>
     </div>
   )
@@ -67,12 +67,12 @@ function OptionButton({
       className={[
         'flex items-center gap-2 rounded-md border px-2.5 py-1.5 text-left transition',
         isSelected
-          ? 'border-indigo-500 bg-white dark:bg-indigo-900/40'
-          : 'border-transparent hover:border-slate-200 dark:hover:border-slate-700',
+          ? 'border-accent-strong bg-selected-bg'
+          : 'border-transparent hover:border-border',
       ].join(' ')}
     >
-      <Icon className="h-4 w-4 shrink-0 text-indigo-600 dark:text-indigo-400" />
-      <span className="text-sm text-slate-800 dark:text-slate-200">{label}</span>
+      <Icon className="h-4 w-4 shrink-0 text-accent" />
+      <span className="text-sm text-value">{label}</span>
     </button>
   )
 }
@@ -117,10 +117,10 @@ export function Step1Positioning({ params, onChange }: Step1PositioningProps) {
       {OPERATION_PLACEHOLDERS.map((label) => (
         <div
           key={label}
-          className="flex cursor-not-allowed items-center justify-between rounded-lg border border-dashed border-slate-200 px-3 py-2 opacity-60 dark:border-slate-700"
+          className="flex cursor-not-allowed items-center justify-between rounded-lg border border-dashed border-empty-border px-3 py-2 opacity-60"
         >
-          <span className="text-sm font-semibold text-slate-400 dark:text-slate-600">{label}</span>
-          <span className="text-xs text-slate-400 dark:text-slate-600">Coming soon</span>
+          <span className="text-sm font-semibold text-empty-fg">{label}</span>
+          <span className="text-xs text-empty-fg">Coming soon</span>
         </div>
       ))}
     </div>

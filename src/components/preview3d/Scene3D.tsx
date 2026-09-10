@@ -3,6 +3,7 @@ import * as THREE from 'three'
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js'
 import type { PaletteId } from '../../config/palettes'
 import type { WizardParams } from '../../types/wizard'
+import type { ThemeId } from '../../types/theme'
 import { buildToolpathScene, disposeObject3D } from './buildScene'
 import { frameCamera, VIEW_PRESETS, type ViewPresetName } from './cameraPresets'
 
@@ -10,6 +11,7 @@ interface Scene3DProps {
   params: WizardParams
   isDark: boolean
   paletteId: PaletteId
+  themeId: ThemeId
   overlayParams: WizardParams[]
   showActivePattern: boolean
 }
@@ -21,7 +23,7 @@ const PRESET_BUTTONS: { name: ViewPresetName; label: string }[] = [
   { name: 'side', label: 'Side' },
 ]
 
-export function Scene3D({ params, isDark, paletteId, overlayParams, showActivePattern }: Scene3DProps) {
+export function Scene3D({ params, isDark, paletteId, themeId, overlayParams, showActivePattern }: Scene3DProps) {
   const containerRef = useRef<HTMLDivElement>(null)
   const sceneRef = useRef<THREE.Scene | null>(null)
   const cameraRef = useRef<THREE.PerspectiveCamera | null>(null)
@@ -124,15 +126,28 @@ export function Scene3D({ params, isDark, paletteId, overlayParams, showActivePa
     const contentGroup = contentGroupRef.current
     if (!camera || !renderer || !controls || !contentGroup) return
 
-    renderer.setClearColor(isDark ? 0x0f172a : 0xffffff, 1)
-
     while (contentGroup.children.length > 0) {
       const child = contentGroup.children[0]
       contentGroup.remove(child)
       disposeObject3D(child)
     }
 
-    const { objects, bounds } = buildToolpathScene(params, isDark, paletteId, overlayParams, showActivePattern)
+    // Clear color intentionally comes from buildToolpathScene()'s result
+    // (the same palette `background` accent the 2D preview fills its
+    // canvas with), not a hardcoded literal here — a hardcoded value is
+    // exactly what silently went stale when Shopfloor Amber shipped (this
+    // stayed Tailwind slate-900/white while everything else picked up the
+    // new theme). Deriving it from the one shared source means a future
+    // theme can't repeat that by omission.
+    const { objects, bounds, background } = buildToolpathScene(
+      params,
+      isDark,
+      paletteId,
+      themeId,
+      overlayParams,
+      showActivePattern,
+    )
+    renderer.setClearColor(background, 1)
     objects.forEach((obj) => contentGroup.add(obj))
     boundsRef.current = bounds
 
@@ -160,7 +175,7 @@ export function Scene3D({ params, isDark, paletteId, overlayParams, showActivePa
         frameCamera(camera, controls, bounds, direction.normalize(), camera.up.clone())
       }
     }
-  }, [params, isDark, paletteId, overlayParams, showActivePattern])
+  }, [params, isDark, paletteId, themeId, overlayParams, showActivePattern])
 
   const handlePreset = (name: ViewPresetName) => {
     const camera = cameraRef.current
@@ -184,7 +199,7 @@ export function Scene3D({ params, isDark, paletteId, overlayParams, showActivePa
   }
 
   const buttonClass =
-    'rounded-md border border-slate-300 bg-white/90 px-2.5 py-1 text-xs font-medium text-slate-600 shadow-sm hover:bg-white dark:border-slate-700 dark:bg-slate-900/90 dark:text-slate-300 dark:hover:bg-slate-900'
+    'rounded-md border border-field-border bg-field-bg/90 px-2.5 py-1 text-xs font-medium text-value shadow-sm hover:bg-field-bg'
 
   return (
     <div className="relative min-h-0 w-full flex-1">
@@ -206,7 +221,7 @@ export function Scene3D({ params, isDark, paletteId, overlayParams, showActivePa
             </button>
           ))}
         </div>
-        <div className="h-5 w-px bg-slate-300 dark:bg-slate-700" aria-hidden="true" />
+        <div className="h-5 w-px bg-field-border" aria-hidden="true" />
         <button type="button" onClick={handleFitView} className={buttonClass}>
           Fit View
         </button>

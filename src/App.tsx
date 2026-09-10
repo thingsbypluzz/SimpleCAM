@@ -65,6 +65,7 @@ import {
   machineFitWarnings,
 } from './lib/validation'
 import type { AppearanceSettings } from './types/appearance'
+import type { ThemeId } from './types/theme'
 import { DEFAULT_WIZARD_PARAMS, type WizardParams } from './types/wizard'
 
 const TOTAL_STEPS = 4
@@ -111,20 +112,20 @@ function step4Badge(generatedGCode: string[] | null, warnings: string[]): Step4B
   if (warnings.length > 0) {
     return {
       Icon: generatedGCode ? CheckIcon : WarningIcon,
-      colorClassName: 'bg-orange-200 text-black dark:bg-orange-950/60 dark:text-orange-300',
+      colorClassName: 'bg-status-warn-bg text-status-warn-fg',
       title: warnings.join(' '),
     }
   }
   if (generatedGCode) {
     return {
       Icon: CheckIcon,
-      colorClassName: 'bg-indigo-100 text-indigo-700 dark:bg-indigo-950 dark:text-indigo-300',
+      colorClassName: 'bg-status-done-bg text-status-done-fg',
       title: 'G-Code generated',
     }
   }
   return {
     Icon: XIcon,
-    colorClassName: 'bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-300',
+    colorClassName: 'bg-status-todo-bg text-status-todo-fg',
     title: 'G-Code not generated yet',
   }
 }
@@ -173,6 +174,24 @@ function useDarkMode() {
   return [isDark, setIsDark] as const
 }
 
+// UI chrome theme (see src/types/theme.ts, src/index.css) — an independent
+// axis from dark/light above, applied the same way React Query-free apps
+// usually do runtime CSS-variable theming: a data attribute on <html> that
+// index.css's `[data-theme="..."]` selectors key off. `sloppy-indigo` is
+// the default and needs no attribute at all (its tokens live on bare
+// `:root`), so the attribute is removed rather than set to that value —
+// keeps the DOM clean for the common case and matches how `.dark` is only
+// ever added/removed, never set to an explicit "light" class.
+function useChromeTheme(themeId: ThemeId) {
+  useEffect(() => {
+    if (themeId === 'sloppy-indigo') {
+      document.documentElement.removeAttribute('data-theme')
+    } else {
+      document.documentElement.setAttribute('data-theme', themeId)
+    }
+  }, [themeId])
+}
+
 function App() {
   const [initial] = useState(loadInitialState)
   const [activeStep, setActiveStep] = useState(initial.activeStep)
@@ -180,10 +199,11 @@ function App() {
   const [showRestoredBanner, setShowRestoredBanner] = useState(initial.restored)
   const [presetSlots, setPresetSlots] = useState(loadPresetSlots)
   const [isDark, setIsDark] = useDarkMode()
+  const [appearance, setAppearance] = useState(loadAppearanceSettings)
+  useChromeTheme(appearance.theme)
   const [generatedGCode, setGeneratedGCode] = useState<string[] | null>(null)
   const [previewTab, setPreviewTab] = useState<'2d' | '3d' | 'gcode'>('3d')
   const [machine, setMachine] = useState(loadMachineSettings)
-  const [appearance, setAppearance] = useState(loadAppearanceSettings)
   const [isSettingsOpen, setIsSettingsOpen] = useState(false)
   const [overlayEnabled, setOverlayEnabled] = useState(false)
   const [overlaySlots, setOverlaySlots] = useState<Set<PresetSlotId>>(new Set())
@@ -319,20 +339,20 @@ function App() {
   }
 
   return (
-    <div className="flex h-svh flex-col bg-white text-slate-900 dark:bg-slate-950 dark:text-slate-100">
-      <header className="grid grid-cols-[1fr_auto_1fr] items-center gap-4 border-b border-slate-200 px-6 py-4 dark:border-slate-800">
+    <div className="flex h-svh flex-col bg-bg text-fg">
+      <header className="grid grid-cols-[1fr_auto_1fr] items-center gap-4 border-b border-border px-6 py-4">
         <div>
           <h1 className="text-xl font-semibold">SimpleCAM</h1>
-          <p className="text-xs text-slate-500 dark:text-slate-400">
+          <p className="text-xs text-muted">
             Fast G-Code generator for your basic operations.
           </p>
-          <p className="text-[11px] text-slate-500 dark:text-slate-400">Envisioned by ThingsByPluzz</p>
+          <p className="text-[11px] text-muted">Envisioned by ThingsByPluzz</p>
         </div>
 
         <div
           className={[
             'flex items-center justify-self-center gap-2 rounded-lg border px-2 py-2 transition-colors',
-            overlayEnabled ? 'border-slate-200 dark:border-slate-700' : 'border-transparent',
+            overlayEnabled ? 'border-border' : 'border-transparent',
           ].join(' ')}
         >
           {PRESET_SLOT_IDS.map((id) => {
@@ -345,10 +365,10 @@ function App() {
             const isOverlaySelected = overlayEnabled && overlaySlots.has(id)
             const isJustLoaded = !overlayEnabled && justLoadedSlot === id
             const baseClassName = !preset
-              ? 'flex h-11 w-11 cursor-default items-center justify-center rounded-md border border-slate-200 text-xs font-semibold text-slate-300 dark:border-slate-800 dark:text-slate-700'
+              ? 'flex h-11 w-11 cursor-default items-center justify-center rounded-md border border-empty-border text-xs font-semibold text-empty-fg'
               : isOverlaySelected
-                ? 'flex h-11 w-11 items-center justify-center rounded-md border-2 border-indigo-600 text-indigo-700 hover:bg-indigo-50 dark:border-indigo-400 dark:text-indigo-300 dark:hover:bg-indigo-950/40'
-                : 'flex h-11 w-11 items-center justify-center rounded-md border border-indigo-300 text-indigo-700 hover:bg-indigo-50 dark:border-indigo-800 dark:text-indigo-300 dark:hover:bg-indigo-950/40'
+                ? 'flex h-11 w-11 items-center justify-center rounded-md border-2 border-accent text-accent-fg hover:bg-accent-bg'
+                : 'flex h-11 w-11 items-center justify-center rounded-md border border-accent-border text-accent-fg hover:bg-accent-bg'
             return (
               <div key={id} className="group relative">
                 <button
@@ -362,14 +382,14 @@ function App() {
                         ? `${isOverlaySelected ? 'Remove' : 'Add'} preset [${id}] — ${presetLabel(preset)} ${isOverlaySelected ? 'from' : 'to'} overlay`
                         : `Load preset [${id}] — ${presetLabel(preset)}`
                   }
-                  className={`${baseClassName} transition-shadow duration-700${isJustLoaded ? ' ring-2 ring-indigo-400 ring-offset-2 dark:ring-offset-slate-950' : ''}`}
+                  className={`${baseClassName} transition-shadow duration-700${isJustLoaded ? ' ring-2 ring-accent ring-offset-2 ring-offset-bg' : ''}`}
                 >
                   {PresetIcon ? <PresetIcon className="h-7 w-7" /> : id}
                 </button>
                 {preset && isOverlaySelected && (
                   <span
                     aria-hidden="true"
-                    className="absolute -top-1 -left-1 flex h-4 w-4 items-center justify-center rounded-full bg-indigo-600 text-white dark:bg-indigo-500"
+                    className="absolute -top-1 -left-1 flex h-4 w-4 items-center justify-center rounded-full bg-accent text-btn-fg"
                   >
                     <CheckIcon className="h-2.5 w-2.5" />
                   </span>
@@ -380,7 +400,7 @@ function App() {
                     onClick={() => handleDeletePreset(id)}
                     aria-label={`Delete preset ${id}`}
                     title="Delete preset"
-                    className="absolute -top-1.5 -right-1.5 flex h-5 w-5 items-center justify-center rounded-full bg-red-100 text-xs leading-none font-bold text-red-600 opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100 focus-visible:opacity-100 dark:bg-red-950 dark:text-red-400"
+                    className="absolute -top-1.5 -right-1.5 flex h-5 w-5 items-center justify-center rounded-full bg-status-delete-bg text-xs leading-none font-bold text-status-delete-fg opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100 focus-visible:opacity-100"
                   >
                     ×
                   </button>
@@ -400,8 +420,8 @@ function App() {
             className={[
               'ml-11 flex h-11 w-11 items-center justify-center rounded-md border transition',
               overlayEnabled
-                ? 'border-2 border-indigo-600 bg-indigo-50 text-indigo-700 dark:border-indigo-400 dark:bg-indigo-950/40 dark:text-indigo-300'
-                : 'border-slate-200 text-slate-600 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-900',
+                ? 'border-2 border-accent bg-accent-bg text-accent-fg'
+                : 'border-border text-value hover:bg-border/40',
             ].join(' ')}
           >
             <EyeIcon className="h-5 w-5" />
@@ -414,7 +434,7 @@ function App() {
             onClick={() => setIsDark((d) => !d)}
             aria-label="Toggle dark mode"
             title="Toggle dark mode"
-            className="flex h-9 w-9 items-center justify-center rounded-md border border-slate-200 text-slate-600 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-900"
+            className="flex h-9 w-9 items-center justify-center rounded-md border border-border text-value hover:bg-border/40"
           >
             {isDark ? (
               <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2">
@@ -433,7 +453,7 @@ function App() {
             onClick={() => setIsSettingsOpen(true)}
             aria-label="Settings"
             title="Settings"
-            className="flex h-9 w-9 items-center justify-center rounded-md border border-slate-200 text-slate-600 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-900"
+            className="flex h-9 w-9 items-center justify-center rounded-md border border-border text-value hover:bg-border/40"
           >
             <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2">
               <circle cx="12" cy="12" r="3" />
@@ -444,16 +464,16 @@ function App() {
       </header>
 
       <div className="flex flex-1 overflow-hidden">
-        <div className="flex shrink-0 overflow-x-auto border-r border-slate-200 dark:border-slate-800">
+        <div className="flex shrink-0 overflow-x-auto border-r border-border">
           {STEP_META.map((step) => {
             if (step.id === activeStep) {
               return (
                 <div
                   key={step.id}
-                  className="flex w-[420px] shrink-0 flex-col overflow-y-auto border-r border-slate-200 p-6 dark:border-slate-800"
+                  className="flex w-[420px] shrink-0 flex-col overflow-y-auto border-r border-border p-6"
                 >
                   <div className="mb-4 flex items-center justify-between gap-2">
-                    <h2 className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+                    <h2 className="text-xs font-semibold uppercase tracking-wide text-muted">
                       Step {step.id} · {step.title}
                     </h2>
                     {step.id === 4 && (
@@ -478,7 +498,7 @@ function App() {
                   {step.id === 4 && (
                     <>
                       {showRestoredBanner && (
-                        <div className="mb-4 rounded-md border border-indigo-200 bg-indigo-50 px-3 py-2 text-xs text-indigo-700 dark:border-indigo-900 dark:bg-indigo-950/40 dark:text-indigo-300">
+                        <div className="mb-4 rounded-md border border-accent-border bg-accent-bg px-3 py-2 text-xs text-accent-fg">
                           Restored from your last session — click Generate to refresh the G-code.
                         </div>
                       )}
@@ -501,7 +521,7 @@ function App() {
                       <button
                         type="button"
                         onClick={goForward}
-                        className="rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white"
+                        className="rounded-md bg-btn-bg px-4 py-2 text-sm font-medium text-btn-fg"
                       >
                         Next
                       </button>
@@ -517,7 +537,7 @@ function App() {
                 type="button"
                 onClick={() => setActiveStep(step.id)}
                 title={collapsedStepTitle(step.id, params)}
-                className="flex w-20 shrink-0 flex-col items-center gap-3 border-r border-slate-200 py-4 hover:bg-slate-50 dark:border-slate-800 dark:hover:bg-slate-900"
+                className="flex w-20 shrink-0 flex-col items-center gap-3 border-r border-border py-4 hover:bg-border/40"
               >
                 {step.id === 1 && (
                   <div
@@ -528,7 +548,7 @@ function App() {
                         : `Pattern: ${positioningSummary(params.geometry)}`
                     }
                   >
-                    <span className="text-[10px] font-semibold uppercase text-slate-500 dark:text-slate-400">
+                    <span className="text-[10px] font-semibold uppercase text-muted">
                       {params.operation === 'outline' ? 'Outline' : 'Hole(s)'}
                     </span>
                     {(() => {
@@ -536,7 +556,7 @@ function App() {
                         params.operation === 'outline'
                           ? outlineShapeIcon(params.outline.shape)
                           : positioningIcon(params.geometry.positioning)
-                      return <Icon className="h-8 w-8 text-indigo-600 dark:text-indigo-400" />
+                      return <Icon className="h-8 w-8 text-accent" />
                     })()}
                     <div className="flex flex-col items-center">
                       {(params.operation === 'outline'
@@ -545,7 +565,7 @@ function App() {
                       ).map((line, i) => (
                         <span
                           key={i}
-                          className="text-center text-[9px] leading-tight font-semibold whitespace-nowrap text-slate-600 dark:text-slate-300"
+                          className="text-center text-[9px] leading-tight font-semibold whitespace-nowrap text-value"
                         >
                           {line}
                         </span>
@@ -556,11 +576,11 @@ function App() {
 
                 {step.id === 2 && params.operation === 'outline' && (
                   <div className="flex flex-col items-center gap-4">
-                    <span className="text-[10px] font-semibold uppercase text-slate-500 dark:text-slate-400">
+                    <span className="text-[10px] font-semibold uppercase text-muted">
                       {step.title}
                     </span>
                     <MiniStat
-                      icon={<activeMethodDisplay.Icon className="h-8 w-8 text-indigo-600 dark:text-indigo-400" />}
+                      icon={<activeMethodDisplay.Icon className="h-8 w-8" />}
                       label="METHOD"
                       value={activeMethodDisplay.shortLabel}
                       title={`Method: ${activeMethodDisplay.title}`}
@@ -610,11 +630,11 @@ function App() {
 
                 {step.id === 2 && params.operation === 'holes' && (
                   <div className="flex flex-col items-center gap-4">
-                    <span className="text-[10px] font-semibold uppercase text-slate-500 dark:text-slate-400">
+                    <span className="text-[10px] font-semibold uppercase text-muted">
                       {step.title}
                     </span>
                     <MiniStat
-                      icon={<activeMethodDisplay.Icon className="h-8 w-8 text-indigo-600 dark:text-indigo-400" />}
+                      icon={<activeMethodDisplay.Icon className="h-8 w-8" />}
                       label="METHOD"
                       value={activeMethodDisplay.shortLabel}
                       title={`Method: ${activeMethodDisplay.title}`}
@@ -661,7 +681,7 @@ function App() {
 
                 {step.id === 3 && (
                   <div className="flex flex-col items-center gap-4">
-                    <span className="text-[10px] font-semibold uppercase text-slate-500 dark:text-slate-400">
+                    <span className="text-[10px] font-semibold uppercase text-muted">
                       {step.title}
                     </span>
                     <MiniStat
@@ -705,7 +725,7 @@ function App() {
                     >
                       <step4BadgeInfo.Icon className="h-5 w-5" />
                     </span>
-                    <span className="[writing-mode:vertical-rl] rotate-180 text-xs font-medium text-slate-500 dark:text-slate-400">
+                    <span className="[writing-mode:vertical-rl] rotate-180 text-xs font-medium text-muted">
                       {step.title}
                     </span>
                   </>
@@ -716,7 +736,7 @@ function App() {
         </div>
 
         <div className="flex flex-1 flex-col overflow-hidden">
-          <div className="flex items-center justify-between border-b border-slate-200 px-6 py-3 dark:border-slate-800">
+          <div className="flex items-center justify-between border-b border-border px-6 py-3">
             <div className="flex gap-2">
               {(['2d', '3d', 'gcode'] as const).map((tab) => (
                 <button
@@ -726,8 +746,8 @@ function App() {
                   className={[
                     'rounded-md px-2.5 py-1 text-xs font-semibold uppercase tracking-wide transition',
                     previewTab === tab
-                      ? 'bg-indigo-100 text-indigo-700 dark:bg-indigo-950 dark:text-indigo-300'
-                      : 'text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200',
+                      ? 'bg-tab-active-bg text-tab-active-fg'
+                      : 'text-muted hover:text-fg',
                   ].join(' ')}
                 >
                   {tab === '2d' ? '2D Preview' : tab === '3d' ? '3D Preview' : 'G-Code'}
@@ -735,7 +755,7 @@ function App() {
               ))}
             </div>
             {previewTab === 'gcode' && generatedGCode && (
-              <span className="text-xs text-slate-500 dark:text-slate-400">
+              <span className="text-xs text-muted">
                 {generatedGCode.length} lines
               </span>
             )}
@@ -743,7 +763,7 @@ function App() {
 
           <div className="relative flex flex-1 flex-col overflow-hidden">
             {overlayEnabled && previewTab !== 'gcode' && (
-              <div className="pointer-events-none absolute top-3 left-1/2 z-10 -translate-x-1/2 rounded-full bg-indigo-600 px-3 py-1 text-xs font-semibold text-white shadow-lg dark:bg-indigo-500">
+              <div className="pointer-events-none absolute top-3 left-1/2 z-10 -translate-x-1/2 rounded-full bg-accent px-3 py-1 text-xs font-semibold text-btn-fg shadow-lg">
                 Preview mode
               </div>
             )}
@@ -753,6 +773,7 @@ function App() {
                 params={params}
                 isDark={isDark}
                 paletteId={appearance.palette}
+                themeId={appearance.theme}
                 overlayParams={overlayParams}
                 showActivePattern={!overlayEnabled}
               />
@@ -761,7 +782,7 @@ function App() {
             {previewTab === '3d' && (
               <Suspense
                 fallback={
-                  <div className="flex flex-1 items-center justify-center text-sm text-slate-500 dark:text-slate-400">
+                  <div className="flex flex-1 items-center justify-center text-sm text-muted">
                     Loading 3D viewer…
                   </div>
                 }
@@ -770,6 +791,7 @@ function App() {
                   params={params}
                   isDark={isDark}
                   paletteId={appearance.palette}
+                  themeId={appearance.theme}
                   overlayParams={overlayParams}
                   showActivePattern={!overlayEnabled}
                 />
@@ -778,11 +800,11 @@ function App() {
 
             {previewTab === 'gcode' &&
               (generatedGCode ? (
-                <pre className="flex-1 overflow-auto bg-slate-50 p-6 font-mono text-xs leading-relaxed text-slate-700 dark:bg-slate-900 dark:text-slate-300">
+                <pre className="flex-1 overflow-auto bg-code-bg p-6 font-mono text-xs leading-relaxed text-value">
                   {generatedGCode.join('\n')}
                 </pre>
               ) : (
-                <div className="flex flex-1 items-center justify-center p-6 text-center text-sm text-slate-500 dark:text-slate-400">
+                <div className="flex flex-1 items-center justify-center p-6 text-center text-sm text-muted">
                   Go to Step 4 and click "Generate" to preview the G-code.
                 </div>
               ))}

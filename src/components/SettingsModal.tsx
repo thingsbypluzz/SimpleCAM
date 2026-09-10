@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
-import { PALETTE_LIST } from '../config/palettes'
+import { getPaletteAccents, PALETTE_LIST } from '../config/palettes'
 import type { Dialect, MachineSettings } from '../types/machine'
 import type { AppearanceSettings } from '../types/appearance'
+import { THEME_LIST } from '../types/theme'
 import { inputClass } from './wizard/FieldRow'
 
 interface SettingsModalProps {
@@ -162,7 +163,7 @@ export function SettingsModal({
         role="dialog"
         aria-modal="true"
         aria-labelledby="settings-modal-title"
-        className="relative flex h-[640px] w-[820px] overflow-hidden rounded-lg border border-slate-200 bg-white shadow-xl dark:border-slate-700 dark:bg-slate-900"
+        className="relative flex h-[640px] w-[820px] overflow-hidden rounded-lg border border-border bg-bg shadow-xl"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Sibling of the scrollable content pane below, not a child of it —
@@ -176,15 +177,15 @@ export function SettingsModal({
           type="button"
           onClick={onClose}
           aria-label="Close settings"
-          className="absolute top-4 right-4 z-10 flex h-7 w-7 items-center justify-center rounded-md text-slate-400 hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-800 dark:hover:text-slate-300"
+          className="absolute top-4 right-4 z-10 flex h-7 w-7 items-center justify-center rounded-md text-muted hover:bg-border/40 hover:text-fg"
         >
           ✕
         </button>
 
-        <div className="flex w-44 shrink-0 flex-col gap-1 border-r border-slate-200 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-950">
+        <div className="flex w-44 shrink-0 flex-col gap-1 border-r border-border bg-code-bg p-4">
           <span
             id="settings-modal-title"
-            className="mb-2 px-2 text-xs font-semibold tracking-wide text-slate-500 uppercase dark:text-slate-400"
+            className="mb-2 px-2 text-xs font-semibold tracking-wide text-muted uppercase"
           >
             Settings
           </span>
@@ -195,8 +196,8 @@ export function SettingsModal({
               onClick={() => setActiveSection(section.id)}
               className={
                 activeSection === section.id
-                  ? 'rounded-md bg-indigo-50 px-2 py-1.5 text-left text-sm font-medium text-indigo-700 dark:bg-indigo-950/40 dark:text-indigo-300'
-                  : 'rounded-md px-2 py-1.5 text-left text-sm font-medium text-slate-600 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-900'
+                  ? 'rounded-md bg-accent-bg px-2 py-1.5 text-left text-sm font-medium text-accent-fg'
+                  : 'rounded-md px-2 py-1.5 text-left text-sm font-medium text-value hover:bg-border/40'
               }
             >
               {section.label}
@@ -207,7 +208,7 @@ export function SettingsModal({
         <div className="flex flex-1 flex-col gap-4 overflow-y-auto p-6">
           {activeSection === 'machine' && (
             <>
-              <h2 className="text-sm font-semibold text-slate-900 dark:text-slate-100">
+              <h2 className="text-sm font-semibold text-fg">
                 Machine
               </h2>
 
@@ -215,10 +216,10 @@ export function SettingsModal({
                 {FIELDS.map((field) => (
                   <div key={field.key} className="min-w-0 flex-1">
                     <label className="flex flex-col gap-1">
-                      <span className="flex items-center gap-2 text-sm font-medium text-slate-700 dark:text-slate-300">
+                      <span className="flex items-center gap-2 text-sm font-medium text-value">
                         {field.label}
                         {savedField === field.key && (
-                          <span className="text-xs font-normal text-emerald-600 dark:text-emerald-400">
+                          <span className="text-xs font-normal text-status-success">
                             ✓ Saved
                           </span>
                         )}
@@ -237,15 +238,15 @@ export function SettingsModal({
                 ))}
               </div>
 
-              <p className="text-sm text-slate-500 dark:text-slate-400">
+              <p className="text-sm text-muted">
                 These settings will enforce limits on values you can enter when planning your work.
                 They also introduce a soft warning when the planned work doesn't make sense within
                 these limits.
               </p>
 
-              <div className="flex flex-col gap-4 border-t border-slate-200 pt-4 dark:border-slate-800">
+              <div className="flex flex-col gap-4 border-t border-border pt-4">
                 <label className="flex flex-col gap-1">
-                  <span className="text-sm font-medium text-slate-700 dark:text-slate-300">
+                  <span className="text-sm font-medium text-value">
                     G-Code Dialect
                   </span>
                   <select
@@ -261,15 +262,15 @@ export function SettingsModal({
                   </select>
                 </label>
 
-                <span className="text-sm font-medium text-slate-700 dark:text-slate-300">
+                <span className="text-sm font-medium text-value">
                   Start / End G-Code
                 </span>
                 {CODE_FIELDS.map((field) => (
                   <label key={field.key} className="flex flex-col gap-1">
-                    <span className="flex items-center gap-2 text-xs font-medium text-slate-600 dark:text-slate-400">
+                    <span className="flex items-center gap-2 text-xs font-medium text-muted">
                       {field.label}
                       {savedCodeField === field.key && (
-                        <span className="text-xs font-normal text-emerald-600 dark:text-emerald-400">
+                        <span className="text-xs font-normal text-status-success">
                           ✓ Saved
                         </span>
                       )}
@@ -286,7 +287,7 @@ export function SettingsModal({
                     />
                   </label>
                 ))}
-                <p className="text-sm text-slate-500 dark:text-slate-400">
+                <p className="text-sm text-muted">
                   Inserted verbatim — Start G-Code before the generated program, End G-Code after
                   it (before the closing {machine.dialect === 'marlin' ? 'M2' : 'M30'}). Wrapped in
                   comment markers when non-empty; left untouched when blank.
@@ -297,20 +298,20 @@ export function SettingsModal({
 
           {activeSection === 'tabs' && (
             <>
-              <h2 className="text-sm font-semibold text-slate-900 dark:text-slate-100">Tabs</h2>
+              <h2 className="text-sm font-semibold text-fg">Tabs</h2>
 
               <div className="flex flex-col gap-4">
-                <span className="text-sm font-medium text-slate-700 dark:text-slate-300">
+                <span className="text-sm font-medium text-value">
                   Default Tab Settings
                 </span>
                 <div className="flex gap-4">
                   {TAB_DEFAULT_FIELDS.map((field) => (
                     <div key={field.key} className="min-w-0 flex-1">
                       <label className="flex flex-col gap-1">
-                        <span className="flex items-center gap-2 text-sm font-medium text-slate-700 dark:text-slate-300">
+                        <span className="flex items-center gap-2 text-sm font-medium text-value">
                           {field.label}
                           {savedField === field.key && (
-                            <span className="text-xs font-normal text-emerald-600 dark:text-emerald-400">
+                            <span className="text-xs font-normal text-status-success">
                               ✓ Saved
                             </span>
                           )}
@@ -332,7 +333,7 @@ export function SettingsModal({
                 </div>
               </div>
 
-              <p className="text-sm text-slate-500 dark:text-slate-400">
+              <p className="text-sm text-muted">
                 Applied whenever you check "Enable Tabs" on Step 2 — a starting point for a new
                 job, not a live link, so editing these later doesn't change a job that already has
                 tabs on.
@@ -342,17 +343,69 @@ export function SettingsModal({
 
           {activeSection === 'appearance' && (
             <>
-              <h2 className="text-sm font-semibold text-slate-900 dark:text-slate-100">
+              <h2 className="text-sm font-semibold text-fg">
                 Appearance
               </h2>
 
               <div className="flex flex-col gap-2">
-                <span className="text-sm font-medium text-slate-700 dark:text-slate-300">
-                  Preview color palette
+                <span className="text-sm font-medium text-value">Theme</span>
+                <div className="flex flex-wrap gap-3">
+                  {THEME_LIST.map((theme) => {
+                    const isSelected = appearance.theme === theme.id
+                    return (
+                      <button
+                        key={theme.id}
+                        type="button"
+                        onClick={() => onSaveAppearance({ ...appearance, theme: theme.id })}
+                        title={theme.label}
+                        className={
+                          isSelected
+                            ? 'flex w-24 flex-col items-center gap-1.5 rounded-md border-2 border-accent p-2'
+                            : 'flex w-24 flex-col items-center gap-1.5 rounded-md border border-border p-2 hover:bg-border/40'
+                        }
+                      >
+                        <span className="flex gap-1">
+                          <span
+                            className="flex h-4 w-4 items-center justify-center rounded-full border border-black/10"
+                            style={{ backgroundColor: theme.swatchLight.bg }}
+                          >
+                            <span
+                              className="h-2 w-2 rounded-full"
+                              style={{ backgroundColor: theme.swatchLight.accent }}
+                            />
+                          </span>
+                          <span
+                            className="flex h-4 w-4 items-center justify-center rounded-full border border-white/10"
+                            style={{ backgroundColor: theme.swatchDark.bg }}
+                          >
+                            <span
+                              className="h-2 w-2 rounded-full"
+                              style={{ backgroundColor: theme.swatchDark.accent }}
+                            />
+                          </span>
+                        </span>
+                        <span className="text-center text-xs font-medium text-value">
+                          {theme.label}
+                        </span>
+                      </button>
+                    )
+                  })}
+                </div>
+                <p className="text-sm text-muted">
+                  Reskins the app's chrome — header, buttons, badges, form fields. More themes are
+                  on the way.
+                </p>
+              </div>
+
+              <div className="flex flex-col gap-2 border-t border-border pt-4">
+                <span className="text-sm font-medium text-value">
+                  Preview Color Palette
                 </span>
                 <div className="flex flex-wrap gap-3">
                   {PALETTE_LIST.map((palette) => {
                     const isSelected = appearance.palette === palette.id
+                    const lightAccents = getPaletteAccents(palette.id, false, appearance.theme)
+                    const darkAccents = getPaletteAccents(palette.id, true, appearance.theme)
                     return (
                       <button
                         key={palette.id}
@@ -361,55 +414,55 @@ export function SettingsModal({
                         title={palette.label}
                         className={
                           isSelected
-                            ? 'flex w-20 flex-col items-center gap-1.5 rounded-md border-2 border-indigo-600 p-2 dark:border-indigo-400'
-                            : 'flex w-20 flex-col items-center gap-1.5 rounded-md border border-slate-200 p-2 hover:bg-slate-50 dark:border-slate-700 dark:hover:bg-slate-900'
+                            ? 'flex w-20 flex-col items-center gap-1.5 rounded-md border-2 border-accent p-2'
+                            : 'flex w-20 flex-col items-center gap-1.5 rounded-md border border-border p-2 hover:bg-border/40'
                         }
                       >
                         <span className="flex gap-1">
                           <span
-                            className="h-4 w-4 rounded-full border border-black/10 dark:border-white/10"
-                            style={{ backgroundColor: palette.light.toolpath }}
+                            className="h-4 w-4 rounded-full border border-black/10"
+                            style={{ backgroundColor: lightAccents.toolpath }}
                           />
                           <span
-                            className="h-4 w-4 rounded-full border border-black/10 dark:border-white/10"
-                            style={{ backgroundColor: palette.dark.toolpath }}
+                            className="h-4 w-4 rounded-full border border-white/10"
+                            style={{ backgroundColor: darkAccents.toolpath }}
                           />
                         </span>
-                        <span className="text-xs font-medium text-slate-600 dark:text-slate-300">
+                        <span className="text-xs font-medium text-value">
                           {palette.label}
                         </span>
                       </button>
                     )
                   })}
                 </div>
+                <p className="text-sm text-muted">
+                  Changes the toolpath/rapid/hole accent colors in the 2D and 3D previews — a
+                  choice that complements the Theme above, independent of it. Axis colors, the
+                  origin marker and the offset vector stay fixed per Theme in every palette.
+                </p>
               </div>
-
-              <p className="text-sm text-slate-500 dark:text-slate-400">
-                Changes the toolpath/rapid/hole accent colors in the 2D and 3D previews. Axis
-                colors, the origin marker and the offset vector stay the same in every palette.
-              </p>
             </>
           )}
 
           {activeSection === 'about' && (
             <>
-              <h2 className="text-sm font-semibold text-slate-900 dark:text-slate-100">About</h2>
+              <h2 className="text-sm font-semibold text-fg">About</h2>
 
               <div className="flex flex-col gap-1">
-                <span className="text-base font-semibold text-slate-900 dark:text-slate-100">
+                <span className="text-base font-semibold text-fg">
                   SimpleCAM
                 </span>
-                <span className="font-mono text-sm text-slate-500 dark:text-slate-400">
+                <span className="font-mono text-sm text-muted">
                   v{__APP_VERSION__}
                 </span>
               </div>
 
-              <p className="text-sm text-slate-500 dark:text-slate-400">
+              <p className="text-sm text-muted">
                 Fast G-Code generator for your basic operations. Client-side, no backend, no
                 accounts.
               </p>
 
-              <p className="text-sm text-slate-500 dark:text-slate-400">Envisioned by ThingsByPluzz</p>
+              <p className="text-sm text-muted">Envisioned by ThingsByPluzz</p>
             </>
           )}
         </div>

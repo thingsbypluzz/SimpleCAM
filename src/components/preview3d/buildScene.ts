@@ -13,6 +13,7 @@ import {
 import { sideRangesFor, type SideTabRange } from '../../lib/outlineRectangleTabs'
 import { outlineDirectionForOffsetMode } from '../../lib/outlineRectangle'
 import type { Point2D, WizardParams } from '../../types/wizard'
+import type { ThemeId } from '../../types/theme'
 
 // CNC (x, y, z) -> Three.js (x, z, -y): CNC Z (up/down into material) becomes
 // the Three.js Y (vertical) axis, so an orbit camera gives an intuitive
@@ -370,9 +371,9 @@ const MATERIAL_OPACITY_DARK = 0.6
 // config/palettes.ts (BL-12). Mirrors preview/drawToolpath.ts's buildTheme,
 // just in Three.js's numeric 0xrrggbb color format instead of CSS hex
 // strings.
-function buildTheme(paletteId: PaletteId, isDark: boolean): Theme {
-  const fixed = getFixedColors(isDark)
-  const accents = getPaletteAccents(paletteId, isDark)
+function buildTheme(paletteId: PaletteId, isDark: boolean, themeId: ThemeId): Theme {
+  const fixed = getFixedColors(themeId, isDark)
+  const accents = getPaletteAccents(paletteId, isDark, themeId)
   return {
     material: hexToThreeColor(accents.background),
     materialOpacity: isDark ? MATERIAL_OPACITY_DARK : MATERIAL_OPACITY_LIGHT,
@@ -424,6 +425,15 @@ function createArrowhead(color: number, size: number, tip: THREE.Vector3, direct
 export interface BuiltScene {
   objects: THREE.Object3D[]
   bounds: THREE.Box3
+  // The WebGL clear color the caller should apply (renderer.setClearColor)
+  // — same value as `theme.material`/the palette's `background` accent that
+  // the 2D preview already fills its canvas with (drawToolpath.ts). Handing
+  // this back instead of leaving Scene3D.tsx to compute or hardcode its own
+  // copy is the whole point: it's the one thing that must track whichever
+  // Theme/Palette is active, for every theme to come, without a second
+  // place to remember to update — see the postmortem note at its call site
+  // in buildToolpathScene() below.
+  background: number
 }
 
 // Discriminated by operation/shape — same split as preview/drawToolpath.ts.
@@ -927,10 +937,11 @@ export function buildToolpathScene(
   params: WizardParams,
   isDark: boolean,
   paletteId: PaletteId,
+  themeId: ThemeId,
   overlayParams: WizardParams[] = [],
   showActivePattern = true,
 ): BuiltScene {
-  const theme = buildTheme(paletteId, isDark)
+  const theme = buildTheme(paletteId, isDark, themeId)
 
   // Overlay patterns first, active pattern last — cosmetically inert in 3D
   // (real depth-tested geometry, add-order doesn't affect occlusion) but
@@ -1041,7 +1052,7 @@ export function buildToolpathScene(
     objects.push(...buildPatternObjects(pattern, theme, span, arrowSize))
   }
 
-  return { objects, bounds }
+  return { objects, bounds, background: theme.material }
 }
 
 export function disposeObject3D(obj: THREE.Object3D) {

@@ -70,7 +70,7 @@ export function Step2GeometryOutline({ params, onChange, machine }: Step2Geometr
           />
         </FieldRow>
         {!isOutlineToolDiameterValid(outline) && (
-          <p className="text-sm text-red-600 dark:text-red-400">
+          <p className="text-sm text-status-error">
             {isRect
               ? "Tool diameter must be smaller than the shorter side for an Inside cut."
               : "Tool diameter can't exceed the shape diameter for an Inside cut."}
@@ -79,12 +79,12 @@ export function Step2GeometryOutline({ params, onChange, machine }: Step2Geometr
       </div>
 
       <div className="flex flex-col gap-1">
-        <span className="text-sm font-medium text-slate-700 dark:text-slate-300">Offset Mode</span>
+        <span className="text-sm font-medium text-value">Offset Mode</span>
         <OffsetModePicker params={params} onChange={onChange} />
       </div>
 
       <div className="flex flex-col gap-1">
-        <span className="text-sm font-medium text-slate-700 dark:text-slate-300">Method</span>
+        <span className="text-sm font-medium text-value">Method</span>
         <OutlineMethodPicker params={params} onChange={onChange} />
       </div>
 
@@ -128,8 +128,8 @@ export function Step2GeometryOutline({ params, onChange, machine }: Step2Geometr
         </FieldRow>
       )}
 
-      <div className="border-t border-slate-200 pt-4 dark:border-slate-800">
-        <label className="mb-2 flex items-center gap-2 text-sm font-medium text-slate-700 dark:text-slate-300">
+      <div className="border-t border-border pt-4">
+        <label className="mb-2 flex items-center gap-2 text-sm font-medium text-value">
           <input
             type="checkbox"
             checked={outline.tabsEnabled}
@@ -146,7 +146,7 @@ export function Step2GeometryOutline({ params, onChange, machine }: Step2Geometr
                   : { tabsEnabled: false },
               )
             }}
-            className="h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+            className="h-4 w-4 rounded border-field-border text-accent focus:ring-accent-strong"
           />
           Enable Tabs
           <HintPopover
@@ -184,12 +184,12 @@ export function Step2GeometryOutline({ params, onChange, machine }: Step2Geometr
               </div>
             </div>
             {!isOutlineTabHeightValid(outline) && (
-              <p className="text-sm text-red-600 dark:text-red-400">
+              <p className="text-sm text-status-error">
                 Tab height must be greater than 0 and less than Cutting Depth.
               </p>
             )}
             {!isOutlineTabWidthValid(outline) && (
-              <p className="text-sm text-red-600 dark:text-red-400">
+              <p className="text-sm text-status-error">
                 {isRect
                   ? "Tab count × width can't reach the shortest side's length."
                   : "Tab count × width can't reach the toolpath's full circumference."}
@@ -199,11 +199,11 @@ export function Step2GeometryOutline({ params, onChange, machine }: Step2Geometr
         )}
       </div>
 
-      <div className="border-t border-slate-200 pt-4 dark:border-slate-800">
-        <span className="mb-2 block text-sm font-medium text-slate-700 dark:text-slate-300">
+      <div className="border-t border-border pt-4">
+        <span className="mb-2 block text-sm font-medium text-value">
           Offset
         </span>
-        <p className="mb-2 text-sm text-slate-500 dark:text-slate-400">
+        <p className="mb-2 text-sm text-muted">
           Shifts the whole shape from the origin.
         </p>
         <div className="flex gap-4">

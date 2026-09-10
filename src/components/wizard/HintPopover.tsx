@@ -82,7 +82,7 @@ export function HintPopover({ text }: HintPopoverProps) {
         aria-expanded={open}
         aria-controls={open ? popoverId : undefined}
         aria-label={`Hint: ${text}`}
-        className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-slate-400 hover:text-slate-600 dark:text-slate-500 dark:hover:text-slate-300"
+        className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-muted hover:text-fg"
       >
         <HintIcon className="h-4 w-4" />
       </button>
@@ -100,7 +100,7 @@ export function HintPopover({ text }: HintPopoverProps) {
             role="group"
             aria-label={text}
             style={{ top: position.top, left: position.left }}
-            className="fixed z-50 w-56 rounded-md border border-slate-200 bg-white p-2 text-xs text-slate-600 shadow-lg dark:border-slate-700 dark:bg-slate-900 dark:text-slate-400"
+            className="fixed z-50 w-56 rounded-md border border-border bg-field-bg p-2 text-xs text-muted shadow-lg"
           >
             {text}
           </div>,

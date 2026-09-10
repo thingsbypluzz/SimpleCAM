@@ -9,3 +9,245 @@
 body {
   margin: 0;
 }
+
+/* ==========================================================================
+   UI chrome themes (Header/Wizard Section/Preview Section chrome — buttons,
+   borders, badges, form fields). Independent of, but combinable with, the
+   existing `.dark` class toggle: each theme below defines its own light AND
+   dark variant, selected by the SAME dark-mode toggle already in Header —
+   see src/types/theme.ts and App.tsx's `useDarkMode`/theme-attribute effect.
+
+   This does NOT cover the 2D/3D Preview Viewport's own colors (axes,
+   toolpath, grid, etc.) — those stay in src/config/palettes.ts and are
+   consumed directly as JS hex/numeric values by drawToolpath.ts/
+   buildScene.ts, not via these CSS custom properties. A Theme is still
+   allowed to steer that module (its fixed CNC colors and its "Default"
+   palette accent), it just does so through palettes.ts, not here.
+
+   Adding a future theme (see design_*.md specs): add one more
+   `[data-theme="..."]` block below (light) and its `.dark` pair, add the id
+   to ThemeId/THEME_LIST (src/types/theme.ts), and add a matching entry to
+   FIXED_COLORS/DEFAULT_ACCENTS in palettes.ts. No component code changes.
+   ========================================================================== */
+
+/* ---- Sloppy Indigo (default — today's original look, exact values) ---- */
+:root {
+  --bg: #ffffff;
+  --fg: #0f172a;
+  --border: #e2e8f0;
+  --muted: #64748b;
+  --value: #334155;
+
+  --accent: #4f46e5;
+  --accent-fg: #4338ca;
+  --accent-bg: #eef2ff;
+  --accent-border: #a5b4fc;
+  --accent-strong: #6366f1;
+  --selected-bg: #ffffff;
+
+  --btn-bg: #4f46e5;
+  --btn-fg: #ffffff;
+  --btn-bg-hover: #6366f1;
+
+  --tab-active-bg: #e0e7ff;
+  --tab-active-fg: #4338ca;
+
+  --code-bg: #f8fafc;
+  --field-bg: #ffffff;
+  --field-border: #cbd5e1;
+
+  --empty-border: #e2e8f0;
+  --empty-fg: #cbd5e1;
+
+  --status-todo-bg: #fef3c7;
+  --status-todo-fg: #b45309;
+  --status-done-bg: #e0e7ff;
+  --status-done-fg: #4338ca;
+  --status-warn-bg: #fed7aa;
+  --status-warn-fg: #000000;
+  --status-warn-border: #fdba74;
+  --status-error: #dc2626;
+  --status-success: #059669;
+  --status-success-bg: #ecfdf5;
+  --status-delete-bg: #fee2e2;
+  --status-delete-fg: #dc2626;
+}
+
+:root.dark {
+  --bg: #020617;
+  --fg: #f1f5f9;
+  --border: #1e293b;
+  --muted: #94a3b8;
+  --value: #cbd5e1;
+
+  --accent: #818cf8;
+  --accent-fg: #a5b4fc;
+  --accent-bg: rgba(30, 27, 75, 0.4);
+  --accent-border: #3730a3;
+  --accent-strong: #6366f1;
+  --selected-bg: rgba(49, 46, 129, 0.4);
+
+  --btn-bg: #4f46e5;
+  --btn-fg: #ffffff;
+  --btn-bg-hover: #6366f1;
+
+  --tab-active-bg: #1e1b4b;
+  --tab-active-fg: #a5b4fc;
+
+  --code-bg: #0f172a;
+  --field-bg: #0f172a;
+  --field-border: #334155;
+
+  --empty-border: #1e293b;
+  --empty-fg: #334155;
+
+  --status-todo-bg: #451a03;
+  --status-todo-fg: #fcd34d;
+  --status-done-bg: #1e1b4b;
+  --status-done-fg: #a5b4fc;
+  --status-warn-bg: rgba(67, 20, 7, 0.6);
+  --status-warn-fg: #fdba74;
+  --status-warn-border: #9a3412;
+  --status-error: #f87171;
+  --status-success: #34d399;
+  --status-success-bg: rgba(2, 44, 34, 0.4);
+  --status-delete-bg: #450a0a;
+  --status-delete-fg: #f87171;
+}
+
+/* ---- Shopfloor Amber — see design_shopfloor_amber.md for the full spec ---- */
+:root[data-theme="shopfloor-amber"] {
+  --bg: #faf8f4;
+  --fg: #1c1917;
+  --border: #e7e2d8;
+  --muted: #78716c;
+  --value: #44403c;
+
+  --accent: #b45309;
+  --accent-fg: #92400e;
+  --accent-bg: #fef3c7;
+  --accent-border: #fcd34d;
+  --accent-strong: #d97706;
+  --selected-bg: #ffffff;
+
+  --btn-bg: #b45309;
+  --btn-fg: #ffffff;
+  --btn-bg-hover: #92400e;
+
+  --tab-active-bg: #fef3c7;
+  --tab-active-fg: #92400e;
+
+  --code-bg: #f5f2ec;
+  --field-bg: #ffffff;
+  --field-border: #d6d1c7;
+
+  --empty-border: #e7e2d8;
+  --empty-fg: #a8a29e;
+
+  /* Amber is now the accent (status-done), so "not generated"/"delete"/
+     validation-error move off amber to rose — see design_shopfloor_amber.md
+     §2.2. */
+  --status-todo-bg: #ffe4e6;
+  --status-todo-fg: #be123c;
+  --status-done-bg: #fef3c7;
+  --status-done-fg: #92400e;
+  --status-warn-bg: #ffe4e6;
+  --status-warn-fg: #be123c;
+  --status-warn-border: #fda4af;
+  --status-error: #be123c;
+  --status-success: #4d7c0f;
+  --status-success-bg: #f7fee7;
+  --status-delete-bg: #ffe4e6;
+  --status-delete-fg: #be123c;
+}
+
+:root[data-theme="shopfloor-amber"].dark {
+  --bg: #0a0a0b;
+  --fg: #f5f2ea;
+  --border: #282520;
+  --muted: #a29a8c;
+  --value: #d8d2c6;
+
+  --accent: #f59e0b;
+  --accent-fg: #fbbf24;
+  --accent-bg: rgba(69, 45, 3, 0.55);
+  --accent-border: #78350f;
+  --accent-strong: #b45309;
+  --selected-bg: rgba(69, 45, 3, 0.85);
+
+  /* Amber is a light fill, so button labels are near-black, not white. */
+  --btn-bg: #f59e0b;
+  --btn-fg: #1a1408;
+  --btn-bg-hover: #fbbf24;
+
+  --tab-active-bg: #3a2a06;
+  --tab-active-fg: #fbbf24;
+
+  --code-bg: #121211;
+  --field-bg: #131312;
+  --field-border: #3a3630;
+
+  --empty-border: #282520;
+  --empty-fg: #4a4640;
+
+  --status-todo-bg: #4c0519;
+  --status-todo-fg: #fda4af;
+  --status-done-bg: #3a2a06;
+  --status-done-fg: #fbbf24;
+  --status-warn-bg: #4c0519;
+  --status-warn-fg: #fda4af;
+  --status-warn-border: #9f1239;
+  --status-error: #fb7185;
+  --status-success: #a3e635;
+  --status-success-bg: rgba(26, 46, 5, 0.4);
+  --status-delete-bg: #4c0519;
+  --status-delete-fg: #fda4af;
+}
+
+/* Registers every token above as a real Tailwind color utility (bg-accent,
+   text-muted, border-field-border, ...) — `@theme inline` keeps each one
+   referencing the runtime custom property instead of baking today's value
+   into the generated CSS, which is what makes theme/dark switching work
+   without a rebuild (Tailwind v4's documented pattern for JS/attribute-
+   driven runtime theming). */
+@theme inline {
+  --color-bg: var(--bg);
+  --color-fg: var(--fg);
+  --color-border: var(--border);
+  --color-muted: var(--muted);
+  --color-value: var(--value);
+
+  --color-accent: var(--accent);
+  --color-accent-fg: var(--accent-fg);
+  --color-accent-bg: var(--accent-bg);
+  --color-accent-border: var(--accent-border);
+  --color-accent-strong: var(--accent-strong);
+  --color-selected-bg: var(--selected-bg);
+
+  --color-btn-bg: var(--btn-bg);
+  --color-btn-fg: var(--btn-fg);
+  --color-btn-bg-hover: var(--btn-bg-hover);
+
+  --color-tab-active-bg: var(--tab-active-bg);
+  --color-tab-active-fg: var(--tab-active-fg);
+
+  --color-code-bg: var(--code-bg);
+  --color-field-bg: var(--field-bg);
+  --color-field-border: var(--field-border);
+
+  --color-empty-border: var(--empty-border);
+  --color-empty-fg: var(--empty-fg);
+
+  --color-status-todo-bg: var(--status-todo-bg);
+  --color-status-todo-fg: var(--status-todo-fg);
+  --color-status-done-bg: var(--status-done-bg);
+  --color-status-done-fg: var(--status-done-fg);
+  --color-status-warn-bg: var(--status-warn-bg);
+  --color-status-warn-fg: var(--status-warn-fg);
+  --color-status-warn-border: var(--status-warn-border);
+  --color-status-error: var(--status-error);
+  --color-status-success: var(--status-success);
+  --color-status-success-bg: var(--status-success-bg);
+  --color-status-delete-bg: var(--status-delete-bg);
+  --color-status-delete-fg: var(--status-delete-fg);
+}

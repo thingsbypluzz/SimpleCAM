@@ -5,6 +5,7 @@ import { circleOutlineRadiusAndDirection } from '../../lib/outlineCircle'
 import { rectCorners, rectToolDimensions } from '../../lib/outlineRectangleGeometry'
 import { sideRangesFor, type SideTabRange } from '../../lib/outlineRectangleTabs'
 import type { Point2D, WizardParams } from '../../types/wizard'
+import type { ThemeId } from '../../types/theme'
 import { type Camera2D, type DataBounds, worldToScreen } from './camera2d'
 
 interface Theme {
@@ -27,9 +28,9 @@ interface Theme {
 // actual color values live. holeStroke maps 1:1 to the palette's `hole`
 // accent; holeFill stays a fixed, low-opacity origin tint (not palette
 // accent) since it's not meant to stand out as a distinguishing color.
-function buildTheme(paletteId: PaletteId, isDark: boolean): Theme {
-  const fixed = getFixedColors(isDark)
-  const accents = getPaletteAccents(paletteId, isDark)
+function buildTheme(paletteId: PaletteId, isDark: boolean, themeId: ThemeId): Theme {
+  const fixed = getFixedColors(themeId, isDark)
+  const accents = getPaletteAccents(paletteId, isDark, themeId)
   return {
     background: accents.background,
     grid: accents.grid,
@@ -498,11 +499,12 @@ export function drawToolpath(
   params: WizardParams,
   isDark: boolean,
   paletteId: PaletteId,
+  themeId: ThemeId,
   camera: Camera2D,
   overlayParams: WizardParams[] = [],
   showActivePattern = true,
 ) {
-  const theme = buildTheme(paletteId, isDark)
+  const theme = buildTheme(paletteId, isDark, themeId)
 
   // Overlay patterns drawn first, active pattern last — the active pattern
   // ends up on top wherever it overlaps an overlaid preset (BL-3). While

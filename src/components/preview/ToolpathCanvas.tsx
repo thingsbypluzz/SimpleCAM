@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { PaletteId } from '../../config/palettes'
 import type { WizardParams } from '../../types/wizard'
+import type { ThemeId } from '../../types/theme'
 import { computeFitCamera, panBy, zoomAt, type Camera2D } from './camera2d'
 import { computeToolpathDataBounds, drawToolpath } from './drawToolpath'
 
@@ -8,6 +9,7 @@ interface ToolpathCanvasProps {
   params: WizardParams
   isDark: boolean
   paletteId: PaletteId
+  themeId: ThemeId
   overlayParams: WizardParams[]
   showActivePattern: boolean
 }
@@ -21,6 +23,7 @@ export function ToolpathCanvas({
   params,
   isDark,
   paletteId,
+  themeId,
   overlayParams,
   showActivePattern,
 }: ToolpathCanvasProps) {
@@ -74,7 +77,7 @@ export function ToolpathCanvas({
       const ctx = canvas.getContext('2d')
       if (!ctx) return
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
-      drawToolpath(ctx, width, height, params, isDark, paletteId, camera, overlayParams, showActivePattern)
+      drawToolpath(ctx, width, height, params, isDark, paletteId, themeId, camera, overlayParams, showActivePattern)
     }
 
     render()
@@ -82,7 +85,7 @@ export function ToolpathCanvas({
     const resizeObserver = new ResizeObserver(render)
     resizeObserver.observe(container)
     return () => resizeObserver.disconnect()
-  }, [params, isDark, paletteId, overlayParams, showActivePattern, camera])
+  }, [params, isDark, paletteId, themeId, overlayParams, showActivePattern, camera])
 
   // One-time initial fit, once the container has a real size — mirrors
   // Scene3D.tsx's hasFramedRef latch (there reset per new THREE camera;
@@ -176,7 +179,7 @@ export function ToolpathCanvas({
         <button
           type="button"
           onClick={fitToData}
-          className="rounded-md border border-slate-300 bg-white/90 px-2.5 py-1 text-xs font-medium text-slate-600 shadow-sm hover:bg-white dark:border-slate-700 dark:bg-slate-900/90 dark:text-slate-300 dark:hover:bg-slate-900"
+          className="rounded-md border border-field-border bg-field-bg/90 px-2.5 py-1 text-xs font-medium text-value shadow-sm hover:bg-field-bg"
         >
           Fit View
         </button>

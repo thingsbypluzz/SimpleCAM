@@ -1,4 +1,24 @@
-import { DEFAULT_WIZARD_PARAMS, type WizardParams } from '../types/wizard'
+import { DEFAULT_WIZARD_PARAMS, type MethodType, type OperationType, type WizardParams } from '../types/wizard'
+
+// `operation` and `method` are the two top-level scalar fields
+// mergeWithDefaults() below can't fix with a plain `??` fallback: a preset
+// saved back when `operation` meant "Helix vs Standard" (pre-0.8.12, before
+// it was repurposed to mean "Hole(s) vs Outline" — see CLAUDE.md) has a
+// *present* value like `'helix'`, not `undefined`, so `saved?.operation ??
+// DEFAULT_WIZARD_PARAMS.operation` let it straight through. Every render
+// site that compares `params.operation` against an exact literal
+// ('holes'/'outline') then silently matched neither — Step 2's collapsed
+// summary (App.tsx) renders nothing for either branch, with no thrown
+// error, because it's a false `&&`, not an exception. Guarding both here
+// the same way appearanceStorage.ts already guards PaletteId/ThemeId closes
+// the whole class of bug, not just this one instance.
+function isOperationType(value: unknown): value is OperationType {
+  return value === 'holes' || value === 'outline'
+}
+
+function isMethodType(value: unknown): value is MethodType {
+  return value === 'helix' || value === 'standard'
+}
 
 // Single localStorage key holding every slot — one JSON blob, one read/write
 // at a time, easy to inspect/clear as a whole. See CLAUDE.md, Etap 5.
@@ -48,8 +68,8 @@ function writeStorage(storage: StorageShape): void {
 // picking up defaults for whatever it doesn't have.
 function mergeWithDefaults(saved: Partial<WizardParams> | undefined): WizardParams {
   return {
-    operation: saved?.operation ?? DEFAULT_WIZARD_PARAMS.operation,
-    method: saved?.method ?? DEFAULT_WIZARD_PARAMS.method,
+    operation: isOperationType(saved?.operation) ? saved.operation : DEFAULT_WIZARD_PARAMS.operation,
+    method: isMethodType(saved?.method) ? saved.method : DEFAULT_WIZARD_PARAMS.method,
     geometry: { ...DEFAULT_WIZARD_PARAMS.geometry, ...saved?.geometry },
     outline: { ...DEFAULT_WIZARD_PARAMS.outline, ...saved?.outline },
     feeds: { ...DEFAULT_WIZARD_PARAMS.feeds, ...saved?.feeds },

@@ -74,18 +74,18 @@ export function Step4Output({
     <div className="flex flex-col gap-6">
       <div className="flex flex-col gap-3">
         {CHECKBOX_OPTIONS.map((opt) => (
-          <label key={opt.key} className="flex items-center gap-2 text-sm text-slate-700 dark:text-slate-300">
+          <label key={opt.key} className="flex items-center gap-2 text-sm text-value">
             <input
               type="checkbox"
               checked={Boolean(output[opt.key])}
               onChange={(e) => updateOutput({ [opt.key]: e.target.checked } as Partial<WizardParams['output']>)}
-              className="h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+              className="h-4 w-4 rounded border-field-border text-accent focus:ring-accent-strong"
             />
             {opt.label}
           </label>
         ))}
 
-        <div className="flex items-center gap-2 pt-2 text-sm text-slate-700 dark:text-slate-300">
+        <div className="flex items-center gap-2 pt-2 text-sm text-value">
           <span>Circle interpolation:</span>
           <div className="flex gap-2">
             {(['arc', 'linear'] as const).map((mode) => {
@@ -99,8 +99,8 @@ export function Step4Output({
                   className={[
                     'rounded-md border px-2.5 py-1 text-xs font-medium transition disabled:cursor-not-allowed disabled:opacity-50',
                     isSelected
-                      ? 'border-indigo-500 bg-indigo-50 text-indigo-700 dark:bg-indigo-950/40 dark:text-indigo-300'
-                      : 'border-slate-200 text-slate-600 hover:border-slate-300 dark:border-slate-700 dark:text-slate-400',
+                      ? 'border-accent-strong bg-accent-bg text-accent-fg'
+                      : 'border-border text-muted hover:border-field-border',
                   ].join(' ')}
                 >
                   {mode === 'arc' ? 'G2/G3 (arcs)' : 'G1 (segments)'}
@@ -110,7 +110,7 @@ export function Step4Output({
           </div>
         </div>
         {forcedLinear && (
-          <p className="text-xs text-slate-500 dark:text-slate-400">
+          <p className="text-xs text-muted">
             {isRectOutline
               ? 'G2/G3 disabled — Rectangle outlines are always straight-edge (G1).'
               : 'G2/G3 disabled — Tabs (Step 2) require G1 interpolation.'}
@@ -119,7 +119,7 @@ export function Step4Output({
       </div>
 
       {!canGenerate && (
-        <p className="text-sm text-red-600 dark:text-red-400">
+        <p className="text-sm text-status-error">
           {overlayActive
             ? 'Turn off preset overlay (the eye icon in the header) to generate G-code.'
             : 'Fix the highlighted errors in Step 2 / Step 3 before generating.'}
@@ -127,7 +127,7 @@ export function Step4Output({
       )}
 
       {warnings.length > 0 && (
-        <div className="rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-xs text-amber-800 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-300">
+        <div className="rounded-md border border-status-warn-border bg-status-warn-bg px-3 py-2 text-xs text-status-warn-fg">
           {warnings.map((warning) => (
             <p key={warning}>{warning}</p>
           ))}
@@ -138,7 +138,7 @@ export function Step4Output({
         type="button"
         onClick={onGenerate}
         disabled={!canGenerate}
-        className="rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-500 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-indigo-600"
+        className="rounded-md bg-btn-bg px-4 py-2 text-sm font-medium text-btn-fg hover:bg-btn-bg-hover disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-btn-bg"
       >
         Generate
       </button>
@@ -148,7 +148,7 @@ export function Step4Output({
           type="button"
           onClick={handleCopy}
           disabled={!generatedGCode}
-          className="rounded-md border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-900"
+          className="rounded-md border border-field-border px-4 py-2 text-sm font-medium text-value hover:bg-border/40 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent"
         >
           {copied ? 'Copied!' : 'Copy to clipboard'}
         </button>
@@ -156,14 +156,14 @@ export function Step4Output({
           type="button"
           onClick={handleDownload}
           disabled={!generatedGCode}
-          className="rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-500 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-indigo-600"
+          className="rounded-md bg-btn-bg px-4 py-2 text-sm font-medium text-btn-fg hover:bg-btn-bg-hover disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-btn-bg"
         >
           Download .gcode file
         </button>
       </div>
 
-      <div className="flex flex-col gap-2 border-t border-slate-200 pt-4 dark:border-slate-800">
-        <span className="text-xs font-medium text-slate-500 dark:text-slate-400">
+      <div className="flex flex-col gap-2 border-t border-border pt-4">
+        <span className="text-xs font-medium text-muted">
           Save current settings as preset
         </span>
         <div className="flex gap-3">
@@ -182,10 +182,10 @@ export function Step4Output({
                 }
                 className={
                   justSaved
-                    ? 'flex h-11 w-11 items-center justify-center rounded-md border border-green-500 bg-green-50 text-sm font-semibold text-green-700 dark:bg-green-950/40 dark:text-green-300'
+                    ? 'flex h-11 w-11 items-center justify-center rounded-md border border-status-success bg-status-success-bg text-sm font-semibold text-status-success'
                     : existing
-                      ? 'flex h-11 w-11 items-center justify-center rounded-md border border-indigo-300 bg-indigo-50 text-sm font-semibold text-indigo-700 hover:bg-indigo-100 dark:border-indigo-800 dark:bg-indigo-950/40 dark:text-indigo-300 dark:hover:bg-indigo-950'
-                      : 'flex h-11 w-11 items-center justify-center rounded-md border border-dashed border-slate-300 text-sm font-semibold text-slate-400 hover:border-slate-400 hover:text-slate-600 dark:border-slate-700 dark:text-slate-500 dark:hover:border-slate-600 dark:hover:text-slate-300'
+                      ? 'flex h-11 w-11 items-center justify-center rounded-md border border-accent-border bg-accent-bg text-sm font-semibold text-accent-fg'
+                      : 'flex h-11 w-11 items-center justify-center rounded-md border border-dashed border-empty-border text-sm font-semibold text-empty-fg hover:border-field-border hover:text-muted'
                 }
               >
                 {justSaved ? '✓' : id}

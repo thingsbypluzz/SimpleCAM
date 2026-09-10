@@ -35,7 +35,7 @@ export function Step3Feeds({ params, onChange, machine }: Step3FeedsProps) {
         <input type="number" step="0.05" className={inputClass} {...stepdownField} />
       </FieldRow>
       {!isStepdownValid(feeds) && (
-        <p className="text-sm text-red-600 dark:text-red-400">
+        <p className="text-sm text-status-error">
           Stepdown must be greater than 0.
         </p>
       )}
@@ -43,7 +43,7 @@ export function Step3Feeds({ params, onChange, machine }: Step3FeedsProps) {
         <input type="number" step="0.1" min="0" className={inputClass} {...startZField} />
       </FieldRow>
       {!isStartZValid(feeds) && (
-        <p className="text-sm text-red-600 dark:text-red-400">
+        <p className="text-sm text-status-error">
           Start Z must not exceed Safe Z.
         </p>
       )}
