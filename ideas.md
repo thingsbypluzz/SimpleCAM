@@ -1,14 +1,139 @@
-# Pomysły w dyskusji (poza aktywnym zakresem)
+# Pomysły i backlog SimpleCAM
 
-Ten plik zbiera wnioski z sesji `/grill-me`, które **nie są jeszcze
-zaakceptowaną decyzją projektową** (w przeciwieństwie do "Kluczowe decyzje
-projektowe" w `CLAUDE.md`) — to spisane wspólne zrozumienie, punkt wyjścia do
-realnej implementacji w przyszłości, kiedy padnie wyraźne "przechodzimy do
-X" (zgodnie z konwencją projektu).
+Ten plik zbiera wszystko, co dziś **nie** jest zaimplementowane —
+podzielone na trzy różne statusy. `CLAUDE.md` przechowuje wyłącznie stan
+obecny (finalne decyzje), a historia tego, jak appka do niego doszła, żyje
+w `CHANGELOG.md` — ten plik to jedyne miejsce na przyszłość appki.
 
-Obecnie pusty — jedyny wpis ("Reorganizacja taksonomii wizarda: rodzina
-operacji → pattern → method", sesja `/grill-me` 2026-08-19) został
-zaimplementowany jako Etap 6, patrz `CLAUDE.md`. Sekcje "Outline"/"Pocket"/
-"Surface" pozostają nierozpracowanymi placeholderami (patrz "Pomysły na
-przyszłość" w `CLAUDE.md`) — każda wymaga własnej sesji `/grill-me` przed
-realną implementacją.
+## Pomysły w dyskusji (poza aktywnym zakresem)
+
+Wnioski z sesji `/grill-me`, które **nie są jeszcze zaakceptowaną decyzją
+projektową** (w przeciwieństwie do "Kluczowe decyzje projektowe" w
+`CLAUDE.md` czy pozycji `BL-#`/`OP-#` niżej) — spisane wspólne
+zrozumienie, punkt wyjścia do realnej implementacji w przyszłości, kiedy
+padnie wyraźne "przechodzimy do X".
+
+Obecnie pusty.
+
+## Backlog (`BL-#`)
+
+Techniczny dług i drobniejsze, jasno zakresowe pomysły — każdy ze stałym
+numerem `BL-#`, nadawanym raz i niezmieniającym się przy regrupowaniu/
+reprioritetyzacji (czysty identyfikator do odnoszenia się w rozmowie:
+"zrób BL-4"). Zamknięte pozycje (numery nie wymienione tu) trafiają do
+historii w `CHANGELOG.md` i znikają z tej listy — nie trzeba ich tu nigdy
+przywracać.
+
+Ta sama lista, wizualnie — pogrupowana etapami trudności i z kolorowym
+oznaczeniem 🟢/🟠/🔴 — jest opublikowana jako Artifact:
+**<https://claude.ai/code/artifact/e90a2f5c-932c-4772-804e-0fe155ab32a0>**.
+
+**Zasada — trzymać oba źródła w zgodzie:** po wdrożeniu zmiany
+odpowiadającej któremuś `BL-#`/`OP-#` — usunąć bullet z tego pliku **i**
+zaktualizować Artifact pod tym samym URL (republikacja z `url` ustawionym
+na powyższy link, nie nowa publikacja) — usunąć pozycję z listy, poprawić
+liczniki w pasku statystyk na górze. Bez tego kroku Artifact szybko
+rozjeżdża się ze stanem faktycznym.
+
+- **`BL-4`** — **CI/CD (GitHub Actions).** Brak mimo że repo jest na
+  GitHubie — świadomie poza zakresem do wyjścia z fazy testów. Build+test
+  na push to standard, ale spięcie z `npm run deploy` (sekrety FTP,
+  gating) dokłada realną decyzję projektową.
+- **`BL-7`** — **Import DXF / SVG.** Dziś pozycjonowanie to wyłącznie
+  Single/Grid/Grid Centered/Circle/Custom List (ręcznie wpisane punkty) —
+  import pliku jako alternatywne źródło punktów. Parsowanie formatu,
+  ekstrakcja geometrii, mapowanie na otwory/kontury.
+- **`BL-8`** — **Responsywny UI na małych ekranach.** Dziś layout zakłada
+  desktop: dwukolumnowy układ (Wizard Section + Preview Section obok
+  siebie), gęste pola liczbowe w parach X/Y w jednej linii, Preview
+  Viewport 3D z absolutnie pozycjonowanymi przyciskami widoku. Dotyka
+  praktycznie każdego komponentu — wymaga przemyślenia, czy Preview
+  Section chowa się pod Wizard Section czy za zakładką, czy pary X/Y
+  wracają do jednej kolumny na wąskim ekranie, itd.
+
+  Koncepcja akordeonu 4 kroków (Active Step Panel + Step N Summary,
+  patrz `CLAUDE.md`) zostaje — to nie jest do przeprojektowania, tylko do
+  uelastycznienia. Dziś szerokości są sztywne w px (`w-[420px]` na
+  rozwinięty panel, `w-20` na zwinięty pasek), nieskalujące się z oknem.
+  Docelowo proporcjonalny podział szerokości między Wizard Section a
+  Preview Section (np. ok. 40%/60%), z twardym minimalnym floorem dla
+  Wizard Section — poniżej pewnej szerokości okna czytelność formularzy w
+  Kroku 2/3 się rozpada. Dokładna wartość progu do ustalenia przy realnej
+  implementacji, prawdopodobnie razem z sesją `/grill-me`.
+- **`BL-18`** — **Zweryfikować kompatybilność wsteczną ze starszymi
+  przeglądarkami.** Zgłoszenie użytkownika: na Windows 8, w kilku
+  przeglądarkach, tylko Preview Section miała kolory zgodne z ustawioną
+  paletą — reszta (Header, Wizard Section) renderowała się na biało, a
+  Settings Modal był półprzezroczysty i przez to nieczytelny. Podejrzenie:
+  różnice w obsłudze nowoczesnego CSS (Tailwind v4 CSS-first `@theme`/
+  `@custom-variant dark`, prawdopodobnie kolory w przestrzeni `oklch`,
+  `backdrop-blur` na modalu) przez starsze silniki przeglądarek. Wymaga:
+  ustalenia realnego zakresu wspieranych przeglądarek/wersji (projekt
+  dotąd nie miał tej decyzji spisanej), zreprodukowania problemu na
+  starszym silniku, zidentyfikowania, które konkretne właściwości CSS się
+  nie renderują, i albo dodania fallbacków, albo świadomej decyzji "nie
+  wspieramy X" udokumentowanej w `CLAUDE.md`.
+- **`BL-19`** — **Własna lista średnic narzędzia w Settings.** Dziś
+  `TOOL_DIAMETER_OPTIONS` (`config/toolDiameterOptions.ts`: 1–8mm całe mm
+  + 1/8" i 1/4") jest zaszyta na sztywno w kodzie. Pomysł: nowa sekcja w
+  Settings Modal pozwalająca edytować tę listę (dodawać/usuwać wartości),
+  zapisywana w localStorage (nowy klucz albo rozszerzenie istniejącego
+  wzorca Machine/Appearance/Tabs), plus przycisk "Reset to default"
+  przywracający dzisiejszą, sztywną listę jako wartość domyślną.
+- **`BL-20`** — 🔒 **Licznik użytkowników (unikalne IP).** Wymaga własnej,
+  pełnej sesji `/grill-me` przed jakąkolwiek decyzją implementacyjną —
+  pomysł bezpośrednio dotyka fundamentalnej zasady projektu ("Zero
+  backendu. Zero bazy danych."), nie jest to dopracowanie szczegółów.
+  Wstępny, nierozstrzygnięty szkic z przerwanej sesji `/grill-me`:
+  najpierw sprawdzić, czy obecny hosting cPanel udostępnia już
+  AWStats/Webalizer/surowe logi Apache — jeśli tak, temat może rozwiązać
+  się bez żadnych zmian w kodzie appki. Jeśli nie, realne opcje to własny
+  licznik po stronie serwera (prawdziwy wyłom od "zero backendu") albo
+  lekki skrypt analityki trzeciej strony w stylu Plausible/Fathom/
+  GoatCounter (żądanie sieciowe przy każdym wejściu — też odejście od
+  dzisiejszej appki bez jakiegokolwiek trackingu). Do rozważenia też:
+  "unikalne IP" to tylko przybliżenie "unikalnych ludzi" (NAT zaniża,
+  rotacja IP zawyża), oraz implikacje RODO przy liczeniu po IP (strona
+  hostowana na `.pl`).
+- **`BL-25`** — **Tryb edycji przywołanego presetu.** Pomysł: wczytanie
+  presetu z Preset Bar podświetla/zaznacza go; póki jest zaznaczony,
+  dalsze zmiany zapisują się automatycznie z powrotem do tego slotu
+  presetu, zamiast tylko do ukrytego slotu sesji (dzisiejsze zachowanie
+  auto-save wyłącznie do slotu `"0"`, `lib/storage.ts`). Ponowny klik w
+  ten sam preset odznacza go, wracając do dzisiejszego zachowania (zmiany
+  trafiają tylko do slotu sesji 0). To realna zmiana ustalonej, świadomej
+  decyzji projektowej (presety są dziś jawnie zapisywane wyłącznie
+  ręcznie, bez auto-nadpisywania) — wymaga pełnej dyskusji przed
+  dopracowaniem zakresu, nie drobna poprawka.
+
+**`BL-17` zamknięte — "Interface Anatomy"**, Artifact z umownymi nazwami
+elementów UI, dziś aktywnie używany w `CLAUDE.md`:
+**<https://claude.ai/code/artifact/ea21c02e-41ed-4bb5-90ec-48ae9a61c23e>**.
+Nie podlega zasadzie synchronizacji wyżej (nie jest listą backlogu) —
+aktualizować go tylko jeśli realny layout appki zmieni się na tyle, że
+mockup przestanie być wierny.
+
+## Przyszłe operacje (`OP-#`)
+
+Osobna, celowo **nie** `BL-#` kategoria — Pocket/Surface (patrz
+placeholdery w `Step1Positioning.tsx`) to nie drobne poprawki tylko
+kamienie milowe wielkości całego etapu implementacji, każdy z własną,
+dziś nieznaną taksonomią (operacja → pattern/sub-choice → parametry).
+Numer `OP-#` jest identyfikatorem, nie kolejnością realizacji — żadna z
+dwóch nie jest dziś zaplanowana jako "następna" względem drugiej. `OP-1`
+(Outline) zaimplementowane — patrz `CLAUDE.md`, "Kluczowe decyzje
+projektowe".
+
+- **`OP-2` — Pocket.** Kieszeniowanie — wybieranie materiału wewnątrz
+  zamkniętego konturu (nie tylko po samej linii), wymaga strategii
+  wypełnienia (np. zigzag/spiral) nieobecnej dziś w silniku w ogóle.
+- **`OP-3` — Surface.** Planowanie/frezowanie powierzchni (face
+  milling) — inny paradygmat niż "otwór"/"kontur": wejściem jest
+  obszar, nie ścieżka.
+
+**Każda z `OP-#` wymaga własnej, pełnej sesji `/grill-me` przed
+napisaniem jakiegokolwiek kodu** — nieporównywalnie większy zakres
+otwartych decyzji niż `BL-#`. Z tego powodu Artifact backlogu pokazuje je
+jako osobną sekcję, nie jako kolorowe łatwe/średnie/trudne zadania —
+trudność jest dziś celowo nieoszacowana, `/grill-me` to część definiowania
+zakresu, nie coś do zgadnięcia z góry.
