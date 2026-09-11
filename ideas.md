@@ -105,6 +105,23 @@ rozjeżdża się ze stanem faktycznym.
   decyzji projektowej (presety są dziś jawnie zapisywane wyłącznie
   ręcznie, bez auto-nadpisywania) — wymaga pełnej dyskusji przed
   dopracowaniem zakresu, nie drobna poprawka.
+- **`BL-26`** — **Przytrzymanie przycisku `NumberInput` (auto-repeat).**
+  Dziś klik na strzałkę góra/dół (`src/components/wizard/NumberInput.tsx`,
+  `useNumberField.onAdjust`) to zawsze dokładnie jeden krok — świadomie
+  pominięte przy pierwszym wdrożeniu (zgłoszenie dotyczyło wyglądu
+  natywnego spinnera, nie zachowania). Przytrzymanie mogłoby powtarzać
+  krok co interwał, jak natywny spinner przeglądarki — wymaga
+  timera/interwału uruchamianego na `onMouseDown`, czyszczonego na
+  `onMouseUp`/`onMouseLeave`.
+- **`BL-27`** — **Glow (bloom) na toolpath/osiach w motywach Arcade
+  Studio.** Specy `design-arcade-restrained.md`/`design_arcade_full_neon.md`
+  przewidują `path-glow` na toolpath i osiach — świadomie pominięte przy
+  wdrożeniu obu motywów. 2D Preview to Canvas API, nie SVG (jak spec
+  sugeruje) — dałoby się przez `ctx.shadowBlur`/`shadowColor`. 3D
+  wymagałoby osobnego postprocessing passu (`UnrealBloomPass`), który
+  same specy każą najpierw zweryfikować pod kątem wydajności — wymaga
+  własnej oceny kosztu/efektu przed implementacją, nie oczywista
+  poprawka.
 
 **`BL-17` zamknięte — "Interface Anatomy"**, Artifact z umownymi nazwami
 elementów UI, dziś aktywnie używany w `CLAUDE.md`:
