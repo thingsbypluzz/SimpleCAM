@@ -36,6 +36,15 @@ const SEGMENTS_PER_TURN = 48
 // Passes accumulate Z via repeated float subtraction — matches the
 // tolerance used for the same comparison in standardHole.ts/helix.ts.
 const TAB_BAND_EPSILON = 1e-9
+// Lifts the stock cap (buildStockCapObject) a hair above its nominal
+// startZ height so it never renders exactly coplanar with the material
+// plane (fixed at world Y=0) or the grid (world Y=0.01, see the GridHelper
+// below) — both are semi-transparent flat surfaces, so an exact Y match
+// z-fights (visible as a moire/interpolation flicker), most commonly hit
+// at the default Start Z = 0. Bigger than the grid's own 0.01 offset so
+// one lift clears both possible collisions at once. Purely cosmetic —
+// 0.02mm is invisible at any real part scale.
+const STOCK_CAP_Z_LIFT = 0.02
 
 interface TabsConfig3D {
   tabHeight: number
@@ -932,7 +941,7 @@ function buildStockCapObject(
     new THREE.MeshBasicMaterial({ color: theme.hole, transparent: true, opacity: 0.3, side: THREE.DoubleSide }),
   )
   cap.rotation.x = -Math.PI / 2
-  cap.position.set(0, startZ, 0)
+  cap.position.set(0, startZ + STOCK_CAP_Z_LIFT, 0)
   return cap
 }
 
