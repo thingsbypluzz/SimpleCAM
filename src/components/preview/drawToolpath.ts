@@ -193,7 +193,7 @@ function drawOffsetVector(
 
 // "1-2-5" sequence — picks a round step (1, 2, 5, 10, 20, 50, 100 mm, ...)
 // close to the raw target so grid lines land on human-friendly values.
-function niceStep(rawStep: number): number {
+export function niceStep(rawStep: number): number {
   const exponent = Math.floor(Math.log10(rawStep))
   const fraction = rawStep / 10 ** exponent
   const niceFraction = fraction <= 1 ? 1 : fraction <= 2 ? 2 : fraction <= 5 ? 5 : 10

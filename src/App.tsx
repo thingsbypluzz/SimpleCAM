@@ -801,6 +801,8 @@ function App() {
                   themeId={appearance.theme}
                   overlayParams={overlayParams}
                   showActivePattern={!overlayEnabled}
+                  gridLabelsEnabled={appearance.grid3DLabelsEnabled}
+                  gridLabelSize={appearance.grid3DLabelSize}
                 />
               </Suspense>
             )}

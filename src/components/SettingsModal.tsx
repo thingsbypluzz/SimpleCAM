@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { getPaletteAccents, PALETTE_LIST } from '../config/palettes'
 import type { Dialect, MachineSettings } from '../types/machine'
-import type { AppearanceSettings } from '../types/appearance'
+import type { AppearanceSettings, Grid3DLabelSize } from '../types/appearance'
 import { THEME_LIST } from '../types/theme'
 import { inputClass } from './wizard/FieldRow'
 import { NumberInput } from './wizard/NumberInput'
@@ -458,6 +458,45 @@ export function SettingsModal({
                   Changes the toolpath/rapid/hole accent colors in the 2D and 3D previews — a
                   choice that complements the Theme above, independent of it. Axis colors, the
                   origin marker and the offset vector stay fixed per Theme in every palette.
+                </p>
+              </div>
+
+              <div className="flex flex-col gap-2 border-t border-border pt-4">
+                <span className="text-sm font-medium text-value">
+                  Grid Labels (3D Preview)
+                </span>
+                <label className="flex items-center gap-2 text-sm text-value">
+                  <input
+                    type="checkbox"
+                    checked={appearance.grid3DLabelsEnabled}
+                    onChange={(e) =>
+                      onSaveAppearance({ ...appearance, grid3DLabelsEnabled: e.target.checked })
+                    }
+                    className="h-4 w-4 rounded border-field-border text-accent focus:ring-accent-strong"
+                  />
+                  Show grid coordinate labels
+                </label>
+                <label className="flex flex-col gap-1">
+                  <span className="text-xs font-medium text-muted">Label size</span>
+                  <select
+                    className={`${inputClass} disabled:cursor-not-allowed disabled:opacity-50`}
+                    value={appearance.grid3DLabelSize}
+                    disabled={!appearance.grid3DLabelsEnabled}
+                    onChange={(e) =>
+                      onSaveAppearance({
+                        ...appearance,
+                        grid3DLabelSize: e.target.value as Grid3DLabelSize,
+                      })
+                    }
+                  >
+                    <option value="small">Small</option>
+                    <option value="medium">Medium</option>
+                    <option value="large">Large</option>
+                  </select>
+                </label>
+                <p className="text-sm text-muted">
+                  Coordinate numbers along the 3D grid's outer edges — always rendered at a
+                  constant screen size, regardless of zoom.
                 </p>
               </div>
             </>

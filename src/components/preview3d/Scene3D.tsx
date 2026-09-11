@@ -4,7 +4,8 @@ import { OrbitControls } from 'three/addons/controls/OrbitControls.js'
 import type { PaletteId } from '../../config/palettes'
 import type { WizardParams } from '../../types/wizard'
 import type { ThemeId } from '../../types/theme'
-import { buildToolpathScene, disposeObject3D } from './buildScene'
+import type { Grid3DLabelSize } from '../../types/appearance'
+import { buildToolpathScene, disposeObject3D, rescaleLabelForConstantScreenSize } from './buildScene'
 import { frameCamera, VIEW_PRESETS, type ViewPresetName } from './cameraPresets'
 
 interface Scene3DProps {
@@ -14,6 +15,8 @@ interface Scene3DProps {
   themeId: ThemeId
   overlayParams: WizardParams[]
   showActivePattern: boolean
+  gridLabelsEnabled: boolean
+  gridLabelSize: Grid3DLabelSize
 }
 
 const PRESET_BUTTONS: { name: ViewPresetName; label: string }[] = [
@@ -23,7 +26,16 @@ const PRESET_BUTTONS: { name: ViewPresetName; label: string }[] = [
   { name: 'side', label: 'Side' },
 ]
 
-export function Scene3D({ params, isDark, paletteId, themeId, overlayParams, showActivePattern }: Scene3DProps) {
+export function Scene3D({
+  params,
+  isDark,
+  paletteId,
+  themeId,
+  overlayParams,
+  showActivePattern,
+  gridLabelsEnabled,
+  gridLabelSize,
+}: Scene3DProps) {
   const containerRef = useRef<HTMLDivElement>(null)
   const sceneRef = useRef<THREE.Scene | null>(null)
   const cameraRef = useRef<THREE.PerspectiveCamera | null>(null)
@@ -31,6 +43,7 @@ export function Scene3D({ params, isDark, paletteId, themeId, overlayParams, sho
   const controlsRef = useRef<OrbitControls | null>(null)
   const contentGroupRef = useRef<THREE.Group | null>(null)
   const boundsRef = useRef<THREE.Box3 | null>(null)
+  const labelsRef = useRef<THREE.Sprite[]>([])
   const hasFramedRef = useRef(false)
   const prevOverlayParamsRef = useRef(overlayParams)
 
@@ -78,6 +91,19 @@ export function Scene3D({ params, isDark, paletteId, themeId, overlayParams, sho
     let frameId: number
     const animate = () => {
       controls.update()
+      // Text labels (origin, axis ends, grid ticks) are sized in world
+      // units at build time but need to read as a constant pixel size
+      // regardless of zoom — re-derive their scale from the camera's
+      // *current* distance every frame, right before the render that
+      // actually uses it. See buildScene.ts's
+      // rescaleLabelForConstantScreenSize for why this can't just be done
+      // once in buildToolpathScene() (it has no camera/viewport to read).
+      const viewportHeight = renderer.domElement.clientHeight
+      if (viewportHeight > 0) {
+        for (const label of labelsRef.current) {
+          rescaleLabelForConstantScreenSize(label, camera, viewportHeight)
+        }
+      }
       renderer.render(scene, camera)
       frameId = requestAnimationFrame(animate)
     }
@@ -139,17 +165,20 @@ export function Scene3D({ params, isDark, paletteId, themeId, overlayParams, sho
     // stayed Tailwind slate-900/white while everything else picked up the
     // new theme). Deriving it from the one shared source means a future
     // theme can't repeat that by omission.
-    const { objects, bounds, background } = buildToolpathScene(
+    const { objects, labels, bounds, background } = buildToolpathScene(
       params,
       isDark,
       paletteId,
       themeId,
       overlayParams,
       showActivePattern,
+      gridLabelsEnabled,
+      gridLabelSize,
     )
     renderer.setClearColor(background, 1)
     objects.forEach((obj) => contentGroup.add(obj))
     boundsRef.current = bounds
+    labelsRef.current = labels
 
     // Default view is the fitted front angle (camera centered on -Y,
     // elevated on +Z, looking toward +Y — see VIEW_PRESETS.front) — only
@@ -175,7 +204,7 @@ export function Scene3D({ params, isDark, paletteId, themeId, overlayParams, sho
         frameCamera(camera, controls, bounds, direction.normalize(), camera.up.clone())
       }
     }
-  }, [params, isDark, paletteId, themeId, overlayParams, showActivePattern])
+  }, [params, isDark, paletteId, themeId, overlayParams, showActivePattern, gridLabelsEnabled, gridLabelSize])
 
   const handlePreset = (name: ViewPresetName) => {
     const camera = cameraRef.current

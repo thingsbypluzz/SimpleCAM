@@ -223,28 +223,80 @@ kolejność `[1]…[5]`), zmemoizowana w `App.tsx` (bez tego trafia jako
 nowa referencja do efektu przebudowującego scenę 3D przy każdym
 renderze).
 
-### Palety kolorów podglądu 2D/3D
+### Motywy (Theme) i Palety kolorów podglądu 2D/3D
 
-Paleta zmienia tylko kolory "akcentowe" — `toolpath`/`rapid`/`hole`/
-`grid`/`background` (2D) i `toolpath`/`rapid`/`hole`/`grid`/`material`
-(3D) — nie rusza osi X/Y (czerwień/zieleń), origin (indygo) ani wektora
-offsetu (amber), bo to konwencja CNC/semantyczna. 4 palety
-(`src/config/palettes.ts`, `PaletteId`): **Default** (bazowe kolory),
-**Ocean** (cyjan/turkus), **Ember** (spalona pomarańcz — celowo inna niż
-amber offsetu), **Violet** (fiolet) — każda z wariantem light/dark,
-wybieranym tym samym Toggle co dark mode (paleta i dark/light to
-niezależne osie). `palettes.ts` jest jedynym źródłem prawdy dla kolorów
-obu podglądów (`hexToThreeColor()` konwertuje hex-string na numeryczny
-kolor Three.js). Wybór palety w `localStorage` pod kluczem
-`simplecam.appearance` (`src/lib/appearanceStorage.ts`,
-`AppearanceSettings`), osobno od `simplecam.machine` — preferencja UI,
-nie fizyczna cecha maszyny. Settings Nav item **"Appearance"** — rząd
-swatchy, klik = natychmiastowa zmiana.
+Dwie niezależne, komplementarne osie wizualne, obie sterowane z
+Settings Nav item **"Appearance"**, obie trwałe w `localStorage` pod
+kluczem `simplecam.appearance` (`src/lib/appearanceStorage.ts`,
+`AppearanceSettings`) — osobno od `simplecam.machine`, bo to
+preferencja UI, nie fizyczna cecha maszyny.
+
+**Theme** (`ThemeId`, `src/types/theme.ts`, `THEME_LIST`) reskinuje
+cały chrom appki (Header, Wizard Section, Preview Section, Settings
+Modal) przez CSS custom properties w `src/index.css`
+(`[data-theme="..."]` bloki + `.dark` warianty, `@theme inline`
+rejestruje je jako realne utility Tailwinda: `bg-bg`, `text-fg`,
+`border-field-border`, `text-accent`, ...). Cztery motywy: **Sloppy
+Indigo** (domyślny, brak atrybutu `data-theme`), **Shopfloor Amber**,
+**Arcade Studio Restrained**, **Arcade Studio Full Neon** — pełne specy
+w `design_shopfloor_amber.md`/`design-arcade-restrained.md`/
+`design_arcade_full_neon.md`. Wybór w Settings — rząd kart ze swatchami
+(light+dark dot), pierwsza kontrolka w sekcji Appearance.
+`useChromeTheme(themeId)` w `App.tsx` ustawia/usuwa atrybut
+`data-theme` na `<html>`. Dodanie nowego motywu: nowy blok
+`[data-theme="..."]` (light) + `.dark` wariant w `index.css`, wpis w
+`THEME_LIST`, wpis w `FIXED_COLORS`/`DEFAULT_ACCENTS` w `palettes.ts` —
+**żadnych zmian w komponentach**, pod warunkiem że nowy blok definiuje
+KAŻDY token, który istnieje w pozostałych blokach (patrz
+komentarz-banner nad blokami motywów w `index.css` — łatwo przeoczyć
+nowo dodany token przy kolejnym motywie).
+
+Oba warianty Arcade Studio są **dark-only** — blok light i `.dark` mają
+identyczną zawartość (przełącznik dark/light fizycznie działa, po
+prostu nie zmienia niczego wizualnie przy tych motywach), zamiast
+sprzęgać Theme z dark/light (formalnie dwie niezależne osie). Arcade
+wprowadza też dwu-akcentową semantykę: **cyjan** = struktura/nawigacja
+(ikony, aktywny Tab, aktywny blok, wolny slot presetu w Step 4 — patrz
+niżej), **róż** = dane użytkownika/wybór/commit (zaznaczona opcja w
+OptionButton/toggle, wartości liczbowe w `MiniStat`, główne przyciski)
+— przez nowe tokeny `--selected-border`/`--selected-fg`/`--stat-value`
+obok istniejących `--accent-*`; dla Sloppy Indigo/Shopfloor Amber to
+zwykłe aliasy (`var(--accent-strong)` itd.), więc wyglądają identycznie
+jak przed wprowadzeniem Arcade. Dodatkowe efekty tylko-Arcade:
+`--glow-*`/`--frame-glow`/`--preview-inset` (box-shadow, `none` dla
+pozostałych motywów, konsumowane wprost przez `shadow-[var(--glow-
+accent)]` w JSX, bez wpisu do `@theme`), `--scan` (CRT scanline, tylko
+Full Neon), `--ui-font` (Space Grotesk z Google Fonts w `index.html`,
+pozostałe motywy dziedziczą domyślny stos Tailwinda przez fallback w
+`var(--ui-font, ...)`). Wordmark "SimpleCAM" w Headerze jest
+dwukolorowy (`--wordmark-simple`/`--wordmark-cam`, + opcjonalny
+`--wordmark-*-glow` text-shadow tylko dla Arcade) zamiast wprost
+`text-fg`/`text-accent`.
+
+**Preview Color Palette** (`PaletteId`, `src/config/palettes.ts`)
+zmienia tylko kolory "akcentowe" — `toolpath`/`rapid`/`hole`/`grid` (2D
+i 3D) — nie rusza osi X/Y, origin, wektora offsetu ani **tła** podglądu
+(`background`), bo to konwencja CNC/semantyczna i, dla tła, własność
+Theme, nie Palety. 4 palety: **Default** (natywny wygląd aktywnego
+Theme — jedyna, która różni się per Theme), **Ocean**, **Ember**,
+**Violet** (theme-independent, te same wartości niezależnie od
+wybranego Theme). `getFixedColors(themeId, isDark)` (osie/origin/
+offset/tekst/**tło** — jeden zestaw per Theme, wspólny dla każdej
+Palety) i `getPaletteAccents(paletteId, isDark, themeId)`
+(grid/toolpath/rapid/hole — `Default` czyta `DEFAULT_ACCENTS[themeId]`,
+pozostałe trzy z `ALTERNATE_PALETTES`, ignorując `themeId`) — jedyne
+źródło prawdy dla kolorów obu podglądów, konsumowane bezpośrednio jako
+JS hex/numeryczne wartości przez `drawToolpath.ts`/`buildScene.ts`
+(`hexToThreeColor()` konwertuje hex-string na numeryczny kolor
+Three.js), nie przez CSS custom properties. **Tło (`background`) żyje w
+`FixedColors`, nie w `PaletteAccents`** — świadoma decyzja: przełączanie
+Preview Color Palette nigdy nie zmienia tła 2D/3D Preview, tylko Theme
+robi to.
 
 Kolor wypełnienia bryły materiału/otworu w podglądzie (`opacity`, oba
-podglądy, oba motywy): **0.3** — jednolita wartość, dobrana wzrokowo w
-zewnętrznym "Palette Bench" (poza repo, jednorazowy design tool, nie
-utrzymywany w projekcie).
+podglądy, wszystkie motywy): **0.3** — jednolita wartość, dobrana
+wzrokowo w zewnętrznym "Palette Bench" (poza repo, jednorazowy design
+tool, nie utrzymywany w projekcie).
 
 ### Otwarta/zamknięta geometria bryły Outline w 3D (+ "stock" cap)
 
@@ -276,6 +328,56 @@ promieniu). Kolor podkładki: `theme.hole` przy opacity 0.3 (ten sam co
 ściany). Podkładka i ściany ignorują tabs (mostki), tak jak bryły
 otworu/kształtu już wcześniej. Podkładka pomijana w trybie overlay —
 `showActivePattern` już to rozstrzyga.
+
+Podkładka renderuje się `STOCK_CAP_Z_LIFT` (0.02mm) powyżej swojego
+nominalnego `startZ`, nie dokładnie na nim — przy `Start Z = 0`
+(częsty, de facto domyślny przypadek) podkładka i płaszczyzna materiału
+(zawsze `Y=0`) lądowałyby dokładnie w tej samej płaszczyźnie, co
+z-fightuje (widoczne jako migotanie/mora). Epsilon większy niż odstęp
+siatki od płaszczyzny (0.01) też, żeby nie kolidować z siatką przy
+przypadkowym `Start Z = 0.01`.
+
+### Etykiety siatki w 3D Preview
+
+Siatka 3D (`GridHelper`, `buildScene.ts`) jest wyrównana do "ładnych"
+wartości CNC (ciąg 1-2-5-10-20-50..., `niceStep()` — eksportowana z
+`preview/drawToolpath.ts`, współdzielona z 2D) zamiast starych stałych
+10 podziałów wyśrodkowanych na bounding-boxie wzorca: środek siatki
+jest domykany do najbliższej wielokrotności kroku (`gridCenterX`/
+`gridCenterZ`), liczba komórek dobrana tak, by pokryć dzisiejszy zasięg
+(`gridHalfCells`/`gridSize`/`gridDivisions`) — linie siatki są więc
+realnymi współrzędnymi, nie tylko dekoracją. Płaszczyzna materiału
+(`plane`) i stock cap dzielą ten sam, domknięty do kroku środek/rozmiar.
+
+Etykiety liczbowe (osobne sprite'y tekstowe, `createTextSprite()`) są
+na zewnątrz płyty, na wszystkich **czterech brzegach** kwadratu siatki
+(nie jeden bok na oś, jak w 2D) — kamera 3D swobodnie orbituje, więc
+któraś krawędź zawsze jest zwrócona do niej. `0` pokazuje się jak każda
+inna wartość — brzeg to kompletna, niezależna skala, nie zakłada, że
+etykieta originu `"0,0"` akurat jest w kadrze. Tekst w canvasie jest
+centrowany (`ctx.textAlign = 'center'`, na `canvas.width/2,
+canvas.height/2`) — stare lewe wyrównanie było niezauważalne dla
+pojedynczych znaków ("X"/"Y"), ale wielocyfrowe liczby widocznie
+"uciekały" w lewo od swojej linii siatki.
+
+**Stały rozmiar ekranowy niezależny od zoomu.** Wszystkie sprite'y
+tekstowe w scenie (origin `"0,0"`, końce osi `"X"`/`"Y"`, etykiety
+siatki) mają `sprite.userData.pixelHeight` (piksele CSS) i są
+przeskalowywane **co klatkę** w pętli `animate()` (`Scene3D.tsx`) przez
+`rescaleLabelForConstantScreenSize()` (`buildScene.ts`) — standardowa
+formuła billboardu dla kamery perspektywicznej (`2 * distance *
+tan(fov/2) / viewportHeightPx` = jednostki świata na piksel). Bez tego
+etykiety w jednostkach świata kurczyłyby się do nieczytelnych kropek
+przy oddaleniu kamery i puchły przy mocnym przybliżeniu.
+
+Rozmiar (`GRID_LABEL_SIZE_PX`, Small/Medium/Large — nazwane rozmiary,
+nie dowolna wartość w pikselach, bo sensowny zakres jest wąski) jest
+wspólny dla originu/`"X"`/`"Y"`/etykiet siatki — jedno ustawienie na
+wszystko, Settings → Appearance → "Grid Labels"
+(`AppearanceSettings.grid3DLabelSize`, `Grid3DLabelSize` w
+`types/appearance.ts`). Checkbox "Show grid coordinate labels"
+(`grid3DLabelsEnabled`) wyłącza wyłącznie budowanie sprite'ów siatki —
+origin/osie zostają zawsze widoczne niezależnie od niego.
 
 ### Zoom/pan na 2D Preview
 
@@ -315,6 +417,10 @@ Modal używają osobnego wzorca (bufor tekstu + commit wyłącznie
 `onBlur`, bo to zapis do `localStorage`, nie live Preview) — ich
 `onChange` zapisuje surowy string wprost, bez przechodzenia przez
 `Number()` przed wyświetleniem.
+
+Wszystkie te pola renderują się przez `NumberInput`
+(`src/components/wizard/NumberInput.tsx`), nie goły `<input
+type="number">` — patrz opis w Struktura katalogów niżej.
 
 ### Tabs (mostki) dla operacji Hole(s) i Outline
 
@@ -454,20 +560,42 @@ src/
                               globalny obiekt, nie WizardParams). Też
                               `Dialect`, `headerText`/`footerText`,
                               `defaultTabHeight`/`Width`/`Count`.
-  types/appearance.ts       — AppearanceSettings + DEFAULT_APPEARANCE_SETTINGS
-                              (paleta kolorów podglądu) — osobny od
-                              `machine.ts`: preferencja UI, nie fizyczna
-                              cecha maszyny.
+  types/theme.ts             — ThemeId + THEME_LIST (metadane: label,
+                              swatchLight/swatchDark dla Settings) — patrz
+                              "Motywy (Theme) i Palety..." niżej. Osobny od
+                              `config/palettes.ts`: Theme reskinuje chrom
+                              appki (przez `index.css`), Palette reskinuje
+                              tylko akcenty 2D/3D Preview.
+  types/appearance.ts       — AppearanceSettings + DEFAULT_APPEARANCE_SETTINGS:
+                              `theme`/`palette` (dwie niezależne osie —
+                              patrz niżej) oraz `grid3DLabelsEnabled`/
+                              `grid3DLabelSize` (`Grid3DLabelSize`, tylko
+                              3D Preview) — osobny od `machine.ts`:
+                              preferencje UI, nie fizyczna cecha maszyny.
+  index.css                  — `@import "tailwindcss"` + definicje motywów
+                              (`:root`/`.dark`/`[data-theme="..."]` bloki
+                              CSS custom properties, `@theme inline`
+                              rejestruje je jako realne utility Tailwinda)
+                              — patrz "Motywy (Theme) i Palety..." niżej.
+                              NIE pokrywa kolorów 2D/3D Preview — te żyją
+                              w `config/palettes.ts` i trafiają do
+                              `drawToolpath.ts`/`buildScene.ts` jako gołe
+                              wartości JS, nie przez te custom properties.
   config/palettes.ts        — jedyne źródło prawdy dla kolorów podglądu 2D
                               (`preview/drawToolpath.ts`) i 3D
-                              (`preview3d/buildScene.ts`).
-                              `FIXED_COLORS_LIGHT`/`FIXED_COLORS_DARK` —
-                              osie X/Y, origin, offset, 2D-owe
-                              text/holeFill — te same we wszystkich
-                              paletach (konwencja CNC/semantyczna, nie
-                              stylistyka). `PALETTES`/`PALETTE_LIST` — 4
-                              palety akcentów (toolpath/rapid/hole/grid/
-                              background), każda z wariantem light/dark.
+                              (`preview3d/buildScene.ts`), sparametryzowane
+                              po `ThemeId` I `PaletteId` naraz — patrz
+                              "Motywy (Theme) i Palety..." niżej.
+                              `getFixedColors(themeId, isDark)` — osie
+                              X/Y, origin, offset, tekst, holeFill ORAZ
+                              **tło** (`background`) — jeden zestaw per
+                              Theme, ten sam dla każdej Palety.
+                              `getPaletteAccents(paletteId, isDark,
+                              themeId)` — grid/toolpath/rapid/hole;
+                              `Default` czyta `DEFAULT_ACCENTS[themeId]`
+                              (jedyna paleta, która różni się per Theme),
+                              Ocean/Ember/Violet z `ALTERNATE_PALETTES`
+                              (theme-independent, ignorują `themeId`).
                               `hexToThreeColor()` konwertuje hex-string
                               na numeryczny kolor Three.js — 2D i 3D
                               dzielą też literały kolorów, nie tylko
@@ -490,12 +618,20 @@ src/
                               `outlineShapeSlug()`.
   config/toolDiameterOptions.ts — `TOOL_DIAMETER_OPTIONS`, współdzielone
                               przez Step 2 Hole(s) i Step 2 Outline.
-  components/SettingsModal.tsx — Settings Modal (Machine Settings). Cztery
-                              Settings Nav Items: **Machine** (X/Y/Z
-                              travel, dialekt, Start/End G-Code),
-                              **Appearance** (paleta kolorów podglądu),
+  components/SettingsModal.tsx — Settings Modal. Cztery Settings Nav
+                              Items: **Machine** (X/Y/Z travel, dialekt,
+                              Start/End G-Code), **Appearance** (Theme,
+                              Preview Color Palette, Grid Labels 3D —
+                              patrz "Motywy (Theme) i Palety..." niżej),
                               **Tabs** (Default Tab Sizes), **About**
-                              (nazwa/wersja appki).
+                              (nazwa/wersja appki). Pola liczbowe Machine/
+                              Tabs idą przez `NumberInput` jak w wizardzie
+                              (patrz "Pola liczbowe w wizardzie" niżej),
+                              ale zachowują własny wzorzec commit
+                              (`commitField()`/`handleAdjust()` — bufor
+                              tekstu + `onBlur`, klik strzałki commituje
+                              od razu zamiast czekać na blur, który mógłby
+                              nigdy nie nadejść).
   components/wizard/        — komponenty poszczególnych kroków wizarda.
                               `Step1Positioning.tsx` = wyłącznie operacja +
                               pattern picker, nic liczbowego — pionowy
@@ -512,6 +648,24 @@ src/
                               — oddziela wyświetlany tekst inputa od
                               zatwierdzonej wartości, żeby pole dało się
                               realnie wyczyścić bez gubienia live Preview.
+                              Zwraca też `onAdjust(delta)` (krok liczony
+                              od ostatniej potwierdzonej wartości, nie od
+                              transient tekstu — dla `NumberInput`'owych
+                              przycisków góra/dół) oraz eksportuje
+                              `roundToStepPrecision()` (zaokrągla do
+                              1/100mm — bez tego powtarzane dodawanie
+                              kroku dziesiętnego trafia na szum float,
+                              np. `0.30000000000000004`), reużywaną przez
+                              `SettingsModal.tsx`.
+  components/wizard/NumberInput.tsx — zamiennik gołego `<input
+                              type="number">`: chowa natywny, niestylowalny
+                              spinner przeglądarki i renderuje własne dwa
+                              małe przyciski góra/dół **obok siebie** (nie
+                              jeden nad drugim) w prawym brzegu pola, w
+                              pełni na tokenach motywu. Używany wszędzie —
+                              w wizardzie (przez `{...xField}` z
+                              `useNumberField()`) i w `SettingsModal.tsx`
+                              (przez osobny `onAdjust`, patrz wyżej).
   components/wizard/FieldRow.tsx — `label`/pole/`hint` per wiersz
                               formularza (`Entry Field` + `Hint Button`),
                               `inputClass` (współdzielone stylowanie
@@ -551,6 +705,11 @@ src/
                                `lib/positioning.ts`. `drawGappedCircle()`/
                                `drawGappedRectangle()` — przerywana linia
                                na łuku/odcinku mostka, gdy tabs włączone.
+                               `niceStep()` (ciąg 1-2-5-10-20-50... dla
+                               kroku siatki) eksportowana i reużywana
+                               przez `preview3d/buildScene.ts`, żeby
+                               siatki 2D i 3D lądowały na tych samych
+                               "ładnych" wartościach CNC.
   components/preview3d/     — podgląd 3D, doładowywany leniwie.
     Scene3D.tsx                — React wrapper: scena/kamera/renderer/
                                OrbitControls, ResizeObserver +
@@ -584,6 +743,11 @@ src/
                                wywołania `frameCamera()` i ląduje na
                                `(0,0,0)` z zerowym promieniem
                                orbitowania (OrbitControls martwe).
+                               `animate()` woła też co klatkę
+                               `rescaleLabelForConstantScreenSize()` na
+                               każdym sprite'cie etykiety (origin/osie/
+                               siatka) — patrz "Etykiety siatki w 3D
+                               Preview" wyżej.
     cameraPresets.ts             — `VIEW_PRESETS` (kierunek + up-vector dla
                                top/isometric/front/side) + `frameCamera()`
                                — pozycjonuje kamerę wzdłuż kierunku, w
@@ -634,7 +798,11 @@ src/
                                ręcznie — przy każdej zmianie mapowania
                                grepować `buildScene.ts` pod kątem
                                `.position.set(` używających `p.x`/`p.y`
-                               bezpośrednio.
+                               bezpośrednio. Patrz też "Etykiety siatki w
+                               3D Preview" wyżej — siatka/płaszczyzna
+                               wyrównane do `niceStep()`, etykiety jako
+                               sprite'y ze stałym rozmiarem ekranowym
+                               (`rescaleLabelForConstantScreenSize()`).
   lib/                       — czysta logika generowania G-code.
     format.ts                 — formatowanie liczb w G-code (4 miejsca po
                                  przecinku, bez zbędnych zer, bez "-0").

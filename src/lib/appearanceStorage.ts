@@ -1,5 +1,5 @@
 import { PALETTE_LIST, type PaletteId } from '../config/palettes'
-import { DEFAULT_APPEARANCE_SETTINGS, type AppearanceSettings } from '../types/appearance'
+import { DEFAULT_APPEARANCE_SETTINGS, type AppearanceSettings, type Grid3DLabelSize } from '../types/appearance'
 import { THEME_LIST, type ThemeId } from '../types/theme'
 
 // Separate localStorage key from simplecam.machine — see types/appearance.ts
@@ -14,6 +14,10 @@ function isThemeId(value: unknown): value is ThemeId {
   return typeof value === 'string' && THEME_LIST.some((t) => t.id === value)
 }
 
+function isGrid3DLabelSize(value: unknown): value is Grid3DLabelSize {
+  return value === 'small' || value === 'medium' || value === 'large'
+}
+
 export function loadAppearanceSettings(): AppearanceSettings {
   try {
     const raw = localStorage.getItem(APPEARANCE_STORAGE_KEY)
@@ -26,6 +30,13 @@ export function loadAppearanceSettings(): AppearanceSettings {
     return {
       theme: isThemeId(parsed.theme) ? parsed.theme : DEFAULT_APPEARANCE_SETTINGS.theme,
       palette: isPaletteId(parsed.palette) ? parsed.palette : DEFAULT_APPEARANCE_SETTINGS.palette,
+      grid3DLabelsEnabled:
+        typeof parsed.grid3DLabelsEnabled === 'boolean'
+          ? parsed.grid3DLabelsEnabled
+          : DEFAULT_APPEARANCE_SETTINGS.grid3DLabelsEnabled,
+      grid3DLabelSize: isGrid3DLabelSize(parsed.grid3DLabelSize)
+        ? parsed.grid3DLabelSize
+        : DEFAULT_APPEARANCE_SETTINGS.grid3DLabelSize,
     }
   } catch (err) {
     console.warn('SimpleCAM: could not read appearance settings from localStorage', err)

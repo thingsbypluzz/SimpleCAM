@@ -12,8 +12,10 @@ import {
 } from '../../lib/outlineRectangleGeometry'
 import { sideRangesFor, type SideTabRange } from '../../lib/outlineRectangleTabs'
 import { outlineDirectionForOffsetMode } from '../../lib/outlineRectangle'
+import { niceStep } from '../preview/drawToolpath'
 import type { Point2D, WizardParams } from '../../types/wizard'
 import type { ThemeId } from '../../types/theme'
+import type { Grid3DLabelSize } from '../../types/appearance'
 
 // CNC (x, y, z) -> Three.js (x, z, -y): CNC Z (up/down into material) becomes
 // the Three.js Y (vertical) axis, so an orbit camera gives an intuitive
@@ -45,6 +47,28 @@ const TAB_BAND_EPSILON = 1e-9
 // one lift clears both possible collisions at once. Purely cosmetic —
 // 0.02mm is invisible at any real part scale.
 const STOCK_CAP_Z_LIFT = 0.02
+
+// Desired on-screen size (CSS px) of EVERY text sprite in the scene — the
+// origin "0,0", the axis-end "X"/"Y", and the grid coordinate ticks all
+// share this one setting (Settings > Appearance > Grid Labels), held
+// constant regardless of camera zoom/distance — see
+// rescaleLabelForConstantScreenSize below. Kept as pixel sizes, not
+// world-unit sizes, specifically so a heavily zoomed-out or zoomed-in view
+// never turns these into unreadable dots or oversized blobs (the bug this
+// fixes). Named sizes only, not a raw pixel input — see the
+// Grid3DLabelSize comment in types/appearance.ts for why. 'medium' is the
+// shipped default, deliberately higher than this feature's original flat
+// 13px default, which user testing found too small even once the
+// constant-screen-size fix made it consistently legible. The "Show grid
+// coordinate labels" checkbox this same Settings block offers only
+// controls whether the grid ticks are built at all (see gridLabelsEnabled
+// below) — origin/"X"/"Y" always render regardless of that checkbox, they
+// just resize along with it.
+const GRID_LABEL_SIZE_PX: Record<Grid3DLabelSize, number> = {
+  small: 15,
+  medium: 19,
+  large: 25,
+}
 
 interface TabsConfig3D {
   tabHeight: number
@@ -367,6 +391,11 @@ interface Theme {
   axisX: number
   axisY: number
   offset: number
+  // Muted, neutral color for the grid's coordinate-number labels — same
+  // role as drawToolpath.ts's theme.text, deliberately NOT an axis color
+  // so the ticks read as secondary/reference, not competing with the
+  // axis lines or the origin label.
+  text: number
 }
 
 // materialOpacity isn't a color and stays fixed per light/dark mode
@@ -394,6 +423,7 @@ function buildTheme(paletteId: PaletteId, isDark: boolean, themeId: ThemeId): Th
     axisX: hexToThreeColor(fixed.axisX),
     axisY: hexToThreeColor(fixed.axisY),
     offset: hexToThreeColor(fixed.offset),
+    text: hexToThreeColor(fixed.text),
   }
 }
 
@@ -408,13 +438,54 @@ function createTextSprite(text: string, color: number, size: number): THREE.Spri
   ctx.font = 'bold 28px ui-monospace, monospace'
   ctx.fillStyle = `#${color.toString(16).padStart(6, '0')}`
   ctx.textBaseline = 'middle'
-  ctx.fillText(text, 4, 34)
+  // Centered, not left-aligned at a fixed x — a fixed-x draw left single
+  // characters ("X"/"Y") close enough to the canvas's true center that it
+  // went unnoticed, but multi-digit grid tick numbers ("-30", "50") sat
+  // visibly left of the sprite's actual anchor point. That produced two
+  // reported symptoms from the same cause: X-axis tick labels drifting
+  // left of their grid line, and right-edge Y-axis ticks (already
+  // anchored further right, past the grid boundary) appearing to creep
+  // back toward the plane while left-edge ones drifted the other way.
+  ctx.textAlign = 'center'
+  ctx.fillText(text, canvas.width / 2, canvas.height / 2)
 
   const texture = new THREE.CanvasTexture(canvas)
   const material = new THREE.SpriteMaterial({ map: texture, depthTest: false })
   const sprite = new THREE.Sprite(material)
   sprite.scale.set(size, size / 2, 1)
   return sprite
+}
+
+// Rescales a text sprite so it occupies a *constant number of screen
+// pixels* regardless of camera distance/zoom, instead of the fixed
+// world-unit size createTextSprite() sets at construction time (which
+// looks fine at whatever zoom the scene happened to be built at, then
+// shrinks to an unreadable dot when zoomed out, or balloons when zoomed
+// way in — the bug this fixes). Call every frame, after the camera may
+// have moved (Scene3D.tsx's animate() loop) — cheap, no allocation.
+// `sprite.userData.pixelHeight` is set once, at creation, by whichever
+// code built the label (see GRID_LABEL_SIZE_PX above); this function
+// doesn't need to know what *kind* of label it's rescaling.
+//
+// Standard perspective-camera billboard-scaling formula: the world-space
+// height spanned by the full viewport at a given distance is
+// `2 * distance * tan(verticalFov / 2)`; dividing by the viewport's pixel
+// height gives "world units per pixel" at that distance, which converts
+// the desired pixel height directly into the world-space scale Three.js
+// sprites use. Depends only on vertical FOV, not aspect ratio, so it's
+// unaffected by window/container resizing beyond re-reading the current
+// pixel height each call.
+export function rescaleLabelForConstantScreenSize(
+  sprite: THREE.Sprite,
+  camera: THREE.PerspectiveCamera,
+  viewportHeightPx: number,
+): void {
+  const pixelHeight = (sprite.userData.pixelHeight as number | undefined) ?? GRID_LABEL_SIZE_PX.medium
+  const distance = camera.position.distanceTo(sprite.position)
+  const fovRad = (camera.fov * Math.PI) / 180
+  const worldPerPixel = (2 * distance * Math.tan(fovRad / 2)) / viewportHeightPx
+  const worldHeight = pixelHeight * worldPerPixel
+  sprite.scale.set(worldHeight * 2, worldHeight, 1)
 }
 
 // Cone arrowhead pointing along `direction`, centered so its tip lands
@@ -434,6 +505,12 @@ function createArrowhead(color: number, size: number, tip: THREE.Vector3, direct
 export interface BuiltScene {
   objects: THREE.Object3D[]
   bounds: THREE.Box3
+  // Every text sprite in the scene (origin "0,0", axis-end "X"/"Y", grid
+  // coordinate ticks) — a subset of `objects`, handed back separately so
+  // Scene3D.tsx's per-frame animate() loop can rescale them for constant
+  // screen size (see rescaleLabelForConstantScreenSize) without having to
+  // search the whole object graph for sprites every frame.
+  labels: THREE.Sprite[]
   // The WebGL clear color the caller should apply (renderer.setClearColor)
   // — same value as `theme.material`, sourced from the active Theme's fixed
   // `background` color (config/palettes.ts) — the same one the 2D preview
@@ -952,6 +1029,8 @@ export function buildToolpathScene(
   themeId: ThemeId,
   overlayParams: WizardParams[] = [],
   showActivePattern = true,
+  gridLabelsEnabled = true,
+  gridLabelSize: Grid3DLabelSize = 'medium',
 ): BuiltScene {
   const theme = buildTheme(paletteId, isDark, themeId)
 
@@ -967,6 +1046,7 @@ export function buildToolpathScene(
   ]
 
   const objects: THREE.Object3D[] = []
+  const labels: THREE.Sprite[] = []
   const bounds = new THREE.Box3()
   bounds.expandByPoint(toThree(0, 0, 0))
 
@@ -979,10 +1059,29 @@ export function buildToolpathScene(
   const span = Math.max(size.x, size.z, 10)
   const padding = span * 0.25
   const planeSize = span + padding * 2
+  const center = new THREE.Vector3()
+  bounds.getCenter(center)
+
+  // "Nice" grid step (1-2-5-10-20-50... sequence), same helper and same
+  // "aim for ~8 divisions across" target as the 2D preview's grid
+  // (drawToolpath.ts) — planeSize/2 is the 3D equivalent of 2D's
+  // half-visible-width. Snapping the grid/plane's center to a multiple of
+  // that step (instead of the raw bounding-box center) means every grid
+  // line lands on a real, nameable CNC coordinate (0, 5, 10, ...) instead
+  // of an arbitrary offset — a prerequisite for the coordinate labels
+  // added below, and a byproduct is the grid stops being purely
+  // decorative. The snap shifts the center by at most half a step,
+  // imperceptible against the plane's own padding margin.
+  const gridStep = niceStep(planeSize / 8)
+  const gridCenterX = Math.round(center.x / gridStep) * gridStep
+  const gridCenterZ = Math.round(center.z / gridStep) * gridStep
+  const gridHalfCells = Math.ceil(planeSize / 2 / gridStep)
+  const gridSize = gridHalfCells * 2 * gridStep
+  const gridDivisions = gridHalfCells * 2
 
   // Material surface (CNC Z = 0)
   const plane = new THREE.Mesh(
-    new THREE.PlaneGeometry(planeSize, planeSize),
+    new THREE.PlaneGeometry(gridSize, gridSize),
     new THREE.MeshBasicMaterial({
       color: theme.material,
       transparent: true,
@@ -991,13 +1090,11 @@ export function buildToolpathScene(
     }),
   )
   plane.rotation.x = -Math.PI / 2
-  const center = new THREE.Vector3()
-  bounds.getCenter(center)
-  plane.position.set(center.x, 0, center.z)
+  plane.position.set(gridCenterX, 0, gridCenterZ)
   objects.push(plane)
 
-  const grid = new THREE.GridHelper(planeSize, 10, theme.grid, theme.grid)
-  grid.position.set(center.x, 0.01, center.z)
+  const grid = new THREE.GridHelper(gridSize, gridDivisions, theme.grid, theme.grid)
+  grid.position.set(gridCenterX, 0.01, gridCenterZ)
   ;(grid.material as THREE.Material).transparent = true
   ;(grid.material as THREE.Material).opacity = 0.4
   objects.push(grid)
@@ -1012,11 +1109,15 @@ export function buildToolpathScene(
   if (showActivePattern) {
     // Inverse of toThree's CNC->world Z mapping (world.z = -CNC.y), so the
     // cap's outer boundary can be built directly in CNC (x, y) coordinates,
-    // matching the grid/plane's own center.
-    const centerCNC: Point2D = { x: center.x, y: -center.z }
-    const cap = buildStockCapObject(allPatterns[allPatterns.length - 1], theme, planeSize, centerCNC)
+    // matching the grid/plane's own (now step-snapped) center and size.
+    const centerCNC: Point2D = { x: gridCenterX, y: -gridCenterZ }
+    const cap = buildStockCapObject(allPatterns[allPatterns.length - 1], theme, gridSize, centerCNC)
     if (cap) objects.push(cap)
   }
+
+  // Shared by origin/"X"/"Y" and, further below, every grid tick — one
+  // Settings control (Small/Medium/Large) sizes all of them alike.
+  const labelPixelHeight = GRID_LABEL_SIZE_PX[gridLabelSize]
 
   // Origin marker + label
   const origin = new THREE.Mesh(
@@ -1027,7 +1128,9 @@ export function buildToolpathScene(
 
   const originLabel = createTextSprite('0,0', theme.origin, span * 0.08)
   originLabel.position.set(span * 0.02, span * 0.03, -span * 0.02)
+  originLabel.userData.pixelHeight = labelPixelHeight
   objects.push(originLabel)
+  labels.push(originLabel)
 
   // X/Y axes through the machine origin (not the geometry center — origin
   // is the fixed physical reference point, independent of where the holes
@@ -1046,7 +1149,9 @@ export function buildToolpathScene(
   )
   const xLabel = createTextSprite('X', theme.axisX, span * 0.09)
   xLabel.position.copy(toThree(axisLength + arrowSize * 1.5, 0, 0))
+  xLabel.userData.pixelHeight = labelPixelHeight
   objects.push(xLabel)
+  labels.push(xLabel)
 
   const yAxisGeometry = new THREE.BufferGeometry().setFromPoints([
     toThree(0, -axisLength, 0),
@@ -1058,13 +1163,80 @@ export function buildToolpathScene(
   )
   const yLabel = createTextSprite('Y', theme.axisY, span * 0.09)
   yLabel.position.copy(toThree(0, axisLength + arrowSize * 1.5, 0))
+  yLabel.userData.pixelHeight = labelPixelHeight
   objects.push(yLabel)
+  labels.push(yLabel)
+
+  // Grid coordinate-number labels, one ruler-style border per axis run
+  // around all four edges of the grid square — mirrors drawToolpath.ts's
+  // 2D grid labels (same niceStep() sequence), but placed just outside the
+  // plane/grid footprint rather than on the axis lines themselves.
+  // Duplicated on both opposite edges per axis (not just one side, like
+  // 2D's bottom/left) because the 3D camera orbits freely — whichever edge
+  // currently faces the camera should carry readable numbers. In
+  // theme.text (a muted, non-axis color) so they read as secondary
+  // reference numbers, though now the same configurable size as origin/
+  // "X"/"Y" (labelPixelHeight above). Ranges come from the step-snapped
+  // grid built above, so every label centers on a real grid line —
+  // including the tick at zero: this border is a complete ruler in its
+  // own right, not assumed to be covered by the origin's separate "0,0"
+  // label (which sits inside the plane, not on this border, and may not
+  // even be in view for a pattern offset far from the origin).
+  // User-configurable via Settings > Appearance > Grid Labels
+  // (gridLabelsEnabled) — skipped entirely, not just hidden, when
+  // disabled; origin/"X"/"Y" above are unaffected by that checkbox.
+  if (gridLabelsEnabled) {
+    const tickLabelSize = span * 0.045
+    const gridHalfExtent = gridHalfCells * gridStep
+    const edgeMargin = span * 0.06
+    const tickLiftY = span * 0.02
+
+    // X ticks: the coordinate along the line (x) is unchanged; only the
+    // cross-axis position (world Z) moves, to just outside the grid's near
+    // and far edges.
+    const minTickX = gridCenterX - gridHalfExtent
+    const maxTickX = gridCenterX + gridHalfExtent
+    const tickStartX = Math.ceil(minTickX / gridStep) * gridStep
+    for (let x = tickStartX; x <= maxTickX; x += gridStep) {
+      const label = String(Math.round(x))
+      for (const z of [
+        gridCenterZ - gridHalfExtent - edgeMargin,
+        gridCenterZ + gridHalfExtent + edgeMargin,
+      ]) {
+        const tick = createTextSprite(label, theme.text, tickLabelSize)
+        tick.position.set(x, tickLiftY, z)
+        tick.userData.pixelHeight = labelPixelHeight
+        objects.push(tick)
+        labels.push(tick)
+      }
+    }
+
+    // CNC-Y ticks run along world -Z (toThree(0, y, 0) → (0, 0, -y)) — see
+    // the mapping note on toThree() above. Cross-axis position (world X)
+    // moves to just outside the grid's left and right edges.
+    const minTickY = -gridCenterZ - gridHalfExtent
+    const maxTickY = -gridCenterZ + gridHalfExtent
+    const tickStartY = Math.ceil(minTickY / gridStep) * gridStep
+    for (let y = tickStartY; y <= maxTickY; y += gridStep) {
+      const label = String(Math.round(y))
+      for (const x of [
+        gridCenterX - gridHalfExtent - edgeMargin,
+        gridCenterX + gridHalfExtent + edgeMargin,
+      ]) {
+        const tick = createTextSprite(label, theme.text, tickLabelSize)
+        tick.position.set(x, tickLiftY, -y)
+        tick.userData.pixelHeight = labelPixelHeight
+        objects.push(tick)
+        labels.push(tick)
+      }
+    }
+  }
 
   for (const pattern of allPatterns) {
     objects.push(...buildPatternObjects(pattern, theme, span, arrowSize))
   }
 
-  return { objects, bounds, background: theme.material }
+  return { objects, labels, bounds, background: theme.material }
 }
 
 export function disposeObject3D(obj: THREE.Object3D) {
