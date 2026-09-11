@@ -14,6 +14,7 @@ import { TOOL_DIAMETER_OPTIONS } from '../../config/toolDiameterOptions'
 import { FieldRow, inputClass } from './FieldRow'
 import { HintPopover } from './HintPopover'
 import { MethodPicker } from './MethodPicker'
+import { NumberInput } from './NumberInput'
 import { useNumberField } from './useNumberField'
 
 interface Step2GeometryHolesProps {
@@ -99,12 +100,12 @@ export function Step2GeometryHoles({ params, onChange, machine }: Step2GeometryH
         <div className="flex gap-4">
           <div className="min-w-0 flex-1">
             <FieldRow label="Hole Diameter [mm]">
-              <input type="number" step="0.1" className={inputClass} {...holeDiameterField} />
+              <NumberInput type="number" step="0.1" className={inputClass} {...holeDiameterField} />
             </FieldRow>
           </div>
           <div className="min-w-0 flex-1">
             <FieldRow label="Total Depth [mm]">
-              <input
+              <NumberInput
                 type="number"
                 step="0.1"
                 min="0"
@@ -142,7 +143,7 @@ export function Step2GeometryHoles({ params, onChange, machine }: Step2GeometryH
           <div className="flex gap-4">
             <div className="min-w-0 flex-1">
               <FieldRow label="Width (X) [mm]" hint="Tip: set to 0 for 2 holes spaced by Height">
-                <input
+                <NumberInput
                   type="number"
                   step="0.1"
                   min="0"
@@ -154,7 +155,7 @@ export function Step2GeometryHoles({ params, onChange, machine }: Step2GeometryH
             </div>
             <div className="min-w-0 flex-1">
               <FieldRow label="Height (Y) [mm]" hint="Tip: set to 0 for 2 holes spaced by Width">
-                <input
+                <NumberInput
                   type="number"
                   step="0.1"
                   min="0"
@@ -173,7 +174,7 @@ export function Step2GeometryHoles({ params, onChange, machine }: Step2GeometryH
           <div className="flex gap-4">
             <div className="min-w-0 flex-1">
               <FieldRow label="Hole Count">
-                <input
+                <NumberInput
                   type="number"
                   step="1"
                   min="0"
@@ -185,7 +186,7 @@ export function Step2GeometryHoles({ params, onChange, machine }: Step2GeometryH
             </div>
             <div className="min-w-0 flex-1">
               <FieldRow label="Diameter [mm]">
-                <input
+                <NumberInput
                   type="number"
                   step="0.1"
                   min="0"
@@ -197,7 +198,7 @@ export function Step2GeometryHoles({ params, onChange, machine }: Step2GeometryH
             </div>
             <div className="min-w-0 flex-1">
               <FieldRow label="Start Angle [deg]">
-                <input type="number" step="1" className={inputClass} {...circleStartAngleField} />
+                <NumberInput type="number" step="1" className={inputClass} {...circleStartAngleField} />
               </FieldRow>
             </div>
           </div>
@@ -256,17 +257,17 @@ export function Step2GeometryHoles({ params, onChange, machine }: Step2GeometryH
             <div className="flex gap-4">
               <div className="min-w-0 flex-1">
                 <FieldRow label="Height [mm]">
-                  <input type="number" step="0.1" min="0" className={inputClass} {...tabHeightField} />
+                  <NumberInput type="number" step="0.1" min="0" className={inputClass} {...tabHeightField} />
                 </FieldRow>
               </div>
               <div className="min-w-0 flex-1">
                 <FieldRow label="Width [mm]">
-                  <input type="number" step="0.1" min="0" className={inputClass} {...tabWidthField} />
+                  <NumberInput type="number" step="0.1" min="0" className={inputClass} {...tabWidthField} />
                 </FieldRow>
               </div>
               <div className="min-w-0 flex-1">
                 <FieldRow label="Tab Count">
-                  <input
+                  <NumberInput
                     type="number"
                     step="1"
                     min="1"
@@ -301,7 +302,7 @@ export function Step2GeometryHoles({ params, onChange, machine }: Step2GeometryH
         <div className="flex gap-4">
           <div className="min-w-0 flex-1">
             <FieldRow label="Offset X [mm]">
-              <input
+              <NumberInput
                 type="number"
                 step="0.1"
                 min={-machine.travelX}
@@ -313,7 +314,7 @@ export function Step2GeometryHoles({ params, onChange, machine }: Step2GeometryH
           </div>
           <div className="min-w-0 flex-1">
             <FieldRow label="Offset Y [mm]">
-              <input
+              <NumberInput
                 type="number"
                 step="0.1"
                 min={-machine.travelY}

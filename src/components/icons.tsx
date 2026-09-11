@@ -186,6 +186,25 @@ export function CustomPointsIcon({ className }: IconProps) {
   )
 }
 
+// NumberInput's custom stepper buttons — replaces the browser's native
+// number-input spinner (see NumberInput.tsx), so these need to read at the
+// small sizes that spinner used to render at.
+export function ChevronUpIcon({ className }: IconProps) {
+  return (
+    <svg {...base} className={className}>
+      <path d="M5 15l7-7 7 7" />
+    </svg>
+  )
+}
+
+export function ChevronDownIcon({ className }: IconProps) {
+  return (
+    <svg {...base} className={className}>
+      <path d="M5 9l7 7 7-7" />
+    </svg>
+  )
+}
+
 export function CheckIcon({ className }: IconProps) {
   return (
     <svg {...base} className={className}>

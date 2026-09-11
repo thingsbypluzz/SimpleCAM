@@ -9,6 +9,7 @@ import {
 import { TOOL_DIAMETER_OPTIONS } from '../../config/toolDiameterOptions'
 import { FieldRow, inputClass } from './FieldRow'
 import { HintPopover } from './HintPopover'
+import { NumberInput } from './NumberInput'
 import { OffsetModePicker } from './OffsetModePicker'
 import { OutlineMethodPicker } from './OutlineMethodPicker'
 import { useNumberField } from './useNumberField'
@@ -60,7 +61,7 @@ export function Step2GeometryOutline({ params, onChange, machine }: Step2Geometr
           </select>
         </FieldRow>
         <FieldRow label="Cutting Depth [mm]">
-          <input
+          <NumberInput
             type="number"
             step="0.1"
             min="0"
@@ -92,7 +93,7 @@ export function Step2GeometryOutline({ params, onChange, machine }: Step2Geometr
         <div className="flex gap-4">
           <div className="min-w-0 flex-1">
             <FieldRow label="Width [mm]">
-              <input
+              <NumberInput
                 type="number"
                 step="0.1"
                 min="0"
@@ -104,7 +105,7 @@ export function Step2GeometryOutline({ params, onChange, machine }: Step2Geometr
           </div>
           <div className="min-w-0 flex-1">
             <FieldRow label="Height [mm]">
-              <input
+              <NumberInput
                 type="number"
                 step="0.1"
                 min="0"
@@ -117,7 +118,7 @@ export function Step2GeometryOutline({ params, onChange, machine }: Step2Geometr
         </div>
       ) : (
         <FieldRow label="Diameter [mm]">
-          <input
+          <NumberInput
             type="number"
             step="0.1"
             min="0"
@@ -162,17 +163,17 @@ export function Step2GeometryOutline({ params, onChange, machine }: Step2Geometr
             <div className="flex gap-4">
               <div className="min-w-0 flex-1">
                 <FieldRow label="Height [mm]">
-                  <input type="number" step="0.1" min="0" className={inputClass} {...tabHeightField} />
+                  <NumberInput type="number" step="0.1" min="0" className={inputClass} {...tabHeightField} />
                 </FieldRow>
               </div>
               <div className="min-w-0 flex-1">
                 <FieldRow label="Width [mm]">
-                  <input type="number" step="0.1" min="0" className={inputClass} {...tabWidthField} />
+                  <NumberInput type="number" step="0.1" min="0" className={inputClass} {...tabWidthField} />
                 </FieldRow>
               </div>
               <div className="min-w-0 flex-1">
                 <FieldRow label={isRect ? 'Per Side' : 'Tab Count'}>
-                  <input
+                  <NumberInput
                     type="number"
                     step="1"
                     min="1"
@@ -209,7 +210,7 @@ export function Step2GeometryOutline({ params, onChange, machine }: Step2Geometr
         <div className="flex gap-4">
           <div className="min-w-0 flex-1">
             <FieldRow label="Offset X [mm]">
-              <input
+              <NumberInput
                 type="number"
                 step="0.1"
                 min={-machine.travelX}
@@ -221,7 +222,7 @@ export function Step2GeometryOutline({ params, onChange, machine }: Step2Geometr
           </div>
           <div className="min-w-0 flex-1">
             <FieldRow label="Offset Y [mm]">
-              <input
+              <NumberInput
                 type="number"
                 step="0.1"
                 min={-machine.travelY}

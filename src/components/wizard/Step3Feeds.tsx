@@ -3,6 +3,7 @@ import type { MachineSettings } from '../../types/machine'
 import { METHOD_META } from '../../config/methodMeta'
 import { isStartZValid, isStepdownValid } from '../../lib/validation'
 import { FieldRow, inputClass } from './FieldRow'
+import { NumberInput } from './NumberInput'
 import { useNumberField } from './useNumberField'
 
 interface Step3FeedsProps {
@@ -26,13 +27,13 @@ export function Step3Feeds({ params, onChange, machine }: Step3FeedsProps) {
   return (
     <div className="flex flex-col gap-4">
       <FieldRow label="Feedrate XY [mm/min]">
-        <input type="number" step="1" className={inputClass} {...feedrateXYField} />
+        <NumberInput type="number" step="1" className={inputClass} {...feedrateXYField} />
       </FieldRow>
       <FieldRow label="Plunge Rate [mm/min]">
-        <input type="number" step="1" className={inputClass} {...plungeRateField} />
+        <NumberInput type="number" step="1" className={inputClass} {...plungeRateField} />
       </FieldRow>
       <FieldRow label={METHOD_META[method].stepdown.fieldLabel}>
-        <input type="number" step="0.05" className={inputClass} {...stepdownField} />
+        <NumberInput type="number" step="0.05" className={inputClass} {...stepdownField} />
       </FieldRow>
       {!isStepdownValid(feeds) && (
         <p className="text-sm text-status-error">
@@ -40,7 +41,7 @@ export function Step3Feeds({ params, onChange, machine }: Step3FeedsProps) {
         </p>
       )}
       <FieldRow label="Start Z [mm]">
-        <input type="number" step="0.1" min="0" className={inputClass} {...startZField} />
+        <NumberInput type="number" step="0.1" min="0" className={inputClass} {...startZField} />
       </FieldRow>
       {!isStartZValid(feeds) && (
         <p className="text-sm text-status-error">
@@ -48,7 +49,7 @@ export function Step3Feeds({ params, onChange, machine }: Step3FeedsProps) {
         </p>
       )}
       <FieldRow label="Safe Z [mm]">
-        <input
+        <NumberInput
           type="number"
           step="0.1"
           min="0"

@@ -4,6 +4,8 @@ import type { Dialect, MachineSettings } from '../types/machine'
 import type { AppearanceSettings } from '../types/appearance'
 import { THEME_LIST } from '../types/theme'
 import { inputClass } from './wizard/FieldRow'
+import { NumberInput } from './wizard/NumberInput'
+import { roundToStepPrecision } from './wizard/useNumberField'
 
 interface SettingsModalProps {
   machine: MachineSettings
@@ -130,16 +132,31 @@ export function SettingsModal({
     return () => window.removeEventListener('keydown', handleKeyDown)
   }, [onClose])
 
-  const handleBlur = (key: NumericField) => {
-    const value = Number(text[key])
-    if (!Number.isFinite(value) || value <= 0) {
-      // Invalid entry — revert the field instead of persisting garbage.
+  // Shared by both onBlur (parses the typed text) and the NumberInput
+  // stepper buttons below (already has a numeric value in hand, no text
+  // round-trip needed) — same validation either way: reject non-finite or
+  // non-positive, revert to the last saved value instead of persisting
+  // garbage.
+  const commitField = (key: NumericField, next: number) => {
+    if (!Number.isFinite(next) || next <= 0) {
       setText((prev) => ({ ...prev, [key]: String(machine[key]) }))
       return
     }
-    onSave({ ...machine, [key]: value })
+    setText((prev) => ({ ...prev, [key]: String(next) }))
+    onSave({ ...machine, [key]: next })
     setSavedField(key)
     setTimeout(() => setSavedField((f) => (f === key ? null : f)), 1500)
+  }
+
+  const handleBlur = (key: NumericField) => commitField(key, Number(text[key]))
+
+  // Stepper click is an explicit, unambiguous value change — commits
+  // immediately rather than waiting for a blur that may never come (the
+  // field might not have been focused at all before the click).
+  const handleAdjust = (key: NumericField, delta: number) => {
+    const current = Number(text[key])
+    const base = Number.isFinite(current) ? current : machine[key]
+    commitField(key, roundToStepPrecision(base + delta))
   }
 
   const handleCodeBlur = (key: CodeField) => {
@@ -224,7 +241,7 @@ export function SettingsModal({
                           </span>
                         )}
                       </span>
-                      <input
+                      <NumberInput
                         type="number"
                         step="1"
                         min="0"
@@ -232,6 +249,7 @@ export function SettingsModal({
                         value={text[field.key]}
                         onChange={(e) => setText((prev) => ({ ...prev, [field.key]: e.target.value }))}
                         onBlur={() => handleBlur(field.key)}
+                        onAdjust={(delta) => handleAdjust(field.key, delta)}
                       />
                     </label>
                   </div>
@@ -316,7 +334,7 @@ export function SettingsModal({
                             </span>
                           )}
                         </span>
-                        <input
+                        <NumberInput
                           type="number"
                           step={field.step}
                           min="0"
@@ -326,6 +344,7 @@ export function SettingsModal({
                             setText((prev) => ({ ...prev, [field.key]: e.target.value }))
                           }
                           onBlur={() => handleBlur(field.key)}
+                          onAdjust={(delta) => handleAdjust(field.key, delta)}
                         />
                       </label>
                     </div>
