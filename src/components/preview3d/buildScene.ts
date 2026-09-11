@@ -375,7 +375,7 @@ function buildTheme(paletteId: PaletteId, isDark: boolean, themeId: ThemeId): Th
   const fixed = getFixedColors(themeId, isDark)
   const accents = getPaletteAccents(paletteId, isDark, themeId)
   return {
-    material: hexToThreeColor(accents.background),
+    material: hexToThreeColor(fixed.background),
     materialOpacity: isDark ? MATERIAL_OPACITY_DARK : MATERIAL_OPACITY_LIGHT,
     grid: hexToThreeColor(accents.grid),
     toolpath: hexToThreeColor(accents.toolpath),
@@ -426,13 +426,16 @@ export interface BuiltScene {
   objects: THREE.Object3D[]
   bounds: THREE.Box3
   // The WebGL clear color the caller should apply (renderer.setClearColor)
-  // — same value as `theme.material`/the palette's `background` accent that
-  // the 2D preview already fills its canvas with (drawToolpath.ts). Handing
-  // this back instead of leaving Scene3D.tsx to compute or hardcode its own
-  // copy is the whole point: it's the one thing that must track whichever
-  // Theme/Palette is active, for every theme to come, without a second
-  // place to remember to update — see the postmortem note at its call site
-  // in buildToolpathScene() below.
+  // — same value as `theme.material`, sourced from the active Theme's fixed
+  // `background` color (config/palettes.ts) — the same one the 2D preview
+  // already fills its canvas with (drawToolpath.ts). It's a Theme property,
+  // not a Preview Color Palette accent, so it never changes when the user
+  // switches palette, only when the Theme itself changes. Handing this back
+  // instead of leaving Scene3D.tsx to compute or hardcode its own copy is
+  // the whole point: it's the one thing that must track whichever Theme is
+  // active, for every theme to come, without a second place to remember to
+  // update — see the postmortem note at its call site in
+  // buildToolpathScene() below.
   background: number
 }
 

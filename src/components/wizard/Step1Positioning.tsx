@@ -42,7 +42,7 @@ function OperationBlock({
   }
 
   return (
-    <div className="rounded-lg border border-accent-strong bg-accent-bg p-3">
+    <div className="rounded-lg border border-accent-strong bg-accent-bg p-3 shadow-[var(--glow-accent)]">
       <span className="text-base font-semibold text-accent-fg">{title}</span>
       <div className="mt-2 flex flex-col gap-1">{children}</div>
     </div>
@@ -67,7 +67,7 @@ function OptionButton({
       className={[
         'flex items-center gap-2 rounded-md border px-2.5 py-1.5 text-left transition',
         isSelected
-          ? 'border-accent-strong bg-selected-bg'
+          ? 'border-selected-border bg-selected-bg shadow-[var(--glow-selected)]'
           : 'border-transparent hover:border-border',
       ].join(' ')}
     >

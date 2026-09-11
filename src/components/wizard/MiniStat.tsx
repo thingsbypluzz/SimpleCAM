@@ -20,7 +20,7 @@ export function MiniStat({ icon, label, value, unit, title }: MiniStatProps) {
           An icon passed in with its own explicit color class (rare) still
           wins locally over this wrapper. */}
       <span className="text-accent">{icon}</span>
-      <span className="whitespace-nowrap text-[10px] leading-none font-medium text-value">
+      <span className="whitespace-nowrap text-[10px] leading-none font-medium text-stat-value">
         {/* Machine-coordinate readouts (BIT, DEPTH, FEED, ...) get the
             monospace/tabular treatment so digit columns line up across
             steps, instead of blending into the same proportional sans as

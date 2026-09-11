@@ -8,7 +8,14 @@
 //
 // More themes are coming (user-supplied design specs, one at a time) — see
 // ideas.md if a specific one is still mid-`/grill-me` rather than built.
-export type ThemeId = 'sloppy-indigo' | 'shopfloor-amber'
+//
+// Arcade Studio Restrained / Full Neon (design-arcade-restrained.md,
+// design_arcade_full_neon.md) are dark-only by spec — see src/index.css's
+// theme-block comment: their light and `.dark` blocks carry identical
+// values on purpose, so the dark/light toggle stays wired but has no
+// visible effect while one of these is active, without adding any new
+// cross-hook coupling.
+export type ThemeId = 'sloppy-indigo' | 'shopfloor-amber' | 'arcade-restrained' | 'arcade-full-neon'
 
 interface ThemeSwatch {
   bg: string
@@ -40,5 +47,19 @@ export const THEME_LIST: ThemeMeta[] = [
     label: 'Shopfloor Amber',
     swatchLight: { bg: '#faf8f4', accent: '#b45309' },
     swatchDark: { bg: '#0a0a0b', accent: '#f59e0b' },
+  },
+  // Dark-only (see the ThemeId comment above) — swatchLight/swatchDark are
+  // identical on purpose, not a copy-paste slip.
+  {
+    id: 'arcade-restrained',
+    label: 'Arcade Studio Restrained',
+    swatchLight: { bg: '#0b0c10', accent: '#00d5e3' },
+    swatchDark: { bg: '#0b0c10', accent: '#00d5e3' },
+  },
+  {
+    id: 'arcade-full-neon',
+    label: 'Arcade Studio Full Neon',
+    swatchLight: { bg: '#0b0c10', accent: '#00f0ff' },
+    swatchDark: { bg: '#0b0c10', accent: '#00f0ff' },
   },
 ]

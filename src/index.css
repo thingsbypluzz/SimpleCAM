@@ -25,9 +25,26 @@ body {
    palette accent), it just does so through palettes.ts, not here.
 
    Adding a future theme (see design_*.md specs): add one more
-   `[data-theme="..."]` block below (light) and its `.dark` pair, add the id
-   to ThemeId/THEME_LIST (src/types/theme.ts), and add a matching entry to
-   FIXED_COLORS/DEFAULT_ACCENTS in palettes.ts. No component code changes.
+   [data-theme=...] block below (light) and its .dark pair, add the id to
+   ThemeId and THEME_LIST (src/types/theme.ts), and add a matching entry to
+   FIXED_COLORS and DEFAULT_ACCENTS in palettes.ts. No component code
+   changes, as long as the new block defines every token that already
+   exists in the other blocks, not just the obvious bg, fg and accent ones.
+   The Arcade Studio themes added stat-value, selected-border, selected-fg,
+   several wordmark tokens, ui-font, and a family of box-shadow tokens:
+   glow-accent, glow-selected, glow-btn, glow-warn, frame-glow,
+   preview-inset and scan. Every one of those needs a line in EVERY block
+   (existing themes get a neutral value that reproduces the pre-Arcade
+   look, for example none for a glow token, or accent-strong for
+   selected-border), or that theme silently renders an empty or invalid
+   CSS value for it.
+
+   A theme that is dark-only by its own spec (see Arcade Studio below)
+   still needs both a [data-theme=...] block AND its .dark pair, just with
+   identical content in both. Never skip the .dark block: without it,
+   root.dark (Sloppy Indigo dark colors) ties in CSS specificity with the
+   theme own light-selector block and can win by source order, producing
+   the wrong theme colors while in dark mode.
    ========================================================================== */
 
 /* ---- Sloppy Indigo (default — today's original look, exact values) ---- */
@@ -44,6 +61,23 @@ body {
   --accent-border: #a5b4fc;
   --accent-strong: #6366f1;
   --selected-bg: #ffffff;
+  --selected-border: var(--accent-strong);
+  --selected-fg: var(--accent-fg);
+  --stat-value: var(--value);
+
+  --wordmark-simple: var(--fg);
+  --wordmark-cam: var(--accent);
+  --wordmark-simple-glow: none;
+  --wordmark-cam-glow: none;
+
+  --glow-accent: none;
+  --glow-selected: none;
+  --glow-btn: none;
+  --glow-warn: none;
+  --frame-glow: none;
+  --preview-inset: none;
+  --scan: none;
+  --scan-opacity: 0;
 
   --btn-bg: #4f46e5;
   --btn-fg: #ffffff;
@@ -86,6 +120,23 @@ body {
   --accent-border: #3730a3;
   --accent-strong: #6366f1;
   --selected-bg: rgba(49, 46, 129, 0.4);
+  --selected-border: var(--accent-strong);
+  --selected-fg: var(--accent-fg);
+  --stat-value: var(--value);
+
+  --wordmark-simple: var(--fg);
+  --wordmark-cam: var(--accent);
+  --wordmark-simple-glow: none;
+  --wordmark-cam-glow: none;
+
+  --glow-accent: none;
+  --glow-selected: none;
+  --glow-btn: none;
+  --glow-warn: none;
+  --frame-glow: none;
+  --preview-inset: none;
+  --scan: none;
+  --scan-opacity: 0;
 
   --btn-bg: #4f46e5;
   --btn-fg: #ffffff;
@@ -129,6 +180,23 @@ body {
   --accent-border: #fcd34d;
   --accent-strong: #d97706;
   --selected-bg: #ffffff;
+  --selected-border: var(--accent-strong);
+  --selected-fg: var(--accent-fg);
+  --stat-value: var(--value);
+
+  --wordmark-simple: var(--fg);
+  --wordmark-cam: var(--accent);
+  --wordmark-simple-glow: none;
+  --wordmark-cam-glow: none;
+
+  --glow-accent: none;
+  --glow-selected: none;
+  --glow-btn: none;
+  --glow-warn: none;
+  --frame-glow: none;
+  --preview-inset: none;
+  --scan: none;
+  --scan-opacity: 0;
 
   --btn-bg: #b45309;
   --btn-fg: #ffffff;
@@ -174,6 +242,23 @@ body {
   --accent-border: #78350f;
   --accent-strong: #b45309;
   --selected-bg: rgba(69, 45, 3, 0.85);
+  --selected-border: var(--accent-strong);
+  --selected-fg: var(--accent-fg);
+  --stat-value: var(--value);
+
+  --wordmark-simple: var(--fg);
+  --wordmark-cam: var(--accent);
+  --wordmark-simple-glow: none;
+  --wordmark-cam-glow: none;
+
+  --glow-accent: none;
+  --glow-selected: none;
+  --glow-btn: none;
+  --glow-warn: none;
+  --frame-glow: none;
+  --preview-inset: none;
+  --scan: none;
+  --scan-opacity: 0;
 
   /* Amber is a light fill, so button labels are near-black, not white. */
   --btn-bg: #f59e0b;
@@ -204,6 +289,292 @@ body {
   --status-delete-fg: #fda4af;
 }
 
+/* ---- Arcade Studio Restrained, see design-arcade-restrained.md ----
+   Dark-only by spec: the light block and its .dark pair below carry the
+   identical values, both the dark ones from the spec, not a copy-paste
+   mistake. See the ThemeId comment in src/types/theme.ts for why: this
+   keeps the dark and light toggle wired without any new cross-hook
+   coupling, it just has no visible effect while this theme is active.
+   status-warn-border and status-success-bg are not given literal values
+   by the spec, it only speaks in bg and fg pairs, so they are derived
+   here to fit the existing family: warn-border reuses this theme own
+   selected-border pink, a solid, in-family border tone; success-bg is a
+   low-alpha tint of the spec status-success green. */
+:root[data-theme="arcade-restrained"] {
+  --bg: #0b0c10;
+  --fg: #e3e2e8;
+  --border: #1e2230;
+  --muted: #849495;
+  --value: #b9cacb;
+
+  --accent: #00d5e3;
+  --accent-fg: #7df4ff;
+  --accent-bg: rgba(0, 240, 255, .06);
+  --accent-border: rgba(0, 240, 255, .28);
+  --accent-strong: #00b3c4;
+  --selected-bg: rgba(255, 42, 133, .11);
+  --selected-border: #d1005f;
+  --selected-fg: #ff5fa8;
+  --stat-value: #ff2a85;
+
+  --wordmark-simple: #00f0ff;
+  --wordmark-cam: #ff2a85;
+  --wordmark-simple-glow: 0 0 8px rgba(0, 240, 255, .35);
+  --wordmark-cam-glow: 0 0 8px rgba(255, 42, 133, .30);
+
+  --glow-accent: inset 0 0 6px rgba(0, 240, 255, .10);
+  --glow-selected: inset 0 0 6px rgba(255, 42, 133, .14);
+  --glow-btn: 0 0 10px rgba(255, 42, 133, .28);
+  --glow-warn: 0 0 8px rgba(255, 0, 127, .28);
+  --frame-glow: 0 0 0 1px rgba(0, 240, 255, .10);
+  --preview-inset: inset 0 0 60px rgba(0, 240, 255, .05);
+  --scan: none;
+  --scan-opacity: 0;
+
+  --ui-font: 'Space Grotesk', ui-sans-serif, system-ui, sans-serif;
+
+  /* Spec gives a 2-stop gradient here, but --btn-bg feeds the bg-btn-bg
+     utility, which sets background-color, a property that cannot render
+     a gradient: invalid value, silently dropped, button would render
+     with no fill at all. Using the gradient darker and lighter stops as
+     flat colors instead keeps --btn-bg a plain color in every theme,
+     which is what lets every button component stay unchanged, see the
+     theme-block banner comment above. The spec own restrained note about
+     reading as a solid pink key already points this direction. */
+  --btn-bg: #d1005f;
+  --btn-fg: #ffffff;
+  --btn-bg-hover: #ff4d9c;
+
+  --tab-active-bg: rgba(0, 240, 255, .12);
+  --tab-active-fg: #7df4ff;
+
+  --code-bg: #0d0e12;
+  --field-bg: #0b0c10;
+  --field-border: #1e2230;
+
+  --empty-border: #1e2230;
+  --empty-fg: #3f4b52;
+
+  --status-todo-bg: rgba(255, 0, 127, .14);
+  --status-todo-fg: #ff8ec0;
+  --status-done-bg: rgba(0, 240, 255, .12);
+  --status-done-fg: #7df4ff;
+  --status-warn-bg: rgba(255, 0, 127, .14);
+  --status-warn-fg: #ff8ec0;
+  --status-warn-border: #d1005f;
+  --status-error: #ff8ec0;
+  --status-success: #39ff14;
+  --status-success-bg: rgba(57, 255, 20, .10);
+  --status-delete-bg: rgba(255, 0, 127, .14);
+  --status-delete-fg: #ff8ec0;
+}
+
+:root[data-theme="arcade-restrained"].dark {
+  --bg: #0b0c10;
+  --fg: #e3e2e8;
+  --border: #1e2230;
+  --muted: #849495;
+  --value: #b9cacb;
+
+  --accent: #00d5e3;
+  --accent-fg: #7df4ff;
+  --accent-bg: rgba(0, 240, 255, .06);
+  --accent-border: rgba(0, 240, 255, .28);
+  --accent-strong: #00b3c4;
+  --selected-bg: rgba(255, 42, 133, .11);
+  --selected-border: #d1005f;
+  --selected-fg: #ff5fa8;
+  --stat-value: #ff2a85;
+
+  --wordmark-simple: #00f0ff;
+  --wordmark-cam: #ff2a85;
+  --wordmark-simple-glow: 0 0 8px rgba(0, 240, 255, .35);
+  --wordmark-cam-glow: 0 0 8px rgba(255, 42, 133, .30);
+
+  --glow-accent: inset 0 0 6px rgba(0, 240, 255, .10);
+  --glow-selected: inset 0 0 6px rgba(255, 42, 133, .14);
+  --glow-btn: 0 0 10px rgba(255, 42, 133, .28);
+  --glow-warn: 0 0 8px rgba(255, 0, 127, .28);
+  --frame-glow: 0 0 0 1px rgba(0, 240, 255, .10);
+  --preview-inset: inset 0 0 60px rgba(0, 240, 255, .05);
+  --scan: none;
+  --scan-opacity: 0;
+
+  --ui-font: 'Space Grotesk', ui-sans-serif, system-ui, sans-serif;
+
+  /* Spec gives a 2-stop gradient here, but --btn-bg feeds the bg-btn-bg
+     utility, which sets background-color, a property that cannot render
+     a gradient: invalid value, silently dropped, button would render
+     with no fill at all. Using the gradient darker and lighter stops as
+     flat colors instead keeps --btn-bg a plain color in every theme,
+     which is what lets every button component stay unchanged, see the
+     theme-block banner comment above. The spec own restrained note about
+     reading as a solid pink key already points this direction. */
+  --btn-bg: #d1005f;
+  --btn-fg: #ffffff;
+  --btn-bg-hover: #ff4d9c;
+
+  --tab-active-bg: rgba(0, 240, 255, .12);
+  --tab-active-fg: #7df4ff;
+
+  --code-bg: #0d0e12;
+  --field-bg: #0b0c10;
+  --field-border: #1e2230;
+
+  --empty-border: #1e2230;
+  --empty-fg: #3f4b52;
+
+  --status-todo-bg: rgba(255, 0, 127, .14);
+  --status-todo-fg: #ff8ec0;
+  --status-done-bg: rgba(0, 240, 255, .12);
+  --status-done-fg: #7df4ff;
+  --status-warn-bg: rgba(255, 0, 127, .14);
+  --status-warn-fg: #ff8ec0;
+  --status-warn-border: #d1005f;
+  --status-error: #ff8ec0;
+  --status-success: #39ff14;
+  --status-success-bg: rgba(57, 255, 20, .10);
+  --status-delete-bg: rgba(255, 0, 127, .14);
+  --status-delete-fg: #ff8ec0;
+}
+
+/* ---- Arcade Studio Full Neon, see design_arcade_full_neon.md ----
+   Same dark-only treatment as Restrained above, light block equals dark
+   block. This is the louder sibling: brighter accent, full glow, outer
+   bloom, not just inset, and the CRT scanline overlay (scan) that
+   Restrained deliberately turns off. status-warn-border and
+   status-success-bg are derived the same way as Restrained, the spec
+   only gives bg and fg pairs. */
+:root[data-theme="arcade-full-neon"] {
+  --bg: #0b0c10;
+  --fg: #e3e2e8;
+  --border: #1e2230;
+  --muted: #849495;
+  --value: #b9cacb;
+
+  --accent: #00f0ff;
+  --accent-fg: #7df4ff;
+  --accent-bg: rgba(0, 240, 255, .07);
+  --accent-border: rgba(0, 240, 255, .35);
+  --accent-strong: #00f0ff;
+  --selected-bg: rgba(255, 42, 133, .16);
+  --selected-border: #ff2a85;
+  --selected-fg: #ff2a85;
+  --stat-value: #ff2a85;
+
+  --wordmark-simple: #00f0ff;
+  --wordmark-cam: #ff2a85;
+  --wordmark-simple-glow: 0 0 14px rgba(0, 240, 255, .65);
+  --wordmark-cam-glow: 0 0 14px rgba(255, 42, 133, .60);
+
+  --glow-accent: 0 0 10px rgba(0, 240, 255, .40), inset 0 0 8px rgba(0, 240, 255, .16);
+  --glow-selected: 0 0 10px rgba(255, 42, 133, .40), inset 0 0 8px rgba(255, 42, 133, .18);
+  --glow-btn: 0 0 18px rgba(255, 42, 133, .55);
+  --glow-warn: 0 0 12px rgba(255, 0, 127, .50);
+  --frame-glow: 0 0 0 1px rgba(0, 240, 255, .18), 0 0 44px rgba(0, 240, 255, .10);
+  --preview-inset: inset 0 0 70px rgba(0, 240, 255, .07);
+  --scan: repeating-linear-gradient(rgba(0, 0, 0, 0) 0 3px, rgba(0, 0, 0, .055) 3px 4px);
+  --scan-opacity: .85;
+
+  --ui-font: 'Space Grotesk', ui-sans-serif, system-ui, sans-serif;
+
+  /* Solid color, not the spec 3-stop gradient, same reasoning as the
+     Restrained block above (--btn-bg feeds background-color, which
+     cannot take a gradient). #ff2a85 is the gradient middle stop, the
+     same pink already used for --selected-border and --stat-value. */
+  --btn-bg: #ff2a85;
+  --btn-fg: #ffffff;
+  --btn-bg-hover: #ff5fa8;
+
+  --tab-active-bg: rgba(0, 240, 255, .15);
+  --tab-active-fg: #7df4ff;
+
+  --code-bg: #0d0e12;
+  --field-bg: #0b0c10;
+  --field-border: #1e2230;
+
+  --empty-border: #1e2230;
+  --empty-fg: #3f4b52;
+
+  --status-todo-bg: rgba(255, 0, 127, .16);
+  --status-todo-fg: #ff5fa8;
+  --status-done-bg: rgba(0, 240, 255, .15);
+  --status-done-fg: #7df4ff;
+  --status-warn-bg: rgba(255, 0, 127, .16);
+  --status-warn-fg: #ff5fa8;
+  --status-warn-border: #ff2a85;
+  --status-error: #ff5fa8;
+  --status-success: #39ff14;
+  --status-success-bg: rgba(57, 255, 20, .14);
+  --status-delete-bg: rgba(255, 0, 127, .16);
+  --status-delete-fg: #ff5fa8;
+}
+
+:root[data-theme="arcade-full-neon"].dark {
+  --bg: #0b0c10;
+  --fg: #e3e2e8;
+  --border: #1e2230;
+  --muted: #849495;
+  --value: #b9cacb;
+
+  --accent: #00f0ff;
+  --accent-fg: #7df4ff;
+  --accent-bg: rgba(0, 240, 255, .07);
+  --accent-border: rgba(0, 240, 255, .35);
+  --accent-strong: #00f0ff;
+  --selected-bg: rgba(255, 42, 133, .16);
+  --selected-border: #ff2a85;
+  --selected-fg: #ff2a85;
+  --stat-value: #ff2a85;
+
+  --wordmark-simple: #00f0ff;
+  --wordmark-cam: #ff2a85;
+  --wordmark-simple-glow: 0 0 14px rgba(0, 240, 255, .65);
+  --wordmark-cam-glow: 0 0 14px rgba(255, 42, 133, .60);
+
+  --glow-accent: 0 0 10px rgba(0, 240, 255, .40), inset 0 0 8px rgba(0, 240, 255, .16);
+  --glow-selected: 0 0 10px rgba(255, 42, 133, .40), inset 0 0 8px rgba(255, 42, 133, .18);
+  --glow-btn: 0 0 18px rgba(255, 42, 133, .55);
+  --glow-warn: 0 0 12px rgba(255, 0, 127, .50);
+  --frame-glow: 0 0 0 1px rgba(0, 240, 255, .18), 0 0 44px rgba(0, 240, 255, .10);
+  --preview-inset: inset 0 0 70px rgba(0, 240, 255, .07);
+  --scan: repeating-linear-gradient(rgba(0, 0, 0, 0) 0 3px, rgba(0, 0, 0, .055) 3px 4px);
+  --scan-opacity: .85;
+
+  --ui-font: 'Space Grotesk', ui-sans-serif, system-ui, sans-serif;
+
+  /* Solid color, not the spec 3-stop gradient, same reasoning as the
+     Restrained block above (--btn-bg feeds background-color, which
+     cannot take a gradient). #ff2a85 is the gradient middle stop, the
+     same pink already used for --selected-border and --stat-value. */
+  --btn-bg: #ff2a85;
+  --btn-fg: #ffffff;
+  --btn-bg-hover: #ff5fa8;
+
+  --tab-active-bg: rgba(0, 240, 255, .15);
+  --tab-active-fg: #7df4ff;
+
+  --code-bg: #0d0e12;
+  --field-bg: #0b0c10;
+  --field-border: #1e2230;
+
+  --empty-border: #1e2230;
+  --empty-fg: #3f4b52;
+
+  --status-todo-bg: rgba(255, 0, 127, .16);
+  --status-todo-fg: #ff5fa8;
+  --status-done-bg: rgba(0, 240, 255, .15);
+  --status-done-fg: #7df4ff;
+  --status-warn-bg: rgba(255, 0, 127, .16);
+  --status-warn-fg: #ff5fa8;
+  --status-warn-border: #ff2a85;
+  --status-error: #ff5fa8;
+  --status-success: #39ff14;
+  --status-success-bg: rgba(57, 255, 20, .14);
+  --status-delete-bg: rgba(255, 0, 127, .16);
+  --status-delete-fg: #ff5fa8;
+}
+
 /* Registers every token above as a real Tailwind color utility (bg-accent,
    text-muted, border-field-border, ...) — `@theme inline` keeps each one
    referencing the runtime custom property instead of baking today's value
@@ -223,6 +594,21 @@ body {
   --color-accent-border: var(--accent-border);
   --color-accent-strong: var(--accent-strong);
   --color-selected-bg: var(--selected-bg);
+  --color-selected-border: var(--selected-border);
+  --color-selected-fg: var(--selected-fg);
+  --color-stat-value: var(--stat-value);
+  --color-wordmark-simple: var(--wordmark-simple);
+  --color-wordmark-cam: var(--wordmark-cam);
+
+  /* Falls back to Tailwind v4 own default sans stack when --ui-font is
+     unset, Sloppy Indigo and Shopfloor Amber do not define it, only the
+     Arcade themes override it to Space Grotesk, see index.html for the
+     Google Fonts link. The box-shadow tokens, glow-accent, glow-selected,
+     glow-btn, glow-warn, frame-glow, preview-inset and scan, are
+     deliberately NOT registered here, they are consumed directly via a
+     Tailwind arbitrary value such as shadow-[var(--glow-accent)], which
+     needs no @theme entry. */
+  --font-sans: var(--ui-font, ui-sans-serif, system-ui, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji");
 
   --color-btn-bg: var(--btn-bg);
   --color-btn-fg: var(--btn-fg);

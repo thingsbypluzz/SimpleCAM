@@ -112,20 +112,20 @@ function step4Badge(generatedGCode: string[] | null, warnings: string[]): Step4B
   if (warnings.length > 0) {
     return {
       Icon: generatedGCode ? CheckIcon : WarningIcon,
-      colorClassName: 'bg-status-warn-bg text-status-warn-fg',
+      colorClassName: 'bg-status-warn-bg text-status-warn-fg shadow-[var(--glow-warn)]',
       title: warnings.join(' '),
     }
   }
   if (generatedGCode) {
     return {
       Icon: CheckIcon,
-      colorClassName: 'bg-status-done-bg text-status-done-fg',
+      colorClassName: 'bg-status-done-bg text-status-done-fg shadow-[var(--glow-accent)]',
       title: 'G-Code generated',
     }
   }
   return {
     Icon: XIcon,
-    colorClassName: 'bg-status-todo-bg text-status-todo-fg',
+    colorClassName: 'bg-status-todo-bg text-status-todo-fg shadow-[var(--glow-warn)]',
     title: 'G-Code not generated yet',
   }
 }
@@ -339,10 +339,17 @@ function App() {
   }
 
   return (
-    <div className="flex h-svh flex-col bg-bg text-fg">
+    <div className="relative flex h-svh flex-col bg-bg text-fg shadow-[var(--frame-glow)]">
       <header className="grid grid-cols-[1fr_auto_1fr] items-center gap-4 border-b border-border px-6 py-4">
         <div>
-          <h1 className="text-xl font-semibold">SimpleCAM</h1>
+          <h1 className="text-xl font-semibold">
+            <span className="text-wordmark-simple" style={{ textShadow: 'var(--wordmark-simple-glow)' }}>
+              Simple
+            </span>
+            <span className="text-wordmark-cam" style={{ textShadow: 'var(--wordmark-cam-glow)' }}>
+              CAM
+            </span>
+          </h1>
           <p className="text-xs text-muted">
             Fast G-Code generator for your basic operations.
           </p>
@@ -367,8 +374,8 @@ function App() {
             const baseClassName = !preset
               ? 'flex h-11 w-11 cursor-default items-center justify-center rounded-md border border-empty-border text-xs font-semibold text-empty-fg'
               : isOverlaySelected
-                ? 'flex h-11 w-11 items-center justify-center rounded-md border-2 border-accent text-accent-fg hover:bg-accent-bg'
-                : 'flex h-11 w-11 items-center justify-center rounded-md border border-accent-border text-accent-fg hover:bg-accent-bg'
+                ? 'flex h-11 w-11 items-center justify-center rounded-md border-2 border-accent text-accent-fg hover:bg-accent-bg shadow-[var(--glow-accent)]'
+                : 'flex h-11 w-11 items-center justify-center rounded-md border border-accent-border text-accent-fg hover:bg-accent-bg shadow-[var(--glow-accent)]'
             return (
               <div key={id} className="group relative">
                 <button
@@ -420,7 +427,7 @@ function App() {
             className={[
               'ml-11 flex h-11 w-11 items-center justify-center rounded-md border transition',
               overlayEnabled
-                ? 'border-2 border-accent bg-accent-bg text-accent-fg'
+                ? 'border-2 border-accent bg-accent-bg text-accent-fg shadow-[var(--glow-accent)]'
                 : 'border-border text-value hover:bg-border/40',
             ].join(' ')}
           >
@@ -521,7 +528,7 @@ function App() {
                       <button
                         type="button"
                         onClick={goForward}
-                        className="rounded-md bg-btn-bg px-4 py-2 text-sm font-medium text-btn-fg"
+                        className="rounded-md bg-btn-bg px-4 py-2 text-sm font-medium text-btn-fg shadow-[var(--glow-btn)]"
                       >
                         Next
                       </button>
@@ -565,7 +572,7 @@ function App() {
                       ).map((line, i) => (
                         <span
                           key={i}
-                          className="text-center text-[9px] leading-tight font-semibold whitespace-nowrap text-value"
+                          className="text-center text-[9px] leading-tight font-semibold whitespace-nowrap text-stat-value"
                         >
                           {line}
                         </span>
@@ -746,7 +753,7 @@ function App() {
                   className={[
                     'rounded-md px-2.5 py-1 text-xs font-semibold uppercase tracking-wide transition',
                     previewTab === tab
-                      ? 'bg-tab-active-bg text-tab-active-fg'
+                      ? 'bg-tab-active-bg text-tab-active-fg shadow-[var(--glow-accent)]'
                       : 'text-muted hover:text-fg',
                   ].join(' ')}
                 >
@@ -761,7 +768,7 @@ function App() {
             )}
           </div>
 
-          <div className="relative flex flex-1 flex-col overflow-hidden">
+          <div className="relative flex flex-1 flex-col overflow-hidden shadow-[var(--preview-inset)]">
             {overlayEnabled && previewTab !== 'gcode' && (
               <div className="pointer-events-none absolute top-3 left-1/2 z-10 -translate-x-1/2 rounded-full bg-accent px-3 py-1 text-xs font-semibold text-btn-fg shadow-lg">
                 Preview mode
@@ -821,6 +828,20 @@ function App() {
           onClose={() => setIsSettingsOpen(false)}
         />
       )}
+
+      {/* CRT scanline overlay — driven entirely by the --scan/--scan-opacity
+          tokens (src/index.css), which are `none`/0 for every theme except
+          Arcade Studio Full Neon. One shared element for every theme so no
+          component branches on which theme is active. */}
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute inset-0 z-[9]"
+        style={{
+          backgroundImage: 'var(--scan)',
+          backgroundSize: '100% 4px',
+          opacity: 'var(--scan-opacity)',
+        }}
+      />
     </div>
   )
 }

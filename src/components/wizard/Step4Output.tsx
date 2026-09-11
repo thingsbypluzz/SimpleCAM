@@ -99,7 +99,7 @@ export function Step4Output({
                   className={[
                     'rounded-md border px-2.5 py-1 text-xs font-medium transition disabled:cursor-not-allowed disabled:opacity-50',
                     isSelected
-                      ? 'border-accent-strong bg-accent-bg text-accent-fg'
+                      ? 'border-selected-border bg-selected-bg text-selected-fg shadow-[var(--glow-selected)]'
                       : 'border-border text-muted hover:border-field-border',
                   ].join(' ')}
                 >
@@ -138,7 +138,7 @@ export function Step4Output({
         type="button"
         onClick={onGenerate}
         disabled={!canGenerate}
-        className="rounded-md bg-btn-bg px-4 py-2 text-sm font-medium text-btn-fg hover:bg-btn-bg-hover disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-btn-bg"
+        className="rounded-md bg-btn-bg px-4 py-2 text-sm font-medium text-btn-fg shadow-[var(--glow-btn)] hover:bg-btn-bg-hover disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-btn-bg"
       >
         Generate
       </button>
@@ -156,7 +156,7 @@ export function Step4Output({
           type="button"
           onClick={handleDownload}
           disabled={!generatedGCode}
-          className="rounded-md bg-btn-bg px-4 py-2 text-sm font-medium text-btn-fg hover:bg-btn-bg-hover disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-btn-bg"
+          className="rounded-md bg-btn-bg px-4 py-2 text-sm font-medium text-btn-fg shadow-[var(--glow-btn)] hover:bg-btn-bg-hover disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-btn-bg"
         >
           Download .gcode file
         </button>
@@ -184,8 +184,8 @@ export function Step4Output({
                   justSaved
                     ? 'flex h-11 w-11 items-center justify-center rounded-md border border-status-success bg-status-success-bg text-sm font-semibold text-status-success'
                     : existing
-                      ? 'flex h-11 w-11 items-center justify-center rounded-md border border-accent-border bg-accent-bg text-sm font-semibold text-accent-fg'
-                      : 'flex h-11 w-11 items-center justify-center rounded-md border border-dashed border-empty-border text-sm font-semibold text-empty-fg hover:border-field-border hover:text-muted'
+                      ? 'flex h-11 w-11 items-center justify-center rounded-md border border-dashed border-empty-border text-sm font-semibold text-empty-fg hover:border-field-border hover:text-muted'
+                      : 'flex h-11 w-11 items-center justify-center rounded-md border border-accent-border bg-accent-bg text-sm font-semibold text-accent-fg shadow-[var(--glow-accent)]'
                 }
               >
                 {justSaved ? '✓' : id}

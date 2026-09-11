@@ -5,28 +5,38 @@
 //
 // Two categories, per the original /grill-me decision:
 //  - Fixed colors: axis red (X) / green (Y), origin indigo, offset amber,
-//    plus 2D-only text/holeFill. A CNC/semantic convention (which axis is
-//    which, "this is the work-offset vector"), not a stylistic choice — no
-//    Preview Palette (below) is allowed to change them. A UI Theme
-//    (src/types/theme.ts) IS allowed to, though — see below.
-//  - Palette accents: background/grid/toolpath/rapid/hole — the part a user
-//    can actually reskin via Settings > Appearance > Preview Color Palette.
+//    the Preview Viewport's own **background**, plus 2D-only text/holeFill.
+//    A CNC/semantic convention (which axis is which, "this is the
+//    work-offset vector") or, for background, a property of the active
+//    Theme's chrome, not a stylistic choice — no Preview Palette (below) is
+//    allowed to change any of them. A UI Theme (src/types/theme.ts) IS
+//    allowed to, though — see below. `background` lives here (not in
+//    PaletteAccents) specifically so switching Preview Color Palette can
+//    never change the Preview Viewport's background — only its
+//    toolpath/rapid/hole/grid accents.
+//  - Palette accents: grid/toolpath/rapid/hole — the part a user can
+//    actually reskin via Settings > Appearance > Preview Color Palette.
 //    Each palette carries a light AND dark variant, selected by the
 //    existing dark-mode toggle (independent axis from palette choice).
 //
 // Themes (added alongside Shopfloor Amber): a Theme reskins the UI chrome
 // (see src/index.css) and is allowed to touch this preview module in two
-// places — FixedColors (axes/origin/offset need to read against a
-// different chrome background, e.g. rose axes instead of red/green so they
-// don't fight an amber toolpath) and the **Default** palette's accents
-// (Default has always meant "the app's own native look" — see the note on
-// `default` below — so it tracks whichever Theme is active). Ocean/Ember/
-// Violet remain theme-independent, deliberate alternate accents a user can
-// still pick regardless of which Theme's chrome is showing — this is the
-// "Preview Color Palette stays a choice complementing the Theme" decision.
+// places — FixedColors (axes/origin/offset/background need to read against
+// a different chrome, e.g. rose axes instead of red/green so they don't
+// fight an amber toolpath, and a warm-white/near-black background instead
+// of plain white/slate) and the **Default** palette's accents (Default has
+// always meant "the app's own native look" — see the note on `default`
+// below — so it tracks whichever Theme is active). Ocean/Ember/Violet
+// remain theme-independent, deliberate alternate accents a user can still
+// pick regardless of which Theme's chrome is showing — this is the
+// "Preview Color Palette stays a choice complementing the Theme" decision;
+// background sits outside that choice entirely, so it can never "leak"
+// Sloppy Indigo's white/navy into Shopfloor Amber's viewport just because
+// Ocean/Ember/Violet was picked.
 import type { ThemeId } from '../types/theme'
 
 export interface FixedColors {
+  background: string
   axisX: string
   axisY: string
   origin: string
@@ -38,6 +48,7 @@ export interface FixedColors {
 const FIXED_COLORS: Record<ThemeId, { light: FixedColors; dark: FixedColors }> = {
   'sloppy-indigo': {
     light: {
+      background: '#ffffff',
       axisX: '#dc2626',
       axisY: '#16a34a',
       origin: '#4f46e5',
@@ -46,6 +57,7 @@ const FIXED_COLORS: Record<ThemeId, { light: FixedColors; dark: FixedColors }> =
       holeFill: 'rgba(79, 70, 229, 0.3)',
     },
     dark: {
+      background: '#0f172a',
       axisX: '#f87171',
       axisY: '#4ade80',
       origin: '#818cf8',
@@ -62,6 +74,7 @@ const FIXED_COLORS: Record<ThemeId, { light: FixedColors; dark: FixedColors }> =
   // ground without fighting the amber toolpath.
   'shopfloor-amber': {
     light: {
+      background: '#fffdf8',
       axisX: '#e11d48',
       axisY: '#4d7c0f',
       origin: '#1c1917',
@@ -70,12 +83,59 @@ const FIXED_COLORS: Record<ThemeId, { light: FixedColors; dark: FixedColors }> =
       holeFill: 'rgba(180, 83, 9, .15)',
     },
     dark: {
+      background: '#0a0a0b',
       axisX: '#fb7185',
       axisY: '#a3e635',
       origin: '#e7e5e4',
       offset: '#a78bfa',
       text: '#a29a8c',
       holeFill: 'rgba(245, 158, 11, .18)',
+    },
+  },
+  // Arcade Studio — dark-only by spec (design-arcade-restrained.md /
+  // design_arcade_full_neon.md §5 "Fixed colors"), so light and dark carry
+  // the identical values given there — see the ThemeId comment in
+  // src/types/theme.ts for why. Both variants share the same fixed colors
+  // (only the Palette accents below differ) — magenta/lime axes instead of
+  // red/green, white origin, coin-op yellow offset.
+  'arcade-restrained': {
+    light: {
+      background: '#0b0c10',
+      axisX: '#ff007f',
+      axisY: '#39ff14',
+      origin: '#ffffff',
+      offset: '#ffe600',
+      text: '#849495',
+      holeFill: 'rgba(0, 240, 255, .07)',
+    },
+    dark: {
+      background: '#0b0c10',
+      axisX: '#ff007f',
+      axisY: '#39ff14',
+      origin: '#ffffff',
+      offset: '#ffe600',
+      text: '#849495',
+      holeFill: 'rgba(0, 240, 255, .07)',
+    },
+  },
+  'arcade-full-neon': {
+    light: {
+      background: '#0b0c10',
+      axisX: '#ff007f',
+      axisY: '#39ff14',
+      origin: '#ffffff',
+      offset: '#ffe600',
+      text: '#849495',
+      holeFill: 'rgba(0, 240, 255, .09)',
+    },
+    dark: {
+      background: '#0b0c10',
+      axisX: '#ff007f',
+      axisY: '#39ff14',
+      origin: '#ffffff',
+      offset: '#ffe600',
+      text: '#849495',
+      holeFill: 'rgba(0, 240, 255, .09)',
     },
   },
 }
@@ -86,7 +146,6 @@ export function getFixedColors(themeId: ThemeId, isDark: boolean): FixedColors {
 }
 
 export interface PaletteAccents {
-  background: string
   grid: string
   toolpath: string
   rapid: string
@@ -119,15 +178,28 @@ export const PALETTE_LIST: PaletteMeta[] = [
 // "the grid nearly disappeared", not a style choice. Fixed with a fresh
 // value shared by every palette/theme — grid is a utility/orientation cue,
 // not a signature accent. Shopfloor Amber's values are from
-// design_shopfloor_amber.md §2.3.
+// design_shopfloor_amber.md §2.3. `background` is NOT here — it moved to
+// FixedColors above, since it's a Theme property, not a Palette accent.
 const DEFAULT_ACCENTS: Record<ThemeId, { light: PaletteAccents; dark: PaletteAccents }> = {
   'sloppy-indigo': {
-    light: { background: '#ffffff', grid: '#c0bfbc', toolpath: '#16a34a', rapid: '#cbd5e1', hole: '#94a3b8' },
-    dark: { background: '#0f172a', grid: '#5e5c64', toolpath: '#4ade80', rapid: '#334155', hole: '#475569' },
+    light: { grid: '#c0bfbc', toolpath: '#16a34a', rapid: '#cbd5e1', hole: '#94a3b8' },
+    dark: { grid: '#5e5c64', toolpath: '#4ade80', rapid: '#334155', hole: '#475569' },
   },
   'shopfloor-amber': {
-    light: { background: '#fffdf8', grid: '#d6d1c7', toolpath: '#b45309', rapid: '#d6d1c7', hole: '#a8a29e' },
-    dark: { background: '#0a0a0b', grid: '#3a3630', toolpath: '#fbbf24', rapid: '#3a3630', hole: '#57534e' },
+    light: { grid: '#d6d1c7', toolpath: '#b45309', rapid: '#d6d1c7', hole: '#a8a29e' },
+    dark: { grid: '#3a3630', toolpath: '#fbbf24', rapid: '#3a3630', hole: '#57534e' },
+  },
+  // Arcade Studio — dark-only (see FIXED_COLORS above), light===dark.
+  // Restrained's toolpath is stepped down one notch (#00d5e3 vs full
+  // neon's #00f0ff) and its `hole` is desaturated plum instead of magenta,
+  // per design-arcade-restrained.md §5.
+  'arcade-restrained': {
+    light: { grid: 'rgba(0,240,255,.10)', toolpath: '#00d5e3', rapid: '#1e2230', hole: '#7a3a5c' },
+    dark: { grid: 'rgba(0,240,255,.10)', toolpath: '#00d5e3', rapid: '#1e2230', hole: '#7a3a5c' },
+  },
+  'arcade-full-neon': {
+    light: { grid: 'rgba(0,240,255,.14)', toolpath: '#00f0ff', rapid: '#1e2230', hole: '#ff007f' },
+    dark: { grid: 'rgba(0,240,255,.14)', toolpath: '#00f0ff', rapid: '#1e2230', hole: '#ff007f' },
   },
 }
 
@@ -135,19 +207,22 @@ const DEFAULT_ACCENTS: Record<ThemeId, { light: PaletteAccents; dark: PaletteAcc
 // is active, exactly as before Themes existed. "Ember" avoids amber
 // (`#d97706`/`#fbbf24` is Sloppy Indigo's fixed `offset` color, and IS
 // Shopfloor Amber's own toolpath color) so its own toolpath accent never
-// gets mistaken for an offset vector or a theme's native look.
+// gets mistaken for an offset vector or a theme's native look. No
+// `background` here either — same reasoning as DEFAULT_ACCENTS above; this
+// is exactly what used to leak the wrong theme's background in when one of
+// these was selected.
 const ALTERNATE_PALETTES: Record<Exclude<PaletteId, 'default'>, { light: PaletteAccents; dark: PaletteAccents }> = {
   ocean: {
-    light: { background: '#ffffff', grid: '#c0bfbc', toolpath: '#0891b2', rapid: '#94a3b8', hole: '#64a0b8' },
-    dark: { background: '#0f172a', grid: '#5e5c64', toolpath: '#22d3ee', rapid: '#3f4b5c', hole: '#3d5a6b' },
+    light: { grid: '#c0bfbc', toolpath: '#0891b2', rapid: '#94a3b8', hole: '#64a0b8' },
+    dark: { grid: '#5e5c64', toolpath: '#22d3ee', rapid: '#3f4b5c', hole: '#3d5a6b' },
   },
   ember: {
-    light: { background: '#ffffff', grid: '#c0bfbc', toolpath: '#c2410c', rapid: '#a8a29e', hole: '#8a7a6d' },
-    dark: { background: '#0f172a', grid: '#5e5c64', toolpath: '#fb923c', rapid: '#44403c', hole: '#57453a' },
+    light: { grid: '#c0bfbc', toolpath: '#c2410c', rapid: '#a8a29e', hole: '#8a7a6d' },
+    dark: { grid: '#5e5c64', toolpath: '#fb923c', rapid: '#44403c', hole: '#57453a' },
   },
   violet: {
-    light: { background: '#ffffff', grid: '#c0bfbc', toolpath: '#7c3aed', rapid: '#a5a3b8', hole: '#8b7fae' },
-    dark: { background: '#0f172a', grid: '#5e5c64', toolpath: '#a78bfa', rapid: '#3f3d56', hole: '#4c4166' },
+    light: { grid: '#c0bfbc', toolpath: '#7c3aed', rapid: '#a5a3b8', hole: '#8b7fae' },
+    dark: { grid: '#5e5c64', toolpath: '#a78bfa', rapid: '#3f3d56', hole: '#4c4166' },
   },
 }
 

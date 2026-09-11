@@ -23,7 +23,7 @@ export function OffsetModePicker({ params, onChange }: OffsetModePickerProps) {
             className={[
               'rounded-md border px-2.5 py-1 text-xs font-medium transition',
               isSelected
-                ? 'border-accent-strong bg-accent-bg text-accent-fg'
+                ? 'border-selected-border bg-selected-bg text-selected-fg shadow-[var(--glow-selected)]'
                 : 'border-border text-muted hover:border-field-border',
             ].join(' ')}
           >

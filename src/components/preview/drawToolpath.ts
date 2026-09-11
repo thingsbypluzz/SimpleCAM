@@ -32,7 +32,7 @@ function buildTheme(paletteId: PaletteId, isDark: boolean, themeId: ThemeId): Th
   const fixed = getFixedColors(themeId, isDark)
   const accents = getPaletteAccents(paletteId, isDark, themeId)
   return {
-    background: accents.background,
+    background: fixed.background,
     grid: accents.grid,
     axisX: fixed.axisX,
     axisY: fixed.axisY,
