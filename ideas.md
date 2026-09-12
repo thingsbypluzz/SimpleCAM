@@ -162,6 +162,59 @@ faktycznym.
   (2026-09-12). Wymaga przycinania linii skanu (rastra) do granicy
   koła — dodatkowa złożoność geometryczna nieobecna przy Rectangle
   (gdzie linie rastra po prostu biegną od krawędzi do krawędzi).
+- **`BL-31`** *(Otwarty)* — **Oś X/Y w 3D Preview: stała długość
+  zamiast dopasowanej do renderowanego obszaru.** `axisLength =
+  planeSize * 0.55` (`buildScene.ts::buildToolpathScene()`) to jeden
+  skalar, symetryczny wokół originu (0,0) w obu kierunkach każdej osi —
+  poprawne tylko gdy wzorzec leży mniej więcej centralnie wokół
+  originu. Siatka/płaszczyzna materiału tymczasem rekalibruje swój
+  środek do `gridCenterX`/`gridCenterZ` (centroid bounding-boxa
+  wzorca — patrz "Etykiety siatki w 3D Preview" w `CLAUDE.md`), więc
+  przy Rectangle Cornered (wzorzec leży w całości w jednej ćwiartce
+  względem originu) albo dużym Offset X/Y oś wystaje poza faktycznie
+  renderowaną siatkę w jednym kierunku, a w drugim może nie sięgać
+  wystarczająco daleko. 2D Preview nie ma tego problemu — tam osie są
+  zakotwiczone do krawędzi canvasu (`EDGE_MARGIN`, `drawToolpath.ts`),
+  niezależnie od pozycji danych. Wymaga liczenia długości każdego
+  ramienia osi osobno, względem faktycznych granic renderowanej
+  płaszczyzny (`gridCenterX/Z` ± `gridSize/2`), nie jednego wspólnego
+  skalara liczonego od originu.
+- **`BL-32`** *(Otwarty)* — **Siatka w motywach Arcade Studio ledwie
+  widoczna.** `DEFAULT_ACCENTS['arcade-restrained'/'arcade-full-neon'].grid`
+  (`config/palettes.ts`) to cyjan przy 10%/14% alpha
+  (`rgba(0,240,255,.10)`/`rgba(0,240,255,.14)`), który na czarnym tle
+  obu motywów — dodatkowo przemnożony przez `opacity: 0.4` ustawiane na
+  `GridHelper` w 3D (`buildScene.ts`) — robi się praktycznie
+  niewidoczny. Ten sam objaw, co `BL-12` (naprawiony wcześniej z innego
+  powodu — tam to był zbyt subtelny wspólny kolor grid na starym 0.4
+  opacity 3D). Podnieść alpha (albo jaśniejszy odcień) tych dwóch
+  wpisów, żeby linie siatki zostały czytelne na czarnym tle bez psucia
+  estetyki neonu.
+- **`BL-33`** *(Otwarty)* — **Alternatywny render checkboxów (Krok
+  4).** Użytkownik ma gotowy komponent do pobrania z **21st.dev** jako
+  punkt wyjścia do redesignu pól checkbox używanych w Kroku 4 (Feeds &
+  Speeds / Output options). Bez dalszych szczegółów na razie — do
+  rozwinięcia przy realizacji.
+- **`BL-34`** *(Otwarty)* — **BUG: ścieżka cięcia Outline Rectangle
+  Cornered pokrywa się z granicą materiału zamiast być przesunięta o
+  promień narzędzia.** Niezależnie od `OffsetMode` (Inside/Outside/
+  On-line), `rectCorners()` (`lib/outlineRectangleGeometry.ts`) dla
+  `'rectCornered'` ustawia `originX`/`originY` zawsze na `0`, mimo że
+  `toolWidth`/`toolHeight` już zawierają deltę offsetu
+  (`rectToolDimensions()`) — bliski (dolny-lewy) narożnik ścieżki
+  narzędzia zostaje przypięty do tego samego `(0,0)` co narożnik
+  nominalnego prostokąta, zamiast przesunąć się o `toolDiameter/2` w
+  kierunku -X/-Y (Outside) albo +X/+Y (Inside). Efekt: prostokąt
+  rośnie/maleje wyłącznie w stronę dalekiego rogu (+X/+Y), zamiast
+  symetrycznie wokół nominalnego kształtu. `'rectCentered'` nie ma tego
+  problemu — tam `originX = -toolWidth/2` już poprawnie re-centruje się
+  wraz z `toolWidth`. Naprawa: przeliczyć `originX`/`originY` też dla
+  `'rectCornered'`, analogicznie do `rectCentered` (dziś funkcja
+  dostaje tylko już-przetworzone `toolWidth`/`toolHeight`, nie
+  nominalne `width`/`height` ani samą deltę offsetu — potrzebne jedno z
+  nich, żeby przesunąć bliski narożnik o połowę delty). Dotyczy
+  realnego G-code, nie tylko podglądu — obie metody Rectangle (Ramp/
+  Standard) i tabs po drodze reużywają `rectCorners()` bezpośrednio.
 
 **`BL-17` zamknięte — "Interface Anatomy"**, Artifact z umownymi nazwami
 elementów UI, dziś aktywnie używany w `CLAUDE.md`:
