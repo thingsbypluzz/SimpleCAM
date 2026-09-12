@@ -28,8 +28,8 @@ const SECTIONS: { id: SectionId; label: string }[] = [
   { id: 'machine', label: 'Machine' },
   { id: 'tabs', label: 'Tabs' },
   { id: 'appearance', label: 'Appearance' },
-  { id: 'about', label: 'About' },
   { id: 'privacy', label: 'Privacy' },
+  { id: 'about', label: 'About' },
 ]
 
 const FIELDS: { key: TravelField; label: string }[] = [
@@ -503,6 +503,64 @@ export function SettingsModal({
             </>
           )}
 
+          {activeSection === 'privacy' && (
+            <>
+              <h2 className="text-sm font-semibold text-fg">Privacy</h2>
+
+              <p className="text-sm text-muted">
+                SimpleCAM runs entirely in your browser. There is no backend, no database, and no
+                user accounts — G-code generation and the 2D/3D previews all happen locally on
+                your machine, and nothing you type or generate is ever sent to a server we
+                operate.
+              </p>
+
+              <div className="flex flex-col gap-2 border-t border-border pt-4">
+                <span className="text-sm font-medium text-value">What's stored, and where</span>
+                <p className="text-sm text-muted">
+                  Presets and settings (Machine, Appearance, Tabs) are stored only in your
+                  browser's localStorage, scoped to this site. Nothing is synced, exported, or
+                  read by us — it stays on your device and is cleared whenever you clear your
+                  browser's site data, or automatically if you use a private/incognito window.
+                </p>
+              </div>
+
+              <div className="flex flex-col gap-2 border-t border-border pt-4">
+                <span className="text-sm font-medium text-value">Cookies &amp; tracking</span>
+                <p className="text-sm text-muted">
+                  SimpleCAM sets no cookies and runs no analytics, telemetry, or fingerprinting
+                  scripts of any kind. There is nothing to opt out of, because nothing is
+                  collected in the first place.
+                </p>
+              </div>
+
+              <div className="flex flex-col gap-2 border-t border-border pt-4">
+                <span className="text-sm font-medium text-value">The one external request</span>
+                <p className="text-sm text-muted">
+                  SimpleCAM loads one third-party resource on every visit: the "Space Grotesk"
+                  typeface from Google Fonts, used by the Arcade Studio themes. Like loading a
+                  font or image from any external site, this sends your browser's standard
+                  request data (including your IP address) to Google, governed by Google's own
+                  privacy policy, not ours — it happens outside SimpleCAM's own code. It's the
+                  only network request SimpleCAM makes to a third party; you can verify this
+                  yourself with your browser's network inspector.
+                </p>
+              </div>
+
+              <div className="flex flex-col gap-2 border-t border-border pt-4">
+                <span className="text-sm font-medium text-value">GDPR</span>
+                <p className="text-sm text-muted">
+                  The GDPR (General Data Protection Regulation) governs the collection and
+                  processing of personal data. SimpleCAM's own code and infrastructure collect,
+                  store, transmit, or process none — there is no server-side component to do so,
+                  and nothing you enter ever leaves your device through us. The one exception is
+                  the Google Fonts request above, handled entirely by Google under its own policy.
+                  With that one disclosed exception, using SimpleCAM does not involve us
+                  processing your personal data at all.
+                </p>
+              </div>
+            </>
+          )}
+
           {activeSection === 'about' && (
             <>
               <h2 className="text-sm font-semibold text-fg">About</h2>
@@ -522,24 +580,6 @@ export function SettingsModal({
               </p>
 
               <p className="text-sm text-muted">Envisioned by ThingsByPluzz</p>
-            </>
-          )}
-
-          {activeSection === 'privacy' && (
-            <>
-              <h2 className="text-sm font-semibold text-fg">Privacy</h2>
-
-              <p className="text-sm text-muted">
-                SimpleCAM runs entirely in your browser. There is no backend, no database, and no
-                user accounts — G-code generation and the 2D/3D previews all happen locally on
-                your machine, and nothing you enter is ever sent to a server.
-              </p>
-
-              <p className="text-sm text-muted">
-                Presets and settings (Machine, Appearance, Tabs) are stored only in your browser's
-                localStorage, and are cleared whenever your browser data is cleared. There is no
-                tracking, no analytics, and no cookies.
-              </p>
             </>
           )}
         </div>

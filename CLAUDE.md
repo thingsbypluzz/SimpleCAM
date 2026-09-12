@@ -739,18 +739,33 @@ src/
   config/toolDiameterOptions.ts — `TOOL_DIAMETER_OPTIONS`, współdzielone
                               przez Step 2 Hole(s) i Step 2 Outline.
   components/SettingsModal.tsx — Settings Modal. Pięć Settings Nav
-                              Items: **Machine** (X/Y/Z travel, dialekt,
-                              Start/End G-Code), **Appearance** (Theme,
-                              Preview Color Palette, Grid Labels 3D —
-                              patrz "Motywy (Theme) i Palety..." niżej),
-                              **Tabs** (Default Tab Sizes), **About**
-                              (nazwa/wersja appki), **Privacy** (statyczny
-                              tekst — appka nie ma backendu/bazy/kont, nic
-                              nie wysyła na serwer, dane trzymają się
-                              wyłącznie w `localStorage`, zero trackingu/
-                              analytics/cookies; bez samodzielnej
-                              podstrony — appka nie ma routingu, treść
-                              tylko wewnątrz modala). Pola liczbowe Machine/
+                              Items, w tej kolejności: **Machine** (X/Y/Z
+                              travel, dialekt, Start/End G-Code),
+                              **Tabs** (Default Tab Sizes), **Appearance**
+                              (Theme, Preview Color Palette, Grid Labels 3D
+                              — patrz "Motywy (Theme) i Palety..." niżej),
+                              **Privacy**, **About** (nazwa/wersja appki) —
+                              ta ostatnia zawsze na końcu nawigacji.
+                              **Privacy** to statyczny tekst w czterech
+                              blokach: co appka robi (brak backendu/bazy/
+                              kont, wszystko liczone lokalnie), co i gdzie
+                              jest przechowywane (`localStorage`, per-
+                              przeglądarka, czyszczone razem z danymi
+                              strony albo automatycznie w oknie prywatnym),
+                              cookies/tracking (brak w ogóle — nic do
+                              opt-outu), i **jawnie ujawniony jedyny wyjątek**:
+                              arkusz stylów Google Fonts (`Space Grotesk`,
+                              ładowany bezwarunkowo w `index.html` dla
+                              motywów Arcade Studio) wysyła standardowe dane
+                              żądania (w tym adres IP) do Google — to jedyne
+                              połączenie sieciowe appki z osobą trzecią.
+                              Sekcja GDPR świadomie **nie** twierdzi zerowego
+                              przesyłu danych bez zastrzeżeń — powołuje się
+                              wprost na ten jeden wyjątek zamiast go pomijać,
+                              żeby deklaracja została prawdziwa, nie tylko
+                              uspokajająca. Bez samodzielnej podstrony —
+                              appka nie ma routingu, treść tylko wewnątrz
+                              modala. Pola liczbowe Machine/
                               Tabs idą przez `NumberInput` jak w wizardzie
                               (patrz "Pola liczbowe w wizardzie" niżej),
                               ale zachowują własny wzorzec commit

@@ -7,6 +7,23 @@ zgodne z [SemVer](https://semver.org/). Ten plik pozostaje głównym, czytelnym
 thingsbypluzz/SimpleCAM), ale to infrastruktura pod izolację pracy
 (branch/worktree per zadanie), nie zamiennik tego changeloga.
 
+## [0.15.1] — 2026-09-13
+
+### Zmieniono
+
+- **Privacy — reorganizacja nawigacji i znacznie pełniejsza treść.**
+  Settings Nav: **Privacy** przeniesiona przed **About** (About zostaje
+  zawsze na końcu). Treść rozbita na cztery bloki: co appka robi (brak
+  backendu/bazy/kont), co i gdzie jest przechowywane (`localStorage`,
+  per-przeglądarka), cookies/tracking (brak w ogóle), i osobny blok
+  **GDPR** z wyraźnym potwierdzeniem zgodności. Świadomie **nie**
+  twierdzi zerowego przesyłu danych bez zastrzeżeń — jawnie ujawnia
+  jedyny realny wyjątek: arkusz stylów Google Fonts (`Space Grotesk`,
+  ładowany bezwarunkowo w `index.html` dla motywów Arcade Studio) wysyła
+  standardowe dane żądania (w tym adres IP) do Google, poza kontrolą
+  appki. Bez tego zastrzeżenia deklaracja GDPR byłaby nieprawdziwa, nie
+  tylko niepełna.
+
 ## [0.15.0] — 2026-09-13
 
 ### Dodano
