@@ -172,60 +172,19 @@ mockup przestanie być wierny.
 
 ## Przyszłe operacje (`OP-#`)
 
-Osobna, celowo **nie** `BL-#` kategoria — Pocket/Surface (patrz
-placeholdery w `Step1Positioning.tsx`) to nie drobne poprawki tylko
-kamienie milowe wielkości całego etapu implementacji, każdy z własną,
-dziś nieznaną taksonomią (operacja → pattern/sub-choice → parametry).
-Numer `OP-#` jest identyfikatorem, nie kolejnością realizacji — żadna z
-dwóch nie jest dziś zaplanowana jako "następna" względem drugiej. `OP-1`
-(Outline) zaimplementowane — patrz `CLAUDE.md`, "Kluczowe decyzje
-projektowe".
+Osobna, celowo **nie** `BL-#` kategoria — Pocket (patrz placeholder w
+`Step1Positioning.tsx`) to nie drobna poprawka tylko kamień milowy
+wielkości całego etapu implementacji, z własną, dziś nieznaną
+taksonomią (operacja → pattern/sub-choice → parametry). Numer `OP-#`
+jest identyfikatorem, nie kolejnością realizacji. `OP-1` (Outline) i
+`OP-3` (Surface) zaimplementowane — patrz `CLAUDE.md`, "Kluczowe
+decyzje projektowe" (pełne rozstrzygnięcia sesji `/grill-me` dla
+Surface, 2026-09-12, i historia implementacji w `CHANGELOG.md`,
+`[0.14.0]`).
 
 - **`OP-2` — Pocket.** Kieszeniowanie — wybieranie materiału wewnątrz
   zamkniętego konturu (nie tylko po samej linii), wymaga strategii
   wypełnienia (np. zigzag/spiral) nieobecnej dziś w silniku w ogóle.
-- **`OP-3`** *(W trakcie)* **— Surface.** Planowanie/frezowanie
-  powierzchni (face milling) — inny paradygmat niż "otwór"/"kontur":
-  wejściem jest obszar, nie ścieżka. Sesja `/grill-me` (2026-09-12)
-  rozstrzygnęła zakres v1, przed implementacją:
-  - **Geometria:** tylko Rectangle (Cornered + Centered) w v1; Circle
-    świadomie odłożone → `BL-30`. Brak obsługi wysp/przeszkód w
-    obrębie obszaru — poza zakresem v1 bez zastrzeżeń.
-  - **Dwie metody:** Zigzag i Unidirectional — osobny rejestr
-    metadanych analogiczny do `METHOD_META`.
-  - **Kierunek rastra:** toggle X/Y (bez dowolnego kąta). Punkt
-    startowy/końcowy każdego poziomu — zawsze róg min-X/min-Y
-    bounding-boxa obszaru, niezależnie od Cornered/Centered.
-  - **Overtravel** o promień narzędzia zawsze włączony (środek
-    narzędzia wychodzi poza granicę obszaru, żeby oczyścić
-    krawędzie/rogi).
-  - **Stepover:** pole % średnicy narzędzia (jedyne źródło prawdy) +
-    pole obok tylko do odczytu z przeliczoną wartością mm. Walidacja:
-    1–100%.
-  - **Głębokość:** Total Depth + Stepdown, pełny raster całego
-    obszaru na każdym poziomie (reużycie `computeDepthPasses()`).
-  - **Zigzag — połączenie między liniami:** ciągły G1 na tej samej Z
-    (bez podnoszenia), jedna nieprzerwana ścieżka na poziom.
-  - **Przejście między poziomami Z** (dotyczy obu metod, łącznie z
-    pierwszym wejściem z Safe Z): retrakt pionowy o `stepdown`, G0 do
-    rogu startowego, potem zejście na nowy poziom przez **Plunge albo
-    Helix** (toggle wyboru). Helix Radius — osobne pole (widoczne
-    tylko przy Helix), sufit walidacji = stepover (mm). Mini-helix
-    reużywa istniejący toggle interpolacji G2/G3 vs G1.
-  - **Unidirectional — retrakt między liniami** w ramach tego samego
-    poziomu Z: pełny Safe Z (istniejąca konwencja), bez nowego pola.
-  - **Tabs nie dotyczą Surface w ogóle** — poza zakresem koncepcyjnym
-    (Surface nie izoluje/przewierca na wylot, nie ma czego
-    podtrzymywać).
-  - **Feed rate:** jeden globalny (do zweryfikowania w kodzie przy
-    implementacji, czy appka ma dziś jeden czy per-operację).
-  - **Architektura:** pełnoprawna trzecia operacja
-    `operation: 'holes' | 'outline' | 'surface'`, własny
-    `Step2GeometrySurface.tsx`, własny `config/surfaceMeta.ts` —
-    "Coming soon" znika.
-  - **Preview:** 2D — linie skanu + strzałki kierunku; 3D — płaski
-    "zdjęty" blok materiału na głębokość Total Depth (jak stock
-    cap/bryła w Outline).
 
 **Każda z `OP-#` wymaga własnej, pełnej sesji `/grill-me` przed
 napisaniem jakiegokolwiek kodu** — nieporównywalnie większy zakres

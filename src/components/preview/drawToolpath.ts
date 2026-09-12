@@ -4,6 +4,8 @@ import { computeTabRanges, type TabRange } from '../../lib/tabs'
 import { circleOutlineRadiusAndDirection } from '../../lib/outlineCircle'
 import { rectCorners, rectToolDimensions } from '../../lib/outlineRectangleGeometry'
 import { sideRangesFor, type SideTabRange } from '../../lib/outlineRectangleTabs'
+import { surfaceNominalBounds, surfaceStepoverMm, surfaceToolBounds, type SurfaceBounds } from '../../lib/surfaceGeometry'
+import { computeRasterLines, zigzagWaypoints, type RasterLine } from '../../lib/surfaceRaster'
 import type { Point2D, WizardParams } from '../../types/wizard'
 import type { ThemeId } from '../../types/theme'
 import { type Camera2D, type DataBounds, worldToScreen } from './camera2d'
@@ -221,8 +223,23 @@ type ResolvedPattern =
       toolCorners: Point2D[]
       sideTabRanges: SideTabRange[][]
     }
+  | {
+      kind: 'surface'
+      params: WizardParams
+      nominalBounds: SurfaceBounds
+      bounds: SurfaceBounds
+      lines: RasterLine[]
+      method: WizardParams['surface']['method']
+    }
 
 function resolvePattern(params: WizardParams): ResolvedPattern {
+  if (params.operation === 'surface') {
+    const { surface } = params
+    const nominalBounds = surfaceNominalBounds(surface)
+    const bounds = surfaceToolBounds(surface)
+    const lines = computeRasterLines(bounds, surface.rasterDirection, surfaceStepoverMm(surface))
+    return { kind: 'surface', params, nominalBounds, bounds, lines, method: surface.method }
+  }
   if (params.operation === 'outline') {
     const { outline } = params
     if (outline.shape === 'circle') {
@@ -298,11 +315,14 @@ function computeCombinedBounds(patterns: ResolvedPattern[]): DataBounds {
       const r = Math.max(pattern.nominalRadius, pattern.toolRadius)
       allX.push(pattern.center.x - r, pattern.center.x + r)
       allY.push(pattern.center.y - r, pattern.center.y + r)
-    } else {
+    } else if (pattern.kind === 'outlineRect') {
       for (const p of [...pattern.nominalCorners, ...pattern.toolCorners]) {
         allX.push(p.x)
         allY.push(p.y)
       }
+    } else {
+      allX.push(pattern.bounds.minX, pattern.bounds.maxX)
+      allY.push(pattern.bounds.minY, pattern.bounds.maxY)
     }
   }
   return {
@@ -459,6 +479,103 @@ function drawOutlineRectGeometry(
   drawOffsetVector(ctx, toPx, params.outline.offsetX, params.outline.offsetY, theme, arrowSize)
 }
 
+// Surface: nominal material area (fill), tool-center raster lines (stroke)
+// — a continuous polyline for Zigzag (no lift between lines, mirrors the
+// engine's own G1 chain), separate solid lines joined by dashed rapid
+// connectors for Unidirectional (mirrors Hole(s)' inter-hole rapid style) —
+// plus a small direction arrowhead per line and a dot marking the fixed
+// start corner (always min-X/min-Y, see lib/surfaceGeometry.ts).
+function drawSurfaceGeometry(
+  ctx: CanvasRenderingContext2D,
+  toPx: (x: number, y: number) => [number, number],
+  pattern: Extract<ResolvedPattern, { kind: 'surface' }>,
+  theme: Theme,
+  arrowSize: number,
+) {
+  const { nominalBounds, lines, method, params } = pattern
+
+  ctx.beginPath()
+  const corners: Point2D[] = [
+    { x: nominalBounds.minX, y: nominalBounds.minY },
+    { x: nominalBounds.maxX, y: nominalBounds.minY },
+    { x: nominalBounds.maxX, y: nominalBounds.maxY },
+    { x: nominalBounds.minX, y: nominalBounds.maxY },
+  ]
+  corners.forEach((p, i) => {
+    const [x, y] = toPx(p.x, p.y)
+    if (i === 0) ctx.moveTo(x, y)
+    else ctx.lineTo(x, y)
+  })
+  ctx.closePath()
+  ctx.fillStyle = theme.holeFill
+  ctx.fill()
+  ctx.strokeStyle = theme.holeStroke
+  ctx.lineWidth = 1
+  ctx.stroke()
+
+  ctx.strokeStyle = theme.toolpath
+  ctx.lineWidth = 1.5
+
+  const drawArrowOnLine = (line: RasterLine, forward: boolean) => {
+    const from = forward ? line.from : line.to
+    const to = forward ? line.to : line.from
+    const [fx, fy] = toPx(from.x, from.y)
+    const [tx, ty] = toPx(to.x, to.y)
+    const midX = (fx + tx) / 2
+    const midY = (fy + ty) / 2
+    const dx = tx - fx
+    const dy = ty - fy
+    const len = Math.hypot(dx, dy) || 1
+    drawArrowhead(ctx, midX, midY, dx / len, dy / len, arrowSize * 0.7, theme.toolpath)
+  }
+
+  if (method === 'zigzag') {
+    const waypoints = zigzagWaypoints(lines)
+    ctx.beginPath()
+    waypoints.forEach((p, i) => {
+      const [x, y] = toPx(p.x, p.y)
+      if (i === 0) ctx.moveTo(x, y)
+      else ctx.lineTo(x, y)
+    })
+    ctx.stroke()
+    lines.forEach((line, i) => drawArrowOnLine(line, i % 2 === 0))
+  } else {
+    lines.forEach((line, i) => {
+      const [fx, fy] = toPx(line.from.x, line.from.y)
+      const [tx, ty] = toPx(line.to.x, line.to.y)
+      ctx.beginPath()
+      ctx.moveTo(fx, fy)
+      ctx.lineTo(tx, ty)
+      ctx.stroke()
+      drawArrowOnLine(line, true)
+
+      if (i < lines.length - 1) {
+        const [nx, ny] = toPx(lines[i + 1].from.x, lines[i + 1].from.y)
+        ctx.strokeStyle = theme.rapid
+        ctx.lineWidth = 1
+        ctx.setLineDash([4, 4])
+        ctx.beginPath()
+        ctx.moveTo(tx, ty)
+        ctx.lineTo(nx, ny)
+        ctx.stroke()
+        ctx.setLineDash([])
+        ctx.strokeStyle = theme.toolpath
+        ctx.lineWidth = 1.5
+      }
+    })
+  }
+
+  if (lines.length > 0) {
+    const [startX, startY] = toPx(lines[0].from.x, lines[0].from.y)
+    ctx.beginPath()
+    ctx.arc(startX, startY, 2, 0, Math.PI * 2)
+    ctx.fillStyle = theme.toolpath
+    ctx.fill()
+  }
+
+  drawOffsetVector(ctx, toPx, params.surface.offsetX, params.surface.offsetY, theme, arrowSize)
+}
+
 // Draws one pattern's full geometry as one atomic unit — this is what
 // makes pattern-level (not element-level) draw ordering control occlusion
 // between overlaid presets and the active pattern (see BL-3: active
@@ -480,6 +597,9 @@ function drawPatternGeometry(
       break
     case 'outlineRect':
       drawOutlineRectGeometry(ctx, toPx, pattern, theme, arrowSize)
+      break
+    case 'surface':
+      drawSurfaceGeometry(ctx, toPx, pattern, theme, arrowSize)
       break
   }
 }

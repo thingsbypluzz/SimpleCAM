@@ -6,6 +6,9 @@ import {
   isOutlineToolDiameterValid,
   isStartZValid,
   isStepdownValid,
+  isSurfaceHelixRadiusValid,
+  isSurfaceStepoverValid,
+  isSurfaceToolDiameterValid,
   isTabHeightValid,
   isTabWidthValid,
   isToolDiameterValid,
@@ -13,6 +16,8 @@ import {
   outlineFootprint,
   outlineZSpan,
   patternSpan,
+  surfaceFootprint,
+  surfaceZSpan,
   zSpan,
 } from './validation'
 import { DEFAULT_WIZARD_PARAMS } from '../types/wizard'
@@ -320,6 +325,78 @@ describe('machineFitWarnings — Outline', () => {
       ...DEFAULT_WIZARD_PARAMS,
       operation: 'outline' as const,
       outline: { ...DEFAULT_WIZARD_PARAMS.outline, shape: 'rectCornered' as const, offsetMode: 'onLine' as const, width: 500, height: 10 },
+    }
+    const machine = { ...DEFAULT_MACHINE_SETTINGS, travelX: 100, travelY: 1000, travelZ: 1000 }
+    const warnings = machineFitWarnings(params, machine)
+    expect(warnings).toHaveLength(1)
+    expect(warnings[0]).toContain('X span')
+  })
+})
+
+describe('isSurfaceToolDiameterValid', () => {
+  it('is valid for any positive tool diameter — Surface has no "must fit inside the shape" constraint', () => {
+    expect(isSurfaceToolDiameterValid({ ...DEFAULT_WIZARD_PARAMS.surface, toolDiameter: 50, width: 5, height: 5 })).toBe(true)
+  })
+
+  it('is invalid at zero or below', () => {
+    expect(isSurfaceToolDiameterValid({ ...DEFAULT_WIZARD_PARAMS.surface, toolDiameter: 0 })).toBe(false)
+  })
+})
+
+describe('isSurfaceStepoverValid', () => {
+  it('is valid at the boundaries (1% and 100%)', () => {
+    expect(isSurfaceStepoverValid({ ...DEFAULT_WIZARD_PARAMS.surface, stepoverPercent: 1 })).toBe(true)
+    expect(isSurfaceStepoverValid({ ...DEFAULT_WIZARD_PARAMS.surface, stepoverPercent: 100 })).toBe(true)
+  })
+
+  it('is invalid outside 1-100%', () => {
+    expect(isSurfaceStepoverValid({ ...DEFAULT_WIZARD_PARAMS.surface, stepoverPercent: 0 })).toBe(false)
+    expect(isSurfaceStepoverValid({ ...DEFAULT_WIZARD_PARAMS.surface, stepoverPercent: 101 })).toBe(false)
+  })
+})
+
+describe('isSurfaceHelixRadiusValid', () => {
+  it('is vacuously valid in Plunge mode, regardless of value', () => {
+    expect(
+      isSurfaceHelixRadiusValid({ ...DEFAULT_WIZARD_PARAMS.surface, zTransitionMode: 'plunge', helixRadius: -5 }),
+    ).toBe(true)
+  })
+
+  it('in Helix mode: valid above 0 and up to the stepover (mm)', () => {
+    // toolDiameter 3.175 * stepoverPercent 40% = 1.27mm ceiling.
+    const surface = { ...DEFAULT_WIZARD_PARAMS.surface, zTransitionMode: 'helix' as const, toolDiameter: 3.175, stepoverPercent: 40 }
+    expect(isSurfaceHelixRadiusValid({ ...surface, helixRadius: 1.27 })).toBe(true)
+    expect(isSurfaceHelixRadiusValid({ ...surface, helixRadius: 0.5 })).toBe(true)
+  })
+
+  it('in Helix mode: invalid at or below 0, or above the stepover ceiling', () => {
+    const surface = { ...DEFAULT_WIZARD_PARAMS.surface, zTransitionMode: 'helix' as const, toolDiameter: 3.175, stepoverPercent: 40 }
+    expect(isSurfaceHelixRadiusValid({ ...surface, helixRadius: 0 })).toBe(false)
+    expect(isSurfaceHelixRadiusValid({ ...surface, helixRadius: 1.28 })).toBe(false)
+  })
+})
+
+describe('surfaceFootprint', () => {
+  it('is the nominal rectangle expanded outward by the tool radius on every side', () => {
+    const surface = { ...DEFAULT_WIZARD_PARAMS.surface, width: 50, height: 30, toolDiameter: 4, offsetX: 100, offsetY: -50 }
+    expect(surfaceFootprint(surface)).toEqual({ x: 54, y: 34 })
+  })
+})
+
+describe('surfaceZSpan', () => {
+  it('sums safeZ and totalDepth', () => {
+    const surface = { ...DEFAULT_WIZARD_PARAMS.surface, totalDepth: 4 }
+    const feeds = { ...DEFAULT_WIZARD_PARAMS.feeds, safeZ: 5 }
+    expect(surfaceZSpan(surface, feeds)).toBe(9)
+  })
+})
+
+describe('machineFitWarnings — Surface', () => {
+  it('uses surfaceFootprint/surfaceZSpan when operation is surface', () => {
+    const params = {
+      ...DEFAULT_WIZARD_PARAMS,
+      operation: 'surface' as const,
+      surface: { ...DEFAULT_WIZARD_PARAMS.surface, width: 500, height: 10, toolDiameter: 0 },
     }
     const machine = { ...DEFAULT_MACHINE_SETTINGS, travelX: 100, travelY: 1000, travelZ: 1000 }
     const warnings = machineFitWarnings(params, machine)

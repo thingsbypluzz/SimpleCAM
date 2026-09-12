@@ -26,7 +26,7 @@ bez logowania, bez backendu, bez CAD-a.
 
 ## Stan projektu
 
-Appka obsługuje dziś dwie operacje (`WizardParams.operation`):
+Appka obsługuje dziś trzy operacje (`WizardParams.operation`):
 
 - **Hole(s)** — wiercenie/frezowanie okrągłych otworów. Dwie metody
   (`MethodType`: Helix / Standard Hole) × pięć wariantów pozycjonowania
@@ -35,6 +35,11 @@ Appka obsługuje dziś dwie operacje (`WizardParams.operation`):
 - **Outline** — kontur wzdłuż zamkniętego kształtu, z trybem offsetu
   (Inside/Outside/On-line). Trzy kształty: Rectangle Cornered, Rectangle
   Centered, Circle.
+- **Surface** — planowanie/frezowanie powierzchni (raster face milling)
+  po obszarze prostokątnym (Rectangle Cornered/Centered — Circle
+  odłożone, `BL-30`). Dwie metody (`SurfaceMethodType`: Zigzag /
+  Unidirectional), kierunek rastra X/Y, stepover jako % średnicy
+  narzędzia.
 
 Pełne uzasadnienie i historia każdej decyzji — łącznie z tym, jak
 appka doszła do dzisiejszego stanu, wersja po wersji — żyje wyłącznie w
@@ -100,6 +105,61 @@ decyzją projektową).
   `standardHoleToolpath` dla 4 boków. Tabs dla Rectangle liczone **per
   bok** (`lib/outlineRectangleTabs.ts`), nie razem jak w Circle/Hole(s).
   Zaokrąglone rogi prostokąta poza zakresem.
+- **Surface — raster face milling, tylko Rectangle w v1:** Circle
+  świadomie odłożone (`BL-30`, przycinanie linii skanu do granicy koła
+  to dodatkowa złożoność geometryczna). Brak wysp/przeszkód do ominięcia
+  — poza zakresem v1. Dwie metody (`SurfaceMethodType`): **Zigzag**
+  (ciągły `G1` bez podnoszenia między liniami — jedna nieprzerwana
+  ścieżka na poziom Z) i **Unidirectional** (zawsze ten sam kierunek,
+  pełny retrakt na Safe Z + reentry prostym plunge między liniami —
+  wzorzec identyczny z `standardHole.ts`'s explicit plunge przed każdym
+  passem). Płaski rejestr `config/surfaceMethodMeta.ts` (jak
+  `METHOD_META`), **nie** bespoke-switch jak `lib/outline.ts` — metody
+  Surface nie są ograniczone per-kształt jak Ramp/Helix w Outline.
+  **Kierunek rastra** (`RasterDirection`): toggle X/Y w Step 2, bez
+  dowolnego kąta. **Overtravel o promień narzędzia zawsze włączony** —
+  bounding-box tool-center (`lib/surfaceGeometry.ts::surfaceToolBounds`)
+  rośnie symetrycznie na wszystkich 4 bokach względem nominalnego
+  prostokąta (inaczej niż `rectToolDimensions()` w Outline, który dla
+  `outside` rośnie asymetrycznie per offset mode — Surface nie ma
+  pojęcia offset mode). **Stepover**: pole `stepoverPercent` (1–100%,
+  jedyne źródło prawdy) + pole obok tylko do odczytu z przeliczoną
+  wartością mm (`surfaceStepoverMm()`). **Punkt startowy** każdego
+  poziomu Z: zawsze róg min-X/min-Y bounding-boxa
+  (`surfaceStartCorner()`), niezależnie od Cornered/Centered czy
+  kierunku rastra. **Głębokość**: Total Depth + Stepdown (global
+  `feeds.stepdown`), pełny raster całego obszaru na każdym poziomie
+  (`buildLevelDescents()`, reużywa `computeDepthPasses()`). **Przejście
+  między poziomami Z** (i pierwsze wejście z Safe Z) — wspólny
+  mechanizm dla obu metod: retrakt o `stepdown` (na aktualnym XY), `G0`
+  do rogu startowego, potem **Plunge** (prosty `G1 Z`) albo **Helix**
+  (mini-spirala) wg toggle'a `ZTransitionMode` w Step 2. Helix reużywa
+  wprost `fullCircleMove()`/`computeDepthPasses()` z silnika Helix
+  Hole(s) — środek spirali przesunięty o `helixRadius` w -X od
+  narożnika, żeby start/koniec `fullCircleMove` wypadł dokładnie na nim;
+  kierunek stały `'ccw'`. **Helix Radius** — osobne pole (tylko w trybie
+  Helix), walidacja `isSurfaceHelixRadiusValid()`: `> 0`, sufit =
+  stepover (mm). Mini-helix reużywa istniejący toggle interpolacji
+  G2/G3 vs G1 (`output.interpolation`). **Tabs nie dotyczą Surface w
+  ogóle** — brak checkboxa, brak pola, poza zakresem koncepcyjnym
+  (Surface nie izoluje/przewierca na wylot). **Feed rate**: jeden
+  globalny (`feeds.feedrateXY` dla cięcia/spirali, `feeds.plungeRate`
+  tylko dla prostych pionowych ruchów) — bez osobnego pola, ta sama
+  konwencja co Hole(s)/Outline. Silnik: `lib/surfaceGeometry.ts`
+  (bounding box + overtravel), `lib/surfaceRaster.ts` (pozycje linii
+  rastra + waypointy zigzag), `lib/surfaceZTransition.ts` (mechanika
+  Plunge/Helix + `buildLevelDescents()`), `lib/surface.ts`
+  (`generateSurfaceZigzag`/`generateSurfaceUnidirectional`, spięte przez
+  `assembleProgram()` tą samą konwencją co Outline — jeden syntetyczny
+  punkt-narożnik startowy). Preview 2D — linie skanu + strzałki
+  kierunku (`drawSurfaceGeometry()`); Preview 3D — płaski
+  półprzezroczysty blok "usuniętego materiału" na pełnym nominalnym
+  footprincie do Total Depth, przez **bezpośrednie, niezmodyfikowane**
+  `buildRectWallMesh()` z Outline (agnostyczna na kolejność narożników,
+  liczy bounding box z min/max) + ciągła `THREE.Line` po trasie rastra
+  (`buildSurfaceToolpathPoints3D()`); brak osobnego stock-cap-z-otworem
+  (`buildStockCapObject()` zwraca `null` dla Surface — blok usuniętego
+  materiału już jest tą wizualizacją).
 - **Ruch między otworami:** powrót na `Safe Z` przed `G0` do kolejnego
   punktu XY.
 - **Wrzeciono:** tylko `M3` (bez `M4`).
@@ -560,9 +620,11 @@ analizy — lokalny dla tej maszyny, bo `.claude/` jest wykluczone z gita.
 ```
 src/
   types/wizard.ts          — typy WizardParams + DEFAULT_WIZARD_PARAMS.
-                              `operation: 'holes' | 'outline'`,
-                              `geometry`/`method` (Hole(s)) i
-                              `outline` (Outline) żyją obok siebie.
+                              `operation: 'holes' | 'outline' | 'surface'`,
+                              `geometry`/`method` (Hole(s)), `outline`
+                              (Outline) i `surface` (Surface) żyją obok
+                              siebie — każdy zawsze obecny w WizardParams
+                              niezależnie od aktywnej operacji.
   types/machine.ts          — MachineSettings + DEFAULT_MACHINE_SETTINGS
                               (Machine Settings) — osobny plik od
                               `wizard.ts`, inny rodzaj danych (jeden
@@ -613,6 +675,11 @@ src/
                               nazwy, ikony, etykiety, `generate()`) — jedno
                               źródło prawdy, nie hardkodować ternary po
                               `method` w komponentach.
+  config/surfaceMethodMeta.ts — analogicznie dla Surface (Zigzag/
+                              Unidirectional): `SURFACE_METHOD_META`,
+                              płaski rejestr jak `methodMeta.ts` (nie
+                              bespoke-switch jak `lib/outline.ts` — metody
+                              Surface nie są ograniczone per-kształt).
   config/positioningMeta.ts — rejestr metadanych per-pattern (Single/Grid/
                               Grid Centered/N-Holes Circle/Custom: nazwy,
                               ikony, opisy dla kart Kroku 1). Też:
@@ -625,6 +692,11 @@ src/
                               grid/gridCentered do 2 otworów.
   config/outlineMeta.ts     — analogicznie dla Outline: `outlineShapeLabel()`/
                               `outlineShapeSlug()`.
+  config/surfaceMeta.ts     — analogicznie dla Surface (kształt):
+                              `SURFACE_SHAPE_META`/`SURFACE_SHAPE_LIST`
+                              (Rectangle Cornered/Centered),
+                              `surfaceShapeLabel()`/`surfaceShapeSlug()`/
+                              `surfaceShapeLines()`/`surfaceSummary()`.
   config/toolDiameterOptions.ts — `TOOL_DIAMETER_OPTIONS`, współdzielone
                               przez Step 2 Hole(s) i Step 2 Outline.
   components/SettingsModal.tsx — Settings Modal. Cztery Settings Nav
@@ -644,14 +716,21 @@ src/
   components/wizard/        — komponenty poszczególnych kroków wizarda.
                               `Step1Positioning.tsx` = wyłącznie operacja +
                               pattern picker, nic liczbowego — pionowy
-                              stos operacji (Hole(s)/Outline rozwinięte z
-                              kompaktową listą wariantów w środku; Pocket/
-                              Surface jako wyszarzone "Coming soon").
-                              `Step2Geometry.tsx` = cienki router na
-                              `params.operation` →
+                              stos operacji (Hole(s)/Outline/Surface
+                              rozwinięte z kompaktową listą wariantów w
+                              środku; Pocket jako wyszarzone "Coming
+                              soon"). `Step2Geometry.tsx` = cienki router
+                              na `params.operation` →
                               `Step2GeometryHoles.tsx` /
-                              `Step2GeometryOutline.tsx`. Wszystkie pola
-                              liczbowe na Krokach 2/3 idą przez
+                              `Step2GeometryOutline.tsx` /
+                              `Step2GeometrySurface.tsx`
+                              (`SurfaceMethodPicker.tsx` — Zigzag/
+                              Unidirectional, wzorzec `OutlineMethodPicker`;
+                              toggle Raster Direction/Z-Transition Mode
+                              inline w `Step2GeometrySurface.tsx`, bez
+                              osobnych plików — dwuopcjowy tekstowy toggle
+                              bez rejestru do współdzielenia). Wszystkie
+                              pola liczbowe na Krokach 2/3 idą przez
                               `useNumberField()`.
   components/wizard/useNumberField.ts — hook `useNumberField(value, onCommit)`
                               — oddziela wyświetlany tekst inputa od
@@ -718,7 +797,13 @@ src/
                                kroku siatki) eksportowana i reużywana
                                przez `preview3d/buildScene.ts`, żeby
                                siatki 2D i 3D lądowały na tych samych
-                               "ładnych" wartościach CNC.
+                               "ładnych" wartościach CNC. `drawSurfaceGeometry()`
+                               — linie skanu Surface (ciągła polilinia dla
+                               Zigzag, osobne odcinki + przerywany rapid
+                               dla Unidirectional) + strzałki kierunku,
+                               geometria z `lib/surfaceGeometry.ts`/
+                               `lib/surfaceRaster.ts` (te same czyste
+                               funkcje, których używa silnik G-code).
   components/preview3d/     — podgląd 3D, doładowywany leniwie.
     Scene3D.tsx                — React wrapper: scena/kamera/renderer/
                                OrbitControls, ResizeObserver +
@@ -785,15 +870,20 @@ src/
                                materiału (Z=0) + siatka, osie X/Y przez
                                fizyczny origin z grotem strzałki i
                                etykietą (sprite'y z canvas-texture),
-                               punkty helix/standard-hole/outline liczone
-                               samodzielnie (mirror pętli silnika, ale
-                               `Vector3` zamiast stringów G-code — dzielenie
-                               głębokości na przejścia idzie przez
-                               wspólne `computeDepthPasses()`), bryła
+                               punkty helix/standard-hole/outline/surface
+                               liczone samodzielnie (mirror pętli silnika,
+                               ale `Vector3` zamiast stringów G-code —
+                               dzielenie głębokości na przejścia idzie
+                               przez wspólne `computeDepthPasses()`;
+                               `buildSurfaceToolpathPoints3D()` mirror'uje
+                               `lib/surface.ts` dokładnie), bryła
                                finalnego kształtu, `buildStockCapObject()`
                                (patrz "Otwarta/zamknięta geometria..."
-                               wyżej), przejazdy szybkie między otworami
-                               oraz pionowe `G0 Z` wokół każdego otworu.
+                               wyżej — zwraca `null` dla Surface, blok
+                               "usuniętego materiału" z `buildRectWallMesh()`
+                               już jest tą wizualizacją), przejazdy szybkie
+                               między otworami oraz pionowe `G0 Z` wokół
+                               każdego otworu.
                                Mapowanie CNC `(x,y,z) → Three (x,z,-y)`
                                (`toThree()`) — CNC Z = Three Y (pionowa
                                oś kamery); minus przy Y jest celowy, nie
@@ -880,14 +970,53 @@ src/
                                  unii breakpointów co `tabs.ts`, bez
                                  próbkowania kątowego (prosta krawędź nie
                                  wymaga aproksymacji wielokątem).
+    surfaceGeometry.ts            — `surfaceNominalBounds()`/
+                                 `surfaceToolBounds()` (bounding box +
+                                 overtravel o promień narzędzia,
+                                 symetryczny na 4 boki — inna matematyka
+                                 niż `rectToolDimensions()`, Surface nie
+                                 ma offset mode), `surfaceStepoverMm()`
+                                 (jedyne źródło prawdy % → mm),
+                                 `surfaceStartCorner()` (zawsze
+                                 min-X/min-Y).
+    surfaceRaster.ts              — `computeLinePositions()` (pozycje
+                                 linii rastra, zawsze domykane do obu
+                                 krawędzi bez duplikatu przy równym
+                                 podziale), `computeRasterLines()`
+                                 (kierunek X/Y), `zigzagWaypoints()`
+                                 (jedna ciągła ścieżka naprzemienna).
+    surfaceZTransition.ts         — `zTransitionMoves()` (Plunge = prosty
+                                 `G1 Z`; Helix = pętla
+                                 `computeDepthPasses()` + `fullCircleMove()`
+                                 per obrót, dokładnie jak nietabbed branch
+                                 `helix.ts`, środek spirali przesunięty o
+                                 `helixRadius` żeby start/koniec wypadł na
+                                 rogu), `buildLevelDescents()` (lista
+                                 poziomów Z: poziom 0 bez retraktu, kolejne
+                                 retraktują o `stepdown` przed zejściem).
+    surface.ts                    — `generateSurfaceZigzag`/
+                                 `generateSurfaceUnidirectional` — spięte
+                                 przez `assembleProgram()` tą samą
+                                 konwencją co Outline (jeden syntetyczny
+                                 punkt-narożnik startowy, cała reszta ruchu
+                                 wewnątrz `toolpathForPoint`). Zigzag:
+                                 ciągły `G1` bez `G0` w środku poziomu.
+                                 Unidirectional: pełny retrakt na Safe Z +
+                                 prosty plunge (NIE toggle Plunge/Helix)
+                                 między liniami, wzorzec z
+                                 `standardHole.ts`.
     validation.ts                — `isToolDiameterValid`, `isStepdownValid`,
                                  `isCircleHoleCountValid` (limit 100),
                                  `isTabHeightValid`/`isTabWidthValid`,
                                  `isOutlineToolDiameterValid`/
                                  `isOutlineTabHeightValid`/
-                                 `isOutlineTabWidthValid` — blokują
+                                 `isOutlineTabWidthValid`,
+                                 `isSurfaceToolDiameterValid`/
+                                 `isSurfaceStepoverValid`/
+                                 `isSurfaceHelixRadiusValid` — blokują
                                  Generate i pokazują inline error w Kroku
                                  2/3. `outlineFootprint`/`outlineZSpan`,
+                                 `surfaceFootprint`/`surfaceZSpan`,
                                  `patternSpan`/`zSpan`/
                                  `machineFitWarnings()` — nieblokujący
                                  soft-warning na Kroku 4, rozgałęziony po
@@ -933,7 +1062,10 @@ które powinno wołać silnik — nie importować `generateHelix`/
 wszystko co zależy od wybranego patternu idzie przez `POSITIONING_META`/
 pomocnicze funkcje w `config/positioningMeta.ts`, nie przez rozproszone
 `switch (geometry.positioning)` w komponentach; Outline analogicznie przez
-`config/outlineMeta.ts`. Wszystkie kolory podglądu 2D/3D idą przez
+`config/outlineMeta.ts`, Surface analogicznie przez `config/surfaceMeta.ts`
+(kształt) i `config/surfaceMethodMeta.ts` (metoda, z własnym `generate` —
+płaski rejestr, nie bespoke-switch jak `lib/outline.ts`, bo metody Surface
+nie są ograniczone per-kształt). Wszystkie kolory podglądu 2D/3D idą przez
 `config/palettes.ts` (`getFixedColors()`/`getPaletteAccents()`/
 `hexToThreeColor()`), nie przez osobne stałe kolorów w
 `drawToolpath.ts`/`buildScene.ts`.

@@ -2,15 +2,16 @@ import type { ComponentType, ReactNode } from 'react'
 import type { WizardParams } from '../../types/wizard'
 import { POSITIONING_LIST } from '../../config/positioningMeta'
 import { OUTLINE_SHAPE_LIST } from '../../config/outlineMeta'
+import { SURFACE_SHAPE_LIST } from '../../config/surfaceMeta'
 
 interface Step1PositioningProps {
   params: WizardParams
   onChange: (patch: Partial<WizardParams>) => void
 }
 
-// Placeholder rows for future operations (see CLAUDE.md's "Przyszłe
-// operacje") — purely visual, no WizardParams field backs these yet.
-const OPERATION_PLACEHOLDERS = ['Pocket', 'Surface']
+// Placeholder row for future operations (see CLAUDE.md's "Przyszłe
+// operacje") — purely visual, no WizardParams field backs this yet.
+const OPERATION_PLACEHOLDERS = ['Pocket']
 
 // Shared visual shell for an operation block — active (expanded, with its
 // own pattern/shape list) or inactive (collapsed to a single clickable
@@ -78,7 +79,7 @@ function OptionButton({
 }
 
 export function Step1Positioning({ params, onChange }: Step1PositioningProps) {
-  const { geometry, outline, operation } = params
+  const { geometry, outline, surface, operation } = params
 
   return (
     <div className="flex flex-col gap-2">
@@ -108,6 +109,22 @@ export function Step1Positioning({ params, onChange }: Step1PositioningProps) {
             key={opt.value}
             isSelected={operation === 'outline' && outline.shape === opt.value}
             onClick={() => onChange({ operation: 'outline', outline: { ...outline, shape: opt.value } })}
+            Icon={opt.Icon}
+            label={opt.title}
+          />
+        ))}
+      </OperationBlock>
+
+      <OperationBlock
+        title="Surface"
+        isActive={operation === 'surface'}
+        onActivate={() => onChange({ operation: 'surface' })}
+      >
+        {SURFACE_SHAPE_LIST.map((opt) => (
+          <OptionButton
+            key={opt.value}
+            isSelected={operation === 'surface' && surface.shape === opt.value}
+            onClick={() => onChange({ operation: 'surface', surface: { ...surface, shape: opt.value } })}
             Icon={opt.Icon}
             label={opt.title}
           />

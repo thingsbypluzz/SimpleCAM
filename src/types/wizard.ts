@@ -4,11 +4,19 @@ export type PositioningMode = 'single' | 'grid' | 'gridCentered' | 'circle' | 'c
 
 export type InterpolationMode = 'arc' | 'linear'
 
-export type OperationType = 'holes' | 'outline'
+export type OperationType = 'holes' | 'outline' | 'surface'
 
 export type OutlineShape = 'rectCornered' | 'rectCentered' | 'circle'
 
 export type OffsetMode = 'inside' | 'outside' | 'onLine'
+
+export type SurfaceShape = 'rectCornered' | 'rectCentered'
+
+export type SurfaceMethodType = 'zigzag' | 'unidirectional'
+
+export type RasterDirection = 'x' | 'y'
+
+export type ZTransitionMode = 'plunge' | 'helix'
 
 // 'ramp' only valid for rectCornered/rectCentered; 'helix' only for circle;
 // 'standard' is valid for every shape, which is why it's the shared default.
@@ -55,6 +63,21 @@ export interface OutlineParams {
   tabCount: number
 }
 
+export interface SurfaceParams {
+  shape: SurfaceShape
+  method: SurfaceMethodType
+  toolDiameter: number
+  totalDepth: number
+  width: number
+  height: number
+  offsetX: number
+  offsetY: number
+  rasterDirection: RasterDirection
+  stepoverPercent: number // 1-100, single source of truth — mm value is derived
+  zTransitionMode: ZTransitionMode
+  helixRadius: number // only enforced/shown when zTransitionMode === 'helix'
+}
+
 export interface FeedsParams {
   stepdown: number
   feedrateXY: number
@@ -77,6 +100,7 @@ export interface WizardParams {
   method: MethodType
   geometry: GeometryParams
   outline: OutlineParams
+  surface: SurfaceParams
   feeds: FeedsParams
   output: OutputOptions
 }
@@ -117,6 +141,20 @@ export const DEFAULT_WIZARD_PARAMS: WizardParams = {
     tabHeight: 1,
     tabWidth: 3,
     tabCount: 3,
+  },
+  surface: {
+    shape: 'rectCornered',
+    method: 'zigzag',
+    toolDiameter: 3.175,
+    totalDepth: 4,
+    width: 50,
+    height: 30,
+    offsetX: 0,
+    offsetY: 0,
+    rasterDirection: 'x',
+    stepoverPercent: 40,
+    zTransitionMode: 'plunge',
+    helixRadius: 1,
   },
   feeds: {
     stepdown: 1,

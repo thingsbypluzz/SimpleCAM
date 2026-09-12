@@ -310,3 +310,56 @@ export function RectangleOutlineCenteredIcon({ className }: IconProps) {
     </svg>
   )
 }
+
+// Surface Rectangle Cornered: same 4-corner outline as RectangleOutlineIcon
+// (dot-free, same corner crosshair convention), plus horizontal raster
+// lines inside — Surface fills the whole area, not just the perimeter, so
+// it needs a visually distinct fill pattern from the outline-only shapes
+// above. Deliberately not reused for Outline's own icons (a saved preset's
+// icon must stay unambiguous between operations — see CLAUDE.md).
+export function RectangleSurfaceIcon({ className }: IconProps) {
+  return (
+    <svg {...base} className={className}>
+      <path d="M6 18h12M18 18V6M18 6H6M6 6v12" strokeWidth={1} />
+      <path d="M7.5 9h9M7.5 12h9M7.5 15h9" strokeWidth={1} />
+      <path d="M4.5 18h3M6 16.5v3" strokeWidth={1} />
+    </svg>
+  )
+}
+
+// Surface Rectangle Centered: same outline+raster fill, crosshair moved to
+// the rectangle's center to match RectangleSurfaceIcon's origin convention.
+export function RectangleSurfaceCenteredIcon({ className }: IconProps) {
+  return (
+    <svg {...base} className={className}>
+      <path d="M6 18h12M18 18V6M18 6H6M6 6v12" strokeWidth={1} />
+      <path d="M7.5 9h9M7.5 12h9M7.5 15h9" strokeWidth={1} />
+      <path d="M10.5 12h3M12 10.5v3" strokeWidth={1} />
+    </svg>
+  )
+}
+
+// Zigzag (Surface method): a continuous boustrophedon path — right, down,
+// left, down, right — one unbroken line, matching the method's own
+// "no lift between lines" behavior.
+export function ZigzagIcon({ className }: IconProps) {
+  return (
+    <svg {...base} className={className}>
+      <path d="M4 6h14M18 6v4M18 10H4M4 10v4M4 14h14M18 14v4M18 18H4" />
+    </svg>
+  )
+}
+
+// Unidirectional (Surface method): three separate arrows, all pointing the
+// same direction — distinct from Zigzag's single continuous back-and-forth
+// path, representing the "always cuts the same way, retracts between
+// lines" behavior.
+export function UnidirectionalIcon({ className }: IconProps) {
+  return (
+    <svg {...base} className={className}>
+      <path d="M4 7h13M15 7l2.5-1.5M15 7l2.5 1.5" />
+      <path d="M4 12h13M15 12l2.5-1.5M15 12l2.5 1.5" />
+      <path d="M4 17h13M15 17l2.5-1.5M15 17l2.5 1.5" />
+    </svg>
+  )
+}

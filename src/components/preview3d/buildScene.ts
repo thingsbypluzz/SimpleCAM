@@ -12,6 +12,9 @@ import {
 } from '../../lib/outlineRectangleGeometry'
 import { sideRangesFor, type SideTabRange } from '../../lib/outlineRectangleTabs'
 import { outlineDirectionForOffsetMode } from '../../lib/outlineRectangle'
+import { surfaceNominalBounds, surfaceStartCorner, surfaceStepoverMm, surfaceToolBounds, type SurfaceBounds } from '../../lib/surfaceGeometry'
+import { computeRasterLines, zigzagWaypoints } from '../../lib/surfaceRaster'
+import { buildLevelDescents } from '../../lib/surfaceZTransition'
 import { niceStep } from '../preview/drawToolpath'
 import type { Point2D, WizardParams } from '../../types/wizard'
 import type { ThemeId } from '../../types/theme'
@@ -389,6 +392,94 @@ function rectRampPoints3D(
   return points
 }
 
+// Mirrors lib/surfaceZTransition.ts's zTransitionMoves Helix branch, but
+// emits Vector3 samples instead of G-code lines — same reasoning as
+// helixPoints3D above. Always renders as a segmented polygon regardless of
+// the output.interpolation toggle (matching helixPoints3D's own precedent,
+// which doesn't thread interpolation through either — only the real G-code
+// engine needs to care about G2/G3 vs G1).
+function surfaceHelixPoints3D(cx: number, cy: number, radius: number, fromZ: number, toZ: number, stepdown: number): THREE.Vector3[] {
+  const centerX = cx - radius
+  const centerY = cy
+  const points: THREE.Vector3[] = []
+  let z = fromZ
+  for (const turnDepth of computeDepthPasses(fromZ - toZ, stepdown)) {
+    for (let i = 1; i <= SEGMENTS_PER_TURN; i++) {
+      const a = (2 * Math.PI * i) / SEGMENTS_PER_TURN
+      const x = centerX + radius * Math.cos(a)
+      const y = centerY + radius * Math.sin(a)
+      const zz = z - (turnDepth * i) / SEGMENTS_PER_TURN
+      points.push(toThree(x, y, zz))
+    }
+    z -= turnDepth
+  }
+  return points
+}
+
+// Mirrors lib/surface.ts's zigzagSurfaceToolpath/unidirectionalSurfaceToolpath
+// exactly, but emits one continuous Vector3 point list instead of G-code
+// lines — including the between-level retract+reposition and (for
+// Unidirectional) the between-line Safe-Z retract as straight segments, so
+// the whole toolpath renders as a single THREE.Line.
+function buildSurfaceToolpathPoints3D(surface: WizardParams['surface'], feeds: WizardParams['feeds']): THREE.Vector3[] {
+  const bounds = surfaceToolBounds(surface)
+  const corner = surfaceStartCorner(surface)
+  const stepoverMm = surfaceStepoverMm(surface)
+  const descents = buildLevelDescents(feeds.startZ, surface.totalDepth, feeds.stepdown)
+  const points: THREE.Vector3[] = [toThree(corner.x, corner.y, feeds.startZ)]
+  let currentX = corner.x
+  let currentY = corner.y
+
+  const pushZTransition = (fromZ: number, toZ: number) => {
+    if (surface.zTransitionMode === 'plunge') {
+      points.push(toThree(currentX, currentY, toZ))
+      return
+    }
+    points.push(...surfaceHelixPoints3D(currentX, currentY, surface.helixRadius, fromZ, toZ, feeds.stepdown))
+  }
+
+  if (surface.method === 'zigzag') {
+    const waypoints = zigzagWaypoints(computeRasterLines(bounds, surface.rasterDirection, stepoverMm))
+    descents.forEach(({ fromZ, toZ }, idx) => {
+      if (idx > 0) {
+        points.push(toThree(currentX, currentY, fromZ))
+        points.push(toThree(corner.x, corner.y, fromZ))
+        currentX = corner.x
+        currentY = corner.y
+      }
+      pushZTransition(fromZ, toZ)
+      for (let i = 1; i < waypoints.length; i++) {
+        points.push(toThree(waypoints[i].x, waypoints[i].y, toZ))
+      }
+      currentX = waypoints[waypoints.length - 1].x
+      currentY = waypoints[waypoints.length - 1].y
+    })
+  } else {
+    const rasterLines = computeRasterLines(bounds, surface.rasterDirection, stepoverMm)
+    descents.forEach(({ fromZ, toZ }, idx) => {
+      if (idx > 0) {
+        points.push(toThree(currentX, currentY, fromZ))
+        points.push(toThree(corner.x, corner.y, fromZ))
+        currentX = corner.x
+        currentY = corner.y
+      }
+      pushZTransition(fromZ, toZ)
+      rasterLines.forEach((line, i) => {
+        points.push(toThree(line.to.x, line.to.y, toZ))
+        if (i < rasterLines.length - 1) {
+          points.push(toThree(line.to.x, line.to.y, feeds.safeZ))
+          points.push(toThree(rasterLines[i + 1].from.x, rasterLines[i + 1].from.y, feeds.safeZ))
+          points.push(toThree(rasterLines[i + 1].from.x, rasterLines[i + 1].from.y, toZ))
+        }
+      })
+      currentX = rasterLines[rasterLines.length - 1].to.x
+      currentY = rasterLines[rasterLines.length - 1].to.y
+    })
+  }
+
+  return points
+}
+
 interface Theme {
   material: number
   materialOpacity: number
@@ -554,8 +645,23 @@ type ResolvedPattern =
       toolCorners: Point2D[]
       rampEdge: 0 | 1
     }
+  | {
+      kind: 'surface'
+      params: WizardParams
+      nominalBounds: SurfaceBounds
+      toolBounds: SurfaceBounds
+    }
 
 function resolvePattern(params: WizardParams): ResolvedPattern {
+  if (params.operation === 'surface') {
+    const { surface } = params
+    return {
+      kind: 'surface',
+      params,
+      nominalBounds: surfaceNominalBounds(surface),
+      toolBounds: surfaceToolBounds(surface),
+    }
+  }
   if (params.operation === 'outline') {
     const { outline } = params
     if (outline.shape === 'circle') {
@@ -611,6 +717,13 @@ function resolvePattern(params: WizardParams): ResolvedPattern {
 // pattern's own totalDepth/safeZ, since overlaid presets (BL-3) can have a
 // different depth/Safe Z than the active one.
 function expandBoundsForPattern(bounds: THREE.Box3, pattern: ResolvedPattern) {
+  if (pattern.kind === 'surface') {
+    const { surface, feeds } = pattern.params
+    const { minX, maxX, minY, maxY } = pattern.toolBounds
+    bounds.expandByPoint(toThree(minX, minY, -surface.totalDepth))
+    bounds.expandByPoint(toThree(maxX, maxY, feeds.safeZ))
+    return
+  }
   if (pattern.kind === 'holes') {
     const { geometry, feeds } = pattern.params
     for (const p of pattern.points) {
@@ -942,6 +1055,46 @@ function buildOutlineRectPatternObjects(
   return objects
 }
 
+// Flat, semi-transparent "removed material" block spanning the whole
+// nominal footprint down to Total Depth — reuses buildRectWallMesh's
+// open-top-face box technique unmodified (it's agnostic to corner order,
+// computing its own bounding box via min/max), just passed the Surface
+// footprint's 4 corners instead of an Outline perimeter's. `closed=false`
+// since it represents removed material, not a solid capped part — no
+// separate stock-cap-with-cutout concept applies to Surface (see
+// buildStockCapObject's early return below).
+function buildSurfacePatternObjects(
+  pattern: Extract<ResolvedPattern, { kind: 'surface' }>,
+  theme: Theme,
+  span: number,
+  arrowSize: number,
+): THREE.Object3D[] {
+  const { nominalBounds, params } = pattern
+  const { surface, feeds } = params
+  const objects: THREE.Object3D[] = []
+
+  objects.push(...buildOffsetVectorObjects(surface.offsetX, surface.offsetY, theme, arrowSize))
+
+  const corner = surfaceStartCorner(surface)
+  objects.push(...rapidZLineObjects(corner.x, corner.y, feeds.safeZ, feeds.startZ, -surface.totalDepth, theme, span))
+
+  const boreHeight = surface.totalDepth + feeds.startZ
+  const boreCenterZ = (feeds.startZ - surface.totalDepth) / 2
+  const corners: Point2D[] = [
+    { x: nominalBounds.minX, y: nominalBounds.minY },
+    { x: nominalBounds.maxX, y: nominalBounds.minY },
+    { x: nominalBounds.maxX, y: nominalBounds.maxY },
+    { x: nominalBounds.minX, y: nominalBounds.maxY },
+  ]
+  objects.push(buildRectWallMesh(corners, boreHeight, boreCenterZ, false, theme))
+
+  const pathPoints = buildSurfaceToolpathPoints3D(surface, feeds)
+  const pathGeometry = new THREE.BufferGeometry().setFromPoints(pathPoints)
+  objects.push(new THREE.Line(pathGeometry, new THREE.LineBasicMaterial({ color: theme.toolpath })))
+
+  return objects
+}
+
 function buildPatternObjects(pattern: ResolvedPattern, theme: Theme, span: number, arrowSize: number): THREE.Object3D[] {
   switch (pattern.kind) {
     case 'holes':
@@ -950,6 +1103,8 @@ function buildPatternObjects(pattern: ResolvedPattern, theme: Theme, span: numbe
       return buildOutlineCirclePatternObjects(pattern, theme, span, arrowSize)
     case 'outlineRect':
       return buildOutlineRectPatternObjects(pattern, theme, span, arrowSize)
+    case 'surface':
+      return buildSurfacePatternObjects(pattern, theme, span, arrowSize)
   }
 }
 
@@ -995,6 +1150,12 @@ function buildStockCapObject(
   planeSize: number,
   centerCNC: Point2D,
 ): THREE.Object3D | null {
+  // Surface removes material across the whole top area rather than cutting
+  // a bounded hole through a plate — the flat "removed material" box built
+  // in buildSurfacePatternObjects already IS that visualization, so no
+  // separate stock-cap-with-cutout concept applies here.
+  if (pattern.kind === 'surface') return null
+
   let startZ: number
   let holePaths: THREE.Path[]
 

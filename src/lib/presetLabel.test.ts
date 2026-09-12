@@ -71,4 +71,34 @@ describe('presetLabel', () => {
     }
     expect(presetLabel(params)).toBe('Circle ⌀45 (Outside) • Helix')
   })
+
+  it('labels a surface preset with shape/dimensions, then method', () => {
+    const params = {
+      ...DEFAULT_WIZARD_PARAMS,
+      operation: 'surface' as const,
+      surface: {
+        ...DEFAULT_WIZARD_PARAMS.surface,
+        shape: 'rectCornered' as const,
+        method: 'zigzag' as const,
+        width: 50,
+        height: 30,
+      },
+    }
+    expect(presetLabel(params)).toBe('Surface 50×30 • Zigzag')
+  })
+
+  it('labels a centered surface preset distinctly from the cornered one', () => {
+    const params = {
+      ...DEFAULT_WIZARD_PARAMS,
+      operation: 'surface' as const,
+      surface: {
+        ...DEFAULT_WIZARD_PARAMS.surface,
+        shape: 'rectCentered' as const,
+        method: 'unidirectional' as const,
+        width: 50,
+        height: 30,
+      },
+    }
+    expect(presetLabel(params)).toBe('Surface Centered 50×30 • Uni')
+  })
 })

@@ -37,6 +37,8 @@ import {
   outlineShapeLines,
   outlineSummary,
 } from './config/outlineMeta'
+import { SURFACE_METHOD_META } from './config/surfaceMethodMeta'
+import { SURFACE_SHAPE_META, surfaceShapeIcon, surfaceShapeLines, surfaceSummary } from './config/surfaceMeta'
 import { fmt } from './lib/format'
 import { deriveOverlayParams } from './lib/overlayParams'
 import { generateOutline } from './lib/outline'
@@ -59,6 +61,9 @@ import {
   isOutlineToolDiameterValid,
   isStartZValid,
   isStepdownValid,
+  isSurfaceHelixRadiusValid,
+  isSurfaceStepoverValid,
+  isSurfaceToolDiameterValid,
   isTabHeightValid,
   isTabWidthValid,
   isToolDiameterValid,
@@ -92,6 +97,10 @@ function offsetSummary(offset: { offsetX: number; offsetY: number }): string | n
 
 function outlineSizeValue(outline: WizardParams['outline']): string {
   return outline.shape === 'circle' ? `⌀${outline.diameter}` : `${outline.width}×${outline.height}`
+}
+
+function surfaceSizeValue(surface: WizardParams['surface']): string {
+  return `${surface.width}×${surface.height}`
 }
 
 interface Step4Badge {
@@ -133,14 +142,19 @@ function step4Badge(generatedGCode: string[] | null, warnings: string[]): Step4B
 function collapsedStepTitle(stepId: number, params: WizardParams): string {
   switch (stepId) {
     case 1:
-      return params.operation === 'outline'
-        ? `Shape — ${outlineSummary(params.outline)}`
-        : `Pattern — ${positioningSummary(params.geometry)}`
+      if (params.operation === 'outline') return `Shape — ${outlineSummary(params.outline)}`
+      if (params.operation === 'surface') return `Shape — ${surfaceSummary(params.surface)}`
+      return `Pattern — ${positioningSummary(params.geometry)}`
     case 2: {
       if (params.operation === 'outline') {
         const { outline } = params
         const offset = offsetSummary(outline)
         return `Geometry — Tool ⌀${outline.toolDiameter}mm, ${OUTLINE_SHAPE_META[outline.shape].title} ${outlineSizeValue(outline)}mm, Depth ${outline.totalDepth}mm (${offsetModeLabel(outline.offsetMode)})${offset ? ` — Offset ${offset}` : ''} — Method: ${activeOutlineMethodMeta(outline).title}`
+      }
+      if (params.operation === 'surface') {
+        const { surface } = params
+        const offset = offsetSummary(surface)
+        return `Geometry — Tool ⌀${surface.toolDiameter}mm, ${SURFACE_SHAPE_META[surface.shape].title} ${surfaceSizeValue(surface)}mm, Depth ${surface.totalDepth}mm${offset ? ` — Offset ${offset}` : ''} — Method: ${SURFACE_METHOD_META[surface.method].title}`
       }
       const offset = offsetSummary(params.geometry)
       return `Geometry — Tool ⌀${params.geometry.toolDiameter}mm, Hole ⌀${params.geometry.holeDiameter}mm, Depth ${params.geometry.totalDepth}mm${offset ? ` — Offset ${offset}` : ''} — Method: ${METHOD_META[params.method].title}`
@@ -224,8 +238,14 @@ function App() {
   // per operation — NOT the same as the generate() dispatch below, since
   // OutlineMethodMeta has no `generate` of its own (see lib/outline.ts).
   const activeMethodDisplay =
-    params.operation === 'outline' ? activeOutlineMethodMeta(params.outline) : METHOD_META[params.method]
-  const offset = offsetSummary(params.operation === 'outline' ? params.outline : params.geometry)
+    params.operation === 'outline'
+      ? activeOutlineMethodMeta(params.outline)
+      : params.operation === 'surface'
+        ? SURFACE_METHOD_META[params.surface.method]
+        : METHOD_META[params.method]
+  const offset = offsetSummary(
+    params.operation === 'outline' ? params.outline : params.operation === 'surface' ? params.surface : params.geometry,
+  )
   const isGeometryValid =
     params.operation === 'outline'
       ? isOutlineToolDiameterValid(params.outline) &&
@@ -233,12 +253,18 @@ function App() {
         isStartZValid(params.feeds) &&
         isOutlineTabHeightValid(params.outline) &&
         isOutlineTabWidthValid(params.outline)
-      : isToolDiameterValid(params.geometry) &&
-        isStepdownValid(params.feeds) &&
-        isStartZValid(params.feeds) &&
-        isCircleHoleCountValid(params.geometry) &&
-        isTabHeightValid(params.geometry) &&
-        isTabWidthValid(params.geometry)
+      : params.operation === 'surface'
+        ? isSurfaceToolDiameterValid(params.surface) &&
+          isStepdownValid(params.feeds) &&
+          isStartZValid(params.feeds) &&
+          isSurfaceStepoverValid(params.surface) &&
+          isSurfaceHelixRadiusValid(params.surface)
+        : isToolDiameterValid(params.geometry) &&
+          isStepdownValid(params.feeds) &&
+          isStartZValid(params.feeds) &&
+          isCircleHoleCountValid(params.geometry) &&
+          isTabHeightValid(params.geometry) &&
+          isTabWidthValid(params.geometry)
   const fitWarnings = machineFitWarnings(params, machine)
   const step4BadgeInfo = step4Badge(generatedGCode, fitWarnings)
   // Memoized: this feeds Scene3D's content-rebuild effect deps, which
@@ -279,7 +305,9 @@ function App() {
     const gcode =
       params.operation === 'outline'
         ? generateOutline(params, machine)
-        : METHOD_META[params.method].generate(params, machine)
+        : params.operation === 'surface'
+          ? SURFACE_METHOD_META[params.surface.method].generate(params, machine)
+          : METHOD_META[params.method].generate(params, machine)
     setGeneratedGCode(gcode)
     saveSlot(AUTO_SAVE_SLOT, params)
     setShowRestoredBanner(false)
@@ -367,7 +395,9 @@ function App() {
             const PresetIcon = preset
               ? preset.operation === 'outline'
                 ? outlineShapeIcon(preset.outline.shape)
-                : positioningIcon(preset.geometry.positioning)
+                : preset.operation === 'surface'
+                  ? surfaceShapeIcon(preset.surface.shape)
+                  : positioningIcon(preset.geometry.positioning)
               : null
             const isOverlaySelected = overlayEnabled && overlaySlots.has(id)
             const isJustLoaded = !overlayEnabled && justLoadedSlot === id
@@ -552,23 +582,29 @@ function App() {
                     title={
                       params.operation === 'outline'
                         ? `Shape: ${outlineSummary(params.outline)}`
-                        : `Pattern: ${positioningSummary(params.geometry)}`
+                        : params.operation === 'surface'
+                          ? `Shape: ${surfaceSummary(params.surface)}`
+                          : `Pattern: ${positioningSummary(params.geometry)}`
                     }
                   >
                     <span className="text-[10px] font-semibold uppercase text-muted">
-                      {params.operation === 'outline' ? 'Outline' : 'Hole(s)'}
+                      {params.operation === 'outline' ? 'Outline' : params.operation === 'surface' ? 'Surface' : 'Hole(s)'}
                     </span>
                     {(() => {
                       const Icon =
                         params.operation === 'outline'
                           ? outlineShapeIcon(params.outline.shape)
-                          : positioningIcon(params.geometry.positioning)
+                          : params.operation === 'surface'
+                            ? surfaceShapeIcon(params.surface.shape)
+                            : positioningIcon(params.geometry.positioning)
                       return <Icon className="h-8 w-8 text-accent" />
                     })()}
                     <div className="flex flex-col items-center">
                       {(params.operation === 'outline'
                         ? outlineShapeLines(params.outline)
-                        : positioningLines(params.geometry)
+                        : params.operation === 'surface'
+                          ? surfaceShapeLines(params.surface)
+                          : positioningLines(params.geometry)
                       ).map((line, i) => (
                         <span
                           key={i}
@@ -632,6 +668,52 @@ function App() {
                         title="Tabs: enabled"
                       />
                     )}
+                  </div>
+                )}
+
+                {step.id === 2 && params.operation === 'surface' && (
+                  <div className="flex flex-col items-center gap-4">
+                    <span className="text-[10px] font-semibold uppercase text-muted">
+                      {step.title}
+                    </span>
+                    <MiniStat
+                      icon={<activeMethodDisplay.Icon className="h-8 w-8" />}
+                      label="METHOD"
+                      value={activeMethodDisplay.shortLabel}
+                      title={`Method: ${activeMethodDisplay.title}`}
+                    />
+                    <MiniStat
+                      icon={(() => {
+                        const ShapeIcon = surfaceShapeIcon(params.surface.shape)
+                        return <ShapeIcon className="h-8 w-8" />
+                      })()}
+                      label="SIZE"
+                      value={surfaceSizeValue(params.surface)}
+                      unit="mm"
+                      title={`${SURFACE_SHAPE_META[params.surface.shape].title}: ${surfaceSizeValue(params.surface)}mm`}
+                    />
+                    {offset && (
+                      <MiniStat
+                        icon={<OffsetIcon className="h-8 w-8" />}
+                        label="OFFSET"
+                        value={offset}
+                        title={`Offset: ${offset}`}
+                      />
+                    )}
+                    <MiniStat
+                      icon={<BitIcon className="h-8 w-8" />}
+                      label="BIT"
+                      value={`${params.surface.toolDiameter}`}
+                      unit="mm"
+                      title={`Tool Diameter: ${params.surface.toolDiameter} mm`}
+                    />
+                    <MiniStat
+                      icon={<DepthIcon className="h-8 w-8" />}
+                      label="DEPTH"
+                      value={`${params.surface.totalDepth}`}
+                      unit="mm"
+                      title={`Cutting Depth: ${params.surface.totalDepth} mm`}
+                    />
                   </div>
                 )}
 

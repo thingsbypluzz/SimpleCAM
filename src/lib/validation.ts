@@ -1,8 +1,9 @@
 import type { MachineSettings } from '../types/machine'
-import type { FeedsParams, GeometryParams, OutlineParams, WizardParams } from '../types/wizard'
+import type { FeedsParams, GeometryParams, OutlineParams, SurfaceParams, WizardParams } from '../types/wizard'
 import { resolvePoints } from './positioning'
 import { rectToolDimensions } from './outlineRectangleGeometry'
 import { circleOutlineRadiusAndDirection } from './outlineCircle'
+import { surfaceStepoverMm, surfaceToolBounds } from './surfaceGeometry'
 
 export function isToolDiameterValid(geometry: GeometryParams): boolean {
   return geometry.toolDiameter <= geometry.holeDiameter
@@ -120,6 +121,37 @@ export function outlineZSpan(outline: OutlineParams, feeds: FeedsParams): number
   return feeds.safeZ + outline.totalDepth
 }
 
+// Surface validators — same "vacuously valid when not applicable"
+// convention as Outline's above. Unlike Hole(s)/Outline, Surface has no
+// "tool must physically fit inside the shape" constraint (overtravel always
+// grows the tool path outward regardless of tool size), so the only real
+// invariant on tool diameter is that it's positive.
+export function isSurfaceToolDiameterValid(surface: SurfaceParams): boolean {
+  return surface.toolDiameter > 0
+}
+
+export function isSurfaceStepoverValid(surface: SurfaceParams): boolean {
+  return surface.stepoverPercent >= 1 && surface.stepoverPercent <= 100
+}
+
+// Only enforced in Helix mode — a Plunge transition has no radius to bound.
+export function isSurfaceHelixRadiusValid(surface: SurfaceParams): boolean {
+  if (surface.zTransitionMode !== 'helix') return true
+  return surface.helixRadius > 0 && surface.helixRadius <= surfaceStepoverMm(surface)
+}
+
+// Surface's counterpart to outlineFootprint()/patternSpan() above — the
+// tool-center bounding box (already overtravel-expanded) is exactly the
+// area machineFitWarnings() needs to check against machine travel.
+export function surfaceFootprint(surface: SurfaceParams): { x: number; y: number } {
+  const bounds = surfaceToolBounds(surface)
+  return { x: Math.max(0, bounds.maxX - bounds.minX), y: Math.max(0, bounds.maxY - bounds.minY) }
+}
+
+export function surfaceZSpan(surface: SurfaceParams, feeds: FeedsParams): number {
+  return feeds.safeZ + surface.totalDepth
+}
+
 // X/Y extent of the resolved pattern, hole footprint included (radius, not
 // just center points) — the same bounding-box math buildScene.ts uses for
 // 3D Preview framing, computed fresh in CNC space rather than reusing its
@@ -151,7 +183,11 @@ export function zSpan(geometry: GeometryParams, feeds: FeedsParams): number {
 // axis that actually fails; empty array once everything fits.
 export function machineFitWarnings(params: WizardParams, machine: MachineSettings): string[] {
   const span =
-    params.operation === 'outline' ? outlineFootprint(params.outline) : patternSpan(params.geometry)
+    params.operation === 'outline'
+      ? outlineFootprint(params.outline)
+      : params.operation === 'surface'
+        ? surfaceFootprint(params.surface)
+        : patternSpan(params.geometry)
   const warnings: string[] = []
   if (span.x > machine.travelX) {
     warnings.push(
@@ -166,7 +202,9 @@ export function machineFitWarnings(params: WizardParams, machine: MachineSetting
   const totalZ =
     params.operation === 'outline'
       ? outlineZSpan(params.outline, params.feeds)
-      : zSpan(params.geometry, params.feeds)
+      : params.operation === 'surface'
+        ? surfaceZSpan(params.surface, params.feeds)
+        : zSpan(params.geometry, params.feeds)
   if (totalZ > machine.travelZ) {
     warnings.push(
       `Z span ${totalZ.toFixed(1)}mm exceeds the machine's Z travel (${machine.travelZ}mm).`,

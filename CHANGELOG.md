@@ -7,6 +7,37 @@ zgodne z [SemVer](https://semver.org/). Ten plik pozostaje głównym, czytelnym
 thingsbypluzz/SimpleCAM), ale to infrastruktura pod izolację pracy
 (branch/worktree per zadanie), nie zamiennik tego changeloga.
 
+## [0.14.0] — 2026-09-12
+
+### Dodano
+
+- **OP-3: Surface (raster face milling).** Czwarta operacja obok Hole(s)/
+  Outline, poprzedzona pełną sesją `/grill-me`. V1 obejmuje wyłącznie
+  Rectangle (Cornered/Centered) — Circle świadomie odłożone jako
+  `BL-30`. Dwie metody: **Zigzag** (ciągły, dwukierunkowy raster, bez
+  podnoszenia między liniami) i **Unidirectional** (zawsze ten sam
+  kierunek, pełny retrakt na Safe Z między liniami). Kierunek rastra
+  (X/Y) i stepover (% średnicy narzędzia, z polem tylko-do-odczytu w mm)
+  wybierane przez użytkownika; overtravel o promień narzędzia zawsze
+  włączony, żeby realnie oczyścić krawędzie/rogi. Przejście między
+  poziomami Z (i pierwsze wejście z Safe Z) idzie przez nowy,
+  współdzielony mechanizm **Plunge/Helix**: retrakt o `stepdown`, G0 do
+  stałego rogu startowego (zawsze min-X/min-Y bounding-boxa), potem
+  prosty plunge albo mini-spirala (reużywająca wprost `fullCircleMove`/
+  `computeDepthPasses` z silnika Helix Hole(s)). Tabs (mostki) nie
+  dotyczą Surface w ogóle — brak checkboxa, brak pola. Nowe moduły
+  silnika: `lib/surfaceGeometry.ts`, `lib/surfaceRaster.ts`,
+  `lib/surfaceZTransition.ts`, `lib/surface.ts`; nowy rejestr metod
+  `config/surfaceMethodMeta.ts` (płaski, jak `methodMeta.ts` — metody
+  Surface nie są ograniczone per-kształt jak w Outline) i rejestr
+  kształtów `config/surfaceMeta.ts`; nowy `Step2GeometrySurface.tsx`.
+  Preview 2D — linie skanu + strzałki kierunku; Preview 3D — płaski
+  półprzezroczysty blok "usuniętego materiału" na pełnym footprincie do
+  Total Depth (reużywa wprost `buildRectWallMesh()` z Outline, bez
+  modyfikacji) + ciągła ścieżka narzędzia. Pełny opis architektury i
+  wszystkich rozstrzygnięć sesji `/grill-me` w `CLAUDE.md` i
+  `ideas.md`. 269 testów po tej zmianie (z 225 przed).
+
 ## [0.13.6] — 2026-09-12
 
 ### Dodano
