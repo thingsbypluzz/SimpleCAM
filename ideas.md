@@ -142,19 +142,11 @@ faktycznym.
   same specy każą najpierw zweryfikować pod kątem wydajności — wymaga
   własnej oceny kosztu/efektu przed implementacją, nie oczywista
   poprawka.
-- **`BL-29`** *(Otwarty)* — **Privacy Policy w Settings Modal.** Nowa
-  treść (osobna sekcja Settings Nav albo fragment istniejącej "About")
-  z jawnym opisem polityki prywatności — spójna z `CLAUDE.md`'s "Zero
-  backendu. Zero bazy danych. Zero kont użytkowników.": appka nie
-  wysyła żadnych danych na serwer, nie ma trackingu/analytics/cookies,
-  wszystko (presety, Machine/Appearance/Tabs Settings) trzyma się
-  wyłącznie w `localStorage` przeglądarki użytkownika, czyszczone razem
-  z danymi strony. Treść statyczna, bez logiki — do ustalenia: dokładne
-  sformułowanie, czy osobna sekcja Settings Nav czy fragment "About", i
-  czy potrzebna samodzielna podstrona (do zalinkowania z zewnątrz) czy
-  wystarczy treść tylko wewnątrz modala. Zastępuje `BL-20` jako
-  prostsza odpowiedź na tę samą troskę (prywatność/RODO), bez budowania
-  żadnego trackingu.
+- **`BL-29`** *(Zrealizowany, 2026-09-13)* — **Privacy Policy w Settings
+  Modal.** Osobna sekcja Settings Nav "Privacy", statyczny tekst — pełny
+  opis w `CHANGELOG.md`, `[0.15.0]`. Zastąpił `BL-20` jako prostsza
+  odpowiedź na tę samą troskę (prywatność/RODO), bez budowania żadnego
+  trackingu.
 
 - **`BL-30`** *(Otwarty)* — **Surface — obsługa kształtu Circle.**
   `OP-3` (Surface) w v1 obsługuje wyłącznie Rectangle — Circle

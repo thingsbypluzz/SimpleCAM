@@ -7,6 +7,21 @@ zgodne z [SemVer](https://semver.org/). Ten plik pozostaje głównym, czytelnym
 thingsbypluzz/SimpleCAM), ale to infrastruktura pod izolację pracy
 (branch/worktree per zadanie), nie zamiennik tego changeloga.
 
+## [0.15.0] — 2026-09-13
+
+### Dodano
+
+- **Privacy w Settings Modal (`BL-29`).** Piąta pozycja Settings Nav, obok
+  Machine/Tabs/Appearance/About — krótki, statyczny tekst wyjaśniający że
+  SimpleCAM działa wyłącznie w przeglądarce (zero backendu, zero bazy,
+  zero kont), presety i ustawienia trzymają się wyłącznie w
+  `localStorage`, i appka nie ma żadnego trackingu/analytics/cookies.
+  Zastępuje odrzucony `BL-20` (licznik użytkowników) jako prostsza
+  odpowiedź na tę samą troskę o prywatność/RODO, bez budowania czegokolwiek
+  po stronie serwera. Bez samodzielnej, linkowalnej podstrony — appka nie
+  ma routingu (SPA bez React Router), więc treść zostaje wyłącznie
+  wewnątrz modala.
+
 ## [0.14.5] — 2026-09-12
 
 ### Naprawiono

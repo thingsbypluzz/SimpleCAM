@@ -738,13 +738,19 @@ src/
                               `surfaceShapeLines()`/`surfaceSummary()`.
   config/toolDiameterOptions.ts — `TOOL_DIAMETER_OPTIONS`, współdzielone
                               przez Step 2 Hole(s) i Step 2 Outline.
-  components/SettingsModal.tsx — Settings Modal. Cztery Settings Nav
+  components/SettingsModal.tsx — Settings Modal. Pięć Settings Nav
                               Items: **Machine** (X/Y/Z travel, dialekt,
                               Start/End G-Code), **Appearance** (Theme,
                               Preview Color Palette, Grid Labels 3D —
                               patrz "Motywy (Theme) i Palety..." niżej),
                               **Tabs** (Default Tab Sizes), **About**
-                              (nazwa/wersja appki). Pola liczbowe Machine/
+                              (nazwa/wersja appki), **Privacy** (statyczny
+                              tekst — appka nie ma backendu/bazy/kont, nic
+                              nie wysyła na serwer, dane trzymają się
+                              wyłącznie w `localStorage`, zero trackingu/
+                              analytics/cookies; bez samodzielnej
+                              podstrony — appka nie ma routingu, treść
+                              tylko wewnątrz modala). Pola liczbowe Machine/
                               Tabs idą przez `NumberInput` jak w wizardzie
                               (patrz "Pola liczbowe w wizardzie" niżej),
                               ale zachowują własny wzorzec commit

@@ -22,13 +22,14 @@ type TabDefaultField = 'defaultTabHeight' | 'defaultTabWidth' | 'defaultTabCount
 // per-field step/label differ.
 type NumericField = TravelField | TabDefaultField
 type CodeField = 'headerText' | 'footerText'
-type SectionId = 'machine' | 'tabs' | 'appearance' | 'about'
+type SectionId = 'machine' | 'tabs' | 'appearance' | 'about' | 'privacy'
 
 const SECTIONS: { id: SectionId; label: string }[] = [
   { id: 'machine', label: 'Machine' },
   { id: 'tabs', label: 'Tabs' },
   { id: 'appearance', label: 'Appearance' },
   { id: 'about', label: 'About' },
+  { id: 'privacy', label: 'Privacy' },
 ]
 
 const FIELDS: { key: TravelField; label: string }[] = [
@@ -521,6 +522,24 @@ export function SettingsModal({
               </p>
 
               <p className="text-sm text-muted">Envisioned by ThingsByPluzz</p>
+            </>
+          )}
+
+          {activeSection === 'privacy' && (
+            <>
+              <h2 className="text-sm font-semibold text-fg">Privacy</h2>
+
+              <p className="text-sm text-muted">
+                SimpleCAM runs entirely in your browser. There is no backend, no database, and no
+                user accounts — G-code generation and the 2D/3D previews all happen locally on
+                your machine, and nothing you enter is ever sent to a server.
+              </p>
+
+              <p className="text-sm text-muted">
+                Presets and settings (Machine, Appearance, Tabs) are stored only in your browser's
+                localStorage, and are cleared whenever your browser data is cleared. There is no
+                tracking, no analytics, and no cookies.
+              </p>
             </>
           )}
         </div>
