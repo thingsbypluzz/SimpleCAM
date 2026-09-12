@@ -145,15 +145,24 @@ decyzją projektową).
   Step 2 — zejście zawsze liczone od `Start Z` do `toZ` tego poziomu,
   nigdy od `Safe Z` bezpośrednio (inaczej helix przelatywałby przez
   pustą przestrzeń nad `Start Z` i nie trafiał dokładnie w docelową
-  głębokość w punkcie startu przejazdu rastra). Helix reużywa
-  wprost `fullCircleMove()`/`computeDepthPasses()` z silnika Helix
-  Hole(s), kierunek stały `'ccw'`; środek spirali (`helixCenterFor()`,
-  `lib/surfaceZTransition.ts`) zależy od `rasterDirection` — dla `'y'`
-  przesunięty o `helixRadius` w -X od narożnika (styczna wyjścia z
-  helixa wychodzi w +Y, zgodnie z pierwszą linią rastra), dla `'x'`
-  przesunięty w +Y (styczna wychodzi w +X) — bez tego rozróżnienia
-  wyjście z helixa i pierwsza linia rastra spotykały się pod kątem 90°
-  zamiast płynnie kontynuować ruch. **Helix Radius** — osobne pole
+  głębokość w punkcie startu przejazdu rastra). Helix reużywa wprost
+  `fullCircleMove()`/`computeDepthPasses()` z silnika Helix Hole(s), ale
+  — inaczej niż tam — **kierunek obrotu zależy od `rasterDirection`**
+  (`helixDirectionFor()`, `lib/surfaceZTransition.ts`): `'y'` → CCW,
+  `'x'` → CW. Nie jest to dowolna konwencja jak w Hole(s) Helix (gdzie
+  fizycznie nie ma znaczenia) — przy tym samym narożniku startowym
+  (zawsze min-X/min-Y) każdy kierunek obrotu wymusza inne położenie
+  środka spirali dla danej stycznej wyjścia, a tylko jedno z dwóch
+  położeń leży poza obszarem materiału. Środek (`helixCenterFor()`) — dla
+  `'y'` przesunięty o `helixRadius` w -X od narożnika (styczna wyjścia w
+  +Y, zgodna z pierwszą linią rastra, i -X leży już poza materiałem, więc
+  CCW zostaje), dla `'x'` przesunięty w -Y (styczna wyjścia w +X, a -Y
+  leży poza materiałem pod CW — pod CCW to samo wymaganie stycznej
+  wymuszałoby środek w +Y, czyli do wewnątrz obszaru rastra). Efekt tej
+  pary: styczna helixa i pierwsza linia rastra zawsze się płynnie łączą
+  (bez kantu 90°) I sama pętla helixa zawsze leży poza obszarem
+  materiału, nie zawija się nad przyszłe przejazdy rastra. **Helix
+  Radius** — osobne pole
   (tylko w trybie Helix), walidacja `isSurfaceHelixRadiusValid()`: `>
   0`, sufit = stepover (mm). Mini-helix reużywa istniejący toggle
   interpolacji G2/G3 vs G1 (`output.interpolation`). **Tabs nie

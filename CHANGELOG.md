@@ -7,6 +7,32 @@ zgodne z [SemVer](https://semver.org/). Ten plik pozostaje głównym, czytelnym
 thingsbypluzz/SimpleCAM), ale to infrastruktura pod izolację pracy
 (branch/worktree per zadanie), nie zamiennik tego changeloga.
 
+## [0.14.5] — 2026-09-12
+
+### Naprawiono
+
+- **Surface — pętla przejściowego Helixa fizycznie zawijała się nad
+  materiałem (i nad przyszłymi liniami rastra) przy `Raster Direction:
+  X`.** Środek spirali (`helixCenterFor()`) był liczony tak, żeby styczna
+  wyjścia z helixa zgadzała się z kierunkiem pierwszej linii rastra — ale
+  przy stałym kierunku obrotu `'ccw'` to jedyne poprawne pod względem
+  stycznej położenie środka wypadało dla `Direction X` **wewnątrz**
+  obszaru obróbki (przesunięte w +Y od narożnika startowego), więc połowa
+  pętli realnie frezowała nad miejscem, które program miał dopiero
+  obrobić. `Direction Y` nie miało tego problemu tylko przypadkiem — tam
+  wymagane pod CCW położenie środka (-X od narożnika) samo z siebie
+  wypadało poza materiałem.
+  Naprawa: kierunek obrotu helixa zależy teraz od `rasterDirection`
+  (`helixDirectionFor()`, `lib/surfaceZTransition.ts`) — `'y'` zostaje
+  CCW, `'x'` zmienia się na CW. Dla CW ta sama styczna wymusza środek
+  przesunięty w -Y (poza materiał) zamiast w +Y — potwierdzone pełnym
+  przeliczeniem wymiatanego kąta: cała pętla (poza samym punktem
+  startu/końca) leży wtedy poniżej krawędzi materiału. Wspólny narożnik
+  startowy (min-X/min-Y) i wspólna logika dla Zigzag/Unidirectional
+  zostają bez zmian — poprawka nie wymagała żadnego wyjątku między
+  metodami. Podgląd 3D (`surfaceHelixPoints3D()`, `buildScene.ts`)
+  zaktualizowany analogicznie (kierunek wymiatania kąta).
+
 ## [0.14.4] — 2026-09-12
 
 ### Naprawiono

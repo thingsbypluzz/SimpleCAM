@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { buildLevelDescents, helixCenterFor, zTransitionMoves } from './surfaceZTransition'
+import { buildLevelDescents, helixCenterFor, helixDirectionFor, zTransitionMoves } from './surfaceZTransition'
 
 // rasterDirection: 'y' matches the historical (pre-direction-aware) center
 // offset exactly — kept as the default here so most expected G-code below
@@ -15,13 +15,23 @@ const baseOpts = {
   rasterDirection: 'y' as const,
 }
 
+describe('helixDirectionFor', () => {
+  it("direction 'y' turns CCW (its outside-of-material center offset is already reachable under CCW)", () => {
+    expect(helixDirectionFor('y')).toBe('ccw')
+  })
+
+  it("direction 'x' turns CW instead — CCW would force the center inside the material", () => {
+    expect(helixDirectionFor('x')).toBe('cw')
+  })
+})
+
 describe('helixCenterFor', () => {
-  it("direction 'y': center offset -X of the corner (first raster line runs +Y — exit tangent must be +Y)", () => {
+  it("direction 'y': center offset -X of the corner (first raster line runs +Y — exit tangent must be +Y, and -X is outside the material)", () => {
     expect(helixCenterFor(5, 5, 2, 'y')).toEqual({ x: 3, y: 5 })
   })
 
-  it("direction 'x': center offset +Y of the corner (first raster line runs +X — exit tangent must be +X)", () => {
-    expect(helixCenterFor(5, 5, 2, 'x')).toEqual({ x: 5, y: 7 })
+  it("direction 'x': center offset -Y of the corner (CW exit tangent +X, and -Y is outside the material — +Y, the CCW answer, would sweep over it)", () => {
+    expect(helixCenterFor(5, 5, 2, 'x')).toEqual({ x: 5, y: 3 })
   })
 })
 
@@ -40,10 +50,10 @@ describe('zTransitionMoves — helix', () => {
     expect(lines).toEqual(['G3 X5 Y5 Z-1 I-2 J0 F800', 'G3 X5 Y5 Z-2 I-2 J0 F800'])
   })
 
-  it("direction 'x' centers the arc on the Y axis instead, so the exit tangent matches an X-running raster", () => {
+  it("direction 'x' centers the arc on the Y axis instead and turns CW, so the exit tangent matches an X-running raster while the loop stays outside the material", () => {
     const lines = zTransitionMoves({ ...baseOpts, rasterDirection: 'x', fromZ: 0, toZ: -1, mode: 'helix', interpolation: 'arc' })
-    // center = (5, 7) -> I/J = (5-5, 7-5) = (0, 2).
-    expect(lines).toEqual(['G3 X5 Y5 Z-1 I0 J2 F800'])
+    // center = (5, 3) -> I/J = (5-5, 3-5) = (0, -2). CW -> G2, not G3.
+    expect(lines).toEqual(['G2 X5 Y5 Z-1 I0 J-2 F800'])
   })
 
   it('linear interpolation approximates each turn with the shared 72-segment polygon', () => {

@@ -14,7 +14,7 @@ import { sideRangesFor, type SideTabRange } from '../../lib/outlineRectangleTabs
 import { outlineDirectionForOffsetMode } from '../../lib/outlineRectangle'
 import { surfaceNominalBounds, surfaceStartCorner, surfaceStepoverMm, surfaceToolBounds, type SurfaceBounds } from '../../lib/surfaceGeometry'
 import { computeRasterLines, zigzagWaypoints } from '../../lib/surfaceRaster'
-import { buildLevelDescents, helixCenterFor } from '../../lib/surfaceZTransition'
+import { buildLevelDescents, helixCenterFor, helixDirectionFor } from '../../lib/surfaceZTransition'
 import { niceStep } from '../preview/drawToolpath'
 import type { Point2D, RasterDirection, WizardParams } from '../../types/wizard'
 import type { ThemeId } from '../../types/theme'
@@ -410,6 +410,14 @@ function rectRampPoints3D(
 // point on the direction-'x' path (visible as a circle floating away from
 // the corner, joined to the raster by a long diagonal jump instead of
 // closing back onto it).
+//
+// The sweep SIGN must also track helixDirectionFor() — direction 'x' turns
+// CW (decreasing angle), matching fullCircleMove's own `sign` for its
+// linear-interpolation branch (lib/circle.ts). Getting this wrong wouldn't
+// break the loop's start/end point (still closes by symmetry either way),
+// but would draw it going the wrong way around, and CW is specifically what
+// keeps the loop outside the material for direction 'x' (see
+// surfaceZTransition.ts's helixDirectionFor/helixCenterFor comments).
 function surfaceHelixPoints3D(
   cx: number,
   cy: number,
@@ -421,11 +429,12 @@ function surfaceHelixPoints3D(
 ): THREE.Vector3[] {
   const { x: centerX, y: centerY } = helixCenterFor(cx, cy, radius, rasterDirection)
   const startAngle = Math.atan2(cy - centerY, cx - centerX)
+  const sign = helixDirectionFor(rasterDirection) === 'cw' ? -1 : 1
   const points: THREE.Vector3[] = []
   let z = fromZ
   for (const turnDepth of computeDepthPasses(fromZ - toZ, stepdown)) {
     for (let i = 1; i <= SEGMENTS_PER_TURN; i++) {
-      const a = startAngle + (2 * Math.PI * i) / SEGMENTS_PER_TURN
+      const a = startAngle + (sign * 2 * Math.PI * i) / SEGMENTS_PER_TURN
       const x = centerX + radius * Math.cos(a)
       const y = centerY + radius * Math.sin(a)
       const zz = z - (turnDepth * i) / SEGMENTS_PER_TURN
