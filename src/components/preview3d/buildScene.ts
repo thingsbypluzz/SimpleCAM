@@ -38,15 +38,24 @@ const SEGMENTS_PER_TURN = 48
 // Passes accumulate Z via repeated float subtraction — matches the
 // tolerance used for the same comparison in standardHole.ts/helix.ts.
 const TAB_BAND_EPSILON = 1e-9
-// Lifts the stock cap (buildStockCapObject) a hair above its nominal
-// startZ height so it never renders exactly coplanar with the material
-// plane (fixed at world Y=0) or the grid (world Y=0.01, see the GridHelper
+// Lifts any flat, solid "cap" surface a hair above its nominal startZ
+// height so it never renders exactly coplanar with the material plane
+// (fixed at world Y=0) or the grid (world Y=0.01, see the GridHelper
 // below) — both are semi-transparent flat surfaces, so an exact Y match
 // z-fights (visible as a moire/interpolation flicker), most commonly hit
 // at the default Start Z = 0. Bigger than the grid's own 0.01 offset so
 // one lift clears both possible collisions at once. Purely cosmetic —
 // 0.02mm is invisible at any real part scale.
-const STOCK_CAP_Z_LIFT = 0.02
+//
+// Two different kinds of object need this, not just the stock cap
+// (buildStockCapObject) the name once implied: any *closed* Outline wall
+// — a closed CylinderGeometry (Circle, Outside or On-line's inner island)
+// or a closed BoxGeometry (Rectangle, same two cases, see
+// buildRectWallMesh) — has its own real top face at world Y = startZ,
+// from its geometry, not from a separate cap object. An *open* wall (no
+// visible top/bottom faces) has nothing at that height to collide with,
+// so it's left alone.
+const SOLID_CAP_Z_LIFT = 0.02
 
 // Desired on-screen size (CSS px) of EVERY text sprite in the scene — the
 // origin "0,0", the axis-end "X"/"Y", and the grid coordinate ticks all
@@ -787,11 +796,14 @@ function buildOutlineCirclePatternObjects(
 
   if (outline.offsetMode === 'onLine') {
     const { innerRadius, outerRadius } = onLineCircleEdges(outline)
+    // Inner wall is closed (false = not open-ended) — its own top face
+    // sits at world Y = startZ, same height the material plane/grid can
+    // sit at, so it needs the same z-fight lift as the stock cap.
     const innerWall = new THREE.Mesh(
       new THREE.CylinderGeometry(innerRadius, innerRadius, boreHeight, 32, 1, false),
       wallMaterial(),
     )
-    innerWall.position.copy(toThree(center.x, center.y, boreCenterZ))
+    innerWall.position.copy(toThree(center.x, center.y, boreCenterZ + SOLID_CAP_Z_LIFT))
     objects.push(innerWall)
 
     const outerWall = new THREE.Mesh(
@@ -806,7 +818,11 @@ function buildOutlineCirclePatternObjects(
       new THREE.CylinderGeometry(nominalRadius, nominalRadius, boreHeight, 32, 1, openEnded),
       wallMaterial(),
     )
-    shape.position.copy(toThree(center.x, center.y, boreCenterZ))
+    // Only the closed (Outside) case has a real top face to lift — open
+    // (Inside) has no cap geometry there at all.
+    shape.position.copy(
+      toThree(center.x, center.y, openEnded ? boreCenterZ : boreCenterZ + SOLID_CAP_Z_LIFT),
+    )
     objects.push(shape)
   }
 
@@ -847,7 +863,11 @@ function boundingCenter(points: Point2D[]): Point2D {
 // already the vertical bore axis here) via a per-face material array,
 // instead of a hand-built tunnel BufferGeometry. Factored out (BL-28) since
 // On-line now needs this twice (inner + outer wall) in addition to the
-// single-wall case every other offset mode still uses.
+// single-wall case every other offset mode still uses. When `closed`, the
+// box's own top face is a real, solid cap at world Y = startZ — same
+// z-fight risk against the material plane/grid as the stock cap, so it
+// gets the same SOLID_CAP_Z_LIFT nudge. An open wall's hidden cap faces
+// have nothing there to collide with.
 function buildRectWallMesh(corners: Point2D[], boreHeight: number, centerZ: number, closed: boolean, theme: Theme): THREE.Mesh {
   const center = boundingCenter(corners)
   const width = Math.max(...corners.map((p) => p.x)) - Math.min(...corners.map((p) => p.x))
@@ -858,7 +878,7 @@ function buildRectWallMesh(corners: Point2D[], boreHeight: number, centerZ: numb
     new THREE.BoxGeometry(width, boreHeight, height),
     [sideMaterial, sideMaterial, capMaterial, capMaterial, sideMaterial, sideMaterial],
   )
-  mesh.position.copy(toThree(center.x, center.y, centerZ))
+  mesh.position.copy(toThree(center.x, center.y, closed ? centerZ + SOLID_CAP_Z_LIFT : centerZ))
   return mesh
 }
 
@@ -1018,7 +1038,7 @@ function buildStockCapObject(
     new THREE.MeshBasicMaterial({ color: theme.hole, transparent: true, opacity: 0.3, side: THREE.DoubleSide }),
   )
   cap.rotation.x = -Math.PI / 2
-  cap.position.set(0, startZ + STOCK_CAP_Z_LIFT, 0)
+  cap.position.set(0, startZ + SOLID_CAP_Z_LIFT, 0)
   return cap
 }
 

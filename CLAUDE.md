@@ -329,13 +329,22 @@ promieniu). Kolor podkładki: `theme.hole` przy opacity 0.3 (ten sam co
 otworu/kształtu już wcześniej. Podkładka pomijana w trybie overlay —
 `showActivePattern` już to rozstrzyga.
 
-Podkładka renderuje się `STOCK_CAP_Z_LIFT` (0.02mm) powyżej swojego
+Podkładka renderuje się `SOLID_CAP_Z_LIFT` (0.02mm) powyżej swojego
 nominalnego `startZ`, nie dokładnie na nim — przy `Start Z = 0`
 (częsty, de facto domyślny przypadek) podkładka i płaszczyzna materiału
 (zawsze `Y=0`) lądowałyby dokładnie w tej samej płaszczyźnie, co
 z-fightuje (widoczne jako migotanie/mora). Epsilon większy niż odstęp
 siatki od płaszczyzny (0.01) też, żeby nie kolidować z siatką przy
-przypadkowym `Start Z = 0.01`.
+przypadkowym `Start Z = 0.01`. **Ten sam epsilon dotyczy każdej
+zamkniętej ściany Outline** — Circle/Rectangle w trybie Outside i
+wewnętrzna "wyspa" w On-line mają realną górną ścianę bryły dokładnie
+na wysokości `startZ` (to nie osobny obiekt jak stock cap, tylko
+domyślna geometria `CylinderGeometry`/`BoxGeometry`), więc bez tego
+samego traktowania z-fightowałyby z płaszczyzną materiału identycznie
+jak podkładka. `buildRectWallMesh()` podnosi się, gdy `closed`;
+`buildOutlineCirclePatternObjects()` — tylko te dwie gałęzie, gdzie
+ściana jest faktycznie zamknięta. Otwarte ściany (Inside, zewnętrzna
+ściana On-line) nie mają tam żadnej geometrii, więc zostają bez zmian.
 
 ### Etykiety siatki w 3D Preview
 
@@ -978,6 +987,18 @@ odpowiednich zadaniach:
   `/grill-me` ani opisów naprawionych błędów; jeśli coś tu jest, to
   dlatego, że jest prawdą dzisiaj, niezależnie od tego, kiedy się taką
   stała.
+  - **Twarda reguła:** po każdej **większej** zmianie (nowa
+    funkcjonalność, nowy motyw, przeprojektowanie mechanizmu, poprawka
+    realnego buga widocznego dla użytkownika) — zaktualizować
+    `CHANGELOG.md` **z automatu**, bez pytania, w tej samej turze co
+    implementacja (nowy wpis `## [X.Y.Z]` + bump wersji w
+    `package.json`, ten sam wzorzec co dotychczasowe commity "Version
+    X.Y.Z: ..."). Po **mniejszej** zmianie (drobna poprawka stylu,
+    literówka, jednolinijkowy tweak, coś bez realnego wpływu na
+    zachowanie appki) — zapytać użytkownika, czy chce wpis, zamiast
+    zakładać którąkolwiek odpowiedź. Nie czekać, aż użytkownik sam
+    zapyta "czy CHANGELOG jest zaktualizowany" — to sygnał, że ta
+    reguła została pominięta.
 - Odłożone pomysły i przyszłe operacje: **`ideas.md`**.
 - Brak testów E2E w MVP — tylko testy jednostkowe silnika G-code.
 - Nie przeskakuj większych pozycji z `ideas.md` bez pytania — każda

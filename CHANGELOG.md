@@ -7,6 +7,135 @@ zgodne z [SemVer](https://semver.org/). Ten plik pozostaje głównym, czytelnym
 thingsbypluzz/SimpleCAM), ale to infrastruktura pod izolację pracy
 (branch/worktree per zadanie), nie zamiennik tego changeloga.
 
+## [0.13.6] — 2026-09-12
+
+### Dodano
+
+- **System motywów (Theme).** Nowa, niezależna od Preview Color Palette
+  oś wizualna — reskinuje cały chrom appki (Header, Wizard Section,
+  Preview Section, Settings Modal) przez CSS custom properties w
+  `src/index.css` (`[data-theme="..."]` bloki + `.dark` warianty,
+  `@theme inline` rejestruje je jako realne utility Tailwinda).
+  `ThemeId`/`THEME_LIST` (nowy `src/types/theme.ts`), wybór w Settings →
+  Appearance (rząd kart ze swatchami, pierwsza kontrolka w sekcji,
+  przed Preview Color Palette), `useChromeTheme()` w `App.tsx` ustawia/
+  usuwa atrybut `data-theme` na `<html>`. Domyślny motyw ("Sloppy
+  Indigo") to dzisiejszy wygląd appki bez zmian — nowy mechanizm nie
+  narusza istniejącego stylu, dopóki użytkownik świadomie nie przełączy.
+- **Motyw Shopfloor Amber** — pierwszy dodatkowy motyw (spec
+  `design_shopfloor_amber.md`), warsztatowy bursztynowy look. Przy
+  okazji: wszystkie ikonki w Step Summary ujednolicone do jednego,
+  dominującego koloru motywu (wcześniej tylko część miała ten
+  traktament), oraz reguła "tło 2D/3D Preview jest częścią Theme" —
+  patrz niżej.
+- **Motywy Arcade Studio Restrained i Full Neon** (specy
+  `design-arcade-restrained.md`/`design_arcade_full_neon.md`) — czarne
+  tło, dwu-akcentowa semantyka (cyjan = struktura/nawigacja, róż = dane
+  użytkownika/wybór/commit) przez nowe tokeny `--selected-border`/
+  `--selected-fg`/`--stat-value` (dla Sloppy Indigo/Shopfloor Amber to
+  zwykłe aliasy istniejących `--accent-*`, więc ich wygląd się nie
+  zmienia). Dodatkowe efekty tylko dla Arcade: `--glow-*`/
+  `--frame-glow`/`--preview-inset` (box-shadow, `none` dla pozostałych
+  motywów), `--scan` (CRT scanline, tylko Full Neon), `--ui-font`
+  (Space Grotesk z Google Fonts). Wordmark "SimpleCAM" w Headerze
+  przy okazji przerobiony na dwukolorowy (`--wordmark-simple`/
+  `--wordmark-cam`) dla wszystkich motywów. Oba warianty Arcade są
+  dark-only — blok light i `.dark` mają identyczną zawartość zamiast
+  sprzęgać Theme z przełącznikiem dark/light.
+- Customowy stepper w `NumberInput`
+  (`src/components/wizard/NumberInput.tsx`) zamiast natywnego,
+  niestylowalnego spinnera przeglądarki — dwa małe przyciski góra/dół
+  **obok siebie** (nie jeden nad drugim), w pełni na tokenach motywu.
+  Zastąpił goły `<input type="number">` we wszystkich polach
+  liczbowych wizarda (przez `useNumberField()`, który zyskał
+  `onAdjust(delta)`) i w Settings Modal (Machine travel, Tab defaults —
+  osobny `handleAdjust()`, commituje od razu zamiast czekać na `onBlur`,
+  który mógłby nigdy nie nadejść).
+- **Etykiety liczbowe siatki w 3D Preview** — dotąd siatka 3D miała
+  stałe 10 podziałów wyśrodkowanych na bounding-boxie wzorca, bez
+  żadnych etykiet; teraz jest wyrównana do "ładnych" wartości CNC (ta
+  sama sekwencja 1-2-5-10-20-50..., `niceStep()`, współdzielona z 2D —
+  wyeksportowana z `drawToolpath.ts`) i otoczona ruter-stylowym
+  border z etykietami liczbowymi na wszystkich czterech krawędziach
+  (nie jeden bok na oś jak w 2D — kamera 3D swobodnie orbituje).
+  Wszystkie sprite'y tekstowe w scenie (origin `"0,0"`, końce osi
+  `"X"`/`"Y"`, nowe etykiety siatki) mają teraz stały rozmiar **na
+  ekranie**, nie w jednostkach świata — przeliczany co klatkę
+  (`rescaleLabelForConstantScreenSize()`) z aktualnej odległości kamery
+  i pionowego FOV, żeby nie kurczyły się do nieczytelnych kropek przy
+  oddaleniu ani nie puchły przy przybliżeniu. Rozmiar (Small/Medium/
+  Large) i widoczność samych etykiet siatki konfigurowalne w Settings →
+  Appearance → "Grid Labels" (`grid3DLabelsEnabled`/`grid3DLabelSize`
+  w `AppearanceSettings`) — origin/osie zostają zawsze widoczne
+  niezależnie od tego przełącznika.
+
+### Naprawiono
+
+- Tło 2D/3D Preview zmieniało się razem z Preview Color Palette (np.
+  wybranie Ocean pod Shopfloor Amber cofało tło do białego/granatu
+  Sloppy Indigo) — powinno zmieniać się wyłącznie z Theme. Przyczyna:
+  `background` żył w `PaletteAccents` (per-paleta), nie w
+  `FixedColors` (per-Theme). Naprawione przeniesieniem pola —
+  `getFixedColors(themeId, isDark)` teraz zwraca też `background`,
+  `PaletteAccents`/`ALTERNATE_PALETTES` go nie mają w ogóle.
+- Kliknięcie dowolnego presetu usuwało całą zawartość Step 2 Summary,
+  jeśli preset pochodził ze starszego schematu, w którym `operation`
+  miało inne, ale wciąż *poprawnie sparsowane* znaczenie (sprzed
+  przemianowania Helix/Standard → Hole(s)/Outline) — `saved?.operation
+  ?? DEFAULT` nie łapało tego przypadku, bo wartość nie była `undefined`,
+  tylko obecna i błędna. Naprawione właściwymi type-guardami
+  (`isOperationType()`/`isMethodType()`) w `mergeWithDefaults()`
+  (`src/lib/storage.ts`) zamiast gołego `??`.
+- **Z-fighting między obiektami "stock"/ścianami Outline a płaszczyzną
+  materiału w 3D Preview przy `Start Z = 0`.** Stock cap
+  (`buildStockCapObject()`, dodany w 0.13.5) renderował się dokładnie na
+  wysokości `startZ` — przy `Start Z = 0` (częsty, de facto domyślny
+  przypadek) lądował więc w tej samej płaszczyźnie co płaszczyzna
+  materiału (zawsze `Y=0` w świecie Three.js). Dwa idealnie
+  współpłaszczyznowe, półprzezroczyste obiekty w tym samym miejscu to
+  klasyczny z-fighting — widoczne jako migotanie/pasiasta interpolacja
+  (mora) wewnątrz obrysu otworu, znikające doraźnie przy ręcznym
+  ustawieniu `Start Z` na coś innego niż `0`. Ten sam problem miała też
+  każda **zamknięta ściana Outline** (Circle/Rectangle w trybie Outside,
+  oraz wewnętrzna "wyspa" w On-line) — to nie osobny cap, tylko realna
+  górna ściana bryły (`CylinderGeometry`/`BoxGeometry`), ale geometrycznie
+  ląduje na dokładnie tej samej wysokości `startZ` co stock cap, więc ma
+  dokładnie ten sam problem — pierwsza wersja poprawki (0.13.6) naprawiła
+  tylko stock cap, przeoczając te ściany. Naprawione jedną, wspólną
+  poprawką: podniesienie o stały epsilon (`SOLID_CAP_Z_LIFT = 0.02` mm,
+  przemianowany z `STOCK_CAP_Z_LIFT` — dotyczy teraz więcej niż tylko
+  stock capu) ponad nominalny `startZ`, stosowane wszędzie tam, gdzie
+  faktycznie istnieje realna, zamknięta górna ściana: stock cap zawsze,
+  `buildRectWallMesh()` gdy `closed`, oba miejsca w
+  `buildOutlineCirclePatternObjects()` gdzie ściana jest zamknięta
+  (Outside, wewnętrzna ściana On-line) — otwarte ściany (Inside,
+  zewnętrzna ściana On-line) nie mają tam żadnej geometrii do
+  kolidowania, więc zostają bez zmian. Epsilon celowo *większy* niż
+  odstęp siatki od płaszczyzny (0.01), żeby jedno podniesienie
+  separowało każdy z tych obiektów jednocześnie od płaszczyzny materiału
+  i od siatki. Świadomie **nie** ruszono płaszczyzny materiału ani
+  siatki — te dwie są już poprawnym punktem odniesienia względem siebie
+  i jedynym stałym zerem układu; to elementy dodane później powinny się
+  dostosować, nie odwrotnie.
+- Etykiety siatki 3D nie pokrywały się dokładnie ze swoimi liniami
+  (widoczny dryf w lewo dla wielocyfrowych liczb) i etykiety po prawej
+  stronie osi Y wyglądały na bliżej płaszczyzny niż analogiczne po
+  lewej. Jedna wspólna przyczyna: `createTextSprite()` rysował tekst
+  lewo-wyrównany od stałego `x=4` na canvasie zamiast wyśrodkowany —
+  niezauważalne dla pojedynczych znaków ("X"/"Y"), ale widoczne dla
+  wielocyfrowych liczb. Naprawione przez `ctx.textAlign = 'center'` +
+  rysowanie od środka canvasu.
+- Klikanie strzałek `NumberInput` aktualizowało wartość widoczną w
+  podglądzie 3D, ale nie odświeżało wyświetlanego tekstu w samym polu
+  (dopiero zamknięcie i ponowne otwarcie kroku wizarda odświeżało
+  pole) — `onAdjust()` w `useNumberField.ts` commitował nową wartość,
+  ale nigdy nie wołał `setText()`. Przy okazji naprawiony drugi bug w
+  tym samym miejscu: powtarzane dodawanie kroku dziesiętnego (np. `0.1`
+  trzy razy) trafiało na szum binarnego floata
+  (`0.30000000000000004`) — `onAdjust()` teraz zaokrągla wynik do
+  1/100mm (`roundToStepPrecision()`, reużyte też przez
+  `SettingsModal.tsx`'s `handleAdjust()`).
+
 ## [0.13.5] — 2026-08-28
 
 ### Dodano

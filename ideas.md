@@ -20,30 +20,48 @@ Obecnie pusty.
 Techniczny dług i drobniejsze, jasno zakresowe pomysły — każdy ze stałym
 numerem `BL-#`, nadawanym raz i niezmieniającym się przy regrupowaniu/
 reprioritetyzacji (czysty identyfikator do odnoszenia się w rozmowie:
-"zrób BL-4"). Zamknięte pozycje (numery nie wymienione tu) trafiają do
-historii w `CHANGELOG.md` i znikają z tej listy — nie trzeba ich tu nigdy
-przywracać.
+"zrób BL-4"), i jednym z czterech statusów:
 
-Ta sama lista, wizualnie — pogrupowana etapami trudności i z kolorowym
-oznaczeniem 🟢/🟠/🔴 — jest opublikowana jako Artifact:
+- **Otwarty** — domyślny, czeka na realizację.
+- **W trakcie** — rozpoczęte, ale zakres okazał się większy niż
+  pojedyncza poprawka i wymaga rozbicia na mniejsze kroki (rzadki
+  przypadek — większość pozycji idzie prosto z Otwarty do Zrealizowany).
+- **Zrealizowany** — wdrożone; pełne "co i dlaczego" żyje w
+  `CHANGELOG.md`, tu zostaje tylko krótki wpis jako ślad decyzji.
+- **Odrzucony** — świadomie zdecydowano nie robić (z datą i, jeśli
+  podane w rozmowie, powodem).
+
+**Pozycja nigdy nie znika z tej listy — zmienia się tylko jej status.**
+To zmiana względem wcześniejszej konwencji (zamknięte pozycje kiedyś
+usuwane z pliku) — teraz cała historia decyzji zostaje widoczna
+bezpośrednio tutaj, nie tylko rozproszona po `CHANGELOG.md`.
+
+Ta sama lista, wizualnie — pogrupowana etapami trudności, z kolorowym
+oznaczeniem 🟢/🟠/🔴 i filtrem statusu (domyślnie pokazuje tylko
+**Otwarte**) — jest opublikowana jako Artifact:
 **<https://claude.ai/code/artifact/e90a2f5c-932c-4772-804e-0fe155ab32a0>**.
 
 **Zasada — trzymać oba źródła w zgodzie:** po wdrożeniu zmiany
-odpowiadającej któremuś `BL-#`/`OP-#` — usunąć bullet z tego pliku **i**
-zaktualizować Artifact pod tym samym URL (republikacja z `url` ustawionym
-na powyższy link, nie nowa publikacja) — usunąć pozycję z listy, poprawić
-liczniki w pasku statystyk na górze. Bez tego kroku Artifact szybko
-rozjeżdża się ze stanem faktycznym.
+odpowiadającej któremuś `BL-#`/`OP-#` — zmienić jego status na
+**Zrealizowany** (nie usuwać bulleta) i zaktualizować Artifact pod tym
+samym URL (republikacja z `url` ustawionym na powyższy link, nie nowa
+publikacja) — poprawić status karty i liczniki w pasku statystyk na
+górze. Zmiana statusu w `ideas.md`/Artifact to sama w sobie zmiana
+procesu/dokumentacji, nie appki — **nie wymaga wpisu w `CHANGELOG.md`**
+(ten opisuje appkę, nie narzędzia śledzenia backlogu). Bez
+zsynchronizowania statusu Artifact szybko rozjeżdża się ze stanem
+faktycznym.
 
-- **`BL-4`** — **CI/CD (GitHub Actions).** Brak mimo że repo jest na
+- **`BL-4`** *(Otwarty)* — **CI/CD (GitHub Actions).** Brak mimo że repo jest na
   GitHubie — świadomie poza zakresem do wyjścia z fazy testów. Build+test
   na push to standard, ale spięcie z `npm run deploy` (sekrety FTP,
   gating) dokłada realną decyzję projektową.
-- **`BL-7`** — **Import DXF / SVG.** Dziś pozycjonowanie to wyłącznie
-  Single/Grid/Grid Centered/Circle/Custom List (ręcznie wpisane punkty) —
-  import pliku jako alternatywne źródło punktów. Parsowanie formatu,
-  ekstrakcja geometrii, mapowanie na otwory/kontury.
-- **`BL-8`** — **Responsywny UI na małych ekranach.** Dziś layout zakłada
+- **`BL-7`** *(Odrzucony, 2026-09-12)* — **Import DXF / SVG.** Dziś
+  pozycjonowanie to wyłącznie Single/Grid/Grid Centered/Circle/Custom
+  List (ręcznie wpisane punkty) — import pliku jako alternatywne źródło
+  punktów. Parsowanie formatu, ekstrakcja geometrii, mapowanie na
+  otwory/kontury.
+- **`BL-8`** *(Otwarty)* — **Responsywny UI na małych ekranach.** Dziś layout zakłada
   desktop: dwukolumnowy układ (Wizard Section + Preview Section obok
   siebie), gęste pola liczbowe w parach X/Y w jednej linii, Preview
   Viewport 3D z absolutnie pozycjonowanymi przyciskami widoku. Dotyka
@@ -60,7 +78,7 @@ rozjeżdża się ze stanem faktycznym.
   Wizard Section — poniżej pewnej szerokości okna czytelność formularzy w
   Kroku 2/3 się rozpada. Dokładna wartość progu do ustalenia przy realnej
   implementacji, prawdopodobnie razem z sesją `/grill-me`.
-- **`BL-18`** — **Zweryfikować kompatybilność wsteczną ze starszymi
+- **`BL-18`** *(Otwarty)* — **Zweryfikować kompatybilność wsteczną ze starszymi
   przeglądarkami.** Zgłoszenie użytkownika: na Windows 8, w kilku
   przeglądarkach, tylko Preview Section miała kolory zgodne z ustawioną
   paletą — reszta (Header, Wizard Section) renderowała się na biało, a
@@ -73,14 +91,16 @@ rozjeżdża się ze stanem faktycznym.
   starszym silniku, zidentyfikowania, które konkretne właściwości CSS się
   nie renderują, i albo dodania fallbacków, albo świadomej decyzji "nie
   wspieramy X" udokumentowanej w `CLAUDE.md`.
-- **`BL-19`** — **Własna lista średnic narzędzia w Settings.** Dziś
+- **`BL-19`** *(Otwarty)* — **Własna lista średnic narzędzia w Settings.** Dziś
   `TOOL_DIAMETER_OPTIONS` (`config/toolDiameterOptions.ts`: 1–8mm całe mm
   + 1/8" i 1/4") jest zaszyta na sztywno w kodzie. Pomysł: nowa sekcja w
   Settings Modal pozwalająca edytować tę listę (dodawać/usuwać wartości),
   zapisywana w localStorage (nowy klucz albo rozszerzenie istniejącego
   wzorca Machine/Appearance/Tabs), plus przycisk "Reset to default"
   przywracający dzisiejszą, sztywną listę jako wartość domyślną.
-- **`BL-20`** — 🔒 **Licznik użytkowników (unikalne IP).** Wymaga własnej,
+- **`BL-20`** *(Odrzucony, 2026-09-12 — w zamian `BL-29` Privacy Policy:
+  prostsze rozwiązanie, bez trackingu i bez implikacji RODO poniżej)* —
+  🔒 **Licznik użytkowników (unikalne IP).** Wymaga własnej,
   pełnej sesji `/grill-me` przed jakąkolwiek decyzją implementacyjną —
   pomysł bezpośrednio dotyka fundamentalnej zasady projektu ("Zero
   backendu. Zero bazy danych."), nie jest to dopracowanie szczegółów.
@@ -95,7 +115,7 @@ rozjeżdża się ze stanem faktycznym.
   "unikalne IP" to tylko przybliżenie "unikalnych ludzi" (NAT zaniża,
   rotacja IP zawyża), oraz implikacje RODO przy liczeniu po IP (strona
   hostowana na `.pl`).
-- **`BL-25`** — **Tryb edycji przywołanego presetu.** Pomysł: wczytanie
+- **`BL-25`** *(Otwarty)* — **Tryb edycji przywołanego presetu.** Pomysł: wczytanie
   presetu z Preset Bar podświetla/zaznacza go; póki jest zaznaczony,
   dalsze zmiany zapisują się automatycznie z powrotem do tego slotu
   presetu, zamiast tylko do ukrytego slotu sesji (dzisiejsze zachowanie
@@ -105,7 +125,7 @@ rozjeżdża się ze stanem faktycznym.
   decyzji projektowej (presety są dziś jawnie zapisywane wyłącznie
   ręcznie, bez auto-nadpisywania) — wymaga pełnej dyskusji przed
   dopracowaniem zakresu, nie drobna poprawka.
-- **`BL-26`** — **Przytrzymanie przycisku `NumberInput` (auto-repeat).**
+- **`BL-26`** *(Otwarty)* — **Przytrzymanie przycisku `NumberInput` (auto-repeat).**
   Dziś klik na strzałkę góra/dół (`src/components/wizard/NumberInput.tsx`,
   `useNumberField.onAdjust`) to zawsze dokładnie jeden krok — świadomie
   pominięte przy pierwszym wdrożeniu (zgłoszenie dotyczyło wyglądu
@@ -113,7 +133,7 @@ rozjeżdża się ze stanem faktycznym.
   krok co interwał, jak natywny spinner przeglądarki — wymaga
   timera/interwału uruchamianego na `onMouseDown`, czyszczonego na
   `onMouseUp`/`onMouseLeave`.
-- **`BL-27`** — **Glow (bloom) na toolpath/osiach w motywach Arcade
+- **`BL-27`** *(Odrzucony, 2026-09-12)* — **Glow (bloom) na toolpath/osiach w motywach Arcade
   Studio.** Specy `design-arcade-restrained.md`/`design_arcade_full_neon.md`
   przewidują `path-glow` na toolpath i osiach — świadomie pominięte przy
   wdrożeniu obu motywów. 2D Preview to Canvas API, nie SVG (jak spec
@@ -122,6 +142,19 @@ rozjeżdża się ze stanem faktycznym.
   same specy każą najpierw zweryfikować pod kątem wydajności — wymaga
   własnej oceny kosztu/efektu przed implementacją, nie oczywista
   poprawka.
+- **`BL-29`** *(Otwarty)* — **Privacy Policy w Settings Modal.** Nowa
+  treść (osobna sekcja Settings Nav albo fragment istniejącej "About")
+  z jawnym opisem polityki prywatności — spójna z `CLAUDE.md`'s "Zero
+  backendu. Zero bazy danych. Zero kont użytkowników.": appka nie
+  wysyła żadnych danych na serwer, nie ma trackingu/analytics/cookies,
+  wszystko (presety, Machine/Appearance/Tabs Settings) trzyma się
+  wyłącznie w `localStorage` przeglądarki użytkownika, czyszczone razem
+  z danymi strony. Treść statyczna, bez logiki — do ustalenia: dokładne
+  sformułowanie, czy osobna sekcja Settings Nav czy fragment "About", i
+  czy potrzebna samodzielna podstrona (do zalinkowania z zewnątrz) czy
+  wystarczy treść tylko wewnątrz modala. Zastępuje `BL-20` jako
+  prostsza odpowiedź na tę samą troskę (prywatność/RODO), bez budowania
+  żadnego trackingu.
 
 **`BL-17` zamknięte — "Interface Anatomy"**, Artifact z umownymi nazwami
 elementów UI, dziś aktywnie używany w `CLAUDE.md`:
