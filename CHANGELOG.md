@@ -7,6 +7,23 @@ zgodne z [SemVer](https://semver.org/). Ten plik pozostaje głównym, czytelnym
 thingsbypluzz/SimpleCAM), ale to infrastruktura pod izolację pracy
 (branch/worktree per zadanie), nie zamiennik tego changeloga.
 
+## [0.14.3] — 2026-09-12
+
+### Naprawiono
+
+- **Surface — przejście między poziomami Z liczone od Start Z, nie od
+  Safe Z.** `0.14.2` wprowadził pełny retrakt na `Safe Z` między
+  poziomami, ale przez pomyłkę użył `Safe Z` też jako punktu startowego
+  dla samego Plunge/Helix — dla Helixa to znaczyło spiralowanie przez
+  pustą przestrzeń nad materiałem i, gorzej, złe wyliczenie dystansu
+  zejścia (przelot). Sekwencja teraz: retrakt na `Safe Z` → `G0` do
+  rogu startowego → **`G0` w dół do `Start Z`** (ten sam
+  `rapidToTop(startZ)`, co przy pierwszym wejściu) → dopiero wtedy
+  Plunge/Helix od `Start Z` do docelowej głębokości poziomu.
+  `buildLevelDescents()` (`lib/surfaceZTransition.ts`) uproszczony do
+  samej listy `toZ` — "fromZ" per poziom przestał mieć sens, skoro
+  zawsze jest to `Start Z`. Naprawione identycznie w podglądzie 3D.
+
 ## [0.14.2] — 2026-09-12
 
 ### Naprawiono

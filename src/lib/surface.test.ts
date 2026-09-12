@@ -54,15 +54,17 @@ describe('generateSurfaceZigzag', () => {
       feeds: { stepdown: 1 },
     })
     const lines = generateSurfaceZigzag(params, DEFAULT_MACHINE_SETTINGS)
-    // buildLevelDescents(0, 3, 1, 5) -> levels at fromZ 0, 5, 5 (see
+    // buildLevelDescents(0, 3, 1) -> target depths -1, -2, -3 (see
     // surfaceZTransition.test.ts) — the 2nd and 3rd level transitions both
-    // retract all the way to the default Safe Z (5) before repositioning to
-    // (0,0), same "retract to Safe Z before G0" convention used everywhere
-    // else. 'G0 Z0' appears exactly once now (only the initial
-    // rapidToTop(startZ)) — no level retracts to a partial depth anymore.
-    // 'G0 Z5' appears 4 times: buildHeader's own initial rapid, the 2
-    // mid-level retracts, and assembleProgram's trailing retract.
-    expect(lines.filter((l) => l === 'G0 Z0')).toHaveLength(1)
+    // retract all the way to Safe Z (default 5), reposition to (0,0), THEN
+    // rapid back down to Start Z (0) before the Plunge/Helix — every
+    // level's transition always starts from Start Z, never from Safe Z
+    // directly (that's what made the Helix overshoot before this fix).
+    // 'G0 Z0' appears 3 times: the initial rapidToTop(startZ), plus one
+    // rapid-to-Start-Z per level-2/3 transition. 'G0 Z5' appears 4 times:
+    // buildHeader's own initial rapid, the 2 mid-level Safe-Z retracts, and
+    // assembleProgram's trailing retract.
+    expect(lines.filter((l) => l === 'G0 Z0')).toHaveLength(3)
     expect(lines.filter((l) => l === 'G0 Z5')).toHaveLength(4)
     expect(lines.filter((l) => l === 'G1 Z-1 F300')).toHaveLength(1)
     expect(lines.filter((l) => l === 'G1 Z-2 F300')).toHaveLength(1)

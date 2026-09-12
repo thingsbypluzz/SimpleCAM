@@ -432,31 +432,32 @@ function buildSurfaceToolpathPoints3D(surface: WizardParams['surface'], feeds: W
   const bounds = surfaceToolBounds(surface)
   const corner = surfaceStartCorner(surface)
   const stepoverMm = surfaceStepoverMm(surface)
-  const descents = buildLevelDescents(feeds.startZ, surface.totalDepth, feeds.stepdown, feeds.safeZ)
+  const descents = buildLevelDescents(feeds.startZ, surface.totalDepth, feeds.stepdown)
   const points: THREE.Vector3[] = [toThree(corner.x, corner.y, feeds.startZ)]
   let currentX = corner.x
   let currentY = corner.y
 
-  const pushZTransition = (fromZ: number, toZ: number) => {
+  const pushZTransition = (toZ: number) => {
     if (surface.zTransitionMode === 'plunge') {
       points.push(toThree(currentX, currentY, toZ))
       return
     }
     points.push(
-      ...surfaceHelixPoints3D(currentX, currentY, surface.helixRadius, fromZ, toZ, feeds.stepdown, surface.rasterDirection),
+      ...surfaceHelixPoints3D(currentX, currentY, surface.helixRadius, feeds.startZ, toZ, feeds.stepdown, surface.rasterDirection),
     )
   }
 
   if (surface.method === 'zigzag') {
     const waypoints = zigzagWaypoints(computeRasterLines(bounds, surface.rasterDirection, stepoverMm))
-    descents.forEach(({ fromZ, toZ }, idx) => {
+    descents.forEach(({ toZ }, idx) => {
       if (idx > 0) {
-        points.push(toThree(currentX, currentY, fromZ))
-        points.push(toThree(corner.x, corner.y, fromZ))
+        points.push(toThree(currentX, currentY, feeds.safeZ))
+        points.push(toThree(corner.x, corner.y, feeds.safeZ))
+        points.push(toThree(corner.x, corner.y, feeds.startZ))
         currentX = corner.x
         currentY = corner.y
       }
-      pushZTransition(fromZ, toZ)
+      pushZTransition(toZ)
       for (let i = 1; i < waypoints.length; i++) {
         points.push(toThree(waypoints[i].x, waypoints[i].y, toZ))
       }
@@ -465,14 +466,15 @@ function buildSurfaceToolpathPoints3D(surface: WizardParams['surface'], feeds: W
     })
   } else {
     const rasterLines = computeRasterLines(bounds, surface.rasterDirection, stepoverMm)
-    descents.forEach(({ fromZ, toZ }, idx) => {
+    descents.forEach(({ toZ }, idx) => {
       if (idx > 0) {
-        points.push(toThree(currentX, currentY, fromZ))
-        points.push(toThree(corner.x, corner.y, fromZ))
+        points.push(toThree(currentX, currentY, feeds.safeZ))
+        points.push(toThree(corner.x, corner.y, feeds.safeZ))
+        points.push(toThree(corner.x, corner.y, feeds.startZ))
         currentX = corner.x
         currentY = corner.y
       }
-      pushZTransition(fromZ, toZ)
+      pushZTransition(toZ)
       rasterLines.forEach((line, i) => {
         points.push(toThree(line.to.x, line.to.y, toZ))
         if (i < rasterLines.length - 1) {

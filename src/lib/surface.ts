@@ -19,18 +19,19 @@ function zigzagSurfaceToolpath(cx: number, cy: number, params: WizardParams): st
   const bounds = surfaceToolBounds(surface)
   const stepoverMm = surfaceStepoverMm(surface)
   const waypoints = zigzagWaypoints(computeRasterLines(bounds, surface.rasterDirection, stepoverMm))
-  const descents = buildLevelDescents(feeds.startZ, surface.totalDepth, feeds.stepdown, feeds.safeZ)
+  const descents = buildLevelDescents(feeds.startZ, surface.totalDepth, feeds.stepdown)
 
   const lines: string[] = [`G0 X${fmt(cx)} Y${fmt(cy)}`, rapidToTop(feeds.startZ)]
 
-  descents.forEach(({ fromZ, toZ }, idx) => {
+  descents.forEach(({ toZ }, idx) => {
     if (idx > 0) {
-      lines.push(`G0 Z${fmt(fromZ)}`)
+      lines.push(`G0 Z${fmt(feeds.safeZ)}`)
       lines.push(`G0 X${fmt(cx)} Y${fmt(cy)}`)
+      lines.push(rapidToTop(feeds.startZ))
     }
     lines.push(
       ...zTransitionMoves({
-        fromZ,
+        fromZ: feeds.startZ,
         toZ,
         mode: surface.zTransitionMode,
         stepdown: feeds.stepdown,
@@ -62,18 +63,19 @@ function unidirectionalSurfaceToolpath(cx: number, cy: number, params: WizardPar
   const bounds = surfaceToolBounds(surface)
   const stepoverMm = surfaceStepoverMm(surface)
   const rasterLines = computeRasterLines(bounds, surface.rasterDirection, stepoverMm)
-  const descents = buildLevelDescents(feeds.startZ, surface.totalDepth, feeds.stepdown, feeds.safeZ)
+  const descents = buildLevelDescents(feeds.startZ, surface.totalDepth, feeds.stepdown)
 
   const lines: string[] = [`G0 X${fmt(cx)} Y${fmt(cy)}`, rapidToTop(feeds.startZ)]
 
-  descents.forEach(({ fromZ, toZ }, idx) => {
+  descents.forEach(({ toZ }, idx) => {
     if (idx > 0) {
-      lines.push(`G0 Z${fmt(fromZ)}`)
+      lines.push(`G0 Z${fmt(feeds.safeZ)}`)
       lines.push(`G0 X${fmt(cx)} Y${fmt(cy)}`)
+      lines.push(rapidToTop(feeds.startZ))
     }
     lines.push(
       ...zTransitionMoves({
-        fromZ,
+        fromZ: feeds.startZ,
         toZ,
         mode: surface.zTransitionMode,
         stepdown: feeds.stepdown,

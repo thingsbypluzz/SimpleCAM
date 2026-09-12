@@ -128,15 +128,24 @@ decyzją projektową).
   poziomu Z: zawsze róg min-X/min-Y bounding-boxa
   (`surfaceStartCorner()`), niezależnie od Cornered/Centered czy
   kierunku rastra. **Głębokość**: Total Depth + Stepdown (global
-  `feeds.stepdown`), pełny raster całego obszaru na każdym poziomie
-  (`buildLevelDescents()`, reużywa `computeDepthPasses()`). **Przejście
-  między poziomami Z** (poziom 0 zaczyna z `startZ` bez retraktu, jak
-  pierwsze wejście w Hole(s)/Outline) — wspólny mechanizm dla obu metod:
-  **pełny retrakt na `Safe Z`** (na aktualnym XY, nie tylko o
-  `stepdown` — ta sama konwencja "powrót na Safe Z przed G0 do
-  kolejnego punktu", co wszędzie indziej w appce), `G0` do rogu
-  startowego, potem **Plunge** (prosty `G1 Z`) albo **Helix**
-  (mini-spirala) wg toggle'a `ZTransitionMode` w Step 2. Helix reużywa
+  `feeds.stepdown`), pełny raster całego obszaru na każdym poziomie —
+  `buildLevelDescents()` zwraca wyłącznie listę docelowych głębokości
+  (`toZ`) z `computeDepthPasses()`, bez własnego "fromZ" per poziom,
+  bo faktyczne przejście Plunge/Helix zawsze zaczyna się z `startZ` (patrz
+  niżej), nie z miejsca, w którym skończył się poprzedni poziom.
+  **Przejście między poziomami Z** (poziom 0 zaczyna z `startZ` bez
+  retraktu, jak pierwsze wejście w Hole(s)/Outline) — wspólny mechanizm
+  dla obu metod, trzy kroki: **pełny retrakt na `Safe Z`** (na aktualnym
+  XY — ta sama konwencja "powrót na Safe Z przed G0 do kolejnego
+  punktu", co wszędzie indziej w appce), `G0` do rogu startowego (na
+  wysokości Safe Z), **`G0` w dół do `Start Z`** (dokładnie ten sam
+  `rapidToTop(startZ)`, co przy pierwszym wejściu — dopiero stąd
+  zaczyna się właściwe zejście). Dopiero wtedy **Plunge** (prosty `G1
+  Z`) albo **Helix** (mini-spirala) wg toggle'a `ZTransitionMode` w
+  Step 2 — zejście zawsze liczone od `Start Z` do `toZ` tego poziomu,
+  nigdy od `Safe Z` bezpośrednio (inaczej helix przelatywałby przez
+  pustą przestrzeń nad `Start Z` i nie trafiał dokładnie w docelową
+  głębokość w punkcie startu przejazdu rastra). Helix reużywa
   wprost `fullCircleMove()`/`computeDepthPasses()` z silnika Helix
   Hole(s), kierunek stały `'ccw'`; środek spirali (`helixCenterFor()`,
   `lib/surfaceZTransition.ts`) zależy od `rasterDirection` — dla `'y'`

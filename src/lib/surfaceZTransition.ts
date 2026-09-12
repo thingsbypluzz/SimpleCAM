@@ -82,28 +82,29 @@ export function zTransitionMoves(opts: ZTransitionOptions): string[] {
 }
 
 export interface LevelDescent {
-  fromZ: number
   toZ: number
 }
 
-// Per-Z-level plan shared by Zigzag and Unidirectional. Level 0 starts from
-// `startZ` (the material top, already reached via the caller's
-// rapidToTop(startZ) — mirrors Hole(s)/Outline's own convention) with no
-// preceding retract. Every subsequent level retracts all the way to Safe Z
-// before its own descent to the next target depth — same "retract to Safe
-// Z before G0 to the next point" convention used everywhere else in the
-// app (this deliberately replaces an earlier, stepdown-only partial
-// retract: full Safe Z is safer when traveling back across the whole
-// raster area, not just a few mm up).
-export function buildLevelDescents(startZ: number, totalDepth: number, stepdown: number, safeZ: number): LevelDescent[] {
+// Per-Z-level plan shared by Zigzag and Unidirectional — the target depth
+// for each stepdown-sized level, from computeDepthPasses(). Every level's
+// actual Plunge/Helix transition (see lib/surface.ts) starts from `startZ`,
+// never from wherever the previous level happened to end — between levels,
+// the caller retracts all the way to Safe Z, repositions to the start
+// corner, THEN rapids back down to Start Z before running the transition.
+// That "Safe Z, then Start Z" split matters specifically for Helix: helixing
+// straight from Safe Z would spiral through open air for whatever gap sits
+// above Start Z, and — since the descend distance would then be measured
+// from Safe Z instead of Start Z — overshoot past the level's real target
+// depth. Routing every level's transition through the same fixed Start Z
+// keeps `toZ` exactly reachable, and reuses the identical entry shape level
+// 0 already has (rapidToTop(startZ) then the transition).
+export function buildLevelDescents(startZ: number, totalDepth: number, stepdown: number): LevelDescent[] {
   const increments = computeDepthPasses(totalDepth + startZ, stepdown)
   const result: LevelDescent[] = []
-  let prevTargetZ = startZ
-  increments.forEach((inc, idx) => {
-    const fromZ = idx === 0 ? prevTargetZ : safeZ
-    const toZ = prevTargetZ - inc
-    result.push({ fromZ, toZ })
-    prevTargetZ = toZ
-  })
+  let z = startZ
+  for (const inc of increments) {
+    z -= inc
+    result.push({ toZ: z })
+  }
   return result
 }

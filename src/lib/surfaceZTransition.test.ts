@@ -60,34 +60,20 @@ describe('zTransitionMoves — helix', () => {
 })
 
 describe('buildLevelDescents', () => {
-  it('level 0 starts at startZ with no retract; later levels retract all the way to Safe Z before descending', () => {
-    expect(buildLevelDescents(0, 3, 1, 5)).toEqual([
-      { fromZ: 0, toZ: -1 },
-      { fromZ: 5, toZ: -2 },
-      { fromZ: 5, toZ: -3 },
-    ])
+  it('splits totalDepth+startZ into stepdown-sized target depths', () => {
+    expect(buildLevelDescents(0, 3, 1)).toEqual([{ toZ: -1 }, { toZ: -2 }, { toZ: -3 }])
   })
 
-  it('a single level (totalDepth === stepdown) needs no retract at all', () => {
-    expect(buildLevelDescents(0, 1, 1, 5)).toEqual([{ fromZ: 0, toZ: -1 }])
+  it('a single level (totalDepth === stepdown)', () => {
+    expect(buildLevelDescents(0, 1, 1)).toEqual([{ toZ: -1 }])
   })
 
   it('a non-zero startZ extends the total travel distance (startZ + totalDepth), same convention as the engine', () => {
-    // Total descent from +2 down to -2 is 4mm -> 4 stepdown-1 levels; every
-    // level after the first retracts to the same Safe Z regardless of depth.
-    expect(buildLevelDescents(2, 2, 1, 5)).toEqual([
-      { fromZ: 2, toZ: 1 },
-      { fromZ: 5, toZ: 0 },
-      { fromZ: 5, toZ: -1 },
-      { fromZ: 5, toZ: -2 },
-    ])
+    // Total descent from +2 down to -2 is 4mm -> 4 stepdown-1 levels.
+    expect(buildLevelDescents(2, 2, 1)).toEqual([{ toZ: 1 }, { toZ: 0 }, { toZ: -1 }, { toZ: -2 }])
   })
 
   it('the last (possibly shorter) level uses whatever remainder computeDepthPasses leaves', () => {
-    expect(buildLevelDescents(0, 2.5, 1, 5)).toEqual([
-      { fromZ: 0, toZ: -1 },
-      { fromZ: 5, toZ: -2 },
-      { fromZ: 5, toZ: -2.5 },
-    ])
+    expect(buildLevelDescents(0, 2.5, 1)).toEqual([{ toZ: -1 }, { toZ: -2 }, { toZ: -2.5 }])
   })
 })
