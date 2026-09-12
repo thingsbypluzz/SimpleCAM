@@ -7,6 +7,23 @@ zgodne z [SemVer](https://semver.org/). Ten plik pozostaje głównym, czytelnym
 thingsbypluzz/SimpleCAM), ale to infrastruktura pod izolację pracy
 (branch/worktree per zadanie), nie zamiennik tego changeloga.
 
+## [0.14.2] — 2026-09-12
+
+### Naprawiono
+
+- **Surface — dwie poprawki zachowania silnika.** (1) Przejście między
+  poziomami Z: pełny retrakt na `Safe Z` zamiast tylko o `stepdown` —
+  bezpieczniejsze przy powrocie przez cały obszar rastra, ta sama
+  konwencja "powrót na Safe Z przed G0", co wszędzie indziej w appce
+  (`buildLevelDescents()` teraz przyjmuje `safeZ`). (2) Helix
+  Z-Transition zakręcał pod kątem 90° na złączeniu z pierwszą linią
+  rastra przy `Raster Direction: X` (przy `Y` działało to przypadkowo
+  poprawnie) — środek spirali (`helixCenterFor()`, nowy eksport z
+  `lib/surfaceZTransition.ts`) teraz zależy od `rasterDirection`, żeby
+  styczna wyjścia z helixa zawsze pokrywała się z kierunkiem pierwszej
+  linii rastra. Reużyte też w podglądzie 3D
+  (`buildScene.ts::surfaceHelixPoints3D`).
+
 ## [0.14.1] — 2026-09-12
 
 ### Zmieniono

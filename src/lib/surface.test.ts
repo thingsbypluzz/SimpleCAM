@@ -48,19 +48,22 @@ describe('generateSurfaceZigzag', () => {
     expect(lines.filter((l) => l === 'G0 X0 Y0')).toHaveLength(2)
   })
 
-  it('multi-level: retracts by stepdown and repositions to the start corner between levels', () => {
+  it('multi-level: retracts all the way to Safe Z and repositions to the start corner between levels', () => {
     const params = buildParams({
       surface: { shape: 'rectCornered', width: 10, height: 5, rasterDirection: 'x', stepoverPercent: 100, totalDepth: 3 },
       feeds: { stepdown: 1 },
     })
     const lines = generateSurfaceZigzag(params, DEFAULT_MACHINE_SETTINGS)
-    // buildLevelDescents(0, 3, 1) -> levels at fromZ 0, 0, -1 (see
-    // surfaceZTransition.test.ts) — the 2nd and 3rd level transitions each
-    // retract to their own fromZ before repositioning to (0,0). 'G0 Z0'
-    // appears twice: once as the initial rapidToTop(startZ), once as level
-    // 2's retract (its fromZ happens to coincide with startZ here).
-    expect(lines.filter((l) => l === 'G0 Z0')).toHaveLength(2)
-    expect(lines.filter((l) => l === 'G0 Z-1')).toHaveLength(1)
+    // buildLevelDescents(0, 3, 1, 5) -> levels at fromZ 0, 5, 5 (see
+    // surfaceZTransition.test.ts) — the 2nd and 3rd level transitions both
+    // retract all the way to the default Safe Z (5) before repositioning to
+    // (0,0), same "retract to Safe Z before G0" convention used everywhere
+    // else. 'G0 Z0' appears exactly once now (only the initial
+    // rapidToTop(startZ)) — no level retracts to a partial depth anymore.
+    // 'G0 Z5' appears 4 times: buildHeader's own initial rapid, the 2
+    // mid-level retracts, and assembleProgram's trailing retract.
+    expect(lines.filter((l) => l === 'G0 Z0')).toHaveLength(1)
+    expect(lines.filter((l) => l === 'G0 Z5')).toHaveLength(4)
     expect(lines.filter((l) => l === 'G1 Z-1 F300')).toHaveLength(1)
     expect(lines.filter((l) => l === 'G1 Z-2 F300')).toHaveLength(1)
     expect(lines.filter((l) => l === 'G1 Z-3 F300')).toHaveLength(1)

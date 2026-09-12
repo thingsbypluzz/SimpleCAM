@@ -130,18 +130,26 @@ decyzją projektową).
   kierunku rastra. **Głębokość**: Total Depth + Stepdown (global
   `feeds.stepdown`), pełny raster całego obszaru na każdym poziomie
   (`buildLevelDescents()`, reużywa `computeDepthPasses()`). **Przejście
-  między poziomami Z** (i pierwsze wejście z Safe Z) — wspólny
-  mechanizm dla obu metod: retrakt o `stepdown` (na aktualnym XY), `G0`
-  do rogu startowego, potem **Plunge** (prosty `G1 Z`) albo **Helix**
+  między poziomami Z** (poziom 0 zaczyna z `startZ` bez retraktu, jak
+  pierwsze wejście w Hole(s)/Outline) — wspólny mechanizm dla obu metod:
+  **pełny retrakt na `Safe Z`** (na aktualnym XY, nie tylko o
+  `stepdown` — ta sama konwencja "powrót na Safe Z przed G0 do
+  kolejnego punktu", co wszędzie indziej w appce), `G0` do rogu
+  startowego, potem **Plunge** (prosty `G1 Z`) albo **Helix**
   (mini-spirala) wg toggle'a `ZTransitionMode` w Step 2. Helix reużywa
   wprost `fullCircleMove()`/`computeDepthPasses()` z silnika Helix
-  Hole(s) — środek spirali przesunięty o `helixRadius` w -X od
-  narożnika, żeby start/koniec `fullCircleMove` wypadł dokładnie na nim;
-  kierunek stały `'ccw'`. **Helix Radius** — osobne pole (tylko w trybie
-  Helix), walidacja `isSurfaceHelixRadiusValid()`: `> 0`, sufit =
-  stepover (mm). Mini-helix reużywa istniejący toggle interpolacji
-  G2/G3 vs G1 (`output.interpolation`). **Tabs nie dotyczą Surface w
-  ogóle** — brak checkboxa, brak pola, poza zakresem koncepcyjnym
+  Hole(s), kierunek stały `'ccw'`; środek spirali (`helixCenterFor()`,
+  `lib/surfaceZTransition.ts`) zależy od `rasterDirection` — dla `'y'`
+  przesunięty o `helixRadius` w -X od narożnika (styczna wyjścia z
+  helixa wychodzi w +Y, zgodnie z pierwszą linią rastra), dla `'x'`
+  przesunięty w +Y (styczna wychodzi w +X) — bez tego rozróżnienia
+  wyjście z helixa i pierwsza linia rastra spotykały się pod kątem 90°
+  zamiast płynnie kontynuować ruch. **Helix Radius** — osobne pole
+  (tylko w trybie Helix), walidacja `isSurfaceHelixRadiusValid()`: `>
+  0`, sufit = stepover (mm). Mini-helix reużywa istniejący toggle
+  interpolacji G2/G3 vs G1 (`output.interpolation`). **Tabs nie
+  dotyczą Surface w ogóle** — brak checkboxa, brak pola, poza zakresem
+  koncepcyjnym
   (Surface nie izoluje/przewierca na wylot). **Feed rate**: jeden
   globalny (`feeds.feedrateXY` dla cięcia/spirali, `feeds.plungeRate`
   tylko dla prostych pionowych ruchów) — bez osobnego pola, ta sama

@@ -19,7 +19,7 @@ function zigzagSurfaceToolpath(cx: number, cy: number, params: WizardParams): st
   const bounds = surfaceToolBounds(surface)
   const stepoverMm = surfaceStepoverMm(surface)
   const waypoints = zigzagWaypoints(computeRasterLines(bounds, surface.rasterDirection, stepoverMm))
-  const descents = buildLevelDescents(feeds.startZ, surface.totalDepth, feeds.stepdown)
+  const descents = buildLevelDescents(feeds.startZ, surface.totalDepth, feeds.stepdown, feeds.safeZ)
 
   const lines: string[] = [`G0 X${fmt(cx)} Y${fmt(cy)}`, rapidToTop(feeds.startZ)]
 
@@ -40,6 +40,7 @@ function zigzagSurfaceToolpath(cx: number, cy: number, params: WizardParams): st
         interpolation: output.interpolation,
         cornerX: cx,
         cornerY: cy,
+        rasterDirection: surface.rasterDirection,
       }),
     )
     for (let i = 1; i < waypoints.length; i++) {
@@ -61,7 +62,7 @@ function unidirectionalSurfaceToolpath(cx: number, cy: number, params: WizardPar
   const bounds = surfaceToolBounds(surface)
   const stepoverMm = surfaceStepoverMm(surface)
   const rasterLines = computeRasterLines(bounds, surface.rasterDirection, stepoverMm)
-  const descents = buildLevelDescents(feeds.startZ, surface.totalDepth, feeds.stepdown)
+  const descents = buildLevelDescents(feeds.startZ, surface.totalDepth, feeds.stepdown, feeds.safeZ)
 
   const lines: string[] = [`G0 X${fmt(cx)} Y${fmt(cy)}`, rapidToTop(feeds.startZ)]
 
@@ -82,6 +83,7 @@ function unidirectionalSurfaceToolpath(cx: number, cy: number, params: WizardPar
         interpolation: output.interpolation,
         cornerX: cx,
         cornerY: cy,
+        rasterDirection: surface.rasterDirection,
       }),
     )
 

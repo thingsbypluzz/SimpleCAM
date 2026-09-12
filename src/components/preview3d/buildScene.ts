@@ -14,9 +14,9 @@ import { sideRangesFor, type SideTabRange } from '../../lib/outlineRectangleTabs
 import { outlineDirectionForOffsetMode } from '../../lib/outlineRectangle'
 import { surfaceNominalBounds, surfaceStartCorner, surfaceStepoverMm, surfaceToolBounds, type SurfaceBounds } from '../../lib/surfaceGeometry'
 import { computeRasterLines, zigzagWaypoints } from '../../lib/surfaceRaster'
-import { buildLevelDescents } from '../../lib/surfaceZTransition'
+import { buildLevelDescents, helixCenterFor } from '../../lib/surfaceZTransition'
 import { niceStep } from '../preview/drawToolpath'
-import type { Point2D, WizardParams } from '../../types/wizard'
+import type { Point2D, RasterDirection, WizardParams } from '../../types/wizard'
 import type { ThemeId } from '../../types/theme'
 import type { Grid3DLabelSize } from '../../types/appearance'
 
@@ -398,9 +398,16 @@ function rectRampPoints3D(
 // the output.interpolation toggle (matching helixPoints3D's own precedent,
 // which doesn't thread interpolation through either — only the real G-code
 // engine needs to care about G2/G3 vs G1).
-function surfaceHelixPoints3D(cx: number, cy: number, radius: number, fromZ: number, toZ: number, stepdown: number): THREE.Vector3[] {
-  const centerX = cx - radius
-  const centerY = cy
+function surfaceHelixPoints3D(
+  cx: number,
+  cy: number,
+  radius: number,
+  fromZ: number,
+  toZ: number,
+  stepdown: number,
+  rasterDirection: RasterDirection,
+): THREE.Vector3[] {
+  const { x: centerX, y: centerY } = helixCenterFor(cx, cy, radius, rasterDirection)
   const points: THREE.Vector3[] = []
   let z = fromZ
   for (const turnDepth of computeDepthPasses(fromZ - toZ, stepdown)) {
@@ -425,7 +432,7 @@ function buildSurfaceToolpathPoints3D(surface: WizardParams['surface'], feeds: W
   const bounds = surfaceToolBounds(surface)
   const corner = surfaceStartCorner(surface)
   const stepoverMm = surfaceStepoverMm(surface)
-  const descents = buildLevelDescents(feeds.startZ, surface.totalDepth, feeds.stepdown)
+  const descents = buildLevelDescents(feeds.startZ, surface.totalDepth, feeds.stepdown, feeds.safeZ)
   const points: THREE.Vector3[] = [toThree(corner.x, corner.y, feeds.startZ)]
   let currentX = corner.x
   let currentY = corner.y
@@ -435,7 +442,9 @@ function buildSurfaceToolpathPoints3D(surface: WizardParams['surface'], feeds: W
       points.push(toThree(currentX, currentY, toZ))
       return
     }
-    points.push(...surfaceHelixPoints3D(currentX, currentY, surface.helixRadius, fromZ, toZ, feeds.stepdown))
+    points.push(
+      ...surfaceHelixPoints3D(currentX, currentY, surface.helixRadius, fromZ, toZ, feeds.stepdown, surface.rasterDirection),
+    )
   }
 
   if (surface.method === 'zigzag') {
