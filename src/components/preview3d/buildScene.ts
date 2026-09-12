@@ -398,6 +398,18 @@ function rectRampPoints3D(
 // the output.interpolation toggle (matching helixPoints3D's own precedent,
 // which doesn't thread interpolation through either — only the real G-code
 // engine needs to care about G2/G3 vs G1).
+//
+// Unlike helixPoints3D (Hole(s)), which can hardcode "start angle = 0"
+// because its center is always offset -X of the start point by construction,
+// this one can't: helixCenterFor() puts the center on a DIFFERENT axis
+// depending on rasterDirection (see its own comment), so the start point
+// sits at a different angle relative to the center each time (0° for
+// direction 'y', -90° for 'x'). startAngle must be computed from the actual
+// center, exactly like fullCircleMove's own linear-interpolation branch
+// does — hardcoding 0 here silently drew the circle starting from the wrong
+// point on the direction-'x' path (visible as a circle floating away from
+// the corner, joined to the raster by a long diagonal jump instead of
+// closing back onto it).
 function surfaceHelixPoints3D(
   cx: number,
   cy: number,
@@ -408,11 +420,12 @@ function surfaceHelixPoints3D(
   rasterDirection: RasterDirection,
 ): THREE.Vector3[] {
   const { x: centerX, y: centerY } = helixCenterFor(cx, cy, radius, rasterDirection)
+  const startAngle = Math.atan2(cy - centerY, cx - centerX)
   const points: THREE.Vector3[] = []
   let z = fromZ
   for (const turnDepth of computeDepthPasses(fromZ - toZ, stepdown)) {
     for (let i = 1; i <= SEGMENTS_PER_TURN; i++) {
-      const a = (2 * Math.PI * i) / SEGMENTS_PER_TURN
+      const a = startAngle + (2 * Math.PI * i) / SEGMENTS_PER_TURN
       const x = centerX + radius * Math.cos(a)
       const y = centerY + radius * Math.sin(a)
       const zz = z - (turnDepth * i) / SEGMENTS_PER_TURN

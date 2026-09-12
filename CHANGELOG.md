@@ -7,6 +7,25 @@ zgodne z [SemVer](https://semver.org/). Ten plik pozostaje głównym, czytelnym
 thingsbypluzz/SimpleCAM), ale to infrastruktura pod izolację pracy
 (branch/worktree per zadanie), nie zamiennik tego changeloga.
 
+## [0.14.4] — 2026-09-12
+
+### Naprawiono
+
+- **Surface — okrąg Helixa w podglądzie 3D rysowany w złym miejscu przy
+  `Raster Direction: X`.** Realny G-code (`fullCircleMove()`) był
+  zawsze poprawny — liczy kąt startowy dynamicznie względem środka
+  spirali. `surfaceHelixPoints3D()` (tylko podgląd 3D) kopiował
+  natomiast starszy wzorzec z Hole(s), zakładający na sztywno kąt
+  startowy 0° — prawdziwe dla jedynego wcześniej istniejącego wzoru
+  środka, ale nie dla `helixCenterFor('x')`, który stawia środek pod
+  innym kątem względem narożnika (patrz `0.14.2`). Efekt: okrąg
+  renderował się w oderwaniu od narożnika, połączony z pierwszą linią
+  rastra długim, przekątnym doskokiem zamiast domykać się dokładnie w
+  punkcie startu. Naprawione przez policzenie kąta startowego z
+  `Math.atan2()` względem faktycznego środka, dokładnie tak jak już
+  robi to `fullCircleMove()`. Czysto wizualne — silnik G-code bez
+  zmian.
+
 ## [0.14.3] — 2026-09-12
 
 ### Naprawiono
