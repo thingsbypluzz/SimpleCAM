@@ -215,7 +215,9 @@ Artifact aktualizować tylko jeśli realny layout appki zmieni się na tyle,
   szerokości ma domyślną min-content podłogę, której flex-shrink nie
   może ominąć) — Grid X/Y, Offset X/Y, Hole Diameter+Total Depth,
   Circle Count/Diameter/Start Angle, Tabs Height/Width/Count, Surface
-  Method+Raster Direction. Pola o niepowiązanym znaczeniu zostają w
+  Method+Raster Direction, Surface Z-Transition Mode+Helix Radius (drugie
+  pole puste, gdy tryb ≠ Helix — para zostaje w jednym wierszu, żeby
+  uniknąć scrollowania). Pola o niepowiązanym znaczeniu zostają w
   kolumnie.
 - Header: dark/light Icon Button (klasa `.dark` na `<html>`, Tailwind
   `@custom-variant dark` w `src/index.css`) — **dark mode jest domyślny**

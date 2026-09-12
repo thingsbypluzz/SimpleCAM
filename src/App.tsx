@@ -712,7 +712,7 @@ function App() {
                       label="DEPTH"
                       value={`${params.surface.totalDepth}`}
                       unit="mm"
-                      title={`Cutting Depth: ${params.surface.totalDepth} mm`}
+                      title={`Depth to Remove: ${params.surface.totalDepth} mm`}
                     />
                   </div>
                 )}

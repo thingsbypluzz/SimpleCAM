@@ -311,29 +311,32 @@ export function RectangleOutlineCenteredIcon({ className }: IconProps) {
   )
 }
 
-// Surface Rectangle Cornered: same 4-corner outline as RectangleOutlineIcon
-// (dot-free, same corner crosshair convention), plus horizontal raster
-// lines inside — Surface fills the whole area, not just the perimeter, so
-// it needs a visually distinct fill pattern from the outline-only shapes
-// above. Deliberately not reused for Outline's own icons (a saved preset's
-// icon must stay unambiguous between operations — see CLAUDE.md).
+// Surface Rectangle Cornered: the bold zigzag glyph itself (same path as
+// ZigzagIcon below), no rectangle frame and no internal fill lines — an
+// earlier version drew a rectangle-with-raster-lines here, but that read
+// too close to RectangleOutlineIcon at small (8px) MiniStat sizes. The
+// zigzag alone is Surface's own, immediately distinct silhouette wherever
+// it appears (preset bar, Step 1/2 summaries). A small crosshair tucked
+// just outside the shape's bottom-left corner (not exactly on it — that's
+// a path endpoint, a marker right there would just look like a thicker
+// line-cap) keeps the Cornered/Centered distinction alive, same paired
+// convention as RectangleOutlineIcon/RectangleOutlineCenteredIcon.
 export function RectangleSurfaceIcon({ className }: IconProps) {
   return (
     <svg {...base} className={className}>
-      <path d="M6 18h12M18 18V6M18 6H6M6 6v12" strokeWidth={1} />
-      <path d="M7.5 9h9M7.5 12h9M7.5 15h9" strokeWidth={1} />
-      <path d="M4.5 18h3M6 16.5v3" strokeWidth={1} />
+      <path d="M4 6h14M18 6v4M18 10H4M4 10v4M4 14h14M18 14v4M18 18H4" />
+      <path d="M1.5 19h3M3 17.5v3" strokeWidth={1} />
     </svg>
   )
 }
 
-// Surface Rectangle Centered: same outline+raster fill, crosshair moved to
-// the rectangle's center to match RectangleSurfaceIcon's origin convention.
+// Surface Rectangle Centered: same zigzag, crosshair moved to the shape's
+// center (an empty spot between the horizontal bands) to match
+// RectangleSurfaceIcon's origin convention.
 export function RectangleSurfaceCenteredIcon({ className }: IconProps) {
   return (
     <svg {...base} className={className}>
-      <path d="M6 18h12M18 18V6M18 6H6M6 6v12" strokeWidth={1} />
-      <path d="M7.5 9h9M7.5 12h9M7.5 15h9" strokeWidth={1} />
+      <path d="M4 6h14M18 6v4M18 10H4M4 10v4M4 14h14M18 14v4M18 18H4" />
       <path d="M10.5 12h3M12 10.5v3" strokeWidth={1} />
     </svg>
   )

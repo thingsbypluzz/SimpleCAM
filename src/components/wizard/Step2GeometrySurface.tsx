@@ -71,7 +71,7 @@ function ZTransitionModeToggle({ value, onChange }: { value: ZTransitionMode; on
   )
 }
 
-// Field order: Tool Diameter -> Cutting Depth -> Width/Height -> Method ->
+// Field order: Tool Diameter -> Depth to Remove -> Width/Height -> Method ->
 // Raster Direction -> Stepover (% + read-only mm) -> Z-Transition Mode ->
 // Helix Radius (Helix only) -> Offset X/Y — see CLAUDE.md's Surface design
 // notes. Mirrors Step2GeometryOutline.tsx's conventions throughout
@@ -107,7 +107,7 @@ export function Step2GeometrySurface({ params, onChange, machine }: Step2Geometr
             ))}
           </select>
         </FieldRow>
-        <FieldRow label="Cutting Depth [mm]">
+        <FieldRow label="Depth to Remove [mm]">
           <NumberInput
             type="number"
             step="0.1"
@@ -162,21 +162,23 @@ export function Step2GeometrySurface({ params, onChange, machine }: Step2Geometr
       </div>
 
       <div className="flex flex-col gap-4">
-        <div className="flex flex-col gap-1">
-          <span className="text-sm font-medium text-value">Z-Transition Mode</span>
-          <ZTransitionModeToggle value={surface.zTransitionMode} onChange={(v) => updateSurface({ zTransitionMode: v })} />
+        <div className="flex gap-4">
+          <div className="flex min-w-0 flex-1 flex-col gap-1">
+            <span className="text-sm font-medium text-value">Z-Transition Mode</span>
+            <ZTransitionModeToggle value={surface.zTransitionMode} onChange={(v) => updateSurface({ zTransitionMode: v })} />
+          </div>
+          {surface.zTransitionMode === 'helix' && (
+            <div className="min-w-0 flex-1">
+              <FieldRow label="Helix Radius [mm]">
+                <NumberInput type="number" step="0.1" min="0" className={inputClass} {...helixRadiusField} />
+              </FieldRow>
+            </div>
+          )}
         </div>
-        {surface.zTransitionMode === 'helix' && (
-          <>
-            <FieldRow label="Helix Radius [mm]">
-              <NumberInput type="number" step="0.1" min="0" className={inputClass} {...helixRadiusField} />
-            </FieldRow>
-            {!isSurfaceHelixRadiusValid(surface) && (
-              <p className="text-sm text-status-error">
-                Helix radius must be greater than 0 and can't exceed the stepover ({fmt(surfaceStepoverMm(surface))}mm).
-              </p>
-            )}
-          </>
+        {surface.zTransitionMode === 'helix' && !isSurfaceHelixRadiusValid(surface) && (
+          <p className="text-sm text-status-error">
+            Helix radius must be greater than 0 and can't exceed the stepover ({fmt(surfaceStepoverMm(surface))}mm).
+          </p>
         )}
       </div>
 
