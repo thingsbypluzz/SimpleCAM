@@ -720,7 +720,10 @@ function expandBoundsForPattern(bounds: THREE.Box3, pattern: ResolvedPattern) {
   if (pattern.kind === 'surface') {
     const { surface, feeds } = pattern.params
     const { minX, maxX, minY, maxY } = pattern.toolBounds
-    bounds.expandByPoint(toThree(minX, minY, -surface.totalDepth))
+    // The "remaining stock" block's bottom now sits a further feeds.safeZ
+    // below -totalDepth (see buildSurfacePatternObjects) — bounds must
+    // reach that deep too, or the camera/grid would clip it.
+    bounds.expandByPoint(toThree(minX, minY, -surface.totalDepth - feeds.safeZ))
     bounds.expandByPoint(toThree(maxX, maxY, feeds.safeZ))
     return
   }
@@ -1055,14 +1058,27 @@ function buildOutlineRectPatternObjects(
   return objects
 }
 
-// Flat, semi-transparent "removed material" block spanning the whole
-// nominal footprint down to Total Depth — reuses buildRectWallMesh's
-// open-top-face box technique unmodified (it's agnostic to corner order,
-// computing its own bounding box via min/max), just passed the Surface
-// footprint's 4 corners instead of an Outline perimeter's. `closed=false`
-// since it represents removed material, not a solid capped part — no
-// separate stock-cap-with-cutout concept applies to Surface (see
+// Flat, semi-transparent "remaining stock" block spanning the whole
+// nominal footprint — reuses buildRectWallMesh's box technique unmodified
+// (it's agnostic to corner order, computing its own bounding box via
+// min/max), just passed the Surface footprint's 4 corners instead of an
+// Outline perimeter's. Closed (real top cap), matching Outline's Outside
+// treatment — Surface always represents kept, solid material, never a
+// void/pocket the way Hole(s)/Outline Inside do. No separate
+// stock-cap-with-cutout concept applies to Surface (see
 // buildStockCapObject's early return below).
+//
+// Unlike Hole(s)/Outline's bore/wall (which spans the actual cut, top at
+// +startZ down to -totalDepth), this block deliberately shows the
+// RESULTING shape of the stock after facing, not the cut cavity: its top
+// face sits at the new machined surface (-totalDepth, absolute — startZ
+// only lengthens the approach from above and never shifts where cutting
+// actually ends, so it plays no part in this block's position) and its
+// walls extend an arbitrary further feeds.safeZ below that, standing in
+// for "the rest of the material the app has no knowledge of" (that value
+// was picked over a new constant/setting specifically because it already
+// defaults to a visually reasonable few mm — see the /grill-me session
+// this followed, 2026-09-12).
 function buildSurfacePatternObjects(
   pattern: Extract<ResolvedPattern, { kind: 'surface' }>,
   theme: Theme,
@@ -1078,15 +1094,16 @@ function buildSurfacePatternObjects(
   const corner = surfaceStartCorner(surface)
   objects.push(...rapidZLineObjects(corner.x, corner.y, feeds.safeZ, feeds.startZ, -surface.totalDepth, theme, span))
 
-  const boreHeight = surface.totalDepth + feeds.startZ
-  const boreCenterZ = (feeds.startZ - surface.totalDepth) / 2
+  const boreHeight = feeds.safeZ
+  const boreCenterZ = -surface.totalDepth - feeds.safeZ / 2
   const corners: Point2D[] = [
     { x: nominalBounds.minX, y: nominalBounds.minY },
     { x: nominalBounds.maxX, y: nominalBounds.minY },
     { x: nominalBounds.maxX, y: nominalBounds.maxY },
     { x: nominalBounds.minX, y: nominalBounds.maxY },
   ]
-  objects.push(buildRectWallMesh(corners, boreHeight, boreCenterZ, false, theme))
+  // closed=true — see the block comment above.
+  objects.push(buildRectWallMesh(corners, boreHeight, boreCenterZ, true, theme))
 
   const pathPoints = buildSurfaceToolpathPoints3D(surface, feeds)
   const pathGeometry = new THREE.BufferGeometry().setFromPoints(pathPoints)

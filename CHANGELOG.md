@@ -7,6 +7,24 @@ zgodne z [SemVer](https://semver.org/). Ten plik pozostaje głównym, czytelnym
 thingsbypluzz/SimpleCAM), ale to infrastruktura pod izolację pracy
 (branch/worktree per zadanie), nie zamiennik tego changeloga.
 
+## [0.14.1] — 2026-09-12
+
+### Zmieniono
+
+- **Surface — poprawki po pierwszym wdrożeniu.** Krok 2: Method i Raster
+  Direction w jednym wierszu (ta sama para `flex gap-4`/`min-w-0
+  flex-1`, dołączona do listy sparowanych pól w `CLAUDE.md`). Preview
+  3D — druga sesja `/grill-me` (tego samego dnia) zmieniła model bryły
+  z "usunięty materiał" (pustka, jak Hole(s)/Outline Inside) na
+  **"pozostały materiał"**: bryła teraz **zamknięta** (`closed=true`,
+  jak Outline Outside) z górną ścianą zawsze dokładnie na wynikowej
+  powierzchni po obróbce (`Z = -totalDepth`, niezależnie od `startZ`),
+  ścianki schodzą dalej w dół o `feeds.safeZ` (reużyta istniejąca
+  wartość zamiast nowej stałej/ustawienia — jej domyślne 5mm już
+  wygląda sensownie jako umowna "reszta materiału"). Wyłącznie Surface;
+  Hole(s)/Outline bez zmian. Czysto wizualne — zero zmian w silniku
+  G-code.
+
 ## [0.14.0] — 2026-09-12
 
 ### Dodano

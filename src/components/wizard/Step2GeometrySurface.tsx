@@ -132,14 +132,15 @@ export function Step2GeometrySurface({ params, onChange, machine }: Step2Geometr
         </div>
       </div>
 
-      <div className="flex flex-col gap-1">
-        <span className="text-sm font-medium text-value">Method</span>
-        <SurfaceMethodPicker params={params} onChange={onChange} />
-      </div>
-
-      <div className="flex flex-col gap-1">
-        <span className="text-sm font-medium text-value">Raster Direction</span>
-        <RasterDirectionToggle value={surface.rasterDirection} onChange={(v) => updateSurface({ rasterDirection: v })} />
+      <div className="flex gap-4">
+        <div className="flex min-w-0 flex-1 flex-col gap-1">
+          <span className="text-sm font-medium text-value">Method</span>
+          <SurfaceMethodPicker params={params} onChange={onChange} />
+        </div>
+        <div className="flex min-w-0 flex-1 flex-col gap-1">
+          <span className="text-sm font-medium text-value">Raster Direction</span>
+          <RasterDirectionToggle value={surface.rasterDirection} onChange={(v) => updateSurface({ rasterDirection: v })} />
+        </div>
       </div>
 
       <div className="flex flex-col gap-4">

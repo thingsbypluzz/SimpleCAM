@@ -153,13 +153,23 @@ decyzją projektową).
   `assembleProgram()` tą samą konwencją co Outline — jeden syntetyczny
   punkt-narożnik startowy). Preview 2D — linie skanu + strzałki
   kierunku (`drawSurfaceGeometry()`); Preview 3D — płaski
-  półprzezroczysty blok "usuniętego materiału" na pełnym nominalnym
-  footprincie do Total Depth, przez **bezpośrednie, niezmodyfikowane**
+  półprzezroczysty blok **"pozostały materiał"** (nie "usunięty" —
+  odwrotny model niż Hole(s)/Outline Inside, ustalony w osobnej sesji
+  `/grill-me`, 2026-09-12), przez **bezpośrednie, niezmodyfikowane**
   `buildRectWallMesh()` z Outline (agnostyczna na kolejność narożników,
-  liczy bounding box z min/max) + ciągła `THREE.Line` po trasie rastra
-  (`buildSurfaceToolpathPoints3D()`); brak osobnego stock-cap-z-otworem
-  (`buildStockCapObject()` zwraca `null` dla Surface — blok usuniętego
-  materiału już jest tą wizualizacją).
+  liczy bounding box z min/max), **zamknięty** (`closed=true`, jak
+  Outline Outside — Surface nigdy nie reprezentuje pustki/kieszeni).
+  Górna ściana zawsze na **`Z = -totalDepth`** (absolutnie — `startZ`
+  wydłuża tylko dojazd z góry, nigdy nie przesuwa faktycznego dna
+  cięcia, więc nie wpływa na pozycję tej bryły), dolna krawędź ścianek
+  na `-totalDepth - feeds.safeZ` (wysokość bryły = `feeds.safeZ` —
+  reużyta zamiast nowej stałej/ustawienia, bo jej domyślna wartość, 5mm,
+  już wygląda sensownie jako umowna "reszta materiału pod spodem", o
+  której appka nic nie wie). Niezależne od liczby przejść stepdown. Plus
+  ciągła `THREE.Line` po trasie rastra (`buildSurfaceToolpathPoints3D()`);
+  brak osobnego stock-cap-z-otworem (`buildStockCapObject()` zwraca
+  `null` dla Surface — blok "pozostałego materiału" już jest tą
+  wizualizacją).
 - **Ruch między otworami:** powrót na `Safe Z` przed `G0` do kolejnego
   punktu XY.
 - **Wrzeciono:** tylko `M3` (bez `M4`).
@@ -204,8 +214,9 @@ Artifact aktualizować tylko jeśli realny layout appki zmieni się na tyle,
   każdym elemencie — `min-w-0` konieczne, bo `<input>` bez jawnej
   szerokości ma domyślną min-content podłogę, której flex-shrink nie
   może ominąć) — Grid X/Y, Offset X/Y, Hole Diameter+Total Depth,
-  Circle Count/Diameter/Start Angle, Tabs Height/Width/Count. Pola o
-  niepowiązanym znaczeniu zostają w kolumnie.
+  Circle Count/Diameter/Start Angle, Tabs Height/Width/Count, Surface
+  Method+Raster Direction. Pola o niepowiązanym znaczeniu zostają w
+  kolumnie.
 - Header: dark/light Icon Button (klasa `.dark` na `<html>`, Tailwind
   `@custom-variant dark` w `src/index.css`) — **dark mode jest domyślny**
   niezależnie od preferencji systemowej — oraz Settings Icon Button,
