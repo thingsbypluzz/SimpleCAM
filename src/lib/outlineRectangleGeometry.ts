@@ -42,16 +42,31 @@ export function onLineRectDimensions(
 // top-left (mathematical-positive winding); 'cw' walks the same four
 // corners in reverse. Callers derive `direction` from cut mode — see
 // outlineRectangle.ts.
+//
+// `width`/`height` (nominal, pre-offset) are needed alongside `toolWidth`/
+// `toolHeight` (post-offset, from rectToolDimensions) to place the origin
+// correctly (BL-34): the anchor point that must stay physically fixed as
+// toolWidth/toolHeight grow or shrink with the offset delta is the origin
+// itself for 'rectCentered' (already true of -toolWidth/2), but the
+// NOMINAL rectangle's CENTER for 'rectCornered' — Inside/Outside must
+// grow/shrink symmetrically around that same footprint. Hardcoding
+// 'rectCornered's origin to 0 regardless of toolWidth (the pre-fix
+// behavior) only pushed the far corner out/in, leaving the near corner
+// pinned to the nominal corner instead of shifting by toolRadius too.
 export function rectCorners(
   shape: Extract<OutlineShape, 'rectCornered' | 'rectCentered'>,
+  width: number,
+  height: number,
   toolWidth: number,
   toolHeight: number,
   offsetX: number,
   offsetY: number,
   direction: 'cw' | 'ccw',
 ): Point2D[] {
-  const originX = shape === 'rectCentered' ? -toolWidth / 2 : 0
-  const originY = shape === 'rectCentered' ? -toolHeight / 2 : 0
+  const centerX = shape === 'rectCentered' ? 0 : width / 2
+  const centerY = shape === 'rectCentered' ? 0 : height / 2
+  const originX = centerX - toolWidth / 2
+  const originY = centerY - toolHeight / 2
 
   const ccwCorners: Point2D[] = [
     { x: originX, y: originY },

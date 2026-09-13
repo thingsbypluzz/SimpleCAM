@@ -42,8 +42,8 @@ describe('onLineRectDimensions — BL-28 3D preview boundaries', () => {
 })
 
 describe('rectCorners', () => {
-  it('rectCornered ccw: bottom-left origin, corners in mathematical-positive order', () => {
-    const corners = rectCorners('rectCornered', 40, 20, 0, 0, 'ccw')
+  it('rectCornered ccw, no offset delta (toolWidth/Height === nominal): bottom-left origin, corners in mathematical-positive order', () => {
+    const corners = rectCorners('rectCornered', 40, 20, 40, 20, 0, 0, 'ccw')
     expect(corners).toEqual([
       { x: 0, y: 0 },
       { x: 40, y: 0 },
@@ -53,7 +53,7 @@ describe('rectCorners', () => {
   })
 
   it('rectCentered ccw: corners straddle the origin', () => {
-    const corners = rectCorners('rectCentered', 40, 20, 0, 0, 'ccw')
+    const corners = rectCorners('rectCentered', 40, 20, 40, 20, 0, 0, 'ccw')
     expect(corners).toEqual([
       { x: -20, y: -10 },
       { x: 20, y: -10 },
@@ -63,20 +63,37 @@ describe('rectCorners', () => {
   })
 
   it('cw keeps the same starting corner but walks the other 3 in reverse', () => {
-    const ccw = rectCorners('rectCornered', 40, 20, 0, 0, 'ccw')
-    const cw = rectCorners('rectCornered', 40, 20, 0, 0, 'cw')
+    const ccw = rectCorners('rectCornered', 40, 20, 40, 20, 0, 0, 'ccw')
+    const cw = rectCorners('rectCornered', 40, 20, 40, 20, 0, 0, 'cw')
     expect(cw[0]).toEqual(ccw[0])
     expect(cw).toEqual([ccw[0], ccw[3], ccw[2], ccw[1]])
   })
 
   it('applies offsetX/offsetY uniformly to every corner', () => {
-    const corners = rectCorners('rectCornered', 10, 10, 5, -3, 'ccw')
+    const corners = rectCorners('rectCornered', 10, 10, 10, 10, 5, -3, 'ccw')
     expect(corners).toEqual([
       { x: 5, y: -3 },
       { x: 15, y: -3 },
       { x: 15, y: 7 },
       { x: 5, y: 7 },
     ])
+  })
+
+  it('BL-34: rectCornered with toolWidth/Height larger than nominal (Outside) grows symmetrically around the nominal center, not just toward the far corner', () => {
+    // nominal 40x20 centered at (20,10); toolWidth/Height 44x24 (+2 each
+    // side, toolRadius=2) must shift the near corner to (-2,-2), not stay
+    // at (0,0) — the pre-fix bug pinned it to the nominal corner instead.
+    const corners = rectCorners('rectCornered', 40, 20, 44, 24, 0, 0, 'ccw')
+    expect(corners[0]).toEqual({ x: -2, y: -2 })
+    expect(corners[2]).toEqual({ x: 42, y: 22 })
+  })
+
+  it('BL-34: rectCornered with toolWidth/Height smaller than nominal (Inside) insets symmetrically', () => {
+    // nominal 40x20, toolWidth/Height 36x16 (-2 each side) -> near corner
+    // shifts inward to (2,2), far corner to (38,18).
+    const corners = rectCorners('rectCornered', 40, 20, 36, 16, 0, 0, 'ccw')
+    expect(corners[0]).toEqual({ x: 2, y: 2 })
+    expect(corners[2]).toEqual({ x: 38, y: 18 })
   })
 })
 

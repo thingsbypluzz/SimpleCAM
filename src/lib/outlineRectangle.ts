@@ -18,6 +18,8 @@ export interface RectTabsOptions {
 
 export interface RectToolpathOptions {
   shape: Extract<OutlineShape, 'rectCornered' | 'rectCentered'>
+  width: number
+  height: number
   toolWidth: number
   toolHeight: number
   totalDepth: number
@@ -63,7 +65,7 @@ function rampLap(ordered: Point2D[], nextZ: number, feed: number): string[] {
 // walking 4 corners instead of a circle. Tabs are an atomic per-pass
 // toggle here too (every pass is already flat).
 function rectStandardToolpath(cx: number, cy: number, opts: RectToolpathOptions): string[] {
-  const corners = rectCorners(opts.shape, opts.toolWidth, opts.toolHeight, cx, cy, opts.direction)
+  const corners = rectCorners(opts.shape, opts.width, opts.height, opts.toolWidth, opts.toolHeight, cx, cy, opts.direction)
   const lines: string[] = [`G0 X${fmt(corners[0].x)} Y${fmt(corners[0].y)}`, rapidToTop(opts.startZ)]
 
   const tabBandTopZ = opts.tabs ? -(opts.totalDepth - opts.tabs.tabHeight) : 0
@@ -99,7 +101,7 @@ function rectStandardToolpath(cx: number, cy: number, opts: RectToolpathOptions)
 // lap — corners are rotated once so that edge is always "edge 0" of the
 // per-lap walk, keeping rampLap() itself agnostic to which edge that is.
 function rectRampToolpath(cx: number, cy: number, opts: RectToolpathOptions): string[] {
-  const corners = rectCorners(opts.shape, opts.toolWidth, opts.toolHeight, cx, cy, opts.direction)
+  const corners = rectCorners(opts.shape, opts.width, opts.height, opts.toolWidth, opts.toolHeight, cx, cy, opts.direction)
   const rampEdge = longerEdgeIndex(opts.toolWidth, opts.toolHeight, opts.direction)
   const ordered = [0, 1, 2, 3].map((i) => corners[(i + rampEdge) % 4])
 
@@ -163,6 +165,8 @@ function toRectOptions(outline: WizardParams['outline'], feeds: WizardParams['fe
   )
   return {
     shape,
+    width: outline.width,
+    height: outline.height,
     toolWidth,
     toolHeight,
     totalDepth: outline.totalDepth,

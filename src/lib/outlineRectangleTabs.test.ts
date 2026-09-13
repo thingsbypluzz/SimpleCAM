@@ -30,7 +30,7 @@ describe('computeRectTabRanges', () => {
 })
 
 describe('tabbedRectanglePass', () => {
-  const corners = rectCorners('rectCornered', 40, 20, 0, 0, 'ccw')
+  const corners = rectCorners('rectCornered', 40, 20, 40, 20, 0, 0, 'ccw')
   const cutZ = -5
   const liftZ = -3
   const feed = 800

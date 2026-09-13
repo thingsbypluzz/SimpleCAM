@@ -187,26 +187,10 @@ faktycznym.
   punkt wyjścia do redesignu pól checkbox używanych w Kroku 4 (Feeds &
   Speeds / Output options). Bez dalszych szczegółów na razie — do
   rozwinięcia przy realizacji.
-- **`BL-34`** *(Otwarty)* — **BUG: ścieżka cięcia Outline Rectangle
-  Cornered pokrywa się z granicą materiału zamiast być przesunięta o
-  promień narzędzia.** Niezależnie od `OffsetMode` (Inside/Outside/
-  On-line), `rectCorners()` (`lib/outlineRectangleGeometry.ts`) dla
-  `'rectCornered'` ustawia `originX`/`originY` zawsze na `0`, mimo że
-  `toolWidth`/`toolHeight` już zawierają deltę offsetu
-  (`rectToolDimensions()`) — bliski (dolny-lewy) narożnik ścieżki
-  narzędzia zostaje przypięty do tego samego `(0,0)` co narożnik
-  nominalnego prostokąta, zamiast przesunąć się o `toolDiameter/2` w
-  kierunku -X/-Y (Outside) albo +X/+Y (Inside). Efekt: prostokąt
-  rośnie/maleje wyłącznie w stronę dalekiego rogu (+X/+Y), zamiast
-  symetrycznie wokół nominalnego kształtu. `'rectCentered'` nie ma tego
-  problemu — tam `originX = -toolWidth/2` już poprawnie re-centruje się
-  wraz z `toolWidth`. Naprawa: przeliczyć `originX`/`originY` też dla
-  `'rectCornered'`, analogicznie do `rectCentered` (dziś funkcja
-  dostaje tylko już-przetworzone `toolWidth`/`toolHeight`, nie
-  nominalne `width`/`height` ani samą deltę offsetu — potrzebne jedno z
-  nich, żeby przesunąć bliski narożnik o połowę delty). Dotyczy
-  realnego G-code, nie tylko podglądu — obie metody Rectangle (Ramp/
-  Standard) i tabs po drodze reużywają `rectCorners()` bezpośrednio.
+- **`BL-34`** *(Zrealizowany, 2026-09-13)* — **BUG: ścieżka cięcia
+  Outline Rectangle Cornered pokrywała się z granicą materiału zamiast
+  być przesunięta o promień narzędzia.** Pełny opis w `CHANGELOG.md`,
+  `[0.15.2]`.
 
 **`BL-17` zamknięte — "Interface Anatomy"**, Artifact z umownymi nazwami
 elementów UI, dziś aktywnie używany w `CLAUDE.md`:

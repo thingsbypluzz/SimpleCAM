@@ -263,6 +263,8 @@ function resolvePattern(params: WizardParams): ResolvedPattern {
       outline.shape,
       outline.width,
       outline.height,
+      outline.width,
+      outline.height,
       outline.offsetX,
       outline.offsetY,
       'ccw',
@@ -275,6 +277,8 @@ function resolvePattern(params: WizardParams): ResolvedPattern {
     )
     const toolCorners = rectCorners(
       outline.shape,
+      outline.width,
+      outline.height,
       Math.max(0, toolWidth),
       Math.max(0, toolHeight),
       outline.offsetX,

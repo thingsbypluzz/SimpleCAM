@@ -7,6 +7,35 @@ zgodne z [SemVer](https://semver.org/). Ten plik pozostaje głównym, czytelnym
 thingsbypluzz/SimpleCAM), ale to infrastruktura pod izolację pracy
 (branch/worktree per zadanie), nie zamiennik tego changeloga.
 
+## [0.15.2] — 2026-09-13
+
+### Naprawiono
+
+- **`BL-34` — Outline Rectangle Cornered: ścieżka narzędzia pokrywała
+  się z granicą materiału w Inside/Outside zamiast być przesunięta o
+  promień narzędzia.** `rectCorners()` (`lib/outlineRectangleGeometry.ts`)
+  ustawiał `originX`/`originY` dla `'rectCornered'` zawsze na `0`, mimo
+  że `toolWidth`/`toolHeight` już zawierały deltę offsetu
+  (`rectToolDimensions()`) — bliski (dolny-lewy) narożnik ścieżki
+  narzędzia zostawał przypięty do tego samego `(0,0)` co narożnik
+  nominalnego prostokąta, zamiast przesunąć się o `toolDiameter/2` w
+  kierunku -X/-Y (Outside) albo +X/+Y (Inside); prostokąt rósł/malał
+  wyłącznie w stronę dalekiego rogu, zamiast symetrycznie wokół
+  nominalnego kształtu. `'rectCentered'` nie miał tego problemu — tam
+  `originX = -toolWidth/2` już poprawnie re-centrował się wraz z
+  `toolWidth`. Naprawione uogólnieniem tej samej logiki na
+  `'rectCornered'`: funkcja przyjmuje teraz też nominalne `width`/
+  `height` (obok już istniejących `toolWidth`/`toolHeight`) i liczy
+  origin względem stałego punktu odniesienia — środka NOMINALNEGO
+  prostokąta (`width/2, height/2`) dla `'rectCornered'`, originu `(0,0)`
+  dla `'rectCentered'` (bez zmian, tylko przeformułowane jako ten sam
+  wzór z `centerX = 0`). Dotyczyło realnego G-code, nie tylko podglądu —
+  obie metody Rectangle (Ramp/Standard) w `lib/outlineRectangle.ts`
+  oraz 2D/3D preview (`drawToolpath.ts`/`buildScene.ts`) reużywają
+  `rectCorners()` bezpośrednio i miały identyczny błąd (materiał i
+  ścieżka narzędzia renderowały się nachodząc na siebie przy bliskim
+  narożniku).
+
 ## [0.15.1] — 2026-09-13
 
 ### Zmieniono

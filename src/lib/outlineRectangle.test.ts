@@ -21,37 +21,39 @@ function buildParams(
 }
 
 describe('generateRectOutlineStandard — offset modes and corners', () => {
-  it('inside insets each side by toolDiameter, ccw winding, starts at bottom-left corner', () => {
+  it('inside insets each side by toolRadius from the nominal footprint, ccw winding, starts at the inset near corner', () => {
     const params = buildParams('rectCornered', {
       outline: { offsetMode: 'inside', width: 40, height: 20, toolDiameter: 4, totalDepth: 1 },
       feeds: { stepdown: 1 },
     })
     const lines = generateRectOutlineStandard(params, DEFAULT_MACHINE_SETTINGS)
-    // toolWidth=36, toolHeight=16 -> corners (0,0),(36,0),(36,16),(0,16), ccw order.
-    expect(lines).toContain('G0 X0 Y0')
+    // toolWidth=36, toolHeight=16, nominal center (20,10) -> near corner
+    // shifts in by toolRadius=2 to (2,2): corners (2,2),(38,2),(38,18),(2,18).
+    expect(lines).toContain('G0 X2 Y2')
     const flatPass = lines.filter((l) => l.startsWith('G1 X'))
     expect(flatPass).toEqual([
-      'G1 X36 Y0 Z-1 F800',
-      'G1 X36 Y16 Z-1 F800',
-      'G1 X0 Y16 Z-1 F800',
-      'G1 X0 Y0 Z-1 F800',
+      'G1 X38 Y2 Z-1 F800',
+      'G1 X38 Y18 Z-1 F800',
+      'G1 X2 Y18 Z-1 F800',
+      'G1 X2 Y2 Z-1 F800',
     ])
   })
 
-  it('outside offsets each side out by toolDiameter, cw winding (corner order reversed after the start)', () => {
+  it('outside offsets each side out by toolRadius from the nominal footprint, cw winding (corner order reversed after the start)', () => {
     const params = buildParams('rectCornered', {
       outline: { offsetMode: 'outside', width: 40, height: 20, toolDiameter: 4, totalDepth: 1 },
       feeds: { stepdown: 1 },
     })
     const lines = generateRectOutlineStandard(params, DEFAULT_MACHINE_SETTINGS)
-    // toolWidth=44, toolHeight=24 -> ccw corners would be (0,0),(44,0),(44,24),(0,24);
-    // cw walks (0,0),(0,24),(44,24),(44,0).
+    // toolWidth=44, toolHeight=24, nominal center (20,10) -> near corner
+    // shifts out by toolRadius=2 to (-2,-2): ccw corners would be
+    // (-2,-2),(42,-2),(42,22),(-2,22); cw walks (-2,-2),(-2,22),(42,22),(42,-2).
     const flatPass = lines.filter((l) => l.startsWith('G1 X'))
     expect(flatPass).toEqual([
-      'G1 X0 Y24 Z-1 F800',
-      'G1 X44 Y24 Z-1 F800',
-      'G1 X44 Y0 Z-1 F800',
-      'G1 X0 Y0 Z-1 F800',
+      'G1 X-2 Y22 Z-1 F800',
+      'G1 X42 Y22 Z-1 F800',
+      'G1 X42 Y-2 Z-1 F800',
+      'G1 X-2 Y-2 Z-1 F800',
     ])
   })
 
@@ -90,7 +92,7 @@ describe('generateRectOutlineStandard — depth passes', () => {
 describe('generateRectOutlineStandard / Ramp — single-shape cut, not a repeated pattern', () => {
   it('every XY rapid lands on the same single shape location, regardless of geometry.positioning', () => {
     const params = buildParams('rectCornered', {
-      outline: { offsetX: 5, offsetY: -3 },
+      outline: { offsetX: 5, offsetY: -3, toolDiameter: 0 }, // toolDiameter 0 keeps corners[0] at the nominal corner, isolating this test's actual invariant from offset-mode math
       output: { returnOriginEnd: false }, // otherwise buildFooter's own 'G0 X0 Y0' also matches the filter below
     })
     const lines = generateRectOutlineStandard(params, DEFAULT_MACHINE_SETTINGS)

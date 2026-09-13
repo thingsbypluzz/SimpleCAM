@@ -712,6 +712,8 @@ function resolvePattern(params: WizardParams): ResolvedPattern {
       outline.shape,
       outline.width,
       outline.height,
+      outline.width,
+      outline.height,
       outline.offsetX,
       outline.offsetY,
       'ccw',
@@ -725,6 +727,8 @@ function resolvePattern(params: WizardParams): ResolvedPattern {
     const direction = outlineDirectionForOffsetMode(outline.offsetMode)
     const toolCorners = rectCorners(
       outline.shape,
+      outline.width,
+      outline.height,
       Math.max(0, toolWidth),
       Math.max(0, toolHeight),
       outline.offsetX,
@@ -787,7 +791,9 @@ function expandBoundsForPattern(bounds: THREE.Box3, pattern: ResolvedPattern) {
   // guarantees it), the check is only to narrow the type for rectCorners.
   if (outline.offsetMode === 'onLine' && outline.shape !== 'circle') {
     const { outerWidth, outerHeight } = onLineRectDimensions(outline.width, outline.height, outline.toolDiameter)
-    corners.push(...rectCorners(outline.shape, outerWidth, outerHeight, outline.offsetX, outline.offsetY, 'ccw'))
+    corners.push(
+      ...rectCorners(outline.shape, outline.width, outline.height, outerWidth, outerHeight, outline.offsetX, outline.offsetY, 'ccw'),
+    )
   }
   for (const p of corners) {
     bounds.expandByPoint(toThree(p.x, p.y, -outline.totalDepth))
@@ -1068,8 +1074,26 @@ function buildOutlineRectPatternObjects(
       outline.height,
       outline.toolDiameter,
     )
-    const innerCorners = rectCorners(outline.shape, innerWidth, innerHeight, outline.offsetX, outline.offsetY, 'ccw')
-    const outerCorners = rectCorners(outline.shape, outerWidth, outerHeight, outline.offsetX, outline.offsetY, 'ccw')
+    const innerCorners = rectCorners(
+      outline.shape,
+      outline.width,
+      outline.height,
+      innerWidth,
+      innerHeight,
+      outline.offsetX,
+      outline.offsetY,
+      'ccw',
+    )
+    const outerCorners = rectCorners(
+      outline.shape,
+      outline.width,
+      outline.height,
+      outerWidth,
+      outerHeight,
+      outline.offsetX,
+      outline.offsetY,
+      'ccw',
+    )
     objects.push(buildRectWallMesh(innerCorners, boreHeight, boreCenterZ, true, theme))
     objects.push(buildRectWallMesh(outerCorners, boreHeight, boreCenterZ, false, theme))
   } else {
@@ -1223,7 +1247,11 @@ function buildStockCapObject(
     } else {
       if (outline.offsetMode === 'onLine' && outline.shape !== 'circle') {
         const { outerWidth, outerHeight } = onLineRectDimensions(outline.width, outline.height, outline.toolDiameter)
-        holePaths = [rectPath(rectCorners(outline.shape, outerWidth, outerHeight, outline.offsetX, outline.offsetY, 'ccw'))]
+        holePaths = [
+          rectPath(
+            rectCorners(outline.shape, outline.width, outline.height, outerWidth, outerHeight, outline.offsetX, outline.offsetY, 'ccw'),
+          ),
+        ]
       } else {
         holePaths = [rectPath(pattern.nominalCorners)]
       }
