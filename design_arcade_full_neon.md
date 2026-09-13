@@ -128,7 +128,7 @@ Intentionally faint. If it reads as visible stripes at the user's DPI, drop the 
 | Field | Value |
 | --- | --- |
 | `background` | `#0b0c10` |
-| `grid` | `rgba(0,240,255,.14)` |
+| `grid` | `rgba(0,240,255,.42)` (bumped from spec's original `.14` — BL-32, that alpha read as practically invisible in the 2D Preview's Canvas rendering) |
 | `toolpath` | `#00f0ff` |
 | `rapid` | `#1e2230` |
 | `hole` | `#ff007f` |

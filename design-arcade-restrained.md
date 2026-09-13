@@ -121,7 +121,7 @@ Two structural differences from full neon worth calling out:
 | Field | Value | vs. full neon |
 | --- | --- | --- |
 | `background` | `#0b0c10` | = |
-| `grid` | `rgba(0,240,255,.10)` | fainter |
+| `grid` | `rgba(0,240,255,.30)` | fainter (bumped from spec's original `.10` — BL-32, that alpha read as practically invisible in the 2D Preview's Canvas rendering) |
 | `toolpath` | `#00d5e3` | stepped down |
 | `rapid` | `#1e2230` | = |
 | `hole` | `#7a3a5c` | desaturated — the hole outline is reference geometry, not an accent |

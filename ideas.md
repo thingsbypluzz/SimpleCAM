@@ -171,17 +171,8 @@ faktycznym.
   ramienia osi osobno, względem faktycznych granic renderowanej
   płaszczyzny (`gridCenterX/Z` ± `gridSize/2`), nie jednego wspólnego
   skalara liczonego od originu.
-- **`BL-32`** *(Otwarty)* — **Siatka w motywach Arcade Studio ledwie
-  widoczna.** `DEFAULT_ACCENTS['arcade-restrained'/'arcade-full-neon'].grid`
-  (`config/palettes.ts`) to cyjan przy 10%/14% alpha
-  (`rgba(0,240,255,.10)`/`rgba(0,240,255,.14)`), który na czarnym tle
-  obu motywów — dodatkowo przemnożony przez `opacity: 0.4` ustawiane na
-  `GridHelper` w 3D (`buildScene.ts`) — robi się praktycznie
-  niewidoczny. Ten sam objaw, co `BL-12` (naprawiony wcześniej z innego
-  powodu — tam to był zbyt subtelny wspólny kolor grid na starym 0.4
-  opacity 3D). Podnieść alpha (albo jaśniejszy odcień) tych dwóch
-  wpisów, żeby linie siatki zostały czytelne na czarnym tle bez psucia
-  estetyki neonu.
+- **`BL-32`** *(Zrealizowany, 2026-09-13)* — **Siatka w motywach Arcade
+  Studio ledwie widoczna.** Pełny opis w `CHANGELOG.md`, `[0.15.4]`.
 - **`BL-33`** *(Zrealizowany, 2026-09-13)* — **Uniwersalny komponent
   Checkbox.** Wszystkie 4 checkboxy appki, nie tylko Krok 4 — pełny opis
   w `CHANGELOG.md`, `[0.15.3]`.

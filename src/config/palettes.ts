@@ -193,13 +193,22 @@ const DEFAULT_ACCENTS: Record<ThemeId, { light: PaletteAccents; dark: PaletteAcc
   // Restrained's toolpath is stepped down one notch (#00d5e3 vs full
   // neon's #00f0ff) and its `hole` is desaturated plum instead of magenta,
   // per design-arcade-restrained.md §5.
+  // grid alpha bumped ~3x above the values in design-arcade-restrained.md
+  // §5 / design_arcade_full_neon.md §5 (.10/.14) — same ratio between the
+  // two (fainter Restrained vs. full neon) preserved, but at the spec's
+  // literal values the grid was practically invisible in the 2D Preview
+  // (BL-32): Canvas 2D's ctx.strokeStyle honors that alpha exactly, unlike
+  // THREE.Color.setStyle() in the 3D Preview, which silently drops the
+  // alpha component entirely (warns "Alpha component ... will be
+  // ignored") — so the spec's low alpha only ever did anything in 2D,
+  // where it read as near-black hairlines on the near-black background.
   'arcade-restrained': {
-    light: { grid: 'rgba(0,240,255,.10)', toolpath: '#00d5e3', rapid: '#1e2230', hole: '#7a3a5c' },
-    dark: { grid: 'rgba(0,240,255,.10)', toolpath: '#00d5e3', rapid: '#1e2230', hole: '#7a3a5c' },
+    light: { grid: 'rgba(0,240,255,.30)', toolpath: '#00d5e3', rapid: '#1e2230', hole: '#7a3a5c' },
+    dark: { grid: 'rgba(0,240,255,.30)', toolpath: '#00d5e3', rapid: '#1e2230', hole: '#7a3a5c' },
   },
   'arcade-full-neon': {
-    light: { grid: 'rgba(0,240,255,.14)', toolpath: '#00f0ff', rapid: '#1e2230', hole: '#ff007f' },
-    dark: { grid: 'rgba(0,240,255,.14)', toolpath: '#00f0ff', rapid: '#1e2230', hole: '#ff007f' },
+    light: { grid: 'rgba(0,240,255,.42)', toolpath: '#00f0ff', rapid: '#1e2230', hole: '#ff007f' },
+    dark: { grid: 'rgba(0,240,255,.42)', toolpath: '#00f0ff', rapid: '#1e2230', hole: '#ff007f' },
   },
 }
 

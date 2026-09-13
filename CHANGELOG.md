@@ -7,6 +7,29 @@ zgodne z [SemVer](https://semver.org/). Ten plik pozostaje głównym, czytelnym
 thingsbypluzz/SimpleCAM), ale to infrastruktura pod izolację pracy
 (branch/worktree per zadanie), nie zamiennik tego changeloga.
 
+## [0.15.4] — 2026-09-13
+
+### Naprawiono
+
+- **`BL-32` — siatka 2D Preview praktycznie niewidoczna w obu motywach
+  Arcade Studio.** `DEFAULT_ACCENTS['arcade-restrained'/'arcade-full-neon'].grid`
+  (`config/palettes.ts`) miał cyjan przy 10%/14% alpha
+  (`rgba(0,240,255,.10)`/`rgba(0,240,255,.14)`) — dokładnie wartości ze
+  speców `design-arcade-restrained.md`/`design_arcade_full_neon.md` §5,
+  nie literówka. Problem: `ctx.strokeStyle` w Canvas 2D (2D Preview)
+  honoruje ten alpha dosłownie, więc linie siatki renderowały się jako
+  niemal-czarne włoski na niemal-czarnym tle. 3D Preview nie miał tego
+  konkretnego problemu — `THREE.Color.setStyle()` po cichu **odrzuca**
+  komponent alpha z notacji `rgba()` (ostrzeżenie w konsoli "Alpha
+  component ... will be ignored"), więc tam jasność siatki zależy
+  wyłącznie od `opacity: 0.4` ustawianego wprost na `GridHelper`
+  (`buildScene.ts`), wspólnego dla wszystkich motywów. Naprawione
+  podniesieniem alpha ~3× (`.10`→`.30`, `.14`→`.42`, z zachowaniem tej
+  samej proporcji Restrained:Full Neon co w specach) — wystarczające, by
+  linie były czytelne na Canvas, bez wpływu na 3D (gdzie i tak było
+  ignorowane). Specy zaktualizowane, żeby nie rozjeżdżały się z
+  faktyczną wartością.
+
 ## [0.15.3] — 2026-09-13
 
 ### Dodano
