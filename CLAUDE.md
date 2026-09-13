@@ -530,6 +530,22 @@ Wszystkie te pola renderują się przez `NumberInput`
 (`src/components/wizard/NumberInput.tsx`), nie goły `<input
 type="number">` — patrz opis w Struktura katalogów niżej.
 
+### Pola checkbox
+
+Wszystkie 4 checkboxy appki (Enable Tabs w Step2Geometry Hole(s)/Outline,
+3 opcje w Step4Output, "Show grid coordinate labels" w Settings →
+Appearance) idą przez `Checkbox`
+(`src/components/wizard/Checkbox.tsx`), nie goły `<input
+type="checkbox">` — ten sam wzorzec co `NumberInput` (chowa natywny,
+niestylowalny box i rysuje własny, `<input>` zostaje zamontowany
+`sr-only` dla realnej semantyki/klawiatury/screen-readera). Kolor
+zaznaczonego stanu to dokładnie ten sam zestaw tokenów co zaznaczona
+opcja w `OptionButton`/toggle (`border-selected-border`/`bg-selected-bg`/
+`text-selected-fg` + `shadow-[var(--glow-selected)]` dla Arcade) — nie
+`--accent` — bo checkbox to ta sama kategoria "wybór/commit użytkownika"
+(róż w Arcade Studio), patrz "Motywy (Theme) i Palety..." niżej. Patrz
+opis w Struktura katalogów niżej.
+
 ### Tabs (mostki) dla operacji Hole(s) i Outline
 
 Zapobiegają całkowitemu odseparowaniu wyciętej części przy
@@ -814,6 +830,27 @@ src/
                               w wizardzie (przez `{...xField}` z
                               `useNumberField()`) i w `SettingsModal.tsx`
                               (przez osobny `onAdjust`, patrz wyżej).
+  components/wizard/Checkbox.tsx — zamiennik gołego `<input
+                              type="checkbox">` (`BL-33`): chowa natywny box
+                              (`sr-only`, nie `display:none` — semantyka/
+                              klawiatura/screen-reader zostają) i renderuje
+                              własny, z `CheckIcon` (`icons.tsx`) w środku
+                              gdy zaznaczony. Kolor zaznaczonego stanu —
+                              `border-selected-border`/`bg-selected-bg`/
+                              `text-selected-fg` + `shadow-[var(--glow-
+                              selected)]` — dokładnie ten sam trio co
+                              zaznaczona opcja `OptionButton`/toggle
+                              (`Step4Output`'owy toggle interpolacji), nie
+                              `--accent` — checkbox to ta sama kategoria
+                              "wybór/commit użytkownika" (patrz "Motywy
+                              (Theme) i Palety..." niżej). `peer`/
+                              `peer-focus-visible:` na natywnym incie daje
+                              widoczny pierścień fokusu klawiatury (inaczej
+                              połknięty przez custom box). Używany wszędzie
+                              — w wizardzie (Step2Geometry Hole(s)/Outline
+                              "Enable Tabs") i w `SettingsModal.tsx` (Grid
+                              Labels), przez `label`/`className`/`children`
+                              (ten ostatni dla doczepionego `HintPopover`).
   components/wizard/FieldRow.tsx — `label`/pole/`hint` per wiersz
                               formularza (`Entry Field` + `Hint Button`),
                               `inputClass` (współdzielone stylowanie

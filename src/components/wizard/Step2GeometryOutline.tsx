@@ -7,6 +7,7 @@ import {
   MAX_TAB_COUNT,
 } from '../../lib/validation'
 import { TOOL_DIAMETER_OPTIONS } from '../../config/toolDiameterOptions'
+import { Checkbox } from './Checkbox'
 import { FieldRow, inputClass } from './FieldRow'
 import { HintPopover } from './HintPopover'
 import { NumberInput } from './NumberInput'
@@ -130,26 +131,23 @@ export function Step2GeometryOutline({ params, onChange, machine }: Step2Geometr
       )}
 
       <div className="border-t border-border pt-4">
-        <label className="mb-2 flex items-center gap-2 text-sm font-medium text-value">
-          <input
-            type="checkbox"
-            checked={outline.tabsEnabled}
-            onChange={(e) => {
-              const enabled = e.target.checked
-              updateOutline(
-                enabled
-                  ? {
-                      tabsEnabled: true,
-                      tabHeight: machine.defaultTabHeight,
-                      tabWidth: machine.defaultTabWidth,
-                      tabCount: machine.defaultTabCount,
-                    }
-                  : { tabsEnabled: false },
-              )
-            }}
-            className="h-4 w-4 rounded border-field-border text-accent focus:ring-accent-strong"
-          />
-          Enable Tabs
+        <Checkbox
+          checked={outline.tabsEnabled}
+          onChange={(enabled) => {
+            updateOutline(
+              enabled
+                ? {
+                    tabsEnabled: true,
+                    tabHeight: machine.defaultTabHeight,
+                    tabWidth: machine.defaultTabWidth,
+                    tabCount: machine.defaultTabCount,
+                  }
+                : { tabsEnabled: false },
+            )
+          }}
+          label="Enable Tabs"
+          className="mb-2 text-sm font-medium text-value"
+        >
           <HintPopover
             text={
               isRect
@@ -157,7 +155,7 @@ export function Step2GeometryOutline({ params, onChange, machine }: Step2Geometr
                 : "Small uncut bridges near the bottom of the cut, so the cut part stays attached to the stock instead of dropping free. Forces G1 interpolation (see Step 4)."
             }
           />
-        </label>
+        </Checkbox>
         {outline.tabsEnabled && (
           <div className="flex flex-col gap-4">
             <div className="flex gap-4">

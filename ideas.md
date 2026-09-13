@@ -182,11 +182,9 @@ faktycznym.
   opacity 3D). Podnieść alpha (albo jaśniejszy odcień) tych dwóch
   wpisów, żeby linie siatki zostały czytelne na czarnym tle bez psucia
   estetyki neonu.
-- **`BL-33`** *(Otwarty)* — **Alternatywny render checkboxów (Krok
-  4).** Użytkownik ma gotowy komponent do pobrania z **21st.dev** jako
-  punkt wyjścia do redesignu pól checkbox używanych w Kroku 4 (Feeds &
-  Speeds / Output options). Bez dalszych szczegółów na razie — do
-  rozwinięcia przy realizacji.
+- **`BL-33`** *(Zrealizowany, 2026-09-13)* — **Uniwersalny komponent
+  Checkbox.** Wszystkie 4 checkboxy appki, nie tylko Krok 4 — pełny opis
+  w `CHANGELOG.md`, `[0.15.3]`.
 - **`BL-34`** *(Zrealizowany, 2026-09-13)* — **BUG: ścieżka cięcia
   Outline Rectangle Cornered pokrywała się z granicą materiału zamiast
   być przesunięta o promień narzędzia.** Pełny opis w `CHANGELOG.md`,

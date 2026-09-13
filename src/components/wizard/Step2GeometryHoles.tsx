@@ -11,6 +11,7 @@ import {
 } from '../../lib/validation'
 import { POSITIONING_META } from '../../config/positioningMeta'
 import { TOOL_DIAMETER_OPTIONS } from '../../config/toolDiameterOptions'
+import { Checkbox } from './Checkbox'
 import { FieldRow, inputClass } from './FieldRow'
 import { HintPopover } from './HintPopover'
 import { MethodPicker } from './MethodPicker'
@@ -221,37 +222,34 @@ export function Step2GeometryHoles({ params, onChange, machine }: Step2GeometryH
       )}
 
       <div className="border-t border-border pt-4">
-        <label className="mb-2 flex items-center gap-2 text-sm font-medium text-value">
-          <input
-            type="checkbox"
-            checked={geometry.tabsEnabled}
-            onChange={(e) => {
-              const enabled = e.target.checked
-              // Checking the box always seeds height/width/count fresh
-              // from Settings > Tabs's "Default Tab Settings" — including
-              // on a re-check after unchecking, which does mean a custom
-              // edit made before unchecking is lost, not remembered. Kept
-              // deliberately simple: there's no clean way to tell "user
-              // customized this in-session" from "just showing whatever
-              // was last seeded" without new state to track it, and a
-              // predictable "always starts from your default" beats a
-              // half-remembered one.
-              updateGeometry(
-                enabled
-                  ? {
-                      tabsEnabled: true,
-                      tabHeight: machine.defaultTabHeight,
-                      tabWidth: machine.defaultTabWidth,
-                      tabCount: machine.defaultTabCount,
-                    }
-                  : { tabsEnabled: false },
-              )
-            }}
-            className="h-4 w-4 rounded border-field-border text-accent focus:ring-accent-strong"
-          />
-          Enable Tabs
+        <Checkbox
+          checked={geometry.tabsEnabled}
+          onChange={(enabled) => {
+            // Checking the box always seeds height/width/count fresh
+            // from Settings > Tabs's "Default Tab Settings" — including
+            // on a re-check after unchecking, which does mean a custom
+            // edit made before unchecking is lost, not remembered. Kept
+            // deliberately simple: there's no clean way to tell "user
+            // customized this in-session" from "just showing whatever
+            // was last seeded" without new state to track it, and a
+            // predictable "always starts from your default" beats a
+            // half-remembered one.
+            updateGeometry(
+              enabled
+                ? {
+                    tabsEnabled: true,
+                    tabHeight: machine.defaultTabHeight,
+                    tabWidth: machine.defaultTabWidth,
+                    tabCount: machine.defaultTabCount,
+                  }
+                : { tabsEnabled: false },
+            )
+          }}
+          label="Enable Tabs"
+          className="mb-2 text-sm font-medium text-value"
+        >
           <HintPopover text="Small uncut bridges near the bottom of the cut, so a through-hole's center plug stays attached to the stock instead of dropping free. Forces G1 interpolation (see Step 4)." />
-        </label>
+        </Checkbox>
         {geometry.tabsEnabled && (
           <div className="flex flex-col gap-4">
             <div className="flex gap-4">

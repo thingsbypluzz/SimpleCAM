@@ -3,6 +3,7 @@ import type { WizardParams } from '../../types/wizard'
 import { buildFilename, downloadTextFile } from '../../lib/download'
 import { presetLabel } from '../../lib/presetLabel'
 import { PRESET_SLOT_IDS, type PresetSlotId } from '../../lib/storage'
+import { Checkbox } from './Checkbox'
 
 interface Step4OutputProps {
   params: WizardParams
@@ -74,15 +75,13 @@ export function Step4Output({
     <div className="flex flex-col gap-6">
       <div className="flex flex-col gap-3">
         {CHECKBOX_OPTIONS.map((opt) => (
-          <label key={opt.key} className="flex items-center gap-2 text-sm text-value">
-            <input
-              type="checkbox"
-              checked={Boolean(output[opt.key])}
-              onChange={(e) => updateOutput({ [opt.key]: e.target.checked } as Partial<WizardParams['output']>)}
-              className="h-4 w-4 rounded border-field-border text-accent focus:ring-accent-strong"
-            />
-            {opt.label}
-          </label>
+          <Checkbox
+            key={opt.key}
+            checked={Boolean(output[opt.key])}
+            onChange={(checked) => updateOutput({ [opt.key]: checked } as Partial<WizardParams['output']>)}
+            label={opt.label}
+            className="text-sm text-value"
+          />
         ))}
 
         <div className="flex items-center gap-2 pt-2 text-sm text-value">

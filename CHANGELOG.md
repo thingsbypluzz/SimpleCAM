@@ -7,6 +7,28 @@ zgodne z [SemVer](https://semver.org/). Ten plik pozostaje głównym, czytelnym
 thingsbypluzz/SimpleCAM), ale to infrastruktura pod izolację pracy
 (branch/worktree per zadanie), nie zamiennik tego changeloga.
 
+## [0.15.3] — 2026-09-13
+
+### Dodano
+
+- **`BL-33` — nowy uniwersalny komponent `Checkbox`.** Wszystkie 4
+  checkboxy appki (Enable Tabs w Step 2 Hole(s)/Outline, 3 opcje w Step 4,
+  "Show grid coordinate labels" w Settings → Appearance) przeszły z gołego
+  `<input type="checkbox">` na nowy `components/wizard/Checkbox.tsx` — ten
+  sam wzorzec co `NumberInput` (chowa natywny, niestylowalny box i
+  renderuje własny; `<input>` zostaje zamontowany `sr-only`, nie
+  `display:none`, więc semantyka/klawiatura/screen-reader zostają bez
+  zmian, plus nowy widoczny pierścień fokusu klawiatury, którego custom
+  box wcześniej by połknął). Świadomie **bez** nowej zależności (żadnego
+  UI-primitives package) — czysty Tailwind + istniejący `CheckIcon`
+  (`icons.tsx`), zgodnie z resztą appki. Kolor zaznaczonego stanu zależy
+  od aktywnego motywu: reużywa dokładnie ten sam
+  `border-selected-border`/`bg-selected-bg`/`text-selected-fg` +
+  `shadow-[var(--glow-selected)]` co zaznaczona opcja `OptionButton`/
+  toggle — checkbox to ta sama kategoria "wybór/commit użytkownika", więc
+  dostaje ten sam róż w Arcade Studio (zamiast strukturalnego cyjanu
+  `--accent`), bez żadnych zmian w `index.css`.
+
 ## [0.15.2] — 2026-09-13
 
 ### Naprawiono

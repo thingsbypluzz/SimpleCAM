@@ -3,6 +3,7 @@ import { getPaletteAccents, PALETTE_LIST } from '../config/palettes'
 import type { Dialect, MachineSettings } from '../types/machine'
 import type { AppearanceSettings, Grid3DLabelSize } from '../types/appearance'
 import { THEME_LIST } from '../types/theme'
+import { Checkbox } from './wizard/Checkbox'
 import { inputClass } from './wizard/FieldRow'
 import { NumberInput } from './wizard/NumberInput'
 import { roundToStepPrecision } from './wizard/useNumberField'
@@ -466,17 +467,14 @@ export function SettingsModal({
                 <span className="text-sm font-medium text-value">
                   Grid Labels (3D Preview)
                 </span>
-                <label className="flex items-center gap-2 text-sm text-value">
-                  <input
-                    type="checkbox"
-                    checked={appearance.grid3DLabelsEnabled}
-                    onChange={(e) =>
-                      onSaveAppearance({ ...appearance, grid3DLabelsEnabled: e.target.checked })
-                    }
-                    className="h-4 w-4 rounded border-field-border text-accent focus:ring-accent-strong"
-                  />
-                  Show grid coordinate labels
-                </label>
+                <Checkbox
+                  checked={appearance.grid3DLabelsEnabled}
+                  onChange={(checked) =>
+                    onSaveAppearance({ ...appearance, grid3DLabelsEnabled: checked })
+                  }
+                  label="Show grid coordinate labels"
+                  className="text-sm text-value"
+                />
                 <label className="flex flex-col gap-1">
                   <span className="text-xs font-medium text-muted">Label size</span>
                   <select
