@@ -148,12 +148,11 @@ faktycznym.
   odpowiedź na tę samą troskę (prywatność/RODO), bez budowania żadnego
   trackingu.
 
-- **`BL-30`** *(Otwarty)* — **Surface — obsługa kształtu Circle.**
-  `OP-3` (Surface) w v1 obsługuje wyłącznie Rectangle — Circle
-  świadomie odłożone podczas sesji `/grill-me` dla `OP-3`
-  (2026-09-12). Wymaga przycinania linii skanu (rastra) do granicy
-  koła — dodatkowa złożoność geometryczna nieobecna przy Rectangle
-  (gdzie linie rastra po prostu biegną od krawędzi do krawędzi).
+- **`BL-30`** *(Odrzucony, 2026-09-13)* — **Surface — obsługa kształtu
+  Circle.** `OP-3` (Surface) zostaje wyłącznie Rectangle. Wymagałoby
+  przycinania linii skanu (rastra) do granicy koła — dodatkowa
+  złożoność geometryczna nieobecna przy Rectangle (gdzie linie rastra
+  po prostu biegną od krawędzi do krawędzi).
 - **`BL-31`** *(Otwarty)* — **Oś X/Y w 3D Preview: stała długość
   zamiast dopasowanej do renderowanego obszaru.** `axisLength =
   planeSize * 0.55` (`buildScene.ts::buildToolpathScene()`) to jeden
