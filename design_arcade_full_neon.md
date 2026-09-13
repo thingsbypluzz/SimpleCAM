@@ -128,7 +128,7 @@ Intentionally faint. If it reads as visible stripes at the user's DPI, drop the 
 | Field | Value |
 | --- | --- |
 | `background` | `#0b0c10` |
-| `grid` | `rgba(0,240,255,.42)` (bumped from spec's original `.14` — BL-32, that alpha read as practically invisible in the 2D Preview's Canvas rendering) |
+| `grid` | `#5e5c64` (changed from spec's original cyan `rgba(0,240,255,.14)` — BL-32; low alpha first read as practically invisible in the 2D Preview's Canvas rendering, and raising the alpha only surfaced the deeper problem: a cyan grid shares the toolpath's own hue, so the two fight for attention. Now the same neutral gray every other theme/palette already uses for grid — "a utility/orientation cue, not a signature accent" — confirmed against Arcade's background by comparing it live to the Ocean palette. Identical to Restrained's grid — the neon-intensity distinction between the two variants still shows up in toolpath/hole, not in this now-neutral grid) |
 | `toolpath` | `#00f0ff` |
 | `rapid` | `#1e2230` |
 | `hole` | `#ff007f` |

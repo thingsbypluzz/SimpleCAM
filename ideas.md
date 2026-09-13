@@ -172,7 +172,8 @@ faktycznym.
   płaszczyzny (`gridCenterX/Z` ± `gridSize/2`), nie jednego wspólnego
   skalara liczonego od originu.
 - **`BL-32`** *(Zrealizowany, 2026-09-13)* — **Siatka w motywach Arcade
-  Studio ledwie widoczna.** Pełny opis w `CHANGELOG.md`, `[0.15.4]`.
+  Studio ledwie widoczna.** Pełny opis w `CHANGELOG.md`, `[0.15.4]`–
+  `[0.15.5]`.
 - **`BL-33`** *(Zrealizowany, 2026-09-13)* — **Uniwersalny komponent
   Checkbox.** Wszystkie 4 checkboxy appki, nie tylko Krok 4 — pełny opis
   w `CHANGELOG.md`, `[0.15.3]`.

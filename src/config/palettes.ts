@@ -193,22 +193,32 @@ const DEFAULT_ACCENTS: Record<ThemeId, { light: PaletteAccents; dark: PaletteAcc
   // Restrained's toolpath is stepped down one notch (#00d5e3 vs full
   // neon's #00f0ff) and its `hole` is desaturated plum instead of magenta,
   // per design-arcade-restrained.md §5.
-  // grid alpha bumped ~3x above the values in design-arcade-restrained.md
-  // §5 / design_arcade_full_neon.md §5 (.10/.14) — same ratio between the
-  // two (fainter Restrained vs. full neon) preserved, but at the spec's
-  // literal values the grid was practically invisible in the 2D Preview
-  // (BL-32): Canvas 2D's ctx.strokeStyle honors that alpha exactly, unlike
-  // THREE.Color.setStyle() in the 3D Preview, which silently drops the
-  // alpha component entirely (warns "Alpha component ... will be
-  // ignored") — so the spec's low alpha only ever did anything in 2D,
-  // where it read as near-black hairlines on the near-black background.
+  // grid changed from a cyan-tinted rgba() (design-arcade-restrained.md
+  // §5 / design_arcade_full_neon.md §5's original `.10`/`.14`, then a
+  // bumped-alpha `.30`/`.42` — BL-32's first pass) to this plain neutral
+  // gray — BL-32 round 2. Bumping the alpha fixed the "can't see it at
+  // all" problem but not the real one underneath: a cyan grid is the same
+  // hue as the toolpath accent (`#00d5e3`/`#00f0ff`), so the two fight for
+  // attention and the grid reads as visual noise around the actual path
+  // instead of a background reference. Every OTHER theme already treats
+  // grid as "a utility/orientation cue, not a signature accent" (see the
+  // shared value below this comment's neighbors) — Arcade's colored grid
+  // was the one deviation from that rule, motivated by the spec's neon
+  // aesthetic, not by any user need. `#5e5c64` is the exact value already
+  // used for Ocean/Ember/Violet's (and Sloppy Indigo's/Shopfloor Amber's
+  // dark) grid — confirmed to read cleanly against Arcade's near-black
+  // background before adopting it here (user compared Default vs. Ocean
+  // palette on the same Arcade theme). Deliberately identical between
+  // Restrained and Full Neon — the neon-intensity distinction between the
+  // two still shows up in toolpath/hole, just not in this now-neutral,
+  // non-accent grid.
   'arcade-restrained': {
-    light: { grid: 'rgba(0,240,255,.30)', toolpath: '#00d5e3', rapid: '#1e2230', hole: '#7a3a5c' },
-    dark: { grid: 'rgba(0,240,255,.30)', toolpath: '#00d5e3', rapid: '#1e2230', hole: '#7a3a5c' },
+    light: { grid: '#5e5c64', toolpath: '#00d5e3', rapid: '#1e2230', hole: '#7a3a5c' },
+    dark: { grid: '#5e5c64', toolpath: '#00d5e3', rapid: '#1e2230', hole: '#7a3a5c' },
   },
   'arcade-full-neon': {
-    light: { grid: 'rgba(0,240,255,.42)', toolpath: '#00f0ff', rapid: '#1e2230', hole: '#ff007f' },
-    dark: { grid: 'rgba(0,240,255,.42)', toolpath: '#00f0ff', rapid: '#1e2230', hole: '#ff007f' },
+    light: { grid: '#5e5c64', toolpath: '#00f0ff', rapid: '#1e2230', hole: '#ff007f' },
+    dark: { grid: '#5e5c64', toolpath: '#00f0ff', rapid: '#1e2230', hole: '#ff007f' },
   },
 }
 

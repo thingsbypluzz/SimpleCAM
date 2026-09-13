@@ -121,7 +121,7 @@ Two structural differences from full neon worth calling out:
 | Field | Value | vs. full neon |
 | --- | --- | --- |
 | `background` | `#0b0c10` | = |
-| `grid` | `rgba(0,240,255,.30)` | fainter (bumped from spec's original `.10` — BL-32, that alpha read as practically invisible in the 2D Preview's Canvas rendering) |
+| `grid` | `#5e5c64` | = (changed from spec's original cyan `rgba(0,240,255,.10)` — BL-32; low alpha first read as practically invisible in the 2D Preview's Canvas rendering, and raising the alpha only surfaced the deeper problem: a cyan grid shares the toolpath's own hue, so the two fight for attention. Now the same neutral gray every other theme/palette already uses for grid — "a utility/orientation cue, not a signature accent" — confirmed against Arcade's background by comparing it live to the Ocean palette) |
 | `toolpath` | `#00d5e3` | stepped down |
 | `rapid` | `#1e2230` | = |
 | `hole` | `#7a3a5c` | desaturated — the hole outline is reference geometry, not an accent |

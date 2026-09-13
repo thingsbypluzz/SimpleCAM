@@ -7,6 +7,30 @@ zgodne z [SemVer](https://semver.org/). Ten plik pozostaje głównym, czytelnym
 thingsbypluzz/SimpleCAM), ale to infrastruktura pod izolację pracy
 (branch/worktree per zadanie), nie zamiennik tego changeloga.
 
+## [0.15.5] — 2026-09-13
+
+### Naprawiono
+
+- **`BL-32`, runda 2 — siatka Arcade Studio nadal słabo czytelna mimo
+  podniesionego alpha, bo kolor grid dzielił ten sam odcień co
+  toolpath.** `0.15.4` podniosło alpha cyjanowego grid ~3×, co naprawiło
+  "w ogóle niewidoczne" w Canvas 2D, ale ujawniło głębszy problem: cyjan
+  na grid to dokładnie ten sam odcień co akcent toolpath
+  (`#00d5e3`/`#00f0ff`) — obie linie wizualnie ze sobą konkurują, siatka
+  czytana jest jako szum wokół realnej ścieżki, nie jako neutralne tło
+  odniesienia. Każdy inny motyw/paleta już trzyma się zasady "grid to
+  narzędzie orientacyjne, nie własny akcent" (ustalonej przy okazji
+  `BL-12`) — Arcade było jedynym wyjątkiem, wynikającym ze speców, nie z
+  realnej potrzeby użytkownika. Naprawione zmianą grid na `#5e5c64` —
+  dokładnie tę samą neutralną szarość, której już używają Ocean/Ember/
+  Violet (i tryb dark Sloppy Indigo/Shopfloor Amber) — potwierdzone jako
+  czytelne na tle Arcade poprzez bezpośrednie porównanie z paletą Ocean w
+  tym samym motywie. Celowo identyczne dla obu wariantów Arcade
+  (Restrained/Full Neon) — różnica w intensywności neonu między nimi
+  nadal żyje w toolpath/hole, nie w tym teraz neutralnym grid. Specy
+  (`design-arcade-restrained.md`/`design_arcade_full_neon.md`)
+  zaktualizowane.
+
 ## [0.15.4] — 2026-09-13
 
 ### Naprawiono
