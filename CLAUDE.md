@@ -445,6 +445,54 @@ jak podkładka. `buildRectWallMesh()` podnosi się, gdy `closed`;
 ściana jest faktycznie zamknięta. Otwarte ściany (Inside, zewnętrzna
 ściana On-line) nie mają tam żadnej geometrii, więc zostają bez zmian.
 
+### Przezroczystość i kolejność renderowania brył 3D
+
+Trzy reguły materiałowe, ustalone po tym jak bryła "pozostałego
+materiału" Surface (i analogicznie zamknięte ściany Outline) potrafiła
+znikać albo zmieniać jasność zależnie od kąta kamery i Offset X/Y —
+wyłącznie warstwa renderowania Three.js, silnik G-code nigdy nie był
+dotknięty:
+
+- **`depthWrite: false` na płaszczyźnie materiału i siatce**
+  (`buildToolpathScene()`). Obie są z założenia czysto wizualnym tłem,
+  nigdy realnym przesłaniaczem — ale przy 0.6 opacity w dark mode są
+  wystarczająco "gęste", że domyślny `depthWrite: true` pozwalał
+  transparent-sortowi Three.js (sortowanie po odległości od kamery)
+  narysować je PO jakiejś bryle wzorca siedzącej za nimi (np. stock
+  Surface, poniżej `Z=0`) i wyczyścić ją z bufora głębokości —
+  czysty efekt "znika/pojawia się", nie migotanie. `depthTest` zostaje
+  włączony (wciąż poprawnie chowają się za realnie nieprzezroczystymi
+  obiektami, np. znacznikiem originu).
+- **`renderOrder = -1` na tej samej płaszczyźnie i siatce.** Samo
+  wyłączenie `depthWrite` usuwało całkowite znikanie, ale nie
+  niespójną jasność — kolejność blendowania (płaszczyzna PRZED czy PO
+  bryle) nadal zależała od transparent-sortu. Wymuszenie płaszczyzny/
+  siatki jako zawsze-rysowanych-najpierw usuwa tę niejednoznaczność:
+  każda bryła wzorca blenduje się na wierzchu w stałej kolejności,
+  niezależnie od kamery.
+- **`side: THREE.FrontSide` zamiast `DoubleSide` dla każdej zamkniętej
+  bryły** (`buildRectWallMesh()`, `buildOutlineCirclePatternObjects()`)
+  — WebGL nie sortuje trójkątów wewnątrz jednego draw call po
+  głębokości, więc `DoubleSide` na przezroczystej, zamkniętej bryle
+  potrafi pod pewnym kątem pokazać bliską i daleką ścianę TEGO SAMEGO
+  obiektu naraz, blendując je w przypadkowej kolejności (niespójne
+  pociemnienie zależne od kąta). Zamknięta bryła nie ma niczego pustego
+  do zajrzenia do środka, więc `FrontSide` (tylko bliższa ściana) jest
+  poprawny i przy okazji usuwa ten artefakt. Otwarte ściany (Inside,
+  zewnętrzna ściana On-line) zostają `DoubleSide` — tam trzeba widzieć
+  wnętrze z góry/od środka.
+  Skutek uboczny `FrontSide`: przypadkowe nakładanie się ścian
+  `DoubleSide` było jedyną wizualną wskazówką, że zamknięta bryła to
+  w ogóle 3D (goły `MeshBasicMaterial` nie ma modelu oświetlenia) — bez
+  niego bryła czytała się jako płaski zabarwiony kształt. Naprawione
+  **sztucznym cieniowaniem**: ścianki boczne zamkniętej bryły (box i
+  cylinder) rysowane 40% ciemniejszym odcieniem (`theme.hole` przez
+  `THREE.Color.multiplyScalar(0.6)`) niż górna/dolna nakrywka —
+  identycznie jak płasko cieniowany sprite izometryczny, niezależne od
+  kamery. Otwarte ściany zostają jednolitym kolorem jak wcześniej — już
+  czytają się jako 3D dzięki widocznemu wnętrzu przez brakującą
+  nakrywkę.
+
 ### Etykiety siatki w 3D Preview
 
 Siatka 3D (`GridHelper`, `buildScene.ts`) jest wyrównana do "ładnych"

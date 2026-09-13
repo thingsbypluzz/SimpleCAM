@@ -7,6 +7,44 @@ zgodne z [SemVer](https://semver.org/). Ten plik pozostaje głównym, czytelnym
 thingsbypluzz/SimpleCAM), ale to infrastruktura pod izolację pracy
 (branch/worktree per zadanie), nie zamiennik tego changeloga.
 
+## [0.15.6] — 2026-09-13
+
+### Naprawiono
+
+- **3D Preview: bryła "pozostałego materiału" (Surface) i zamknięte
+  ściany Outline (Outside/On-line inner) potrafiły znikać albo zmieniać
+  jasność w zależności od kąta kamery i Offset X/Y.** Trzy nakładające
+  się przyczyny w `buildScene.ts`, wszystkie w warstwie renderowania —
+  silnik G-code bez zmian:
+  1. Płaszczyzna materiału (`plane`) i siatka (`grid`) miały domyślny
+     `depthWrite: true` przy 0.6 opacity w dark mode — przy pewnych
+     kątach/offsetach transparent-sort Three.js rysował je PO bryle
+     stocku, co czyściło ją z bufora głębokości (czysty efekt "znika/
+     pojawia się", nie migotanie). Naprawione: `depthWrite: false` na
+     obu — nie mogą już przesłonić niczego niezależnie od kolejności
+     rysowania.
+  2. Zamknięte bryły (Surface stock, Outline Outside, On-line inner
+     island) używały `side: THREE.DoubleSide` — WebGL nie sortuje
+     trójkątów wewnątrz jednego draw call po głębokości, więc pod
+     pewnymi kątami bliska i daleka ściana TEGO SAMEGO obiektu nakładały
+     się, dając niespójne pociemnienie zależne od kąta. Naprawione:
+     `THREE.FrontSide` dla każdej zamkniętej bryły (nic pustego do
+     zajrzenia do środka) — otwarte ściany (Inside, On-line outer)
+     zostają `DoubleSide`, bo tam trzeba widzieć wnętrze.
+  3. Płaszczyzna/siatka nadal mogły rysować się PO bryle wzorca (mimo
+     punktu 1 to nie przesłaniało już całkowicie, ale nadal dawało
+     niespójne pociemnienie zależne od kolejności blendowania).
+     Naprawione: `renderOrder = -1` na płaszczyźnie i siatce — zawsze
+     rysowane jako pierwsze/tło, więc każda bryła wzorca blenduje się na
+     wierzchu w stałej kolejności niezależnie od kamery.
+  4. Po naprawie (2) okazało się, że przypadkowe nakładanie ścian
+     DoubleSide było jedyną wskazówką, że zamknięta bryła to w ogóle
+     3D — bez tego jednolity `MeshBasicMaterial` czytał się jako płaski
+     zabarwiony prostokąt/koło. Dodane: ścianki boczne zamkniętych brył
+     (box i cylinder) rysowane teraz 40% ciemniej niż górna/dolna
+     nakrywka — proste, sztuczne cieniowanie (jak płasko cieniowany
+     sprite izometryczny), niezależne od kąta kamery.
+
 ## [0.15.5] — 2026-09-13
 
 ### Naprawiono

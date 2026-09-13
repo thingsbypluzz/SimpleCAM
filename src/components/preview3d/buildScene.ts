@@ -946,8 +946,29 @@ function buildOutlineCirclePatternObjects(
   // correspond to any real edge for On-line.
   const boreHeight = outline.totalDepth + feeds.startZ
   const boreCenterZ = (feeds.startZ - outline.totalDepth) / 2
-  const wallMaterial = () =>
-    new THREE.MeshBasicMaterial({ color: theme.hole, transparent: true, opacity: 0.3, side: THREE.DoubleSide })
+  // side depends on closed, same reasoning as buildRectWallMesh: a closed
+  // cylinder (nothing hollow to look into) only needs THREE.FrontSide,
+  // which also avoids the same-mesh transparent self-overlap artifact
+  // DoubleSide has (WebGL doesn't depth-sort triangles within one draw
+  // call, so a near face and a far face of the same transparent cylinder
+  // can blend in the wrong order depending on camera angle). An open
+  // cylinder (Inside, On-line's outer edge) still needs DoubleSide to show
+  // its interior wall from inside/above.
+  //
+  // For closed cylinders, the lateral (side) surface — CylinderGeometry's
+  // own group 0, with the top/bottom caps as groups 1/2 — is rendered a
+  // shade darker than the caps, same fake-shading reasoning as
+  // buildRectWallMesh: without it a solid closed cylinder reads as a flat
+  // tinted circle instead of a 3D volume. Open cylinders have no cap
+  // geometry at all, so they keep a single uniform material as before.
+  const wallMaterial = (closed: boolean): THREE.Material | THREE.Material[] => {
+    const side = closed ? THREE.FrontSide : THREE.DoubleSide
+    const capMaterial = new THREE.MeshBasicMaterial({ color: theme.hole, transparent: true, opacity: 0.3, side })
+    if (!closed) return capMaterial
+    const sideColor = new THREE.Color(theme.hole).multiplyScalar(0.6)
+    const sideMaterial = new THREE.MeshBasicMaterial({ color: sideColor, transparent: true, opacity: 0.3, side })
+    return [sideMaterial, capMaterial, capMaterial]
+  }
 
   if (outline.offsetMode === 'onLine') {
     const { innerRadius, outerRadius } = onLineCircleEdges(outline)
@@ -956,14 +977,14 @@ function buildOutlineCirclePatternObjects(
     // sit at, so it needs the same z-fight lift as the stock cap.
     const innerWall = new THREE.Mesh(
       new THREE.CylinderGeometry(innerRadius, innerRadius, boreHeight, 32, 1, false),
-      wallMaterial(),
+      wallMaterial(true),
     )
     innerWall.position.copy(toThree(center.x, center.y, boreCenterZ + SOLID_CAP_Z_LIFT))
     objects.push(innerWall)
 
     const outerWall = new THREE.Mesh(
       new THREE.CylinderGeometry(outerRadius, outerRadius, boreHeight, 32, 1, true),
-      wallMaterial(),
+      wallMaterial(false),
     )
     outerWall.position.copy(toThree(center.x, center.y, boreCenterZ))
     objects.push(outerWall)
@@ -971,7 +992,7 @@ function buildOutlineCirclePatternObjects(
     const openEnded = outline.offsetMode !== 'outside'
     const shape = new THREE.Mesh(
       new THREE.CylinderGeometry(nominalRadius, nominalRadius, boreHeight, 32, 1, openEnded),
-      wallMaterial(),
+      wallMaterial(!openEnded),
     )
     // Only the closed (Outside) case has a real top face to lift — open
     // (Inside) has no cap geometry there at all.
@@ -1023,15 +1044,44 @@ function boundingCenter(points: Point2D[]): Point2D {
 // z-fight risk against the material plane/grid as the stock cap, so it
 // gets the same SOLID_CAP_Z_LIFT nudge. An open wall's hidden cap faces
 // have nothing there to collide with.
+//
+// `side` depends on `closed` too: a closed box (Outside, On-line's inner
+// island, Surface's stock — nothing hollow to look into) only ever needs
+// to be seen from outside, so THREE.FrontSide (culls the far faces) is
+// correct and, crucially, avoids a real rendering artifact DoubleSide has
+// here — WebGL doesn't depth-sort triangles *within* one draw call, so a
+// transparent DoubleSide box viewed at an angle where a near face and a
+// far face of the SAME box both project to the same pixels blends both
+// (in whatever order the GPU happens to rasterize them, not by distance),
+// making the box look inconsistently darker/lighter depending on camera
+// angle and position — reported against Surface's stock block, alongside
+// the separate plane/grid depthWrite fix above. An open wall (Inside,
+// On-line's outer edge) still needs DoubleSide — the whole point of
+// leaving it open is to see the interior wall from inside/above, which
+// means seeing that geometry's back face.
 function buildRectWallMesh(corners: Point2D[], boreHeight: number, centerZ: number, closed: boolean, theme: Theme): THREE.Mesh {
   const center = boundingCenter(corners)
   const width = Math.max(...corners.map((p) => p.x)) - Math.min(...corners.map((p) => p.x))
   const height = Math.max(...corners.map((p) => p.y)) - Math.min(...corners.map((p) => p.y))
-  const sideMaterial = new THREE.MeshBasicMaterial({ color: theme.hole, transparent: true, opacity: 0.3, side: THREE.DoubleSide })
-  const capMaterial = closed ? sideMaterial : new THREE.MeshBasicMaterial({ visible: false })
+  const side = closed ? THREE.FrontSide : THREE.DoubleSide
+  // Side walls a shade darker than the top/bottom cap, closed shapes
+  // only — MeshBasicMaterial has no real lighting model, so without some
+  // deliberate cap-vs-wall contrast a closed box reads as a flat tinted
+  // rectangle rather than a solid 3D volume (this became visible once the
+  // FrontSide fix above removed the DoubleSide self-overlap darkening,
+  // which — by accident — had been the only cue making it read as 3D at
+  // all). Cheap fake shading, same idea as a flat-shaded isometric
+  // sprite's darker side faces. Open walls already read as 3D via the
+  // visible interior through the missing cap, so they keep the original
+  // single-material look.
+  const wallColor = closed ? new THREE.Color(theme.hole).multiplyScalar(0.6) : theme.hole
+  const wallMaterial = new THREE.MeshBasicMaterial({ color: wallColor, transparent: true, opacity: 0.3, side })
+  const capMaterial = closed
+    ? new THREE.MeshBasicMaterial({ color: theme.hole, transparent: true, opacity: 0.3, side })
+    : new THREE.MeshBasicMaterial({ visible: false })
   const mesh = new THREE.Mesh(
     new THREE.BoxGeometry(width, boreHeight, height),
-    [sideMaterial, sideMaterial, capMaterial, capMaterial, sideMaterial, sideMaterial],
+    [wallMaterial, wallMaterial, capMaterial, capMaterial, wallMaterial, wallMaterial],
   )
   mesh.position.copy(toThree(center.x, center.y, closed ? centerZ + SOLID_CAP_Z_LIFT : centerZ))
   return mesh
@@ -1338,7 +1388,23 @@ export function buildToolpathScene(
   const gridSize = gridHalfCells * 2 * gridStep
   const gridDivisions = gridHalfCells * 2
 
-  // Material surface (CNC Z = 0)
+  // Material surface (CNC Z = 0). This plane (and the grid below) is meant
+  // purely as a translucent visual reference, never a real occluder — but
+  // at 0.6 opacity in dark mode it's opaque enough that Three.js's
+  // camera-distance transparent sort could, depending on camera angle and
+  // where the pattern's own centroid lands (Offset X/Y shifts it), draw
+  // the plane AFTER a transparent pattern mesh sitting behind it (e.g.
+  // Surface's stock block, which sits at Z between -totalDepth and
+  // -totalDepth-safeZ, below Y=0). Two things had to change together to
+  // fully fix this (reported as the stock cleanly vanishing, then —
+  // partway fixed — as it alternating darker/lighter by angle):
+  // `depthWrite: false` so the plane can never win the depth buffer and
+  // erase something behind it outright (depthTest stays on, so it still
+  // correctly sits behind genuinely opaque objects like the origin
+  // marker); and `renderOrder = -1` so the plane/grid are *always* drawn
+  // first regardless of the camera-distance sort, making every pattern
+  // mesh drawn after them blend consistently on top instead of the blend
+  // order (and thus apparent brightness) flipping with camera angle.
   const plane = new THREE.Mesh(
     new THREE.PlaneGeometry(gridSize, gridSize),
     new THREE.MeshBasicMaterial({
@@ -1346,16 +1412,20 @@ export function buildToolpathScene(
       transparent: true,
       opacity: theme.materialOpacity,
       side: THREE.DoubleSide,
+      depthWrite: false,
     }),
   )
+  plane.renderOrder = -1
   plane.rotation.x = -Math.PI / 2
   plane.position.set(gridCenterX, 0, gridCenterZ)
   objects.push(plane)
 
   const grid = new THREE.GridHelper(gridSize, gridDivisions, theme.grid, theme.grid)
+  grid.renderOrder = -1
   grid.position.set(gridCenterX, 0.01, gridCenterZ)
   ;(grid.material as THREE.Material).transparent = true
   ;(grid.material as THREE.Material).opacity = 0.4
+  ;(grid.material as THREE.Material).depthWrite = false
   objects.push(grid)
 
   // Illusory stock cap (BL-28) — only for the live/active pattern, never
