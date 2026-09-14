@@ -200,6 +200,18 @@ faktycznym.
   stepdown` (wysokość względna do bieżącego poziomu, poprawna na każdym
   poziomie) — to drugie wydaje się fizycznie poprawniejsze i spójniejsze
   z resztą appki.
+- **`BL-36`** *(Otwarty)* — **Preview: przyciski do ukrywania
+  toolpath/bryły.** Pomysł: w Header, prawdopodobnie obok istniejącego
+  Icon Buttona "oko" (`EyeIcon`, toggle overlay presetów), dodać kontrolki
+  pozwalające niezależnie ukryć samą linię ścieżki narzędzia i/albo bryłę
+  materiału/otworu w podglądzie — czy to jako Icon Buttony (symbol do
+  ustalenia) czy jako zwykłe przyciski tekstowe w stylu istniejących
+  Method/Toggle pickerów ("Hide Toolpaths" / "Hide Object"). Otwarte
+  pytanie od razu zgłoszone w rozmowie: czy "Hide Object" (bryła) w ogóle
+  jest potrzebne i do czego dokładnie miałoby służyć — do ustalenia przy
+  sesji `/grill-me` (dotyczy obu podglądów 2D i 3D, więc realny zakres i
+  architektura — nowy stan w `WizardParams`? czy lokalny UI state? — nie
+  są jeszcze jasne).
 
 **`BL-17` zamknięte — "Interface Anatomy"**, Artifact z umownymi nazwami
 elementów UI, dziś aktywnie używany w `CLAUDE.md`:
