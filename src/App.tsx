@@ -371,15 +371,15 @@ function App() {
       <header className="grid grid-cols-[1fr_auto_1fr] items-center gap-4 border-b border-border px-6 py-4">
         <div>
           <h1 className="text-xl font-semibold">
-            <span className="text-wordmark-simple" style={{ textShadow: 'var(--wordmark-simple-glow)' }}>
-              Simple
+            <span className="text-wordmark-only" style={{ textShadow: 'var(--wordmark-only-glow)' }}>
+              Only
             </span>
-            <span className="text-wordmark-cam" style={{ textShadow: 'var(--wordmark-cam-glow)' }}>
-              CAM
+            <span className="text-wordmark-paths" style={{ textShadow: 'var(--wordmark-paths-glow)' }}>
+              Paths
             </span>
           </h1>
           <p className="text-xs text-muted">
-            Fast G-Code generator for your basic operations.
+            Helps you CAM. Every time!
           </p>
           <p className="text-[11px] text-muted">Envisioned by ThingsByPluzz</p>
         </div>

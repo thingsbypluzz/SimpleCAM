@@ -50,7 +50,7 @@ function readStorage(): StorageShape {
     const parsed = JSON.parse(raw) as Partial<StorageShape>
     return { version: SCHEMA_VERSION, slots: parsed.slots ?? {} }
   } catch (err) {
-    console.warn('SimpleCAM: could not read saved state from localStorage', err)
+    console.warn('OnlyPaths: could not read saved state from localStorage', err)
     return { version: SCHEMA_VERSION, slots: {} }
   }
 }
@@ -59,7 +59,7 @@ function writeStorage(storage: StorageShape): void {
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(storage))
   } catch (err) {
-    console.warn('SimpleCAM: could not save state to localStorage', err)
+    console.warn('OnlyPaths: could not save state to localStorage', err)
   }
 }
 

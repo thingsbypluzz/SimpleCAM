@@ -11,7 +11,7 @@ export function buildFilename(params: WizardParams): string {
       : params.operation === 'surface'
         ? surfaceShapeSlug(params.surface)
         : patternSlug(params.geometry)
-  return `simplecam-${slug}-${date}.gcode`
+  return `op-${slug}-${date}.gcode`
 }
 
 export function downloadTextFile(filename: string, content: string): void {

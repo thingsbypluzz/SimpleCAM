@@ -1,4 +1,4 @@
-# Cyan Steel — theme spec for SimpleCAM
+# Cyan Steel — theme spec for OnlyPaths
 
 Target: replace the indigo/slate palette with a cool, technical cyan-on-deep-teal scheme, in
 both dark and light mode, across the UI chrome **and** the 2D/3D preview accents.

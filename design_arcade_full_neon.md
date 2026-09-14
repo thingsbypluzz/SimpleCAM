@@ -1,6 +1,6 @@
-# Arcade Cabinet — full neon — theme spec for SimpleCAM
+# Arcade Cabinet — full neon — theme spec for OnlyPaths
 
-Target: an 80s arcade-cabinet skin for SimpleCAM. **The layout does not change** — same grid,
+Target: an 80s arcade-cabinet skin for OnlyPaths. **The layout does not change** — same grid,
 same column widths, same paddings, same type sizes and weights as today. Everything below is
 surface: color, glow, gradient, one font swap, one overlay element.
 
@@ -62,12 +62,12 @@ Suggested CSS custom properties, with the class each one replaces today.
 
 ### Wordmark
 
-`SimpleCAM` in the header splits into two spans — same font size, same weight, same position:
+`OnlyPaths` in the header splits into two spans — same font size, same weight, same position:
 
 | Part | Color | Glow |
 | --- | --- | --- |
-| `Simple` | `#00f0ff` | `0 0 14px rgba(0,240,255,.65)` |
-| `CAM` | `#ff2a85` | `0 0 14px rgba(255,42,133,.60)` |
+| `Only` | `#00f0ff` | `0 0 14px rgba(0,240,255,.65)` |
+| `Paths` | `#ff2a85` | `0 0 14px rgba(255,42,133,.60)` |
 
 Letter-spacing `.06em` on the whole wordmark.
 

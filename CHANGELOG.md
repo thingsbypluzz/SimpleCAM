@@ -1,11 +1,27 @@
 # Changelog
 
-Wszystkie znaczące zmiany w projekcie SimpleCAM są odnotowywane w tym pliku.
+Wszystkie znaczące zmiany w projekcie OnlyPaths są odnotowywane w tym pliku.
 Format bazuje na [Keep a Changelog](https://keepachangelog.com/), wersjonowanie
 zgodne z [SemVer](https://semver.org/). Ten plik pozostaje głównym, czytelnym
 źródłem historii zmian — projekt ma teraz repo git (GitHub:
 thingsbypluzz/SimpleCAM), ale to infrastruktura pod izolację pracy
 (branch/worktree per zadanie), nie zamiennik tego changeloga.
+
+## [0.16.0] — 2026-09-14
+
+Aplikacja przemianowana z **SimpleCAM** na **OnlyPaths**, ze slogan "Helps
+you CAM. Every time!" (zastępuje poprzedni tagline "Fast G-Code generator
+for your basic operations."). Header i Settings → About pokazują nową
+nazwę i slogan; wordmark w Headerze dzieli się teraz na "Only"/"Paths"
+(dawniej "Simple"/"CAM"), tokeny CSS `--wordmark-only`/`--wordmark-paths`
+(dawniej `--wordmark-simple`/`--wordmark-cam`) w każdym z 4 motywów.
+Prefiks nazwy generowanego pliku `.gcode` zmieniony z `simplecam-` na
+`op-`. Subdomena testowa docelowo `onlypaths.pluzz.pl` (dawniej
+`simplecam.pluzz.pl`) — wymaga ręcznego założenia w cPanelu poza tą
+sesją. Bez zmian: nazwa repo GitHub (`thingsbypluzz/SimpleCAM`), nazwa
+folderu projektu, pole `name` w `package.json` (`simplecam`), oraz
+wszystkie klucze `localStorage` (`simplecam.storage`/`simplecam.machine`/
+`simplecam.appearance`) — to identyfikatory wewnętrzne, nie branding.
 
 ## [0.15.6] — 2026-09-13
 

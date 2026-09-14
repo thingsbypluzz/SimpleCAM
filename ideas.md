@@ -1,4 +1,4 @@
-# Pomysły i backlog SimpleCAM
+# Pomysły i backlog OnlyPaths
 
 Ten plik zbiera wszystko, co dziś **nie** jest zaimplementowane —
 podzielone na trzy różne statusy. `CLAUDE.md` przechowuje wyłącznie stan

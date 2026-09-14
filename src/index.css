@@ -65,10 +65,10 @@ body {
   --selected-fg: var(--accent-fg);
   --stat-value: var(--value);
 
-  --wordmark-simple: var(--fg);
-  --wordmark-cam: var(--accent);
-  --wordmark-simple-glow: none;
-  --wordmark-cam-glow: none;
+  --wordmark-only: var(--fg);
+  --wordmark-paths: var(--accent);
+  --wordmark-only-glow: none;
+  --wordmark-paths-glow: none;
 
   --glow-accent: none;
   --glow-selected: none;
@@ -124,10 +124,10 @@ body {
   --selected-fg: var(--accent-fg);
   --stat-value: var(--value);
 
-  --wordmark-simple: var(--fg);
-  --wordmark-cam: var(--accent);
-  --wordmark-simple-glow: none;
-  --wordmark-cam-glow: none;
+  --wordmark-only: var(--fg);
+  --wordmark-paths: var(--accent);
+  --wordmark-only-glow: none;
+  --wordmark-paths-glow: none;
 
   --glow-accent: none;
   --glow-selected: none;
@@ -184,10 +184,10 @@ body {
   --selected-fg: var(--accent-fg);
   --stat-value: var(--value);
 
-  --wordmark-simple: var(--fg);
-  --wordmark-cam: var(--accent);
-  --wordmark-simple-glow: none;
-  --wordmark-cam-glow: none;
+  --wordmark-only: var(--fg);
+  --wordmark-paths: var(--accent);
+  --wordmark-only-glow: none;
+  --wordmark-paths-glow: none;
 
   --glow-accent: none;
   --glow-selected: none;
@@ -246,10 +246,10 @@ body {
   --selected-fg: var(--accent-fg);
   --stat-value: var(--value);
 
-  --wordmark-simple: var(--fg);
-  --wordmark-cam: var(--accent);
-  --wordmark-simple-glow: none;
-  --wordmark-cam-glow: none;
+  --wordmark-only: var(--fg);
+  --wordmark-paths: var(--accent);
+  --wordmark-only-glow: none;
+  --wordmark-paths-glow: none;
 
   --glow-accent: none;
   --glow-selected: none;
@@ -317,10 +317,10 @@ body {
   --selected-fg: #ff5fa8;
   --stat-value: #ff2a85;
 
-  --wordmark-simple: #00f0ff;
-  --wordmark-cam: #ff2a85;
-  --wordmark-simple-glow: 0 0 8px rgba(0, 240, 255, .35);
-  --wordmark-cam-glow: 0 0 8px rgba(255, 42, 133, .30);
+  --wordmark-only: #00f0ff;
+  --wordmark-paths: #ff2a85;
+  --wordmark-only-glow: 0 0 8px rgba(0, 240, 255, .35);
+  --wordmark-paths-glow: 0 0 8px rgba(255, 42, 133, .30);
 
   --glow-accent: inset 0 0 6px rgba(0, 240, 255, .10);
   --glow-selected: inset 0 0 6px rgba(255, 42, 133, .14);
@@ -386,10 +386,10 @@ body {
   --selected-fg: #ff5fa8;
   --stat-value: #ff2a85;
 
-  --wordmark-simple: #00f0ff;
-  --wordmark-cam: #ff2a85;
-  --wordmark-simple-glow: 0 0 8px rgba(0, 240, 255, .35);
-  --wordmark-cam-glow: 0 0 8px rgba(255, 42, 133, .30);
+  --wordmark-only: #00f0ff;
+  --wordmark-paths: #ff2a85;
+  --wordmark-only-glow: 0 0 8px rgba(0, 240, 255, .35);
+  --wordmark-paths-glow: 0 0 8px rgba(255, 42, 133, .30);
 
   --glow-accent: inset 0 0 6px rgba(0, 240, 255, .10);
   --glow-selected: inset 0 0 6px rgba(255, 42, 133, .14);
@@ -462,10 +462,10 @@ body {
   --selected-fg: #ff2a85;
   --stat-value: #ff2a85;
 
-  --wordmark-simple: #00f0ff;
-  --wordmark-cam: #ff2a85;
-  --wordmark-simple-glow: 0 0 14px rgba(0, 240, 255, .65);
-  --wordmark-cam-glow: 0 0 14px rgba(255, 42, 133, .60);
+  --wordmark-only: #00f0ff;
+  --wordmark-paths: #ff2a85;
+  --wordmark-only-glow: 0 0 14px rgba(0, 240, 255, .65);
+  --wordmark-paths-glow: 0 0 14px rgba(255, 42, 133, .60);
 
   --glow-accent: 0 0 10px rgba(0, 240, 255, .40), inset 0 0 8px rgba(0, 240, 255, .16);
   --glow-selected: 0 0 10px rgba(255, 42, 133, .40), inset 0 0 8px rgba(255, 42, 133, .18);
@@ -527,10 +527,10 @@ body {
   --selected-fg: #ff2a85;
   --stat-value: #ff2a85;
 
-  --wordmark-simple: #00f0ff;
-  --wordmark-cam: #ff2a85;
-  --wordmark-simple-glow: 0 0 14px rgba(0, 240, 255, .65);
-  --wordmark-cam-glow: 0 0 14px rgba(255, 42, 133, .60);
+  --wordmark-only: #00f0ff;
+  --wordmark-paths: #ff2a85;
+  --wordmark-only-glow: 0 0 14px rgba(0, 240, 255, .65);
+  --wordmark-paths-glow: 0 0 14px rgba(255, 42, 133, .60);
 
   --glow-accent: 0 0 10px rgba(0, 240, 255, .40), inset 0 0 8px rgba(0, 240, 255, .16);
   --glow-selected: 0 0 10px rgba(255, 42, 133, .40), inset 0 0 8px rgba(255, 42, 133, .18);
@@ -597,8 +597,8 @@ body {
   --color-selected-border: var(--selected-border);
   --color-selected-fg: var(--selected-fg);
   --color-stat-value: var(--stat-value);
-  --color-wordmark-simple: var(--wordmark-simple);
-  --color-wordmark-cam: var(--wordmark-cam);
+  --color-wordmark-only: var(--wordmark-only);
+  --color-wordmark-paths: var(--wordmark-paths);
 
   /* Falls back to Tailwind v4 own default sans stack when --ui-font is
      unset, Sloppy Indigo and Shopfloor Amber do not define it, only the

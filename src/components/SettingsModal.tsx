@@ -506,7 +506,7 @@ export function SettingsModal({
               <h2 className="text-sm font-semibold text-fg">Privacy</h2>
 
               <p className="text-sm text-muted">
-                SimpleCAM runs entirely in your browser. There is no backend, no database, and no
+                OnlyPaths runs entirely in your browser. There is no backend, no database, and no
                 user accounts — G-code generation and the 2D/3D previews all happen locally on
                 your machine, and nothing you type or generate is ever sent to a server we
                 operate.
@@ -525,7 +525,7 @@ export function SettingsModal({
               <div className="flex flex-col gap-2 border-t border-border pt-4">
                 <span className="text-sm font-medium text-value">Cookies &amp; tracking</span>
                 <p className="text-sm text-muted">
-                  SimpleCAM sets no cookies and runs no analytics, telemetry, or fingerprinting
+                  OnlyPaths sets no cookies and runs no analytics, telemetry, or fingerprinting
                   scripts of any kind. There is nothing to opt out of, because nothing is
                   collected in the first place.
                 </p>
@@ -534,12 +534,12 @@ export function SettingsModal({
               <div className="flex flex-col gap-2 border-t border-border pt-4">
                 <span className="text-sm font-medium text-value">The one external request</span>
                 <p className="text-sm text-muted">
-                  SimpleCAM loads one third-party resource on every visit: the "Space Grotesk"
+                  OnlyPaths loads one third-party resource on every visit: the "Space Grotesk"
                   typeface from Google Fonts, used by the Arcade Studio themes. Like loading a
                   font or image from any external site, this sends your browser's standard
                   request data (including your IP address) to Google, governed by Google's own
-                  privacy policy, not ours — it happens outside SimpleCAM's own code. It's the
-                  only network request SimpleCAM makes to a third party; you can verify this
+                  privacy policy, not ours — it happens outside OnlyPaths's own code. It's the
+                  only network request OnlyPaths makes to a third party; you can verify this
                   yourself with your browser's network inspector.
                 </p>
               </div>
@@ -548,11 +548,11 @@ export function SettingsModal({
                 <span className="text-sm font-medium text-value">GDPR</span>
                 <p className="text-sm text-muted">
                   The GDPR (General Data Protection Regulation) governs the collection and
-                  processing of personal data. SimpleCAM's own code and infrastructure collect,
+                  processing of personal data. OnlyPaths's own code and infrastructure collect,
                   store, transmit, or process none — there is no server-side component to do so,
                   and nothing you enter ever leaves your device through us. The one exception is
                   the Google Fonts request above, handled entirely by Google under its own policy.
-                  With that one disclosed exception, using SimpleCAM does not involve us
+                  With that one disclosed exception, using OnlyPaths does not involve us
                   processing your personal data at all.
                 </p>
               </div>
@@ -565,7 +565,7 @@ export function SettingsModal({
 
               <div className="flex flex-col gap-1">
                 <span className="text-base font-semibold text-fg">
-                  SimpleCAM
+                  OnlyPaths
                 </span>
                 <span className="font-mono text-sm text-muted">
                   v{__APP_VERSION__}
@@ -573,8 +573,7 @@ export function SettingsModal({
               </div>
 
               <p className="text-sm text-muted">
-                Fast G-Code generator for your basic operations. Client-side, no backend, no
-                accounts.
+                Helps you CAM. Every time! Client-side, no backend, no accounts.
               </p>
 
               <p className="text-sm text-muted">Envisioned by ThingsByPluzz</p>

@@ -1,4 +1,4 @@
-# Arcade Cabinet — restrained — theme spec for SimpleCAM
+# Arcade Cabinet — restrained — theme spec for OnlyPaths
 
 Target: the 80s arcade-cabinet skin, tuned for an eight-hour working session. Same palette and
 same intent as *Arcade Cabinet — full neon*, with the glow pulled back to roughly half and the
@@ -64,12 +64,12 @@ solid pink key rather than a glossy arcade button.
 
 ### Wordmark
 
-`SimpleCAM` splits into two spans — same font size, same weight, same position:
+`OnlyPaths` splits into two spans — same font size, same weight, same position:
 
 | Part | Color | Glow |
 | --- | --- | --- |
-| `Simple` | `#00f0ff` | `0 0 8px rgba(0,240,255,.35)` |
-| `CAM` | `#ff2a85` | `0 0 8px rgba(255,42,133,.30)` |
+| `Only` | `#00f0ff` | `0 0 8px rgba(0,240,255,.35)` |
+| `Paths` | `#ff2a85` | `0 0 8px rgba(255,42,133,.30)` |
 
 Letter-spacing `.06em`. Note the wordmark keeps full-strength `#00f0ff` — it's the one place
 the brighter cyan is worth it, and it's a single short string.

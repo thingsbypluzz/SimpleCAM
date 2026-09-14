@@ -1,4 +1,4 @@
-# SimpleCAM
+# OnlyPaths
 
 Lekki, w pełni client-side generator G-code dla pojedynczych operacji
 wiercenia/kieszeniowania na frezarkach CNC (GRBL/Marlin/Mach3). Użytkownik
@@ -53,7 +53,7 @@ Wszystkie odłożone pomysły — techniczny dług ze stałym ID (`BL-#`) i
 przyszłe, duże operacje CNC (`OP-#`, każda wymaga własnej sesji
 `/grill-me` przed implementacją) — żyją w **`ideas.md`**, razem z
 regułą numeracji i zasadą synchronizacji z opublikowanym Artifactem
-("SimpleCAM Backlog"). `ideas.md` trzyma też nieuzgodnione jeszcze
+("OnlyPaths Backlog"). `ideas.md` trzyma też nieuzgodnione jeszcze
 wnioski z sesji `/grill-me` (rzeczy, które nie są jeszcze zaakceptowaną
 decyzją projektową).
 
@@ -200,7 +200,7 @@ decyzją projektową).
   punktu XY.
 - **Wrzeciono:** tylko `M3` (bez `M4`).
 - **Jedno narzędzie na wygenerowany plik** — brak zmiany narzędzia.
-- **Nazwa pliku wyjściowego:** `simplecam-<pattern>-<data>.gcode`
+- **Nazwa pliku wyjściowego:** `op-<pattern>-<data>.gcode`
   (`buildFilename()`, `src/lib/download.ts`) — `<pattern>` to
   `patternSlug(geometry.positioning)` dla Hole(s) albo odpowiednik z
   `outlineShapeSlug()` dla Outline, nie nazwa metody.
@@ -209,7 +209,7 @@ decyzją projektową).
 - Logika generowania G-code musi być **czystymi funkcjami TS**
   (`(params: WizardParams, machine: MachineSettings) => string[]`),
   całkowicie odizolowanymi od warstwy UI — patrz `src/lib/`.
-- **Język UI aplikacji: angielski** (SimpleCAM jest anglojęzyczna).
+- **Język UI aplikacji: angielski** (OnlyPaths jest anglojęzyczna).
   Komunikacja projektowa z użytkownikiem oraz dokumenty typu ten plik,
   `CHANGELOG.md` i `ideas.md` zostają po polsku.
 
@@ -367,8 +367,8 @@ pozostałych motywów, konsumowane wprost przez `shadow-[var(--glow-
 accent)]` w JSX, bez wpisu do `@theme`), `--scan` (CRT scanline, tylko
 Full Neon), `--ui-font` (Space Grotesk z Google Fonts w `index.html`,
 pozostałe motywy dziedziczą domyślny stos Tailwinda przez fallback w
-`var(--ui-font, ...)`). Wordmark "SimpleCAM" w Headerze jest
-dwukolorowy (`--wordmark-simple`/`--wordmark-cam`, + opcjonalny
+`var(--ui-font, ...)`). Wordmark "OnlyPaths" w Headerze jest
+dwukolorowy (`--wordmark-only`/`--wordmark-paths`, + opcjonalny
 `--wordmark-*-glow` text-shadow tylko dla Arcade) zamiast wprost
 `text-fg`/`text-accent`.
 
@@ -694,7 +694,7 @@ linią, więc user footer ląduje przed nim, nie po.
 ## Hosting testowy
 
 Aplikacja jest wdrażana ręcznie (nie CI/CD) na
-`https://simplecam.pluzz.pl` (subdomena na cPanelu użytkownika, Apache
+`https://onlypaths.pluzz.pl` (subdomena na cPanelu użytkownika, Apache
 2.4.68, SSL aktywny). `npm run deploy` buduje (`vite build`) i wysyła
 `dist/` przez FTP (`scripts/deploy.mjs`, biblioteka `basic-ftp`) —
 domyślnie explicit FTPS (`AUTH TLS`, port 21, `secure: true`);
@@ -704,10 +704,10 @@ kumulowałyby się bezterminowo) i nadpisuje własne pliki po nazwie
 (`index.html`, `.htaccess`, `robots.txt`, `favicon.svg`) —
 **świadomie NIE** pełny `clearWorkingDir()`: root subdomeny zawiera też
 pliki zarządzane przez cPanel (`cgi-bin/`, `php.ini`), których pełne
-wymiatanie by skasowało. Konto FTP (`claude@simplecam.pluzz.pl`) ma
+wymiatanie by skasowało. Konto FTP (`claude@onlypaths.pluzz.pl`) ma
 domyślnie katalog domowy ustawiony na podfolder `claude/` wewnątrz
 docroota — trzeba to poprawić w cPanelu, inaczej appka wychodzi pod
-`simplecam.pluzz.pl/claude/` zamiast pod rootem. Dane logowania w
+`onlypaths.pluzz.pl/claude/` zamiast pod rootem. Dane logowania w
 lokalnym `.env` (gitignored, szablon w `.env.example`) — czytane przez
 natywne `node --env-file=.env` (Node ≥20.6, brak potrzeby paczki
 `dotenv`). `public/robots.txt` (`Disallow: /`) blokuje indeksowanie na

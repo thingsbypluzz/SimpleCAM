@@ -27,7 +27,7 @@ export function loadMachineSettings(): MachineSettings {
       dialect: isDialect(parsed.dialect) ? parsed.dialect : DEFAULT_MACHINE_SETTINGS.dialect,
     }
   } catch (err) {
-    console.warn('SimpleCAM: could not read machine settings from localStorage', err)
+    console.warn('OnlyPaths: could not read machine settings from localStorage', err)
     return DEFAULT_MACHINE_SETTINGS
   }
 }
@@ -36,6 +36,6 @@ export function saveMachineSettings(settings: MachineSettings): void {
   try {
     localStorage.setItem(MACHINE_STORAGE_KEY, JSON.stringify(settings))
   } catch (err) {
-    console.warn('SimpleCAM: could not save machine settings to localStorage', err)
+    console.warn('OnlyPaths: could not save machine settings to localStorage', err)
   }
 }

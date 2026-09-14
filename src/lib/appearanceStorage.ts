@@ -39,7 +39,7 @@ export function loadAppearanceSettings(): AppearanceSettings {
         : DEFAULT_APPEARANCE_SETTINGS.grid3DLabelSize,
     }
   } catch (err) {
-    console.warn('SimpleCAM: could not read appearance settings from localStorage', err)
+    console.warn('OnlyPaths: could not read appearance settings from localStorage', err)
     return DEFAULT_APPEARANCE_SETTINGS
   }
 }
@@ -48,6 +48,6 @@ export function saveAppearanceSettings(settings: AppearanceSettings): void {
   try {
     localStorage.setItem(APPEARANCE_STORAGE_KEY, JSON.stringify(settings))
   } catch (err) {
-    console.warn('SimpleCAM: could not save appearance settings to localStorage', err)
+    console.warn('OnlyPaths: could not save appearance settings to localStorage', err)
   }
 }
