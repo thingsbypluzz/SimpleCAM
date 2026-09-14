@@ -180,6 +180,26 @@ faktycznym.
   Outline Rectangle Cornered pokrywała się z granicą materiału zamiast
   być przesunięta o promień narzędzia.** Pełny opis w `CHANGELOG.md`,
   `[0.15.2]`.
+- **`BL-35`** *(Otwarty)* — **Surface Unidirectional: reentry między
+  liniami rastra plunge'uje na Plunge Rate przez cały dystans od Safe Z,
+  zamiast tylko przez ostatni stepdown.** Dziś (`unidirectionalSurfaceToolpath()`,
+  `lib/surface.ts`) sekwencja między dwiema liniami tego samego poziomu
+  to: `G0 Z<safeZ>` (retrakt), `G0 X Y` (reposition), `G1 Z<toZ>
+  F<plungeRate>` — ten ostatni krok jedzie na Plunge Rate przez **cały**
+  dystans od Safe Z do `toZ`, nie tylko przez materiał. Użytkownik chce
+  rozbić to na dwa ruchy: `G0` w dół do wysokości jeden `stepdown` powyżej
+  docelowego `toZ` (żeby szybko przejechać pusty dystans), a dopiero
+  stamtąd `G1 Z<toZ> F<plungeRate>` na sam ostatni stepdown — ten sam
+  wzorzec "rapiduj do tuż-nad-materiałem, potem plunge tylko finalny
+  kawałek", co już istnieje gdzie indziej (np. przejście między
+  poziomami Z zjeżdża rapidem do `Start Z` przed właściwym Plunge/
+  Helixem). Cytat z rozmowy: "lower to StartZ+stepdown with G0, and only
+  from that Z height to the next one with G1 with Plunge Rate" — do
+  ustalenia przy realizacji, czy chodzi dosłownie o `Start Z + stepdown`
+  (stała wysokość, sensowna tylko dla pierwszego poziomu) czy o `toZ +
+  stepdown` (wysokość względna do bieżącego poziomu, poprawna na każdym
+  poziomie) — to drugie wydaje się fizycznie poprawniejsze i spójniejsze
+  z resztą appki.
 
 **`BL-17` zamknięte — "Interface Anatomy"**, Artifact z umownymi nazwami
 elementów UI, dziś aktywnie używany w `CLAUDE.md`:
