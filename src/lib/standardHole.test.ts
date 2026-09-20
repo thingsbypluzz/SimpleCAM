@@ -86,8 +86,12 @@ describe('generateStandardHole', () => {
         feeds: { stepdown: 1 },
       }),
     )
-    expect(lines).toContain('G0 X10 Y10')
-    expect(lines).toContain('G0 X-5 Y20')
+    // Each rapid lands on the actual cut start (custom point + default tool
+    // radius (holeDiameter=8, toolDiameter=3.175)/2 = 2.4125 on +X), not the
+    // raw point — assembleProgram no longer rapids to the raw point first
+    // (see program.ts), so this is the toolpath's own single leading rapid.
+    expect(lines).toContain('G0 X12.4125 Y10')
+    expect(lines).toContain('G0 X-2.5875 Y20')
     expect(lines.filter((l) => l.startsWith('G1 Z-'))).toHaveLength(2)
   })
 

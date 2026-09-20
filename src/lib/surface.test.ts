@@ -41,11 +41,10 @@ describe('generateSurfaceZigzag', () => {
     // straight Z line hides among the raster (those are all "G1 X..").
     expect(lines.filter((l) => l === 'G1 Z-1 F300')).toHaveLength(1)
 
-    // assembleProgram's own leading rapid + this toolpath's own leading
-    // rapid are the same (cx, cy) point — same duplicate-line convention
-    // Outline's single-shape generators already rely on (see
-    // outlineRectangle.test.ts's "single-shape cut" test).
-    expect(lines.filter((l) => l === 'G0 X0 Y0')).toHaveLength(2)
+    // Exactly one leading rapid to (cx, cy) — emitted by the toolpath
+    // function itself; assembleProgram no longer rapids to the raw point
+    // first (see program.ts), so there's no longer a duplicate here.
+    expect(lines.filter((l) => l === 'G0 X0 Y0')).toHaveLength(1)
   })
 
   it('multi-level: retracts all the way to Safe Z and repositions to the start corner between levels', () => {

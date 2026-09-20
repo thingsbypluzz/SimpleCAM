@@ -7,6 +7,34 @@ zgodne z [SemVer](https://semver.org/). Ten plik pozostaje głównym, czytelnym
 thingsbypluzz/SimpleCAM), ale to infrastruktura pod izolację pracy
 (branch/worktree per zadanie), nie zamiennik tego changeloga.
 
+## [0.16.9] — 2026-09-20
+
+### Naprawiono
+
+- **BUG: Hole(s)/Outline Circle — zbędny ruch przez środek otworu/kształtu
+  przed najazdem na realny punkt zejścia.** Zgłoszone przez użytkownika po
+  realnym przejeździe na maszynie: frez dojeżdżał najpierw do środka
+  otworu, dopiero potem doskakiwał do właściwego punktu zejścia (środek +
+  promień narzędzia na +X) — dodatkowy, fizycznie zbędny ruch, niewidoczny
+  też w 2D/3D Preview (kreskowana linia rapid łączyła środki otworów wprost,
+  nie pokazując tego drugiego doskoku). Przyczyna: `assembleProgram()`
+  (`lib/program.ts`) emitowała generyczny `G0 X.. Y..` do surowego punktu
+  wzorca *przed* wywołaniem `toolpathForPoint()` — a każda z 6 realnych
+  funkcji toolpatha (Helix/Standard Hole, Outline Rectangle Ramp/Standard,
+  Surface Zigzag/Unidirectional) i tak już emituje własną, pierwszą linię
+  `G0 X.. Y..` do faktycznego punktu startu cięcia. Dla Hole(s)/Outline
+  Circle ten punkt różni się od surowego środka o promień narzędzia — stąd
+  dwa kolejne, różne ruchy rapid zamiast jednego. Naprawione: usunięta
+  zbędna linia z `assembleProgram()`, każdy toolpath odpowiada teraz sam za
+  swój jedyny ruch startowy. 2D/3D Preview (`drawToolpath.ts`/
+  `buildScene.ts`) poprawione analogicznie — kreskowana linia rapid między
+  otworami łączy teraz realne punkty zejścia (środek + promień narzędzia),
+  nie surowe środki, więc podgląd znów zgadza się z realnym G-code. Dotyczy
+  też Outline Rectangle/Surface (ten sam mechanizm w `program.ts`), ale tam
+  surowy punkt wzorca i faktyczny start toolpatha zwykle się pokrywają, więc
+  zmiana usuwa tylko zduplikowaną, identyczną linię G-code — bez wpływu na
+  fizyczny ruch maszyny.
+
 ## [0.16.8] — 2026-09-20
 
 ### Dodano

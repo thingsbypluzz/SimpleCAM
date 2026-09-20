@@ -53,13 +53,20 @@ describe('generateCircleOutlineStandard — offset modes', () => {
 })
 
 describe('generateCircleOutlineStandard / Helix — single-shape cut, not a repeated pattern', () => {
-  it('rapids to the shape offset exactly once, regardless of geometry.positioning', () => {
-    const params = buildParams({ outline: { offsetX: 5, offsetY: -3 } })
+  it('rapids to the actual cut start exactly once, regardless of geometry.positioning', () => {
+    const params = buildParams({
+      outline: { offsetX: 5, offsetY: -3 },
+      output: { returnOriginEnd: false }, // otherwise buildFooter's own 'G0 X0 Y0' also matches the filter below
+    })
     // geometry (Hole(s) pattern) is untouched at its default 'single', but even a
     // multi-point pattern here must be ignored entirely by Outline generation.
+    // The rapid lands on the actual cut start (shape offset + tool radius),
+    // not the raw shape center — assembleProgram no longer rapids to the
+    // raw point first (see program.ts) — so this just confirms exactly one
+    // XY rapid is emitted, not the literal offset coordinate.
     const lines = generateCircleOutlineStandard(params, DEFAULT_MACHINE_SETTINGS)
-    const centerRapids = lines.filter((l) => l === 'G0 X5 Y-3')
-    expect(centerRapids).toHaveLength(1)
+    const xyRapids = lines.filter((l) => l.startsWith('G0 X'))
+    expect(xyRapids).toHaveLength(1)
   })
 
   it('helix variant produces one spiral turn per stepdown plus a flat finishing pass', () => {

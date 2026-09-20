@@ -61,11 +61,20 @@ export function buildFooter(params: WizardParams): string[] {
   return lines
 }
 
-// Shared assembly: user header, app header, then for each resolved point a
-// rapid move to its XY followed by the method-specific toolpath and a
-// retract to Safe Z, then app footer, user footer, and the dialect-forced
-// end-of-program code. `toolpathForPoint` only needs to know about
-// depth/feeds — positioning and Safe-Z bookkeeping are handled once, here.
+// Shared assembly: user header, app header, then for each resolved point the
+// method-specific toolpath followed by a retract to Safe Z, then app
+// footer, user footer, and the dialect-forced end-of-program code.
+//
+// This loop does NOT itself rapid to `point`'s raw XY before calling
+// `toolpathForPoint` — every real toolpath function already emits its own
+// leading `G0 X.. Y..` line to its actual cutting-start point. For a
+// circle/rectangle toolpath that start is offset from `point` (the
+// hole/shape center) by the tool radius, so an extra rapid here would
+// briefly visit the center first, then hop again to the real start — a
+// physically wasteful move a previous version of this function used to
+// emit, confirmed on a real machine. `toolpathForPoint` owns its own entry
+// rapid because only it knows where the real start is relative to the
+// point it's given; this loop only owns the Safe-Z retract between points.
 //
 // `points` defaults to Hole(s)' pattern resolution (`resolvePoints`) — every
 // existing Hole(s) call site omits it and is unaffected. Outline cutting
@@ -93,7 +102,6 @@ export function assembleProgram(
   lines.push(...buildHeader(params, machine.dialect))
 
   for (const point of points) {
-    lines.push(`G0 X${fmt(point.x)} Y${fmt(point.y)}`)
     lines.push(...toolpathForPoint(point.x, point.y, params))
     lines.push(`G0 Z${fmt(feeds.safeZ)}`)
   }

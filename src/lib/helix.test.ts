@@ -96,10 +96,14 @@ describe('generateHelix', () => {
         output: { interpolation: 'arc' },
       }),
     )
-    expect(lines).toContain('G0 X0 Y0')
-    expect(lines).toContain('G0 X50 Y0')
-    expect(lines).toContain('G0 X50 Y30')
-    expect(lines).toContain('G0 X0 Y30')
+    // Each rapid lands on the actual cut start (grid corner + default tool
+    // radius (holeDiameter=8, toolDiameter=3.175)/2 = 2.4125 on +X), not the
+    // raw corner — assembleProgram no longer rapids to the raw point first
+    // (see program.ts), so this is the toolpath's own single leading rapid.
+    expect(lines).toContain('G0 X2.4125 Y0')
+    expect(lines).toContain('G0 X52.4125 Y0')
+    expect(lines).toContain('G0 X52.4125 Y30')
+    expect(lines).toContain('G0 X2.4125 Y30')
     // 1 spiral turn + 1 flat pass per hole, 4 holes
     expect(lines.filter((l) => l.startsWith('G3'))).toHaveLength(8)
   })

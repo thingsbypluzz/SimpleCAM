@@ -96,11 +96,12 @@ describe('generateRectOutlineStandard / Ramp — single-shape cut, not a repeate
       output: { returnOriginEnd: false }, // otherwise buildFooter's own 'G0 X0 Y0' also matches the filter below
     })
     const lines = generateRectOutlineStandard(params, DEFAULT_MACHINE_SETTINGS)
-    // rectCornered's reference point IS corners[0], so assembleProgram's own
-    // pattern-point rapid and the toolpath's start rapid coincide exactly —
-    // unlike Circle Outline, where the pattern point (center) and the
-    // toolpath's own start (on the circle) are two different locations.
-    // Either way, no OTHER XY rapid should ever appear for a single shape.
+    // rectCornered's reference point IS corners[0], so the toolpath's own
+    // single leading rapid (assembleProgram no longer emits one of its own
+    // — see program.ts) already lands exactly on the outline's reference
+    // point — unlike Circle Outline, where the toolpath's actual start (on
+    // the circle) differs from the shape's center/offset reference. Either
+    // way, no OTHER XY rapid should ever appear for a single shape.
     const xyRapids = lines.filter((l) => l.startsWith('G0 X'))
     expect(xyRapids.length).toBeGreaterThan(0)
     expect(xyRapids.every((l) => l === 'G0 X5 Y-3')).toBe(true)

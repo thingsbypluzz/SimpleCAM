@@ -21,6 +21,16 @@ function buildParams(overrides: {
 // to the header/footer/user-code wrapping.
 const noopToolpath = () => ['; toolpath']
 
+// Stand-in that DOES emit its own leading rapid — every real toolpath
+// function (helix.ts/standardHole.ts/outlineRectangle.ts/surface.ts) does
+// this itself; assembleProgram no longer supplies a generic rapid to the
+// raw point before calling toolpathForPoint (see program.ts's comment on
+// why — visiting the point's raw XY first, then a real toolpath's own
+// different start XY, was a physically wasteful extra move on real
+// machines). Used by the "explicit points" tests below, which need a real
+// `G0 X.. Y..` line to assert against.
+const stubToolpath = (cx: number, cy: number) => [`G0 X${cx} Y${cy}`, '; toolpath']
+
 describe('endOfProgramCode', () => {
   it('is M30 for grbl and mach3, M2 for marlin', () => {
     expect(endOfProgramCode('grbl')).toBe('M30')
@@ -101,7 +111,7 @@ describe('assembleProgram — explicit points', () => {
   // also match the "G0 X" rapid filter below.
   it('uses the passed-in points instead of resolving geometry.positioning, for a single-shape cut', () => {
     const params = buildParams({ output: { returnOriginEnd: false } })
-    const lines = assembleProgram(params, DEFAULT_MACHINE_SETTINGS, noopToolpath, [{ x: 12, y: -7 }])
+    const lines = assembleProgram(params, DEFAULT_MACHINE_SETTINGS, stubToolpath, [{ x: 12, y: -7 }])
     expect(lines).toContain('G0 X12 Y-7')
     // Exactly one point visited, regardless of the default single-hole pattern also being one point —
     // confirm no dependency on resolvePoints(geometry) by using coordinates that pattern would never produce.
@@ -113,7 +123,7 @@ describe('assembleProgram — explicit points', () => {
       geometry: { positioning: 'grid', gridX: 10, gridY: 10 },
       output: { returnOriginEnd: false },
     })
-    const lines = assembleProgram(params, DEFAULT_MACHINE_SETTINGS, noopToolpath)
+    const lines = assembleProgram(params, DEFAULT_MACHINE_SETTINGS, stubToolpath)
     const rapids = lines.filter((l) => l.startsWith('G0 X'))
     expect(rapids).toHaveLength(4)
   })

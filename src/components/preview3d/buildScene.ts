@@ -951,9 +951,12 @@ function buildHolesPatternObjects(
 
   objects.push(...buildOffsetVectorObjects(geometry.offsetX, geometry.offsetY, theme, arrowSize))
 
-  // Rapid traverse between holes, at Safe Z
+  // Rapid traverse between holes, at Safe Z — through each hole's actual
+  // descent-start XY (center + toolRadius on +X), matching the real G-code
+  // (program.ts's assembleProgram no longer rapids to the raw center first)
+  // and rapidZLineObjects below, which already uses this same startX.
   if (showToolpath && points.length > 1) {
-    const rapidPoints = points.map((p) => toThree(p.x, p.y, feeds.safeZ))
+    const rapidPoints = points.map((p) => toThree(p.x + toolRadius, p.y, feeds.safeZ))
     objects.push(buildToolpathLine3D(rapidPoints, 'dashed', theme, span))
   }
 

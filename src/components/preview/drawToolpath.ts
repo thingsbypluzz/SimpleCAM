@@ -370,13 +370,17 @@ function drawHolesGeometry(
   const { points, holeRadius, toolPathRadius, params } = pattern
   const { geometry } = params
 
+  // Rapid traverse between holes, through each hole's actual descent-start
+  // XY (center + toolPathRadius on +X) — matches the real G-code
+  // (program.ts's assembleProgram no longer rapids to the raw center
+  // first) instead of stopping short of where the toolpath actually starts.
   if (showToolpath && points.length > 1) {
     ctx.strokeStyle = theme.rapid
     ctx.lineWidth = 1
     ctx.setLineDash([4, 4])
     ctx.beginPath()
     points.forEach((p, i) => {
-      const [px, py] = toPx(p.x, p.y)
+      const [px, py] = toPx(p.x + toolPathRadius, p.y)
       if (i === 0) ctx.moveTo(px, py)
       else ctx.lineTo(px, py)
     })
