@@ -1,7 +1,7 @@
 {
   "name": "simplecam",
   "private": true,
-  "version": "0.16.11",
+  "version": "0.17.1",
   "type": "module",
   "scripts": {
     "dev": "vite",

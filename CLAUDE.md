@@ -751,20 +751,63 @@ appki — jeśli coś jest, wizard od razu otwiera się na Kroku 4 z
 bannerem "Restored from your last session" (znika po pierwszej zmianie
 parametru albo Generate). Sloty `"1"`–`"5"` = nazwane presety, widoczne
 jako `[1]…[5]` w Preset Bar (Header) — puste wyszarzone/nieklikalne
-(numer slotu), zajęte klikalne (klik = load, natychmiastowy, bez
-potwierdzenia), pokazują ikonę metody/patternu, którą przechowują, z
-Icon Button "×" przy hoverze do usunięcia (z potwierdzeniem). Zapis do
-slotu — sekcja "Save to preset" na Kroku 4, z potwierdzeniem przy
-nadpisaniu zajętego. Etykieta slotu to auto-opis z parametrów
-(`presetLabel()`, `src/lib/presetLabel.ts`, np. `"5-Holes Circle •
-Helix • ⌀8mm"` dla Hole(s), `"Rectangle 50×30 (Inside) • Ramp"` dla
-Outline — pattern/kształt jako główna tożsamość, method drugorzędny).
-Migracja schematu: płytki merge per-sekcja z `DEFAULT_WIZARD_PARAMS`
-przy wczytaniu. Błędy (private mode, quota exceeded, uszkodzony JSON) —
-cichy fallback do wartości domyślnych + `console.warn`, appka nigdy się
-nie wywala. Świadomie poza zakresem: nazywanie presetów przez usera
-(tylko auto-opis), "Reset to defaults", grupowanie kilku operacji pod
-jednym presetem (sprzeczne z "jedno narzędzie na wygenerowany plik").
+(numer slotu), zajęte klikalne, pokazują ikonę metody/patternu, którą
+przechowują, z Icon Button "×" przy hoverze do usunięcia (z
+potwierdzeniem). Zapis do slotu — sekcja "Save to preset" na Kroku 4, z
+potwierdzeniem przy nadpisaniu zajętego (bez zmian, patrz `BL-25` niżej —
+ten mechanizm zostaje niezależny od Preset Bar). Etykieta slotu to
+auto-opis z parametrów (`presetLabel()`, `src/lib/presetLabel.ts`, np.
+`"5-Holes Circle • Helix • ⌀8mm"` dla Hole(s), `"Rectangle 50×30
+(Inside) • Ramp"` dla Outline — pattern/kształt jako główna tożsamość,
+method drugorzędny). Migracja schematu: płytki merge per-sekcja z
+`DEFAULT_WIZARD_PARAMS` przy wczytaniu. Błędy (private mode, quota
+exceeded, uszkodzony JSON) — cichy fallback do wartości domyślnych +
+`console.warn`, appka nigdy się nie wywala. Świadomie poza zakresem:
+nazywanie presetów przez usera (tylko auto-opis), "Reset to defaults",
+grupowanie kilku operacji pod jednym presetem (sprzeczne z "jedno
+narzędzie na wygenerowany plik").
+
+**Tryb edycji przywołanego presetu (`BL-25`).** Osobny Icon Button
+"ołówek" (`PencilIcon`) tuż obok "oka" Overlay w Header — globalny toggle
+`editModeEnabled`, ten sam wizualny wzorzec co oko (aktywny =
+`border-2 border-accent`), ta sama bordered ramka wokół grupy presetów
+teraz aktywuje się dla **obu** trybów. Poza Edit Mode Preset Bar to
+najprostsze możliwe zachowanie: klik na zajęty slot = zwykły,
+natychmiastowy load, bez żadnej pamięci który slot był ostatnio
+załadowany. W Edit Mode klikanie w presety działa jak **radio button**:
+klik na zajęty slot ładuje jego parametry do wizarda I jednocześnie
+uzbraja go do live-save w jednej akcji (jawny toggle ołówka to już
+wystarczająco świadomy gest, więc load+arm naraz jest bezpieczne) — każda
+kolejna zmiana parametru zapisuje się natychmiast z powrotem do tego
+slotu, bez czekania na Generate (inaczej niż ukryty auto-save slotu
+`"0"`, który zostaje Generate-gated bez zmian). Klik na INNY zajęty slot
+przełącza wybór (ładuje nowy, cicho rozbraja poprzedni — bez
+potwierdzenia, poprzedni jest już bezpiecznie zsynchronizowany
+live-save'ami); klik na już uzbrojony slot go odznacza (`editingSlot =
+null`), ale Edit Mode zostaje włączony — "nic nie wybrane" to legalny
+stan trybu, nie tylko przejściowy. Live-save pisze tylko, gdy bieżące
+parametry przechodzą tę samą `isGeometryValid`, którą sprawdza przycisk
+Generate — nigdy nie zapisuje transientnego/połamanego stanu (np. pustego
+pola w trakcie wpisywania); miękkie `fitWarnings` tego nie blokują.
+Wskaźnik wyboru na ikonie uzbrojonego slotu to dokładnie ten sam wzorzec
+co zaznaczenie w Overlay (`border-2 border-accent` + checkmark-badge w
+rogu), nie osobny styl — to naprawdę ta sama "wybrane w trybie X"
+semantyka. Stały napis po lewej stronie grupy ikon Preset Bar ma dwa
+stany: "Edit Mode — select a preset" (neutralny kolor), dopóki nic nie
+jest uzbrojone, potem "Auto-save Mode Enabled" — kolor (nie treść)
+zmienia się na `status-error`, gdy bieżące parametry akurat nie
+przechodzą walidacji (live-save w tym momencie nic nie zapisuje). Edit
+Mode i Overlay są wzajemnie wykluczające się i symetryczne: włączenie
+jednego automatycznie wyłącza drugi (czyści `overlaySlots` albo
+`editingSlot` odpowiednio) — oba przyciski zawsze klikalne, nigdy
+`disabled`. W przeciwieństwie do Overlay, Edit Mode **nie** wpływa na
+`canGenerate` — nie ukrywa żywego wzorca jak Overlay
+(`showActivePattern`), więc Generate działa normalnie niezależnie od
+niego. Usunięcie uzbrojonego slotu czyści wybór, ale zostawia sam Edit
+Mode włączonym. Stan `editModeEnabled`/`editingSlot` żyje wyłącznie w
+pamięci (nie w `localStorage`) — odświeżenie strony zawsze startuje
+wyłączone/rozbrojone. Ręczna siatka "Save current settings as preset" w
+Kroku 4 zostaje bez zmian, bez żadnej interakcji z trybem edycji.
 
 ### `G4 P<sekundy>` i `buildFooter()`
 

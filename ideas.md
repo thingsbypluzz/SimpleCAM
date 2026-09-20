@@ -108,16 +108,10 @@ faktycznym.
   "unikalne IP" to tylko przybliżenie "unikalnych ludzi" (NAT zaniża,
   rotacja IP zawyża), oraz implikacje RODO przy liczeniu po IP (strona
   hostowana na `.pl`).
-- **`BL-25`** *(Otwarty)* — **Tryb edycji przywołanego presetu.** Pomysł: wczytanie
-  presetu z Preset Bar podświetla/zaznacza go; póki jest zaznaczony,
-  dalsze zmiany zapisują się automatycznie z powrotem do tego slotu
-  presetu, zamiast tylko do ukrytego slotu sesji (dzisiejsze zachowanie
-  auto-save wyłącznie do slotu `"0"`, `lib/storage.ts`). Ponowny klik w
-  ten sam preset odznacza go, wracając do dzisiejszego zachowania (zmiany
-  trafiają tylko do slotu sesji 0). To realna zmiana ustalonej, świadomej
-  decyzji projektowej (presety są dziś jawnie zapisywane wyłącznie
-  ręcznie, bez auto-nadpisywania) — wymaga pełnej dyskusji przed
-  dopracowaniem zakresu, nie drobna poprawka.
+- **`BL-25`** *(Zrealizowany, 2026-09-20)* — **Tryb edycji przywołanego
+  presetu.** Zakres dopracowany sesją `/grill-me`, wdrożony tego samego
+  dnia — pełny opis w `CHANGELOG.md`, `[0.17.0]`, i w `CLAUDE.md` (sekcja
+  "localStorage — auto-save + presety").
 - **`BL-26`** *(Otwarty)* — **Przytrzymanie przycisku `NumberInput` (auto-repeat).**
   Dziś klik na strzałkę góra/dół (`src/components/wizard/NumberInput.tsx`,
   `useNumberField.onAdjust`) to zawsze dokładnie jeden krok — świadomie
@@ -174,6 +168,18 @@ faktycznym.
   zawsze na `Z=0`, wysokość zawsze `totalDepth` — `Start Z` to margines
   najazdu na posuwie roboczym, nie wysokość materiału. Pełny opis:
   `CHANGELOG.md`, `[0.16.5]`.
+- **`BL-38`** *(Otwarty)* 🟠 — **Przycisk włącz/wyłącz etykiety siatki w 3D
+  Preview, obok Hide Stock/Hide Toolpath.** Dziś jedyna kontrolka to
+  checkbox "Show grid coordinate labels" w Settings → Appearance
+  (`grid3DLabelsEnabled`, `AppearanceSettings`, `src/types/appearance.ts`)
+  — pomysł: szybszy przełącznik wprost w lewym górnym rogu 3D Preview,
+  obok istniejących przycisków `BL-36` (Hide Stock/Hide Toolpath). Nie
+  trywialne dopisanie: `BL-36`'owe przełączniki to lokalny, nietrwały
+  stan widoku (dzielony między zakładkami 2D/3D), a `grid3DLabelsEnabled`
+  to trwałe pole `AppearanceSettings`, dotyczące wyłącznie 3D — wymaga
+  decyzji, jak pogodzić te dwa różne kształty/zakresy stanu (i czy nowy
+  przycisk pisze do tego samego `localStorage`, czy tylko lokalnie
+  nadpisuje na czas sesji).
 
 elementów UI, dziś aktywnie używany w `CLAUDE.md`:
 **<https://claude.ai/code/artifact/ea21c02e-41ed-4bb5-90ec-48ae9a61c23e>**.

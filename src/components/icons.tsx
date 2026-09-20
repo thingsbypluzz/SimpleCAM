@@ -240,6 +240,17 @@ export function EyeIcon({ className }: IconProps) {
   )
 }
 
+// BL-25: Edit Mode toggle, next to EyeIcon — same outline construction
+// (classic pencil silhouette: angled shaft + tip).
+export function PencilIcon({ className }: IconProps) {
+  return (
+    <svg {...base} className={className}>
+      <path d="M15.5 4.5 19.5 8.5 8 20H4v-4Z" />
+      <path d="M13.5 6.5 17.5 10.5" />
+    </svg>
+  )
+}
+
 export function WarningIcon({ className }: IconProps) {
   return (
     <svg {...base} className={className}>
