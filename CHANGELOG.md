@@ -7,6 +7,32 @@ zgodne z [SemVer](https://semver.org/). Ten plik pozostaje głównym, czytelnym
 thingsbypluzz/SimpleCAM), ale to infrastruktura pod izolację pracy
 (branch/worktree per zadanie), nie zamiennik tego changeloga.
 
+## [0.17.0] — 2026-09-20
+
+### Dodano
+
+- **Tryb edycji przywołanego presetu (`BL-25`).** Zakres dopracowany
+  wcześniej sesją `/grill-me`. Klikanie w Preset Bar (Header) ma teraz dwa
+  stopnie: pierwszy klik na nieaktywny slot to zwykły, natychmiastowy load
+  bez ryzyka (bez zmian). Drugi (i każdy kolejny) klik na TEN SAM, już
+  aktywny slot **nie przeładowuje** parametrów — przełącza tryb edycji dla
+  tego slotu: uzbrojony, każda kolejna zmiana parametru zapisuje się
+  natychmiast z powrotem do tego slotu, live, bez czekania na Generate
+  (ukryty auto-save slotu `"0"` zostaje bez zmian, dalej Generate-gated).
+  Sticky — rozbrojenie nie resetuje "aktywnego" slotu, więc kolejny klik na
+  tę samą ikonę od razu uzbraja ponownie; klik na INNY zajęty slot ładuje
+  go i cicho rozbraja poprzedni. Live-save bramkowany tą samą
+  `isGeometryValid`, którą sprawdza Generate — nigdy nie zapisuje
+  transientnego/połamanego stanu. Wskaźnik: trwały pierścień na ikonie
+  uzbrojonego slotu (reużywa styl 1.5s flasha po zwykłym load, bez
+  zanikania) plus stały napis "Auto-save Mode Enabled" po lewej stronie
+  Preset Bar, którego kolor zmienia się na `status-error` w momentach, gdy
+  bieżące parametry nie przechodzą walidacji. Włączenie Overlay albo
+  usunięcie uzbrojonego slotu automatycznie rozbraja tryb edycji. Stan
+  żyje wyłącznie w pamięci — odświeżenie strony zawsze startuje
+  rozbrojone. Ręczna siatka "Save to preset" w Kroku 4 bez zmian. Pełny
+  zapis decyzji: `CLAUDE.md`, sekcja "localStorage — auto-save + presety".
+
 ## [0.16.11] — 2026-09-20
 
 ### Zmieniono

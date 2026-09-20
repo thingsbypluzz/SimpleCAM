@@ -751,20 +751,52 @@ appki — jeśli coś jest, wizard od razu otwiera się na Kroku 4 z
 bannerem "Restored from your last session" (znika po pierwszej zmianie
 parametru albo Generate). Sloty `"1"`–`"5"` = nazwane presety, widoczne
 jako `[1]…[5]` w Preset Bar (Header) — puste wyszarzone/nieklikalne
-(numer slotu), zajęte klikalne (klik = load, natychmiastowy, bez
-potwierdzenia), pokazują ikonę metody/patternu, którą przechowują, z
-Icon Button "×" przy hoverze do usunięcia (z potwierdzeniem). Zapis do
-slotu — sekcja "Save to preset" na Kroku 4, z potwierdzeniem przy
-nadpisaniu zajętego. Etykieta slotu to auto-opis z parametrów
-(`presetLabel()`, `src/lib/presetLabel.ts`, np. `"5-Holes Circle •
-Helix • ⌀8mm"` dla Hole(s), `"Rectangle 50×30 (Inside) • Ramp"` dla
-Outline — pattern/kształt jako główna tożsamość, method drugorzędny).
-Migracja schematu: płytki merge per-sekcja z `DEFAULT_WIZARD_PARAMS`
-przy wczytaniu. Błędy (private mode, quota exceeded, uszkodzony JSON) —
-cichy fallback do wartości domyślnych + `console.warn`, appka nigdy się
-nie wywala. Świadomie poza zakresem: nazywanie presetów przez usera
-(tylko auto-opis), "Reset to defaults", grupowanie kilku operacji pod
-jednym presetem (sprzeczne z "jedno narzędzie na wygenerowany plik").
+(numer slotu), zajęte klikalne, pokazują ikonę metody/patternu, którą
+przechowują, z Icon Button "×" przy hoverze do usunięcia (z
+potwierdzeniem). Zapis do slotu — sekcja "Save to preset" na Kroku 4, z
+potwierdzeniem przy nadpisaniu zajętego (bez zmian, patrz `BL-25` niżej —
+ten mechanizm zostaje niezależny od Preset Bar). Etykieta slotu to
+auto-opis z parametrów (`presetLabel()`, `src/lib/presetLabel.ts`, np.
+`"5-Holes Circle • Helix • ⌀8mm"` dla Hole(s), `"Rectangle 50×30
+(Inside) • Ramp"` dla Outline — pattern/kształt jako główna tożsamość,
+method drugorzędny). Migracja schematu: płytki merge per-sekcja z
+`DEFAULT_WIZARD_PARAMS` przy wczytaniu. Błędy (private mode, quota
+exceeded, uszkodzony JSON) — cichy fallback do wartości domyślnych +
+`console.warn`, appka nigdy się nie wywala. Świadomie poza zakresem:
+nazywanie presetów przez usera (tylko auto-opis), "Reset to defaults",
+grupowanie kilku operacji pod jednym presetem (sprzeczne z "jedno
+narzędzie na wygenerowany plik").
+
+**Tryb edycji przywołanego presetu (`BL-25`).** Klikanie w Preset Bar ma
+dwa stopnie. Pierwszy klik na slot, który nie jest aktualnie "aktywny"
+(`App.tsx`, stan `loadedSlot`), to zwykły load — natychmiastowy, bez
+potwierdzenia, dokładnie jak przed `BL-25`, zero ryzyka. Drugi (i każdy
+kolejny) klik na TEN SAM, już aktywny slot **nie przeładowuje** parametrów
+— zamiast tego przełącza tryb edycji (`editingSlot`) dla tego slotu w tę
+i z powrotem: uzbrojony → każda kolejna zmiana parametru zapisuje się
+natychmiast do tego slotu (live, bez czekania na Generate — inaczej niż
+ukryty auto-save slotu `"0"`, który zostaje Generate-gated bez zmian).
+Zachowanie jest "sticky" — rozbrojenie nie zapomina, który slot jest
+aktywny, więc kolejny klik na tę samą ikonę od razu uzbraja ponownie;
+tylko kliknięcie w INNY zajęty slot ładuje go i cicho rozbraja poprzedni
+(bez potwierdzenia — poprzedni jest już bezpiecznie zsynchronizowany
+live-save'ami). Live-save pisze tylko, gdy bieżące parametry przechodzą
+tę samą `isGeometryValid`, którą sprawdza przycisk Generate — nigdy nie
+zapisuje transientnego/połamanego stanu (np. pustego pola w trakcie
+wpisywania); miękkie `fitWarnings` tego nie blokują. Wskaźnik: pierścień
+na ikonie uzbrojonego slotu (ten sam styl co 1.5s flash `justLoadedSlot`
+po zwykłym load, ale bez zanikania, dopóki edycja trwa) plus stały napis
+"Auto-save Mode Enabled" po lewej stronie grupy ikon Preset Bar — kolor
+tekstu (nie treść) zmienia się na `status-error`, gdy bieżące parametry
+akurat nie przechodzą walidacji (live-save w tym momencie nic nie
+zapisuje). Włączenie Overlay (`overlayEnabled`) automatycznie rozbraja
+tryb edycji — te dwa mechanizmy nigdy nie działają naraz, Overlay
+całkowicie przejmuje semantykę kliknięcia w Preset Bar. Usunięcie
+uzbrojonego slotu też automatycznie rozbraja. Stan `loadedSlot`/
+`editingSlot` żyje wyłącznie w pamięci (nie w `localStorage`) —
+odświeżenie strony zawsze startuje rozbrojone. Ręczna siatka "Save
+current settings as preset" w Kroku 4 zostaje bez zmian, bez żadnej
+interakcji z trybem edycji.
 
 ### `G4 P<sekundy>` i `buildFooter()`
 

@@ -229,6 +229,16 @@ function App() {
   const [stockVisible, setStockVisible] = useState(true)
   const [toolpathVisible, setToolpathVisible] = useState(true)
   const [justLoadedSlot, setJustLoadedSlot] = useState<PresetSlotId | null>(null)
+  // BL-25: sticky "which preset was last loaded" — a click on this same
+  // slot toggles edit mode in place instead of reloading; a click on any
+  // OTHER slot loads it fresh and drops edit mode (see handlePresetSlotClick
+  // below). Distinct from justLoadedSlot, which is only the transient 1.5s
+  // load-flash and resets on its own.
+  const [loadedSlot, setLoadedSlot] = useState<PresetSlotId | null>(null)
+  // BL-25: the preset slot currently armed for live auto-save (subset of
+  // loadedSlot — null unless loadedSlot === editingSlot). Session-only,
+  // never persisted — always starts unarmed on reload.
+  const [editingSlot, setEditingSlot] = useState<PresetSlotId | null>(null)
 
   // Any parameter change invalidates the last generated snapshot — Copy/
   // Download must not act on G-code that no longer matches the current
@@ -274,6 +284,20 @@ function App() {
           isTabWidthValid(params.geometry)
   const fitWarnings = machineFitWarnings(params, machine)
   const step4BadgeInfo = step4Badge(generatedGCode, fitWarnings)
+
+  // BL-25: while a preset slot is armed for edit mode, every param change
+  // writes straight back to it — live, no Generate click needed (unlike the
+  // hidden session slot "0", which stays Generate-gated, see handleGenerate
+  // above). Skips the write while params are invalid so a mid-edit/broken
+  // value can never overwrite the saved preset; skipped moments are what
+  // turns the "Auto-save Mode Enabled" banner red below. Doesn't depend on
+  // presetSlots to avoid re-triggering itself off its own setPresetSlots
+  // call.
+  useEffect(() => {
+    if (!editingSlot || !isGeometryValid) return
+    saveSlot(editingSlot, params)
+    setPresetSlots((prev) => ({ ...prev, [editingSlot]: params }))
+  }, [editingSlot, params, isGeometryValid])
   // Memoized: this feeds Scene3D's content-rebuild effect deps, which
   // disposes and rebuilds all THREE geometry on reference change — without
   // memoizing, a fresh array literal on every App render (e.g. every
@@ -340,13 +364,27 @@ function App() {
     return true
   }
 
-  const handleLoadPreset = (id: PresetSlotId) => {
+  // BL-25: first click on a slot that isn't already loaded behaves exactly
+  // like the old handleLoadPreset (load, no edit mode). A click on the
+  // ALREADY-loaded slot instead toggles edit mode in place — it does NOT
+  // reload from storage, so any tweaks made since the original load become
+  // the baseline that starts live-saving (see the auto-save effect below).
+  // Sticky: toggling off doesn't forget loadedSlot, so a further click on
+  // the same icon just re-arms — only loading a DIFFERENT slot changes
+  // which one is "active".
+  const handlePresetSlotClick = (id: PresetSlotId) => {
     const preset = presetSlots[id]
     if (!preset) return
+    if (loadedSlot === id) {
+      setEditingSlot((prev) => (prev === id ? null : id))
+      return
+    }
     setParams(preset)
     setGeneratedGCode(null)
     setShowRestoredBanner(false)
     setActiveStep(4)
+    setLoadedSlot(id)
+    setEditingSlot(null)
     // Brief flash on the loaded preset's icon — confirms "this is what just
     // got loaded" (same 1.5s timing convention as "Copied!"/"✓ Saved").
     setJustLoadedSlot(id)
@@ -364,8 +402,12 @@ function App() {
 
   // Turning overlay off also clears the selection — re-enabling starts from
   // a clean slate rather than silently resuming a stale comparison set.
+  // Turning overlay ON drops any armed BL-25 edit mode first — overlay
+  // clicks mean something else entirely, the two mechanisms never run at
+  // the same time.
   const handleToggleOverlay = () => {
     if (overlayEnabled) setOverlaySlots(new Set())
+    else setEditingSlot(null)
     setOverlayEnabled((v) => !v)
   }
 
@@ -379,6 +421,9 @@ function App() {
       delete next[id]
       return next
     })
+    // BL-25: the deleted slot can no longer be a live-save target.
+    if (loadedSlot === id) setLoadedSlot(null)
+    if (editingSlot === id) setEditingSlot(null)
   }
 
   return (
@@ -405,6 +450,19 @@ function App() {
             overlayEnabled ? 'border-border' : 'border-transparent',
           ].join(' ')}
         >
+          {/* BL-25: persistent while any slot is armed for edit mode — the
+              ring on that slot's icon shows WHICH one, this shows THAT a
+              live-save session is running at all. Color alone flags
+              moments the current params fail validation (live-save is
+              skipped then) — text stays constant, so it can't be misread
+              as "nothing is happening". */}
+          {editingSlot && !overlayEnabled && (
+            <span
+              className={`text-xs font-semibold whitespace-nowrap ${isGeometryValid ? 'text-status-success' : 'text-status-error'}`}
+            >
+              Auto-save Mode Enabled
+            </span>
+          )}
           {PRESET_SLOT_IDS.map((id) => {
             const preset = presetSlots[id]
             const PresetIcon = preset
@@ -415,7 +473,11 @@ function App() {
                   : positioningIcon(preset.geometry.positioning)
               : null
             const isOverlaySelected = overlayEnabled && overlaySlots.has(id)
-            const isJustLoaded = !overlayEnabled && justLoadedSlot === id
+            const isEditingSlot = !overlayEnabled && editingSlot === id
+            // BL-25: the persistent edit-mode ring wins over the transient
+            // load-flash if both would otherwise apply on the same slot.
+            const isJustLoaded = !overlayEnabled && justLoadedSlot === id && !isEditingSlot
+            const showRing = isJustLoaded || isEditingSlot
             const baseClassName = !preset
               ? 'flex h-11 w-11 cursor-default items-center justify-center rounded-md border border-empty-border text-xs font-semibold text-empty-fg'
               : isOverlaySelected
@@ -425,16 +487,20 @@ function App() {
               <div key={id} className="group relative">
                 <button
                   type="button"
-                  onClick={() => (overlayEnabled ? handleToggleOverlaySlot(id) : handleLoadPreset(id))}
+                  onClick={() => (overlayEnabled ? handleToggleOverlaySlot(id) : handlePresetSlotClick(id))}
                   disabled={!preset}
                   title={
                     !preset
                       ? `Preset [${id}] — empty`
                       : overlayEnabled
                         ? `${isOverlaySelected ? 'Remove' : 'Add'} preset [${id}] — ${presetLabel(preset)} ${isOverlaySelected ? 'from' : 'to'} overlay`
-                        : `Load preset [${id}] — ${presetLabel(preset)}`
+                        : isEditingSlot
+                          ? `Editing preset [${id}] — ${presetLabel(preset)} (auto-saving, click to stop)`
+                          : loadedSlot === id
+                            ? `Preset [${id}] — ${presetLabel(preset)} (click again to edit & auto-save)`
+                            : `Load preset [${id}] — ${presetLabel(preset)}`
                   }
-                  className={`${baseClassName} transition-shadow duration-700${isJustLoaded ? ' ring-2 ring-accent ring-offset-2 ring-offset-bg' : ''}`}
+                  className={`${baseClassName} transition-shadow duration-700${showRing ? ' ring-2 ring-accent ring-offset-2 ring-offset-bg' : ''}`}
                 >
                   {PresetIcon ? <PresetIcon className="h-7 w-7" /> : id}
                 </button>
