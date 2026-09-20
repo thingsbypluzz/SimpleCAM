@@ -54,6 +54,7 @@ import {
 } from './lib/storage'
 import { loadAppearanceSettings, saveAppearanceSettings } from './lib/appearanceStorage'
 import { loadMachineSettings, saveMachineSettings } from './lib/machineStorage'
+import { loadToolDiameterOptions, saveToolDiameterOptions } from './lib/toolDiameterStorage'
 import {
   isCircleHoleCountValid,
   isOutlineTabHeightValid,
@@ -71,6 +72,7 @@ import {
 } from './lib/validation'
 import type { AppearanceSettings } from './types/appearance'
 import type { ThemeId } from './types/theme'
+import type { ToolDiameterOption } from './types/toolDiameters'
 import { DEFAULT_WIZARD_PARAMS, type WizardParams } from './types/wizard'
 
 const TOTAL_STEPS = 4
@@ -218,6 +220,7 @@ function App() {
   const [generatedGCode, setGeneratedGCode] = useState<string[] | null>(null)
   const [previewTab, setPreviewTab] = useState<'2d' | '3d' | 'gcode'>('3d')
   const [machine, setMachine] = useState(loadMachineSettings)
+  const [toolDiameters, setToolDiameters] = useState(loadToolDiameterOptions)
   const [isSettingsOpen, setIsSettingsOpen] = useState(false)
   const [overlayEnabled, setOverlayEnabled] = useState(false)
   const [overlaySlots, setOverlaySlots] = useState<Set<PresetSlotId>>(new Set())
@@ -299,6 +302,14 @@ function App() {
   const handleSaveAppearance = (next: AppearanceSettings) => {
     saveAppearanceSettings(next)
     setAppearance(next)
+  }
+
+  // Unlike machine settings (dialect/header/footer), this list never feeds
+  // the G-code engine — it's only the enumerable choice set for the Tool
+  // Diameter dropdowns — so no generatedGCode invalidation is needed here.
+  const handleSaveToolDiameters = (next: ToolDiameterOption[]) => {
+    saveToolDiameterOptions(next)
+    setToolDiameters(next)
   }
 
   // Generate is also the auto-save trigger for the hidden slot 0 — see
@@ -531,7 +542,12 @@ function App() {
                     <Step1Positioning params={params} onChange={updateParams} />
                   )}
                   {step.id === 2 && (
-                    <Step2Geometry params={params} onChange={updateParams} machine={machine} />
+                    <Step2Geometry
+                      params={params}
+                      onChange={updateParams}
+                      machine={machine}
+                      toolDiameters={toolDiameters}
+                    />
                   )}
                   {step.id === 3 && (
                     <Step3Feeds params={params} onChange={updateParams} machine={machine} />
@@ -921,6 +937,8 @@ function App() {
           onSave={handleSaveMachine}
           appearance={appearance}
           onSaveAppearance={handleSaveAppearance}
+          toolDiameters={toolDiameters}
+          onSaveToolDiameters={handleSaveToolDiameters}
           onClose={() => setIsSettingsOpen(false)}
         />
       )}

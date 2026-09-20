@@ -3,7 +3,8 @@ import type { MachineSettings } from '../../types/machine'
 import { isSurfaceHelixRadiusValid, isSurfaceStepoverValid } from '../../lib/validation'
 import { surfaceStepoverMm } from '../../lib/surfaceGeometry'
 import { fmt } from '../../lib/format'
-import { TOOL_DIAMETER_OPTIONS } from '../../config/toolDiameterOptions'
+import { resolveToolDiameterSelectOptions } from '../../lib/toolDiameterOptions'
+import type { ToolDiameterOption } from '../../types/toolDiameters'
 import { FieldRow, inputClass } from './FieldRow'
 import { NumberInput } from './NumberInput'
 import { SurfaceMethodPicker } from './SurfaceMethodPicker'
@@ -13,6 +14,7 @@ interface Step2GeometrySurfaceProps {
   params: WizardParams
   onChange: (patch: Partial<WizardParams>) => void
   machine: MachineSettings
+  toolDiameters: ToolDiameterOption[]
 }
 
 // Same compact toggle style as OffsetModePicker.tsx/MethodPicker.tsx — kept
@@ -78,7 +80,7 @@ function ZTransitionModeToggle({ value, onChange }: { value: ZTransitionMode; on
 // (FieldRow/useNumberField, flex-row pairs, border-t section dividers). No
 // Tabs section — tabs don't apply to Surface at all (it never isolates or
 // cuts through a piece).
-export function Step2GeometrySurface({ params, onChange, machine }: Step2GeometrySurfaceProps) {
+export function Step2GeometrySurface({ params, onChange, machine, toolDiameters }: Step2GeometrySurfaceProps) {
   const { surface } = params
 
   const updateSurface = (patch: Partial<WizardParams['surface']>) => onChange({ surface: { ...surface, ...patch } })
@@ -100,7 +102,7 @@ export function Step2GeometrySurface({ params, onChange, machine }: Step2Geometr
             value={surface.toolDiameter}
             onChange={(e) => updateSurface({ toolDiameter: Number(e.target.value) })}
           >
-            {TOOL_DIAMETER_OPTIONS.map((opt) => (
+            {resolveToolDiameterSelectOptions(toolDiameters, surface.toolDiameter).map((opt) => (
               <option key={opt.value} value={opt.value}>
                 {opt.label}
               </option>

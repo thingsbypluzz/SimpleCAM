@@ -1,5 +1,6 @@
 import type { WizardParams } from '../../types/wizard'
 import type { MachineSettings } from '../../types/machine'
+import type { ToolDiameterOption } from '../../types/toolDiameters'
 import { Step2GeometryHoles } from './Step2GeometryHoles'
 import { Step2GeometryOutline } from './Step2GeometryOutline'
 import { Step2GeometrySurface } from './Step2GeometrySurface'
@@ -8,6 +9,7 @@ interface Step2GeometryProps {
   params: WizardParams
   onChange: (patch: Partial<WizardParams>) => void
   machine: MachineSettings
+  toolDiameters: ToolDiameterOption[]
 }
 
 // Thin router on params.operation — each operation's Step 2 fields are

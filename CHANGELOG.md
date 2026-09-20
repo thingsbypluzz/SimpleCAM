@@ -7,6 +7,35 @@ zgodne z [SemVer](https://semver.org/). Ten plik pozostaje głównym, czytelnym
 thingsbypluzz/SimpleCAM), ale to infrastruktura pod izolację pracy
 (branch/worktree per zadanie), nie zamiennik tego changeloga.
 
+## [0.16.8] — 2026-09-20
+
+### Dodano
+
+- **`BL-19` zamknięte — własna lista średnic narzędzia w Settings.**
+  Dotąd `TOOL_DIAMETER_OPTIONS` (10 wpisów: 1-8mm całe mm + 1/8"/1/4")
+  była zaszyta na sztywno w kodzie i identyczna dla każdego użytkownika.
+  Nowa sekcja Settings Nav "Tool Diameters" (między "Tabs" a
+  "Appearance") pozwala dodawać/usuwać wartości — dodane wpisy dostają
+  auto-generowaną etykietę `"<wartość> mm"` (`fmt()`, bez wolnego pola
+  etykiety), lista zawsze posortowana rosnąco, blokada usunięcia
+  ostatniego pozostałego wpisu (dropdown nigdy nie może zostać pusty),
+  arbitralny sufit `MAX_TOOL_DIAMETER_COUNT = 30`
+  (`isToolDiameterEntryValid()`, `lib/validation.ts`) i przycisk "Reset
+  to Default" z potwierdzeniem (`window.confirm`, ten sam wzorzec co
+  usuwanie presetu). Trwałe w osobnym kluczu `localStorage`
+  (`simplecam.toolDiameters`, `lib/toolDiameterStorage.ts`) — osobno od
+  `simplecam.machine`/`simplecam.appearance`, bo to rosnąca lista, nie
+  stały zestaw pól. Pole `toolDiameter` (Hole(s)/Outline/Surface) i tak
+  było zawsze zwykłą, niewalidowaną liczbą — żaden z
+  `isToolDiameterValid`/`isOutlineToolDiameterValid`/
+  `isSurfaceToolDiameterValid` nie sprawdzał przynależności do listy —
+  więc edycja listy nigdy nie wymaga migracji zapisanych presetów ani
+  auto-save. Żeby dropdown nie rozjechał się wizualnie z realnie
+  wybraną wartością, gdy ta zniknie z listy (np. usunięta pozycja, na
+  której stoi zapisany preset), `resolveToolDiameterSelectOptions()`
+  (`lib/toolDiameterOptions.ts`) dokleja jedną syntetyczną opcję dla
+  aktualnej wartości zamiast blokować usuwanie w Settings.
+
 ## [0.16.7] — 2026-09-20
 
 ### Zmienione

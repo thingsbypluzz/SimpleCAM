@@ -838,6 +838,13 @@ src/
                               `grid3DLabelSize` (`Grid3DLabelSize`, tylko
                               3D Preview) — osobny od `machine.ts`:
                               preferencje UI, nie fizyczna cecha maszyny.
+  types/toolDiameters.ts    — `ToolDiameterOption` (`{value, label}`) +
+                              `DEFAULT_TOOL_DIAMETER_OPTIONS` (`BL-19`) —
+                              lista dropdowna Tool Diameter na Kroku 2,
+                              edytowalna w Settings → Tool Diameters.
+                              Osobny plik/klucz `localStorage` od
+                              `machine.ts`/`appearance.ts`: rosnąca lista,
+                              nie stały zestaw pól.
   index.css                  — `@import "tailwindcss"` + definicje motywów
                               (`:root`/`.dark`/`[data-theme="..."]` bloki
                               CSS custom properties, `@theme inline`
@@ -892,12 +899,17 @@ src/
                               (Rectangle Cornered/Centered),
                               `surfaceShapeLabel()`/`surfaceShapeSlug()`/
                               `surfaceShapeLines()`/`surfaceSummary()`.
-  config/toolDiameterOptions.ts — `TOOL_DIAMETER_OPTIONS`, współdzielone
-                              przez Step 2 Hole(s) i Step 2 Outline.
-  components/SettingsModal.tsx — Settings Modal. Pięć Settings Nav
+  components/SettingsModal.tsx — Settings Modal. Sześć Settings Nav
                               Items, w tej kolejności: **Machine** (X/Y/Z
                               travel, dialekt, Start/End G-Code),
-                              **Tabs** (Default Tab Sizes), **Appearance**
+                              **Tabs** (Default Tab Sizes), **Tool
+                              Diameters** (edytowalna lista średnic dla
+                              dropdownów Tool Diameter na Kroku 2 —
+                              dodawanie/usuwanie, sufit
+                              `MAX_TOOL_DIAMETER_COUNT` w
+                              `lib/validation.ts`, blokada usunięcia
+                              ostatniej pozycji, "Reset to Default" z
+                              potwierdzeniem), **Appearance**
                               (Theme, Preview Color Palette, Grid Labels 3D
                               — patrz "Motywy (Theme) i Palety..." niżej),
                               **Privacy**, **About** (nazwa/wersja appki) —
@@ -1257,7 +1269,10 @@ src/
                                  `patternSpan`/`zSpan`/
                                  `machineFitWarnings()` — nieblokujący
                                  soft-warning na Kroku 4, rozgałęziony po
-                                 `operation`.
+                                 `operation`. `isToolDiameterEntryValid()`/
+                                 `MAX_TOOL_DIAMETER_COUNT` (`BL-19`) —
+                                 osobna kategoria: bramkuje przycisk "Add"
+                                 w Settings → Tool Diameters, nie Generate.
     download.ts                  — `buildFilename(params)`/
                                  `downloadTextFile` — efekt uboczny
                                  (Blob/URL), celowo poza czystym rdzeniem
@@ -1282,6 +1297,30 @@ src/
                                  `simplecam.appearance`, walidacja
                                  zapisanego `palette` względem znanych
                                  `PaletteId` (fallback `'default'`).
+    toolDiameterStorage.ts        — `loadToolDiameterOptions`/
+                                 `saveToolDiameterOptions` (`BL-19`), klucz
+                                 `simplecam.toolDiameters`, cały obiekt
+                                 (tablica) w try/catch z fallbackiem do
+                                 `DEFAULT_TOOL_DIAMETER_OPTIONS` — jak
+                                 `machineStorage.ts`, nie field-by-field
+                                 jak `appearanceStorage.ts` (dane
+                                 tablicowe nie mają stałego zestawu pól do
+                                 scalenia).
+    toolDiameterOptions.ts        — `resolveToolDiameterSelectOptions()`
+                                 (`BL-19`) — dokleja syntetyczną opcję do
+                                 listy, gdy aktualnie wybrana wartość
+                                 `toolDiameter` (Hole(s)/Outline/Surface)
+                                 nie jest już na liście (np. usunięta w
+                                 Settings), żeby dropdown nie rozjechał
+                                 się z realnie wybraną liczbą — pole i tak
+                                 jest zwykłą, niewalidowaną liczbą,
+                                 przynależność do listy nigdy nie była
+                                 sprawdzana. `formatToolDiameterLabel()` —
+                                 etykieta `"<wartość> mm"` dla wpisów
+                                 dodanych przez użytkownika (`fmt()`),
+                                 różna od ręcznie pisanych etykiet
+                                 `DEFAULT_TOOL_DIAMETER_OPTIONS`
+                                 (`1/8"`/`1/4"`).
     overlayParams.ts               — `deriveOverlayParams()` — jedyna
                                  czysta funkcja w overlay presetów, patrz
                                  "Overlay presetów..." wyżej.

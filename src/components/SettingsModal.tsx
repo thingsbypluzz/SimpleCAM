@@ -3,6 +3,9 @@ import { getPaletteAccents, PALETTE_LIST } from '../config/palettes'
 import type { Dialect, MachineSettings } from '../types/machine'
 import type { AppearanceSettings, Grid3DLabelSize } from '../types/appearance'
 import { THEME_LIST } from '../types/theme'
+import { DEFAULT_TOOL_DIAMETER_OPTIONS, type ToolDiameterOption } from '../types/toolDiameters'
+import { formatToolDiameterLabel } from '../lib/toolDiameterOptions'
+import { isToolDiameterEntryValid, MAX_TOOL_DIAMETER_COUNT } from '../lib/validation'
 import { Checkbox } from './wizard/Checkbox'
 import { inputClass } from './wizard/FieldRow'
 import { NumberInput } from './wizard/NumberInput'
@@ -13,6 +16,8 @@ interface SettingsModalProps {
   onSave: (machine: MachineSettings) => void
   appearance: AppearanceSettings
   onSaveAppearance: (appearance: AppearanceSettings) => void
+  toolDiameters: ToolDiameterOption[]
+  onSaveToolDiameters: (options: ToolDiameterOption[]) => void
   onClose: () => void
 }
 
@@ -23,11 +28,12 @@ type TabDefaultField = 'defaultTabHeight' | 'defaultTabWidth' | 'defaultTabCount
 // per-field step/label differ.
 type NumericField = TravelField | TabDefaultField
 type CodeField = 'headerText' | 'footerText'
-type SectionId = 'machine' | 'tabs' | 'appearance' | 'about' | 'privacy'
+type SectionId = 'machine' | 'tabs' | 'toolDiameters' | 'appearance' | 'about' | 'privacy'
 
 const SECTIONS: { id: SectionId; label: string }[] = [
   { id: 'machine', label: 'Machine' },
   { id: 'tabs', label: 'Tabs' },
+  { id: 'toolDiameters', label: 'Tool Diameters' },
   { id: 'appearance', label: 'Appearance' },
   { id: 'privacy', label: 'Privacy' },
   { id: 'about', label: 'About' },
@@ -63,6 +69,8 @@ export function SettingsModal({
   onSave,
   appearance,
   onSaveAppearance,
+  toolDiameters,
+  onSaveToolDiameters,
   onClose,
 }: SettingsModalProps) {
   const [activeSection, setActiveSection] = useState<SectionId>('machine')
@@ -87,6 +95,11 @@ export function SettingsModal({
     footerText: machine.footerText,
   })
   const [savedCodeField, setSavedCodeField] = useState<CodeField | null>(null)
+  // Transient "type a value, click Add" field — not one of the persisted
+  // settings above, so it doesn't need the buffer/onBlur machinery those
+  // use; it just clears itself on a successful add.
+  const [newDiameterText, setNewDiameterText] = useState('')
+  const [newDiameterError, setNewDiameterError] = useState<string | null>(null)
 
   const modalRef = useRef<HTMLDivElement>(null)
   const closeButtonRef = useRef<HTMLButtonElement>(null)
@@ -170,6 +183,40 @@ export function SettingsModal({
 
   const handleDialectChange = (dialect: Dialect) => {
     onSave({ ...machine, dialect })
+  }
+
+  const sortedToolDiameters = [...toolDiameters].sort((a, b) => a.value - b.value)
+
+  const handleAddToolDiameter = () => {
+    const value = Number(newDiameterText)
+    if (toolDiameters.length >= MAX_TOOL_DIAMETER_COUNT) {
+      setNewDiameterError(`Can't add more than ${MAX_TOOL_DIAMETER_COUNT} tool diameters.`)
+      return
+    }
+    if (!isToolDiameterEntryValid(value, toolDiameters)) {
+      setNewDiameterError(
+        Number.isFinite(value) && value > 0
+          ? 'That diameter is already in the list.'
+          : 'Enter a diameter greater than 0.',
+      )
+      return
+    }
+    onSaveToolDiameters(
+      [...toolDiameters, { value, label: formatToolDiameterLabel(value) }].sort((a, b) => a.value - b.value),
+    )
+    setNewDiameterText('')
+    setNewDiameterError(null)
+  }
+
+  const handleRemoveToolDiameter = (value: number) => {
+    if (toolDiameters.length <= 1) return
+    onSaveToolDiameters(toolDiameters.filter((opt) => opt.value !== value))
+  }
+
+  const handleResetToolDiameters = () => {
+    if (!window.confirm('Reset the tool diameter list to its default values?')) return
+    onSaveToolDiameters(DEFAULT_TOOL_DIAMETER_OPTIONS)
+    setNewDiameterError(null)
   }
 
   return (
@@ -362,6 +409,84 @@ export function SettingsModal({
             </>
           )}
 
+          {activeSection === 'toolDiameters' && (
+            <>
+              <h2 className="text-sm font-semibold text-fg">Tool Diameters</h2>
+
+              <p className="text-sm text-muted">
+                The choices offered by the Tool Diameter dropdown on Step 2, for every operation.
+                Add the bits you actually own, remove the ones you don't.
+              </p>
+
+              <div className="flex flex-wrap gap-2">
+                {sortedToolDiameters.map((opt) => (
+                  <span
+                    key={opt.value}
+                    className="flex items-center gap-1.5 rounded-md border border-border px-2.5 py-1 text-xs font-medium text-value"
+                  >
+                    {opt.label}
+                    <button
+                      type="button"
+                      onClick={() => handleRemoveToolDiameter(opt.value)}
+                      disabled={toolDiameters.length <= 1}
+                      aria-label={`Remove ${opt.label}`}
+                      title={
+                        toolDiameters.length <= 1
+                          ? 'At least one tool diameter is required'
+                          : `Remove ${opt.label}`
+                      }
+                      className="flex h-4 w-4 items-center justify-center rounded-full leading-none text-muted hover:bg-status-delete-bg hover:text-status-delete-fg disabled:cursor-not-allowed disabled:opacity-30"
+                    >
+                      ×
+                    </button>
+                  </span>
+                ))}
+              </div>
+
+              <div className="flex flex-col gap-2 border-t border-border pt-4">
+                <div className="flex items-end gap-2">
+                  <label className="flex flex-col gap-1">
+                    <span className="text-xs font-medium text-muted">New diameter [mm]</span>
+                    <input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      className={`${inputClass} w-32`}
+                      value={newDiameterText}
+                      onChange={(e) => {
+                        setNewDiameterText(e.target.value)
+                        setNewDiameterError(null)
+                      }}
+                      onKeyDown={(e) => {
+                        if (e.key !== 'Enter') return
+                        e.preventDefault()
+                        handleAddToolDiameter()
+                      }}
+                    />
+                  </label>
+                  <button
+                    type="button"
+                    onClick={handleAddToolDiameter}
+                    className="rounded-md bg-btn-bg px-3 py-2 text-sm font-medium text-btn-fg shadow-[var(--glow-btn)]"
+                  >
+                    Add
+                  </button>
+                </div>
+                {newDiameterError && <p className="text-sm text-status-error">{newDiameterError}</p>}
+              </div>
+
+              <div className="border-t border-border pt-4">
+                <button
+                  type="button"
+                  onClick={handleResetToolDiameters}
+                  className="rounded-md border border-border px-3 py-1.5 text-sm font-medium text-value hover:bg-border/40"
+                >
+                  Reset to Default
+                </button>
+              </div>
+            </>
+          )}
+
           {activeSection === 'appearance' && (
             <>
               <h2 className="text-sm font-semibold text-fg">
@@ -515,10 +640,11 @@ export function SettingsModal({
               <div className="flex flex-col gap-2 border-t border-border pt-4">
                 <span className="text-sm font-medium text-value">What's stored, and where</span>
                 <p className="text-sm text-muted">
-                  Presets and settings (Machine, Appearance, Tabs) are stored only in your
-                  browser's localStorage, scoped to this site. Nothing is synced, exported, or
-                  read by us — it stays on your device and is cleared whenever you clear your
-                  browser's site data, or automatically if you use a private/incognito window.
+                  Presets and settings (Machine, Appearance, Tabs, Tool Diameters) are stored only
+                  in your browser's localStorage, scoped to this site. Nothing is synced,
+                  exported, or read by us — it stays on your device and is cleared whenever you
+                  clear your browser's site data, or automatically if you use a private/incognito
+                  window.
                 </p>
               </div>
 

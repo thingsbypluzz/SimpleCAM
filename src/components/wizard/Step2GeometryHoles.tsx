@@ -10,7 +10,8 @@ import {
   MAX_TAB_COUNT,
 } from '../../lib/validation'
 import { POSITIONING_META } from '../../config/positioningMeta'
-import { TOOL_DIAMETER_OPTIONS } from '../../config/toolDiameterOptions'
+import { resolveToolDiameterSelectOptions } from '../../lib/toolDiameterOptions'
+import type { ToolDiameterOption } from '../../types/toolDiameters'
 import { Checkbox } from './Checkbox'
 import { FieldRow, inputClass } from './FieldRow'
 import { HintPopover } from './HintPopover'
@@ -22,6 +23,7 @@ interface Step2GeometryHolesProps {
   params: WizardParams
   onChange: (patch: Partial<WizardParams>) => void
   machine: MachineSettings
+  toolDiameters: ToolDiameterOption[]
 }
 
 function parseCustomPoints(text: string) {
@@ -39,7 +41,7 @@ function formatCustomPoints(points: { x: number; y: number }[]) {
   return points.map((p) => `${p.x},${p.y}`).join('\n')
 }
 
-export function Step2GeometryHoles({ params, onChange, machine }: Step2GeometryHolesProps) {
+export function Step2GeometryHoles({ params, onChange, machine, toolDiameters }: Step2GeometryHolesProps) {
   const { geometry } = params
 
   const updateGeometry = (patch: Partial<WizardParams['geometry']>) =>
@@ -91,7 +93,7 @@ export function Step2GeometryHoles({ params, onChange, machine }: Step2GeometryH
             value={geometry.toolDiameter}
             onChange={(e) => updateGeometry({ toolDiameter: Number(e.target.value) })}
           >
-            {TOOL_DIAMETER_OPTIONS.map((opt) => (
+            {resolveToolDiameterSelectOptions(toolDiameters, geometry.toolDiameter).map((opt) => (
               <option key={opt.value} value={opt.value}>
                 {opt.label}
               </option>

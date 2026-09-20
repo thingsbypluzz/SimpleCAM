@@ -1,5 +1,6 @@
 import type { MachineSettings } from '../types/machine'
 import type { FeedsParams, GeometryParams, OutlineParams, SurfaceParams, WizardParams } from '../types/wizard'
+import type { ToolDiameterOption } from '../types/toolDiameters'
 import { resolvePoints } from './positioning'
 import { rectToolDimensions } from './outlineRectangleGeometry'
 import { circleOutlineRadiusAndDirection } from './outlineCircle'
@@ -7,6 +8,19 @@ import { surfaceStepoverMm, surfaceToolBounds } from './surfaceGeometry'
 
 export function isToolDiameterValid(geometry: GeometryParams): boolean {
   return geometry.toolDiameter <= geometry.holeDiameter
+}
+
+// Purely arbitrary sanity ceiling (BL-19), same category as
+// MAX_TAB_COUNT/MAX_CIRCLE_HOLE_COUNT below — a growable Settings list, not
+// a value derived from anything physical.
+export const MAX_TOOL_DIAMETER_COUNT = 30
+
+// Gates the "Add" button in Settings -> Tool Diameters: rejects non-finite/
+// non-positive input and exact duplicates of an already-listed value. The
+// list-length cap is checked separately by the caller (it's a property of
+// `existing`, not of the candidate `value`).
+export function isToolDiameterEntryValid(value: number, existing: ToolDiameterOption[]): boolean {
+  return Number.isFinite(value) && value > 0 && !existing.some((opt) => opt.value === value)
 }
 
 export function isStepdownValid(feeds: FeedsParams): boolean {

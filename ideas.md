@@ -91,13 +91,6 @@ faktycznym.
   starszym silniku, zidentyfikowania, które konkretne właściwości CSS się
   nie renderują, i albo dodania fallbacków, albo świadomej decyzji "nie
   wspieramy X" udokumentowanej w `CLAUDE.md`.
-- **`BL-19`** *(Otwarty)* — **Własna lista średnic narzędzia w Settings.** Dziś
-  `TOOL_DIAMETER_OPTIONS` (`config/toolDiameterOptions.ts`: 1–8mm całe mm
-  + 1/8" i 1/4") jest zaszyta na sztywno w kodzie. Pomysł: nowa sekcja w
-  Settings Modal pozwalająca edytować tę listę (dodawać/usuwać wartości),
-  zapisywana w localStorage (nowy klucz albo rozszerzenie istniejącego
-  wzorca Machine/Appearance/Tabs), plus przycisk "Reset to default"
-  przywracający dzisiejszą, sztywną listę jako wartość domyślną.
 - **`BL-20`** *(Odrzucony, 2026-09-12 — w zamian `BL-29` Privacy Policy:
   prostsze rozwiązanie, bez trackingu i bez implikacji RODO poniżej)* —
   🔒 **Licznik użytkowników (unikalne IP).** Wymaga własnej,

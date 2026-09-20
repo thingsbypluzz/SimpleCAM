@@ -6,7 +6,8 @@ import {
   isOutlineToolDiameterValid,
   MAX_TAB_COUNT,
 } from '../../lib/validation'
-import { TOOL_DIAMETER_OPTIONS } from '../../config/toolDiameterOptions'
+import { resolveToolDiameterSelectOptions } from '../../lib/toolDiameterOptions'
+import type { ToolDiameterOption } from '../../types/toolDiameters'
 import { Checkbox } from './Checkbox'
 import { FieldRow, inputClass } from './FieldRow'
 import { HintPopover } from './HintPopover'
@@ -19,6 +20,7 @@ interface Step2GeometryOutlineProps {
   params: WizardParams
   onChange: (patch: Partial<WizardParams>) => void
   machine: MachineSettings
+  toolDiameters: ToolDiameterOption[]
 }
 
 // Field order: Tool Diameter -> Cutting Depth -> Offset Mode -> Method ->
@@ -26,7 +28,7 @@ interface Step2GeometryOutlineProps {
 // notes. Mirrors Step2GeometryHoles.tsx's conventions throughout
 // (FieldRow/useNumberField/HintPopover, flex-row pairs for X/Y-like
 // fields, border-t section dividers).
-export function Step2GeometryOutline({ params, onChange, machine }: Step2GeometryOutlineProps) {
+export function Step2GeometryOutline({ params, onChange, machine, toolDiameters }: Step2GeometryOutlineProps) {
   const { outline } = params
 
   const updateOutline = (patch: Partial<WizardParams['outline']>) =>
@@ -54,7 +56,7 @@ export function Step2GeometryOutline({ params, onChange, machine }: Step2Geometr
             value={outline.toolDiameter}
             onChange={(e) => updateOutline({ toolDiameter: Number(e.target.value) })}
           >
-            {TOOL_DIAMETER_OPTIONS.map((opt) => (
+            {resolveToolDiameterSelectOptions(toolDiameters, outline.toolDiameter).map((opt) => (
               <option key={opt.value} value={opt.value}>
                 {opt.label}
               </option>
