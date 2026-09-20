@@ -7,6 +7,37 @@ zgodne z [SemVer](https://semver.org/). Ten plik pozostaje głównym, czytelnym
 thingsbypluzz/SimpleCAM), ale to infrastruktura pod izolację pracy
 (branch/worktree per zadanie), nie zamiennik tego changeloga.
 
+## [0.16.5] — 2026-09-20
+
+### Zmienione
+
+- **BL-37: bryła stock/otworu (Hole(s), Outline) w 3D Preview rysowana
+  teraz zawsze od `Z=0`, nie od `Z=+Start Z`.** Ponownie rozważone przy
+  sesji `/grill-me`. Wcześniej górna ściana zamkniętej bryły (Outline
+  Outside/On-line inner) i stock cap (`buildStockCapObject()`) siedziały
+  na `Z=+startZ` (wysokość bryły `totalDepth + startZ`), na założeniu, że
+  cała ścieżka narzędzia powinna zostać wizualnie "w środku" materiału.
+  Sprawdzone wprost w silniku (`helix.ts`/`standardHole.ts`): `Start Z`
+  to margines ostrożnego najazdu na posuwie roboczym (nie na szybkim
+  ruchu G0) — `totalDepth` jest i tak zakotwiczone do `Z=0` niezależnie
+  od `Start Z` (dno cięcia to zawsze `-totalDepth`). Bryła "na wyrost"
+  myliła więc rzeczywistą wysokość materiału z marginesem bezpieczeństwa
+  najazdu. Naprawione: bryła zawsze na `Z=0`, wysokość zawsze dokładnie
+  `totalDepth` (`buildHolesPatternObjects()`, `buildOutlineCirclePatternObjects()`,
+  `buildOutlineRectPatternObjects()`, `buildStockCapObject()` —
+  `buildScene.ts`). Odcinek ścieżki narzędzia między `Start Z` a `Z=0`
+  celowo wystaje teraz ponad bryłę — uczciwy obraz najazdu na posuwie
+  roboczym w powietrzu, zanim frez dotknie materiału, bez żadnego
+  wyróżnienia stylem linii (jeden ciągły, jednolity toolpath jak
+  dotychczas). Ruch szybki Safe Z → Start Z (`rapidZLineObjects()`) bez
+  zmian — osobny, realny odcinek G0. Dotyczy tylko Hole(s) i Outline —
+  Surface ma osobną, już ustaloną logikę (bez zmian). `SOLID_CAP_Z_LIFT`
+  bez zmian mechanizmu — był już dodawany bezwarunkowo, teraz po prostu
+  zawsze ma znaczenie (nie tylko przy domyślnym `Start Z = 0` jak
+  dawniej). Wyłącznie warstwa renderowania (`buildScene.ts`), silnik
+  G-code bez zmian. 2D Preview niedotknięte (brak odniesień do `startZ`
+  w `drawToolpath.ts`).
+
 ## [0.16.4] — 2026-09-20
 
 ### Naprawiono

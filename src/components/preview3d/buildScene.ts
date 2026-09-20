@@ -898,10 +898,18 @@ function buildHolesPatternObjects(
       )
     }
 
-    // Final bore (semi-transparent cylinder, top at +startZ down to
-    // -totalDepth — startZ treats the material as taller by that amount).
+    // Final bore (semi-transparent cylinder, top at Z=0 down to
+    // -totalDepth — the real material extent. Start Z doesn't affect this
+    // at all (BL-37): it's where the feed-rate descent begins, not a
+    // material-height concept — totalDepth is already anchored to Z=0 on
+    // its own (see helix.ts/standardHole.ts, the cut bottom is always
+    // -totalDepth regardless of startZ). The toolpath's own above-material
+    // segment (Start Z down to Z=0) is left to visibly poke out above this
+    // block — that's the real, honest picture of what's happening: feed-
+    // rate motion through open air before the tool actually reaches
+    // material.
     if (showStock) {
-      const boreHeight = geometry.totalDepth + feeds.startZ
+      const boreHeight = geometry.totalDepth
       const hole = new THREE.Mesh(
         new THREE.CylinderGeometry(holeRadius, holeRadius, boreHeight, 32, 1, true),
         new THREE.MeshBasicMaterial({
@@ -920,7 +928,7 @@ function buildHolesPatternObjects(
           depthWrite: false,
         }),
       )
-      hole.position.copy(toThree(p.x, p.y, (feeds.startZ - geometry.totalDepth) / 2))
+      hole.position.copy(toThree(p.x, p.y, -geometry.totalDepth / 2))
       objects.push(hole)
     }
 
@@ -979,9 +987,15 @@ function buildOutlineCirclePatternObjects(
   // edge (still connected to the surrounding stock, rendered Inside-style/
   // open) — replacing the single nominal-radius wall, which doesn't
   // correspond to any real edge for On-line.
+  //
+  // Top sits at Z=0 (the real material surface), height exactly
+  // totalDepth — Start Z doesn't affect this at all (BL-37): it's where
+  // the feed-rate descent begins, not a material-height concept. The
+  // toolpath's own above-material segment (Start Z down to Z=0) is left
+  // to visibly poke out above this wall.
   if (showStock) {
-    const boreHeight = outline.totalDepth + feeds.startZ
-    const boreCenterZ = (feeds.startZ - outline.totalDepth) / 2
+    const boreHeight = outline.totalDepth
+    const boreCenterZ = -outline.totalDepth / 2
     // side depends on closed, same reasoning as buildRectWallMesh: a closed
     // cylinder (nothing hollow to look into) only needs THREE.FrontSide,
     // which also avoids the same-mesh transparent self-overlap artifact
@@ -1032,8 +1046,8 @@ function buildOutlineCirclePatternObjects(
     if (outline.offsetMode === 'onLine') {
       const { innerRadius, outerRadius } = onLineCircleEdges(outline)
       // Inner wall is closed (false = not open-ended) — its own top face
-      // sits at world Y = startZ, same height the material plane/grid can
-      // sit at, so it needs the same z-fight lift as the stock cap.
+      // sits at world Y = 0, same height the material plane/grid sit at,
+      // so it needs the same z-fight lift as the stock cap.
       const innerWall = new THREE.Mesh(
         new THREE.CylinderGeometry(innerRadius, innerRadius, boreHeight, 32, 1, false),
         wallMaterial(true),
@@ -1196,9 +1210,15 @@ function buildOutlineRectPatternObjects(
   // an inner edge (standalone island, closed) and an outer edge (still
   // connected to stock, open) — replacing the single nominal-corner wall,
   // which doesn't correspond to a real edge for On-line.
+  //
+  // Top sits at Z=0 (the real material surface), height exactly
+  // totalDepth — Start Z doesn't affect this at all (BL-37): it's where
+  // the feed-rate descent begins, not a material-height concept. The
+  // toolpath's own above-material segment (Start Z down to Z=0) is left
+  // to visibly poke out above this wall.
   if (showStock) {
-    const boreHeight = outline.totalDepth + feeds.startZ
-    const boreCenterZ = (feeds.startZ - outline.totalDepth) / 2
+    const boreHeight = outline.totalDepth
+    const boreCenterZ = -outline.totalDepth / 2
 
     if (outline.offsetMode === 'onLine' && outline.shape !== 'circle') {
       const { innerWidth, innerHeight, outerWidth, outerHeight } = onLineRectDimensions(
@@ -1380,16 +1400,17 @@ function buildStockCapObject(
   // separate stock-cap-with-cutout concept applies here.
   if (pattern.kind === 'surface') return null
 
-  let startZ: number
+  // Cap sits at Z=0 (the real material surface) regardless of Start Z
+  // (BL-37) — see buildHolesPatternObjects()/buildOutlineCirclePatternObjects()
+  // for the same reasoning: Start Z is where the feed-rate descent
+  // begins, not a material-height concept.
   let holePaths: THREE.Path[]
 
   if (pattern.kind === 'holes') {
-    startZ = pattern.params.feeds.startZ
     holePaths = pattern.points.map((p) => circlePath(p.x, p.y, pattern.holeRadius))
   } else {
-    const { outline, feeds } = pattern.params
+    const { outline } = pattern.params
     if (outline.offsetMode === 'outside') return null
-    startZ = feeds.startZ
 
     if (pattern.kind === 'outlineCircle') {
       const radius = outline.offsetMode === 'onLine' ? onLineCircleEdges(outline).outerRadius : pattern.nominalRadius
@@ -1443,7 +1464,7 @@ function buildStockCapObject(
   )
   cap.renderOrder = -1
   cap.rotation.x = -Math.PI / 2
-  cap.position.set(0, startZ + SOLID_CAP_Z_LIFT, 0)
+  cap.position.set(0, SOLID_CAP_Z_LIFT, 0)
   return cap
 }
 

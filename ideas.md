@@ -206,25 +206,13 @@ faktycznym.
   obu podglądów, dostępne zawsze (także podczas overlay presetów), jeden
   wspólny stan między zakładkami 2D/3D, bez wpływu na `canGenerate` —
   pełny opis w `CHANGELOG.md`, `[0.16.1]`.
-- **`BL-37`** *(Otwarty)* — **Ponownie rozważyć: bryła stock/otworu w 3D
-  Preview rysowana od `Start Z`, nie zawsze od `Z=0`.** Dotyczy Hole(s) i
-  Outline (**nie** Surface — tam blok "pozostałego materiału" ma inną,
-  świadomie ustaloną logikę, patrz CLAUDE.md). Dziś górna ściana
-  zamkniętej bryły (Outline Outside/On-line inner) i stock cap
-  (`buildStockCapObject()`) siedzą dokładnie na wysokości `Z=+startZ`
-  (`boreHeight = totalDepth + startZ`, `boreCenterZ = (startZ -
-  totalDepth) / 2` w `buildOutlineRectPatternObjects()`/
-  `buildOutlineCirclePatternObjects()`, `buildScene.ts`) — stąd cały
-  mechanizm `SOLID_CAP_Z_LIFT` (epsilon przeciw z-fightowi z płaszczyzną
-  materiału, patrz "Otwarta/zamknięta geometria..." w CLAUDE.md), bo przy
-  domyślnym `Start Z = 0` bryła i płaszczyzna lądują dokładnie w tym samym
-  miejscu. Wątpliwość zgłoszona w rozmowie: `Start Z` to tylko dodatkowy
-  margines bezpieczeństwa dla frezu (jak wysoko nad materiałem zaczyna się
-  dojazd), nie realna wysokość górnej powierzchni materiału — rysowanie
-  bryły akurat na tej wysokości może więc mijać się z celem
-  wizualizacji. Do rozważenia: czy górna ściana/stock cap powinny zawsze
-  siedzieć na `Z=0` niezależnie od `Start Z` (przy okazji: wtedy epsilon
-  z-fighta byłby potrzebny zawsze, nie tylko przy `Start Z = 0` jak dziś).
+- **`BL-37`** *(Zrealizowany, 2026-09-20)* — **Ponownie rozważyć: bryła
+  stock/otworu w 3D Preview rysowana od `Start Z`, nie zawsze od `Z=0`.**
+  Rozstrzygnięte sesją `/grill-me`: bryła (Hole(s)/Outline, nie Surface)
+  zawsze na `Z=0`, wysokość zawsze `totalDepth` — `Start Z` to margines
+  najazdu na posuwie roboczym, nie wysokość materiału. Pełny opis:
+  `CHANGELOG.md`, `[0.16.5]`.
+
 elementów UI, dziś aktywnie używany w `CLAUDE.md`:
 **<https://claude.ai/code/artifact/ea21c02e-41ed-4bb5-90ec-48ae9a61c23e>**.
 Nie podlega zasadzie synchronizacji wyżej (nie jest listą backlogu) —

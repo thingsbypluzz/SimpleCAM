@@ -412,35 +412,57 @@ ręczną geometrię "tunelu". Hole(s) bez zmian — brak konceptu offset
 mode, zawsze otwarte.
 
 Płaska "podkładka" (stock cap, `buildStockCapObject()` w `buildScene.ts`)
-na wysokości `Z=+startZ`, zbudowana `THREE.Shape` + `shape.holes`
-(natywna tesselacja Three.js, bez CSG), ogranicza się do tego samego
-zasięgu widocznej siatki/płaszczyzny Z=0. **Zakres:** Hole(s) — zawsze,
-jedna wspólna podkładka z N okrągłymi otworami. Outline Inside —
-zawsze, jeden otwór w kształcie nominalnej granicy. Outline Outside —
-bez podkładki (zamknięta bryła wystarcza). Outline On-line —
-hybrydowo: dwie realne krawędzie (`nominal − toolRadius` i `nominal +
-toolRadius`, `onLineCircleEdges()`/`onLineRectDimensions()`) —
-wewnętrzna renderowana jak Outside (zamknięta, samodzielna bryła —
-pokazuje, że bez mostków byłaby fizycznie odseparowaną wyspą),
-zewnętrzna jak Inside (otwarta ściana + podkładka z otworem na tym
-promieniu). Kolor podkładki: `theme.hole` przy opacity 0.3 (ten sam co
-ściany). Podkładka i ściany ignorują tabs (mostki), tak jak bryły
-otworu/kształtu już wcześniej. Podkładka pomijana w trybie overlay —
-`showActivePattern` już to rozstrzyga.
+na wysokości `Z=0`, zbudowana `THREE.Shape` + `shape.holes` (natywna
+tesselacja Three.js, bez CSG), ogranicza się do tego samego zasięgu
+widocznej siatki/płaszczyzny Z=0. **Zakres:** Hole(s) — zawsze, jedna
+wspólna podkładka z N okrągłymi otworami. Outline Inside — zawsze,
+jeden otwór w kształcie nominalnej granicy. Outline Outside — bez
+podkładki (zamknięta bryła wystarcza). Outline On-line — hybrydowo: dwie
+realne krawędzie (`nominal − toolRadius` i `nominal + toolRadius`,
+`onLineCircleEdges()`/`onLineRectDimensions()`) — wewnętrzna renderowana
+jak Outside (zamknięta, samodzielna bryła — pokazuje, że bez mostków
+byłaby fizycznie odseparowaną wyspą), zewnętrzna jak Inside (otwarta
+ściana + podkładka z otworem na tym promieniu). Kolor podkładki:
+`theme.hole` przy opacity 0.3 (ten sam co ściany). Podkładka i ściany
+ignorują tabs (mostki), tak jak bryły otworu/kształtu już wcześniej.
+Podkładka pomijana w trybie overlay — `showActivePattern` już to
+rozstrzyga.
 
-Podkładka renderuje się `SOLID_CAP_Z_LIFT` (0.02mm) powyżej swojego
-nominalnego `startZ`, nie dokładnie na nim — przy `Start Z = 0`
-(częsty, de facto domyślny przypadek) podkładka i płaszczyzna materiału
-(zawsze `Y=0`) lądowałyby dokładnie w tej samej płaszczyźnie, co
-z-fightuje (widoczne jako migotanie/mora). Epsilon większy niż odstęp
-siatki od płaszczyzny (0.01) też, żeby nie kolidować z siatką przy
-przypadkowym `Start Z = 0.01`. **Ten sam epsilon dotyczy każdej
-zamkniętej ściany Outline** — Circle/Rectangle w trybie Outside i
-wewnętrzna "wyspa" w On-line mają realną górną ścianę bryły dokładnie
-na wysokości `startZ` (to nie osobny obiekt jak stock cap, tylko
-domyślna geometria `CylinderGeometry`/`BoxGeometry`), więc bez tego
-samego traktowania z-fightowałyby z płaszczyzną materiału identycznie
-jak podkładka. `buildRectWallMesh()` podnosi się, gdy `closed`;
+**`Start Z` nie wpływa w ogóle na pozycję ani wysokość podkładki/bryły**
+(`BL-37`, ponownie rozważone) — górna ściana zamkniętej bryły (Outline
+Outside/On-line inner) i stock cap zawsze siedzą na `Z=0`, wysokość
+bryły to zawsze dokładnie `totalDepth`. Wcześniej (przed `BL-37`)
+siedziały na `Z=+startZ`, na założeniu, że cała ścieżka narzędzia
+(łącznie z odcinkiem powyżej rzeczywistego materiału, pokonywanym na
+posuwie roboczym zanim frez faktycznie dotknie materiału) powinna
+zostać wizualnie "w środku" bryły. Sesja `/grill-me`
+(2026-09-20) obaliła to założenie: `Start Z` to margines ostrożnego
+najazdu na posuwie roboczym (na wypadek niedokładnego zerowania Z), nie
+wysokość materiału — `totalDepth` jest i tak zakotwiczone do `Z=0`
+niezależnie od `Start Z` (dno cięcia to zawsze `-totalDepth`, patrz
+`helix.ts`/`standardHole.ts`). Dziś odcinek ścieżki narzędzia między
+`Start Z` a `Z=0` celowo wystaje ponad bryłę — to uczciwy obraz tego, co
+faktycznie się dzieje (najazd na posuwie roboczym w powietrzu, zanim
+frez dotknie materiału), nie błąd. Ruch szybki `Safe Z → Start Z`
+(`rapidZLineObjects()`) jest tym niedotknięty — to osobny, realny odcinek
+G0, niezwiązany z pozycją bryły. Dotyczy tylko Hole(s) i Outline —
+Surface ma osobną, już wcześniej ustaloną logikę bryły "pozostałego
+materiału" (patrz sekcja Surface w "Kluczowe decyzje projektowe" wyżej).
+
+Podkładka renderuje się `SOLID_CAP_Z_LIFT` (0.02mm) powyżej `Z=0`, nie
+dokładnie na nim — inaczej podkładka i płaszczyzna materiału (zawsze
+`Y=0`) lądowałyby dokładnie w tej samej płaszczyźnie, co z-fightuje
+(widoczne jako migotanie/mora). Odkąd podkładka/bryła zawsze siedzą na
+`Z=0` (nie tylko przy domyślnym `Start Z = 0` jak dawniej), epsilon
+dotyczy teraz **zawsze**, nie tylko warunkowo. Epsilon większy niż
+odstęp siatki od płaszczyzny (0.01) też, żeby nie kolidować z siatką.
+**Ten sam epsilon dotyczy każdej zamkniętej ściany Outline** —
+Circle/Rectangle w trybie Outside i wewnętrzna "wyspa" w On-line mają
+realną górną ścianę bryły dokładnie na wysokości `Z=0` (to nie osobny
+obiekt jak stock cap, tylko domyślna geometria
+`CylinderGeometry`/`BoxGeometry`), więc bez tego samego traktowania
+z-fightowałyby z płaszczyzną materiału identycznie jak podkładka.
+`buildRectWallMesh()` podnosi się, gdy `closed`;
 `buildOutlineCirclePatternObjects()` — tylko te dwie gałęzie, gdzie
 ściana jest faktycznie zamknięta. Otwarte ściany (Inside, zewnętrzna
 ściana On-line) nie mają tam żadnej geometrii, więc zostają bez zmian.
