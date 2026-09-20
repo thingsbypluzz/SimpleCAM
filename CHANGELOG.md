@@ -7,6 +7,36 @@ zgodne z [SemVer](https://semver.org/). Ten plik pozostaje głównym, czytelnym
 thingsbypluzz/SimpleCAM), ale to infrastruktura pod izolację pracy
 (branch/worktree per zadanie), nie zamiennik tego changeloga.
 
+## [0.17.1] — 2026-09-20
+
+### Zmieniono
+
+- **`BL-25` — zastąpiony dwuklikowy mechanizm wejścia w tryb edycji
+  presetu jawnym przełącznikiem "Edit Mode".** Follow-up do `[0.17.0]`,
+  ustalony w kolejnej sesji `/grill-me` — dwuklik ("drugi klik na już
+  załadowany slot uzbraja edycję") oceniony jako nieintuicyjny, łatwy do
+  wywołania przypadkiem. Nowy Icon Button "ołówek"
+  (`PencilIcon`, `components/icons.tsx`) tuż obok "oka" Overlay —
+  globalny toggle `editModeEnabled`, ten sam wizualny wzorzec co Overlay,
+  wzajemnie wykluczający się z nim symetrycznie (włączenie jednego
+  wyłącza drugi). Poza Edit Mode Preset Bar wrócił do najprostszego
+  możliwego zachowania (klik = zwykły load, bez śladu po dawnym
+  `loadedSlot`). W Edit Mode klikanie w presety działa jak radio button:
+  klik na zajęty slot ładuje go i od razu uzbraja do live-save w jednej
+  akcji, klik na inny zajęty slot przełącza wybór, klik na już uzbrojony
+  go odznacza (Edit Mode zostaje włączony, "nic nie wybrane" to legalny
+  stan). Wskaźnik wyboru zmieniony z trwałego pierścienia na
+  checkmark-badge — dokładnie ten sam wzorzec co zaznaczenie w Overlay,
+  bo to teraz naprawdę ta sama semantyka "wybrane w tym trybie". Baner
+  "Auto-save Mode Enabled" dostał drugi, neutralny stan tekstu ("Edit
+  Mode — select a preset") na czas, gdy tryb jest włączony, ale nic
+  jeszcze nie jest uzbrojone. W przeciwieństwie do Overlay, Edit Mode nie
+  wpływa na `canGenerate` — nie ukrywa żywego wzorca, więc Generate
+  działa normalnie. Cała pozostała mechanika (live-save gated na
+  `isGeometryValid`, niezależność od auto-save slotu `"0"`, brak
+  trwałości między odświeżeniami, Step 4 "Save to preset" bez zmian)
+  zostaje dokładnie taka, jak w `[0.17.0]`.
+
 ## [0.17.0] — 2026-09-20
 
 ### Dodano

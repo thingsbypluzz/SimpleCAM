@@ -767,36 +767,47 @@ nazywanie presetów przez usera (tylko auto-opis), "Reset to defaults",
 grupowanie kilku operacji pod jednym presetem (sprzeczne z "jedno
 narzędzie na wygenerowany plik").
 
-**Tryb edycji przywołanego presetu (`BL-25`).** Klikanie w Preset Bar ma
-dwa stopnie. Pierwszy klik na slot, który nie jest aktualnie "aktywny"
-(`App.tsx`, stan `loadedSlot`), to zwykły load — natychmiastowy, bez
-potwierdzenia, dokładnie jak przed `BL-25`, zero ryzyka. Drugi (i każdy
-kolejny) klik na TEN SAM, już aktywny slot **nie przeładowuje** parametrów
-— zamiast tego przełącza tryb edycji (`editingSlot`) dla tego slotu w tę
-i z powrotem: uzbrojony → każda kolejna zmiana parametru zapisuje się
-natychmiast do tego slotu (live, bez czekania na Generate — inaczej niż
-ukryty auto-save slotu `"0"`, który zostaje Generate-gated bez zmian).
-Zachowanie jest "sticky" — rozbrojenie nie zapomina, który slot jest
-aktywny, więc kolejny klik na tę samą ikonę od razu uzbraja ponownie;
-tylko kliknięcie w INNY zajęty slot ładuje go i cicho rozbraja poprzedni
-(bez potwierdzenia — poprzedni jest już bezpiecznie zsynchronizowany
-live-save'ami). Live-save pisze tylko, gdy bieżące parametry przechodzą
-tę samą `isGeometryValid`, którą sprawdza przycisk Generate — nigdy nie
-zapisuje transientnego/połamanego stanu (np. pustego pola w trakcie
-wpisywania); miękkie `fitWarnings` tego nie blokują. Wskaźnik: pierścień
-na ikonie uzbrojonego slotu (ten sam styl co 1.5s flash `justLoadedSlot`
-po zwykłym load, ale bez zanikania, dopóki edycja trwa) plus stały napis
-"Auto-save Mode Enabled" po lewej stronie grupy ikon Preset Bar — kolor
-tekstu (nie treść) zmienia się na `status-error`, gdy bieżące parametry
-akurat nie przechodzą walidacji (live-save w tym momencie nic nie
-zapisuje). Włączenie Overlay (`overlayEnabled`) automatycznie rozbraja
-tryb edycji — te dwa mechanizmy nigdy nie działają naraz, Overlay
-całkowicie przejmuje semantykę kliknięcia w Preset Bar. Usunięcie
-uzbrojonego slotu też automatycznie rozbraja. Stan `loadedSlot`/
-`editingSlot` żyje wyłącznie w pamięci (nie w `localStorage`) —
-odświeżenie strony zawsze startuje rozbrojone. Ręczna siatka "Save
-current settings as preset" w Kroku 4 zostaje bez zmian, bez żadnej
-interakcji z trybem edycji.
+**Tryb edycji przywołanego presetu (`BL-25`).** Osobny Icon Button
+"ołówek" (`PencilIcon`) tuż obok "oka" Overlay w Header — globalny toggle
+`editModeEnabled`, ten sam wizualny wzorzec co oko (aktywny =
+`border-2 border-accent`), ta sama bordered ramka wokół grupy presetów
+teraz aktywuje się dla **obu** trybów. Poza Edit Mode Preset Bar to
+najprostsze możliwe zachowanie: klik na zajęty slot = zwykły,
+natychmiastowy load, bez żadnej pamięci który slot był ostatnio
+załadowany. W Edit Mode klikanie w presety działa jak **radio button**:
+klik na zajęty slot ładuje jego parametry do wizarda I jednocześnie
+uzbraja go do live-save w jednej akcji (jawny toggle ołówka to już
+wystarczająco świadomy gest, więc load+arm naraz jest bezpieczne) — każda
+kolejna zmiana parametru zapisuje się natychmiast z powrotem do tego
+slotu, bez czekania na Generate (inaczej niż ukryty auto-save slotu
+`"0"`, który zostaje Generate-gated bez zmian). Klik na INNY zajęty slot
+przełącza wybór (ładuje nowy, cicho rozbraja poprzedni — bez
+potwierdzenia, poprzedni jest już bezpiecznie zsynchronizowany
+live-save'ami); klik na już uzbrojony slot go odznacza (`editingSlot =
+null`), ale Edit Mode zostaje włączony — "nic nie wybrane" to legalny
+stan trybu, nie tylko przejściowy. Live-save pisze tylko, gdy bieżące
+parametry przechodzą tę samą `isGeometryValid`, którą sprawdza przycisk
+Generate — nigdy nie zapisuje transientnego/połamanego stanu (np. pustego
+pola w trakcie wpisywania); miękkie `fitWarnings` tego nie blokują.
+Wskaźnik wyboru na ikonie uzbrojonego slotu to dokładnie ten sam wzorzec
+co zaznaczenie w Overlay (`border-2 border-accent` + checkmark-badge w
+rogu), nie osobny styl — to naprawdę ta sama "wybrane w trybie X"
+semantyka. Stały napis po lewej stronie grupy ikon Preset Bar ma dwa
+stany: "Edit Mode — select a preset" (neutralny kolor), dopóki nic nie
+jest uzbrojone, potem "Auto-save Mode Enabled" — kolor (nie treść)
+zmienia się na `status-error`, gdy bieżące parametry akurat nie
+przechodzą walidacji (live-save w tym momencie nic nie zapisuje). Edit
+Mode i Overlay są wzajemnie wykluczające się i symetryczne: włączenie
+jednego automatycznie wyłącza drugi (czyści `overlaySlots` albo
+`editingSlot` odpowiednio) — oba przyciski zawsze klikalne, nigdy
+`disabled`. W przeciwieństwie do Overlay, Edit Mode **nie** wpływa na
+`canGenerate` — nie ukrywa żywego wzorca jak Overlay
+(`showActivePattern`), więc Generate działa normalnie niezależnie od
+niego. Usunięcie uzbrojonego slotu czyści wybór, ale zostawia sam Edit
+Mode włączonym. Stan `editModeEnabled`/`editingSlot` żyje wyłącznie w
+pamięci (nie w `localStorage`) — odświeżenie strony zawsze startuje
+wyłączone/rozbrojone. Ręczna siatka "Save current settings as preset" w
+Kroku 4 zostaje bez zmian, bez żadnej interakcji z trybem edycji.
 
 ### `G4 P<sekundy>` i `buildFooter()`
 
