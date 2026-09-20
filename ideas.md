@@ -168,6 +168,18 @@ faktycznym.
   zawsze na `Z=0`, wysokość zawsze `totalDepth` — `Start Z` to margines
   najazdu na posuwie roboczym, nie wysokość materiału. Pełny opis:
   `CHANGELOG.md`, `[0.16.5]`.
+- **`BL-38`** *(Otwarty)* 🟠 — **Przycisk włącz/wyłącz etykiety siatki w 3D
+  Preview, obok Hide Stock/Hide Toolpath.** Dziś jedyna kontrolka to
+  checkbox "Show grid coordinate labels" w Settings → Appearance
+  (`grid3DLabelsEnabled`, `AppearanceSettings`, `src/types/appearance.ts`)
+  — pomysł: szybszy przełącznik wprost w lewym górnym rogu 3D Preview,
+  obok istniejących przycisków `BL-36` (Hide Stock/Hide Toolpath). Nie
+  trywialne dopisanie: `BL-36`'owe przełączniki to lokalny, nietrwały
+  stan widoku (dzielony między zakładkami 2D/3D), a `grid3DLabelsEnabled`
+  to trwałe pole `AppearanceSettings`, dotyczące wyłącznie 3D — wymaga
+  decyzji, jak pogodzić te dwa różne kształty/zakresy stanu (i czy nowy
+  przycisk pisze do tego samego `localStorage`, czy tylko lokalnie
+  nadpisuje na czas sesji).
 
 elementów UI, dziś aktywnie używany w `CLAUDE.md`:
 **<https://claude.ai/code/artifact/ea21c02e-41ed-4bb5-90ec-48ae9a61c23e>**.
