@@ -446,7 +446,7 @@ function App() {
 
         <div
           className={[
-            'flex items-center justify-self-center gap-2 rounded-lg border px-2 py-2 transition-colors',
+            'relative flex items-center justify-self-center gap-2 rounded-lg border px-2 py-2 transition-colors',
             overlayEnabled ? 'border-border' : 'border-transparent',
           ].join(' ')}
         >
@@ -455,10 +455,13 @@ function App() {
               live-save session is running at all. Color alone flags
               moments the current params fail validation (live-save is
               skipped then) — text stays constant, so it can't be misread
-              as "nothing is happening". */}
+              as "nothing is happening". Absolutely positioned off the LEFT
+              edge of the preset group (not a normal flex sibling) so it
+              never pushes the icons/eye button sideways when it appears or
+              disappears — they stay put, this floats. */}
           {editingSlot && !overlayEnabled && (
             <span
-              className={`text-xs font-semibold whitespace-nowrap ${isGeometryValid ? 'text-status-success' : 'text-status-error'}`}
+              className={`absolute top-1/2 right-full mr-3 -translate-y-1/2 text-xs font-semibold whitespace-nowrap ${isGeometryValid ? 'text-status-success' : 'text-status-error'}`}
             >
               Auto-save Mode Enabled
             </span>
