@@ -60,6 +60,20 @@ const TAB_BAND_EPSILON = 1e-9
 // so it's left alone.
 const SOLID_CAP_Z_LIFT = 0.02
 
+// Side/wall surfaces (bore cylinders, Outline walls) are drawn at this
+// fraction of theme.hole's brightness — always darker than any cap/top
+// surface next to them, including the separate flat stock cap object
+// (buildStockCapObject), which stays at full theme.hole. MeshBasicMaterial
+// has no real lighting model, so this flat-shaded-sprite-style contrast is
+// the only cue that a wall is a distinct vertical surface and not just
+// part of the same flat tint as the cap sitting at its rim — previously
+// applied only to *closed* walls (open ones were assumed to already read
+// as 3D via their visible missing cap, but that assumption breaks once a
+// same-colored external stock cap sits right at the opening). 0.5, not the
+// original 0.6, after user feedback that 0.6 read as too subtle against
+// the dark theme background.
+const WALL_SHADE_FACTOR = 0.5
+
 // Desired on-screen size (CSS px) of EVERY text sprite in the scene — the
 // origin "0,0", the axis-end "X"/"Y", and the grid coordinate ticks all
 // share this one setting (Settings > Appearance > Grid Labels), held
@@ -845,6 +859,8 @@ function buildHolesPatternObjects(
   theme: Theme,
   span: number,
   arrowSize: number,
+  showStock: boolean,
+  showToolpath: boolean,
 ): THREE.Object3D[] {
   const { points, holeRadius, toolRadius, params } = pattern
   const { geometry, feeds, method } = params
@@ -857,7 +873,7 @@ function buildHolesPatternObjects(
   objects.push(...buildOffsetVectorObjects(geometry.offsetX, geometry.offsetY, theme, arrowSize))
 
   // Rapid traverse between holes, at Safe Z
-  if (points.length > 1) {
+  if (showToolpath && points.length > 1) {
     const rapidPoints = points.map((p) => toThree(p.x, p.y, feeds.safeZ))
     const rapidGeometry = new THREE.BufferGeometry().setFromPoints(rapidPoints)
     const rapidLine = new THREE.Line(
@@ -876,42 +892,48 @@ function buildHolesPatternObjects(
     // retract from full depth back to Safe Z (the actual "G0 Z5"-style moves
     // the engine emits) — previously only the lateral travel between holes
     // was drawn, not these.
-    objects.push(
-      ...rapidZLineObjects(startX, p.y, feeds.safeZ, feeds.startZ, -geometry.totalDepth, theme, span),
-    )
+    if (showToolpath) {
+      objects.push(
+        ...rapidZLineObjects(startX, p.y, feeds.safeZ, feeds.startZ, -geometry.totalDepth, theme, span),
+      )
+    }
 
     // Final bore (semi-transparent cylinder, top at +startZ down to
     // -totalDepth — startZ treats the material as taller by that amount).
-    const boreHeight = geometry.totalDepth + feeds.startZ
-    const hole = new THREE.Mesh(
-      new THREE.CylinderGeometry(holeRadius, holeRadius, boreHeight, 32, 1, true),
-      new THREE.MeshBasicMaterial({
-        color: theme.hole,
-        transparent: true,
-        opacity: 0.3,
-        side: THREE.DoubleSide,
-      }),
-    )
-    hole.position.copy(toThree(p.x, p.y, (feeds.startZ - geometry.totalDepth) / 2))
-    objects.push(hole)
+    if (showStock) {
+      const boreHeight = geometry.totalDepth + feeds.startZ
+      const hole = new THREE.Mesh(
+        new THREE.CylinderGeometry(holeRadius, holeRadius, boreHeight, 32, 1, true),
+        new THREE.MeshBasicMaterial({
+          color: new THREE.Color(theme.hole).multiplyScalar(WALL_SHADE_FACTOR),
+          transparent: true,
+          opacity: 0.3,
+          side: THREE.DoubleSide,
+        }),
+      )
+      hole.position.copy(toThree(p.x, p.y, (feeds.startZ - geometry.totalDepth) / 2))
+      objects.push(hole)
+    }
 
     // Actual tool-center toolpath
-    const pathPoints =
-      method === 'helix'
-        ? helixPoints3D(p.x, p.y, toolRadius, geometry.totalDepth, feeds.stepdown, feeds.startZ, tabsConfig, 'ccw')
-        : standardHolePoints3D(
-            p.x,
-            p.y,
-            toolRadius,
-            geometry.totalDepth,
-            feeds.stepdown,
-            feeds.startZ,
-            tabsConfig,
-            'ccw',
-          )
-    const pathGeometry = new THREE.BufferGeometry().setFromPoints(pathPoints)
-    const pathLine = new THREE.Line(pathGeometry, new THREE.LineBasicMaterial({ color: theme.toolpath }))
-    objects.push(pathLine)
+    if (showToolpath) {
+      const pathPoints =
+        method === 'helix'
+          ? helixPoints3D(p.x, p.y, toolRadius, geometry.totalDepth, feeds.stepdown, feeds.startZ, tabsConfig, 'ccw')
+          : standardHolePoints3D(
+              p.x,
+              p.y,
+              toolRadius,
+              geometry.totalDepth,
+              feeds.stepdown,
+              feeds.startZ,
+              tabsConfig,
+              'ccw',
+            )
+      const pathGeometry = new THREE.BufferGeometry().setFromPoints(pathPoints)
+      const pathLine = new THREE.Line(pathGeometry, new THREE.LineBasicMaterial({ color: theme.toolpath }))
+      objects.push(pathLine)
+    }
   }
 
   return objects
@@ -922,6 +944,8 @@ function buildOutlineCirclePatternObjects(
   theme: Theme,
   span: number,
   arrowSize: number,
+  showStock: boolean,
+  showToolpath: boolean,
 ): THREE.Object3D[] {
   const { center, nominalRadius, toolRadius, direction, params } = pattern
   const { outline, feeds } = params
@@ -929,8 +953,10 @@ function buildOutlineCirclePatternObjects(
 
   objects.push(...buildOffsetVectorObjects(outline.offsetX, outline.offsetY, theme, arrowSize))
 
-  const startX = center.x + toolRadius
-  objects.push(...rapidZLineObjects(startX, center.y, feeds.safeZ, feeds.startZ, -outline.totalDepth, theme, span))
+  if (showToolpath) {
+    const startX = center.x + toolRadius
+    objects.push(...rapidZLineObjects(startX, center.y, feeds.safeZ, feeds.startZ, -outline.totalDepth, theme, span))
+  }
 
   // Nominal shape (semi-transparent cylinder) — same convention as Hole(s):
   // the finished material boundary, not the tool-corrected path. Open/closed
@@ -944,83 +970,92 @@ function buildOutlineCirclePatternObjects(
   // edge (still connected to the surrounding stock, rendered Inside-style/
   // open) — replacing the single nominal-radius wall, which doesn't
   // correspond to any real edge for On-line.
-  const boreHeight = outline.totalDepth + feeds.startZ
-  const boreCenterZ = (feeds.startZ - outline.totalDepth) / 2
-  // side depends on closed, same reasoning as buildRectWallMesh: a closed
-  // cylinder (nothing hollow to look into) only needs THREE.FrontSide,
-  // which also avoids the same-mesh transparent self-overlap artifact
-  // DoubleSide has (WebGL doesn't depth-sort triangles within one draw
-  // call, so a near face and a far face of the same transparent cylinder
-  // can blend in the wrong order depending on camera angle). An open
-  // cylinder (Inside, On-line's outer edge) still needs DoubleSide to show
-  // its interior wall from inside/above.
-  //
-  // For closed cylinders, the lateral (side) surface — CylinderGeometry's
-  // own group 0, with the top/bottom caps as groups 1/2 — is rendered a
-  // shade darker than the caps, same fake-shading reasoning as
-  // buildRectWallMesh: without it a solid closed cylinder reads as a flat
-  // tinted circle instead of a 3D volume. Open cylinders have no cap
-  // geometry at all, so they keep a single uniform material as before.
-  const wallMaterial = (closed: boolean): THREE.Material | THREE.Material[] => {
-    const side = closed ? THREE.FrontSide : THREE.DoubleSide
-    const capMaterial = new THREE.MeshBasicMaterial({ color: theme.hole, transparent: true, opacity: 0.3, side })
-    if (!closed) return capMaterial
-    const sideColor = new THREE.Color(theme.hole).multiplyScalar(0.6)
-    const sideMaterial = new THREE.MeshBasicMaterial({ color: sideColor, transparent: true, opacity: 0.3, side })
-    return [sideMaterial, capMaterial, capMaterial]
+  if (showStock) {
+    const boreHeight = outline.totalDepth + feeds.startZ
+    const boreCenterZ = (feeds.startZ - outline.totalDepth) / 2
+    // side depends on closed, same reasoning as buildRectWallMesh: a closed
+    // cylinder (nothing hollow to look into) only needs THREE.FrontSide,
+    // which also avoids the same-mesh transparent self-overlap artifact
+    // DoubleSide has (WebGL doesn't depth-sort triangles within one draw
+    // call, so a near face and a far face of the same transparent cylinder
+    // can blend in the wrong order depending on camera angle). An open
+    // cylinder (Inside, On-line's outer edge) still needs DoubleSide to show
+    // its interior wall from inside/above.
+    //
+    // For closed cylinders, the lateral (side) surface — CylinderGeometry's
+    // own group 0, with the top/bottom caps as groups 1/2 — is rendered a
+    // shade darker than the caps (WALL_SHADE_FACTOR), same fake-shading
+    // reasoning as buildRectWallMesh: without it a solid closed cylinder
+    // reads as a flat tinted circle instead of a 3D volume. Open cylinders
+    // have no cap geometry at all (openEnded=true means only the side
+    // group exists), so their single material IS the side — it gets the
+    // same darkened color too, not the plain theme.hole it used to keep:
+    // the darkening needs to hold against the separate flat stock cap
+    // object sitting at the rim, not just against a cap that's part of
+    // this same mesh.
+    const wallMaterial = (closed: boolean): THREE.Material | THREE.Material[] => {
+      const side = closed ? THREE.FrontSide : THREE.DoubleSide
+      const sideColor = new THREE.Color(theme.hole).multiplyScalar(WALL_SHADE_FACTOR)
+      const sideMaterial = new THREE.MeshBasicMaterial({ color: sideColor, transparent: true, opacity: 0.3, side })
+      if (!closed) return sideMaterial
+      const capMaterial = new THREE.MeshBasicMaterial({ color: theme.hole, transparent: true, opacity: 0.3, side })
+      return [sideMaterial, capMaterial, capMaterial]
+    }
+
+    if (outline.offsetMode === 'onLine') {
+      const { innerRadius, outerRadius } = onLineCircleEdges(outline)
+      // Inner wall is closed (false = not open-ended) — its own top face
+      // sits at world Y = startZ, same height the material plane/grid can
+      // sit at, so it needs the same z-fight lift as the stock cap.
+      const innerWall = new THREE.Mesh(
+        new THREE.CylinderGeometry(innerRadius, innerRadius, boreHeight, 32, 1, false),
+        wallMaterial(true),
+      )
+      innerWall.position.copy(toThree(center.x, center.y, boreCenterZ + SOLID_CAP_Z_LIFT))
+      objects.push(innerWall)
+
+      const outerWall = new THREE.Mesh(
+        new THREE.CylinderGeometry(outerRadius, outerRadius, boreHeight, 32, 1, true),
+        wallMaterial(false),
+      )
+      outerWall.position.copy(toThree(center.x, center.y, boreCenterZ))
+      objects.push(outerWall)
+    } else {
+      const openEnded = outline.offsetMode !== 'outside'
+      const shape = new THREE.Mesh(
+        new THREE.CylinderGeometry(nominalRadius, nominalRadius, boreHeight, 32, 1, openEnded),
+        wallMaterial(!openEnded),
+      )
+      // Only the closed (Outside) case has a real top face to lift — open
+      // (Inside) has no cap geometry there at all.
+      shape.position.copy(
+        toThree(center.x, center.y, openEnded ? boreCenterZ : boreCenterZ + SOLID_CAP_Z_LIFT),
+      )
+      objects.push(shape)
+    }
   }
 
-  if (outline.offsetMode === 'onLine') {
-    const { innerRadius, outerRadius } = onLineCircleEdges(outline)
-    // Inner wall is closed (false = not open-ended) — its own top face
-    // sits at world Y = startZ, same height the material plane/grid can
-    // sit at, so it needs the same z-fight lift as the stock cap.
-    const innerWall = new THREE.Mesh(
-      new THREE.CylinderGeometry(innerRadius, innerRadius, boreHeight, 32, 1, false),
-      wallMaterial(true),
-    )
-    innerWall.position.copy(toThree(center.x, center.y, boreCenterZ + SOLID_CAP_Z_LIFT))
-    objects.push(innerWall)
+  if (showToolpath) {
+    const tabsConfig: TabsConfig3D | null = outline.tabsEnabled
+      ? { tabHeight: outline.tabHeight, tabRanges: computeTabRanges(outline.tabCount, outline.tabWidth, toolRadius) }
+      : null
 
-    const outerWall = new THREE.Mesh(
-      new THREE.CylinderGeometry(outerRadius, outerRadius, boreHeight, 32, 1, true),
-      wallMaterial(false),
-    )
-    outerWall.position.copy(toThree(center.x, center.y, boreCenterZ))
-    objects.push(outerWall)
-  } else {
-    const openEnded = outline.offsetMode !== 'outside'
-    const shape = new THREE.Mesh(
-      new THREE.CylinderGeometry(nominalRadius, nominalRadius, boreHeight, 32, 1, openEnded),
-      wallMaterial(!openEnded),
-    )
-    // Only the closed (Outside) case has a real top face to lift — open
-    // (Inside) has no cap geometry there at all.
-    shape.position.copy(
-      toThree(center.x, center.y, openEnded ? boreCenterZ : boreCenterZ + SOLID_CAP_Z_LIFT),
-    )
-    objects.push(shape)
+    const pathPoints =
+      outline.method === 'helix'
+        ? helixPoints3D(center.x, center.y, toolRadius, outline.totalDepth, feeds.stepdown, feeds.startZ, tabsConfig, direction)
+        : standardHolePoints3D(
+            center.x,
+            center.y,
+            toolRadius,
+            outline.totalDepth,
+            feeds.stepdown,
+            feeds.startZ,
+            tabsConfig,
+            direction,
+          )
+    const pathGeometry = new THREE.BufferGeometry().setFromPoints(pathPoints)
+    objects.push(new THREE.Line(pathGeometry, new THREE.LineBasicMaterial({ color: theme.toolpath })))
   }
-
-  const tabsConfig: TabsConfig3D | null = outline.tabsEnabled
-    ? { tabHeight: outline.tabHeight, tabRanges: computeTabRanges(outline.tabCount, outline.tabWidth, toolRadius) }
-    : null
-
-  const pathPoints =
-    outline.method === 'helix'
-      ? helixPoints3D(center.x, center.y, toolRadius, outline.totalDepth, feeds.stepdown, feeds.startZ, tabsConfig, direction)
-      : standardHolePoints3D(
-          center.x,
-          center.y,
-          toolRadius,
-          outline.totalDepth,
-          feeds.stepdown,
-          feeds.startZ,
-          tabsConfig,
-          direction,
-        )
-  const pathGeometry = new THREE.BufferGeometry().setFromPoints(pathPoints)
-  objects.push(new THREE.Line(pathGeometry, new THREE.LineBasicMaterial({ color: theme.toolpath })))
 
   return objects
 }
@@ -1064,17 +1099,20 @@ function buildRectWallMesh(corners: Point2D[], boreHeight: number, centerZ: numb
   const width = Math.max(...corners.map((p) => p.x)) - Math.min(...corners.map((p) => p.x))
   const height = Math.max(...corners.map((p) => p.y)) - Math.min(...corners.map((p) => p.y))
   const side = closed ? THREE.FrontSide : THREE.DoubleSide
-  // Side walls a shade darker than the top/bottom cap, closed shapes
-  // only — MeshBasicMaterial has no real lighting model, so without some
-  // deliberate cap-vs-wall contrast a closed box reads as a flat tinted
+  // Side walls a shade darker (WALL_SHADE_FACTOR) than the top/bottom cap
+  // — MeshBasicMaterial has no real lighting model, so without some
+  // deliberate cap-vs-wall contrast a box reads as a flat tinted
   // rectangle rather than a solid 3D volume (this became visible once the
   // FrontSide fix above removed the DoubleSide self-overlap darkening,
   // which — by accident — had been the only cue making it read as 3D at
   // all). Cheap fake shading, same idea as a flat-shaded isometric
-  // sprite's darker side faces. Open walls already read as 3D via the
-  // visible interior through the missing cap, so they keep the original
-  // single-material look.
-  const wallColor = closed ? new THREE.Color(theme.hole).multiplyScalar(0.6) : theme.hole
+  // sprite's darker side faces. Applies to open shapes too, not just
+  // closed ones — an open wall's own missing cap used to be considered
+  // enough of a 3D cue on its own, but that breaks down next to the
+  // separate flat stock cap object, which sits right at the opening in
+  // the same undarkened theme.hole and reads as one continuous flat tint
+  // with an undarkened wall.
+  const wallColor = new THREE.Color(theme.hole).multiplyScalar(WALL_SHADE_FACTOR)
   const wallMaterial = new THREE.MeshBasicMaterial({ color: wallColor, transparent: true, opacity: 0.3, side })
   const capMaterial = closed
     ? new THREE.MeshBasicMaterial({ color: theme.hole, transparent: true, opacity: 0.3, side })
@@ -1092,15 +1130,19 @@ function buildOutlineRectPatternObjects(
   theme: Theme,
   span: number,
   arrowSize: number,
+  showStock: boolean,
+  showToolpath: boolean,
 ): THREE.Object3D[] {
   const { nominalCorners, toolCorners, rampEdge, params } = pattern
   const { outline, feeds } = params
   const objects: THREE.Object3D[] = []
 
   objects.push(...buildOffsetVectorObjects(outline.offsetX, outline.offsetY, theme, arrowSize))
-  objects.push(
-    ...rapidZLineObjects(toolCorners[0].x, toolCorners[0].y, feeds.safeZ, feeds.startZ, -outline.totalDepth, theme, span),
-  )
+  if (showToolpath) {
+    objects.push(
+      ...rapidZLineObjects(toolCorners[0].x, toolCorners[0].y, feeds.safeZ, feeds.startZ, -outline.totalDepth, theme, span),
+    )
+  }
 
   // Nominal shape (semi-transparent box, aligned with CNC X/Y — BoxGeometry's
   // own local X/Y/Z axes need no rotation here, unlike ExtrudeGeometry,
@@ -1115,52 +1157,56 @@ function buildOutlineRectPatternObjects(
   // an inner edge (standalone island, closed) and an outer edge (still
   // connected to stock, open) — replacing the single nominal-corner wall,
   // which doesn't correspond to a real edge for On-line.
-  const boreHeight = outline.totalDepth + feeds.startZ
-  const boreCenterZ = (feeds.startZ - outline.totalDepth) / 2
+  if (showStock) {
+    const boreHeight = outline.totalDepth + feeds.startZ
+    const boreCenterZ = (feeds.startZ - outline.totalDepth) / 2
 
-  if (outline.offsetMode === 'onLine' && outline.shape !== 'circle') {
-    const { innerWidth, innerHeight, outerWidth, outerHeight } = onLineRectDimensions(
-      outline.width,
-      outline.height,
-      outline.toolDiameter,
-    )
-    const innerCorners = rectCorners(
-      outline.shape,
-      outline.width,
-      outline.height,
-      innerWidth,
-      innerHeight,
-      outline.offsetX,
-      outline.offsetY,
-      'ccw',
-    )
-    const outerCorners = rectCorners(
-      outline.shape,
-      outline.width,
-      outline.height,
-      outerWidth,
-      outerHeight,
-      outline.offsetX,
-      outline.offsetY,
-      'ccw',
-    )
-    objects.push(buildRectWallMesh(innerCorners, boreHeight, boreCenterZ, true, theme))
-    objects.push(buildRectWallMesh(outerCorners, boreHeight, boreCenterZ, false, theme))
-  } else {
-    const closed = outline.offsetMode === 'outside'
-    objects.push(buildRectWallMesh(nominalCorners, boreHeight, boreCenterZ, closed, theme))
+    if (outline.offsetMode === 'onLine' && outline.shape !== 'circle') {
+      const { innerWidth, innerHeight, outerWidth, outerHeight } = onLineRectDimensions(
+        outline.width,
+        outline.height,
+        outline.toolDiameter,
+      )
+      const innerCorners = rectCorners(
+        outline.shape,
+        outline.width,
+        outline.height,
+        innerWidth,
+        innerHeight,
+        outline.offsetX,
+        outline.offsetY,
+        'ccw',
+      )
+      const outerCorners = rectCorners(
+        outline.shape,
+        outline.width,
+        outline.height,
+        outerWidth,
+        outerHeight,
+        outline.offsetX,
+        outline.offsetY,
+        'ccw',
+      )
+      objects.push(buildRectWallMesh(innerCorners, boreHeight, boreCenterZ, true, theme))
+      objects.push(buildRectWallMesh(outerCorners, boreHeight, boreCenterZ, false, theme))
+    } else {
+      const closed = outline.offsetMode === 'outside'
+      objects.push(buildRectWallMesh(nominalCorners, boreHeight, boreCenterZ, closed, theme))
+    }
   }
 
-  const tabs = outline.tabsEnabled
-    ? { tabHeight: outline.tabHeight, tabCount: outline.tabCount, tabWidth: outline.tabWidth }
-    : null
+  if (showToolpath) {
+    const tabs = outline.tabsEnabled
+      ? { tabHeight: outline.tabHeight, tabCount: outline.tabCount, tabWidth: outline.tabWidth }
+      : null
 
-  const pathPoints =
-    outline.method === 'ramp'
-      ? rectRampPoints3D(toolCorners, rampEdge, outline.totalDepth, feeds.stepdown, feeds.startZ, tabs)
-      : rectStandardPoints3D(toolCorners, outline.totalDepth, feeds.stepdown, feeds.startZ, tabs)
-  const pathGeometry = new THREE.BufferGeometry().setFromPoints(pathPoints)
-  objects.push(new THREE.Line(pathGeometry, new THREE.LineBasicMaterial({ color: theme.toolpath })))
+    const pathPoints =
+      outline.method === 'ramp'
+        ? rectRampPoints3D(toolCorners, rampEdge, outline.totalDepth, feeds.stepdown, feeds.startZ, tabs)
+        : rectStandardPoints3D(toolCorners, outline.totalDepth, feeds.stepdown, feeds.startZ, tabs)
+    const pathGeometry = new THREE.BufferGeometry().setFromPoints(pathPoints)
+    objects.push(new THREE.Line(pathGeometry, new THREE.LineBasicMaterial({ color: theme.toolpath })))
+  }
 
   return objects
 }
@@ -1191,6 +1237,8 @@ function buildSurfacePatternObjects(
   theme: Theme,
   span: number,
   arrowSize: number,
+  showStock: boolean,
+  showToolpath: boolean,
 ): THREE.Object3D[] {
   const { nominalBounds, params } = pattern
   const { surface, feeds } = params
@@ -1198,37 +1246,50 @@ function buildSurfacePatternObjects(
 
   objects.push(...buildOffsetVectorObjects(surface.offsetX, surface.offsetY, theme, arrowSize))
 
-  const corner = surfaceStartCorner(surface)
-  objects.push(...rapidZLineObjects(corner.x, corner.y, feeds.safeZ, feeds.startZ, -surface.totalDepth, theme, span))
+  if (showToolpath) {
+    const corner = surfaceStartCorner(surface)
+    objects.push(...rapidZLineObjects(corner.x, corner.y, feeds.safeZ, feeds.startZ, -surface.totalDepth, theme, span))
+  }
 
-  const boreHeight = feeds.safeZ
-  const boreCenterZ = -surface.totalDepth - feeds.safeZ / 2
-  const corners: Point2D[] = [
-    { x: nominalBounds.minX, y: nominalBounds.minY },
-    { x: nominalBounds.maxX, y: nominalBounds.minY },
-    { x: nominalBounds.maxX, y: nominalBounds.maxY },
-    { x: nominalBounds.minX, y: nominalBounds.maxY },
-  ]
-  // closed=true — see the block comment above.
-  objects.push(buildRectWallMesh(corners, boreHeight, boreCenterZ, true, theme))
+  if (showStock) {
+    const boreHeight = feeds.safeZ
+    const boreCenterZ = -surface.totalDepth - feeds.safeZ / 2
+    const corners: Point2D[] = [
+      { x: nominalBounds.minX, y: nominalBounds.minY },
+      { x: nominalBounds.maxX, y: nominalBounds.minY },
+      { x: nominalBounds.maxX, y: nominalBounds.maxY },
+      { x: nominalBounds.minX, y: nominalBounds.maxY },
+    ]
+    // closed=true — see the block comment above.
+    objects.push(buildRectWallMesh(corners, boreHeight, boreCenterZ, true, theme))
+  }
 
-  const pathPoints = buildSurfaceToolpathPoints3D(surface, feeds)
-  const pathGeometry = new THREE.BufferGeometry().setFromPoints(pathPoints)
-  objects.push(new THREE.Line(pathGeometry, new THREE.LineBasicMaterial({ color: theme.toolpath })))
+  if (showToolpath) {
+    const pathPoints = buildSurfaceToolpathPoints3D(surface, feeds)
+    const pathGeometry = new THREE.BufferGeometry().setFromPoints(pathPoints)
+    objects.push(new THREE.Line(pathGeometry, new THREE.LineBasicMaterial({ color: theme.toolpath })))
+  }
 
   return objects
 }
 
-function buildPatternObjects(pattern: ResolvedPattern, theme: Theme, span: number, arrowSize: number): THREE.Object3D[] {
+function buildPatternObjects(
+  pattern: ResolvedPattern,
+  theme: Theme,
+  span: number,
+  arrowSize: number,
+  showStock: boolean,
+  showToolpath: boolean,
+): THREE.Object3D[] {
   switch (pattern.kind) {
     case 'holes':
-      return buildHolesPatternObjects(pattern, theme, span, arrowSize)
+      return buildHolesPatternObjects(pattern, theme, span, arrowSize, showStock, showToolpath)
     case 'outlineCircle':
-      return buildOutlineCirclePatternObjects(pattern, theme, span, arrowSize)
+      return buildOutlineCirclePatternObjects(pattern, theme, span, arrowSize, showStock, showToolpath)
     case 'outlineRect':
-      return buildOutlineRectPatternObjects(pattern, theme, span, arrowSize)
+      return buildOutlineRectPatternObjects(pattern, theme, span, arrowSize, showStock, showToolpath)
     case 'surface':
-      return buildSurfacePatternObjects(pattern, theme, span, arrowSize)
+      return buildSurfacePatternObjects(pattern, theme, span, arrowSize, showStock, showToolpath)
   }
 }
 
@@ -1324,8 +1385,24 @@ function buildStockCapObject(
   // matching the wall exactly is what actually reads as "this is stock".
   const cap = new THREE.Mesh(
     new THREE.ShapeGeometry(outer),
-    new THREE.MeshBasicMaterial({ color: theme.hole, transparent: true, opacity: 0.3, side: THREE.DoubleSide }),
+    new THREE.MeshBasicMaterial({
+      color: theme.hole,
+      transparent: true,
+      opacity: 0.3,
+      side: THREE.DoubleSide,
+      // Same fix as the material plane/grid (0.15.6): without this, the
+      // cap — a single large quad spanning the whole visible grid, with a
+      // hole cut only exactly at each drilled footprint — wins the depth
+      // test against anything behind it at a raking camera angle (where
+      // the sightline into a hole crosses the cap plane *outside* the
+      // cutout before reaching a deep toolpath point), and then occludes
+      // it like a real solid instead of staying a translucent backdrop.
+      // Most visible on the hole nearest the camera, where perspective
+      // makes that raking angle unavoidable.
+      depthWrite: false,
+    }),
   )
+  cap.renderOrder = -1
   cap.rotation.x = -Math.PI / 2
   cap.position.set(0, startZ + SOLID_CAP_Z_LIFT, 0)
   return cap
@@ -1340,6 +1417,8 @@ export function buildToolpathScene(
   showActivePattern = true,
   gridLabelsEnabled = true,
   gridLabelSize: Grid3DLabelSize = 'medium',
+  showStock = true,
+  showToolpath = true,
 ): BuiltScene {
   const theme = buildTheme(paletteId, isDark, themeId)
 
@@ -1435,7 +1514,7 @@ export function buildToolpathScene(
   // allPatterns always pushes the active pattern last when
   // showActivePattern is true (see the array literal above), so this is
   // always exactly resolvePattern(params), never an overlay entry.
-  if (showActivePattern) {
+  if (showActivePattern && showStock) {
     // Inverse of toThree's CNC->world Z mapping (world.z = -CNC.y), so the
     // cap's outer boundary can be built directly in CNC (x, y) coordinates,
     // matching the grid/plane's own (now step-snapped) center and size.
@@ -1562,7 +1641,7 @@ export function buildToolpathScene(
   }
 
   for (const pattern of allPatterns) {
-    objects.push(...buildPatternObjects(pattern, theme, span, arrowSize))
+    objects.push(...buildPatternObjects(pattern, theme, span, arrowSize, showStock, showToolpath))
   }
 
   return { objects, labels, bounds, background: theme.material }

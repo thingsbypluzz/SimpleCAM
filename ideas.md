@@ -200,18 +200,12 @@ faktycznym.
   stepdown` (wysokość względna do bieżącego poziomu, poprawna na każdym
   poziomie) — to drugie wydaje się fizycznie poprawniejsze i spójniejsze
   z resztą appki.
-- **`BL-36`** *(Otwarty)* — **Preview: przyciski do ukrywania
-  toolpath/bryły.** Pomysł: w Header, prawdopodobnie obok istniejącego
-  Icon Buttona "oko" (`EyeIcon`, toggle overlay presetów), dodać kontrolki
-  pozwalające niezależnie ukryć samą linię ścieżki narzędzia i/albo bryłę
-  materiału/otworu w podglądzie — czy to jako Icon Buttony (symbol do
-  ustalenia) czy jako zwykłe przyciski tekstowe w stylu istniejących
-  Method/Toggle pickerów ("Hide Toolpaths" / "Hide Object"). Otwarte
-  pytanie od razu zgłoszone w rozmowie: czy "Hide Object" (bryła) w ogóle
-  jest potrzebne i do czego dokładnie miałoby służyć — do ustalenia przy
-  sesji `/grill-me` (dotyczy obu podglądów 2D i 3D, więc realny zakres i
-  architektura — nowy stan w `WizardParams`? czy lokalny UI state? — nie
-  są jeszcze jasne).
+- **`BL-36`** *(Zrealizowany, 2026-09-17)* — **Preview: przyciski
+  Hide/Show Stock i Hide/Show Toolpath.** Rozwinięte przy sesji
+  `/grill-me` — dwa niezależne przełączniki tekstowe w lewym górnym rogu
+  obu podglądów, dostępne zawsze (także podczas overlay presetów), jeden
+  wspólny stan między zakładkami 2D/3D, bez wpływu na `canGenerate` —
+  pełny opis w `CHANGELOG.md`, `[0.16.1]`.
 - **`BL-37`** *(Otwarty)* — **Ponownie rozważyć: bryła stock/otworu w 3D
   Preview rysowana od `Start Z`, nie zawsze od `Z=0`.** Dotyczy Hole(s) i
   Outline (**nie** Surface — tam blok "pozostałego materiału" ma inną,
@@ -252,6 +246,14 @@ Surface, 2026-09-12, i historia implementacji w `CHANGELOG.md`,
 - **`OP-2` — Pocket.** Kieszeniowanie — wybieranie materiału wewnątrz
   zamkniętego konturu (nie tylko po samej linii), wymaga strategii
   wypełnienia (np. zigzag/spiral) nieobecnej dziś w silniku w ogóle.
+- **`OP-4` — Text/Font Tracing.** Wybór czcionki i generowanie ścieżki
+  narzędzia po napisie — albo tracing obrysu (konturu) każdej litery,
+  albo, dla specjalnych czcionek jednoliniowych, tracing wprost po
+  osi/linii znaku (przydatne do małych napisów, grawerów słów, gdzie
+  pełny obrys byłby zbyt drobny/skomplikowany). Wymaga parsowania
+  glifów czcionki (najpewniej z plików fontowych, np. przez jakąś
+  bibliotekę do path-data) — geometria wejściowa nieporównywalna z
+  dzisiejszymi kształtami parametrycznymi (Rectangle/Circle).
 
 **Każda z `OP-#` wymaga własnej, pełnej sesji `/grill-me` przed
 napisaniem jakiegokolwiek kodu** — nieporównywalnie większy zakres

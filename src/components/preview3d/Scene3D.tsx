@@ -17,6 +17,10 @@ interface Scene3DProps {
   showActivePattern: boolean
   gridLabelsEnabled: boolean
   gridLabelSize: Grid3DLabelSize
+  stockVisible: boolean
+  toolpathVisible: boolean
+  onToggleStockVisible: () => void
+  onToggleToolpathVisible: () => void
 }
 
 const PRESET_BUTTONS: { name: ViewPresetName; label: string }[] = [
@@ -35,6 +39,10 @@ export function Scene3D({
   showActivePattern,
   gridLabelsEnabled,
   gridLabelSize,
+  stockVisible,
+  toolpathVisible,
+  onToggleStockVisible,
+  onToggleToolpathVisible,
 }: Scene3DProps) {
   const containerRef = useRef<HTMLDivElement>(null)
   const sceneRef = useRef<THREE.Scene | null>(null)
@@ -174,6 +182,8 @@ export function Scene3D({
       showActivePattern,
       gridLabelsEnabled,
       gridLabelSize,
+      stockVisible,
+      toolpathVisible,
     )
     renderer.setClearColor(background, 1)
     objects.forEach((obj) => contentGroup.add(obj))
@@ -204,7 +214,18 @@ export function Scene3D({
         frameCamera(camera, controls, bounds, direction.normalize(), camera.up.clone())
       }
     }
-  }, [params, isDark, paletteId, themeId, overlayParams, showActivePattern, gridLabelsEnabled, gridLabelSize])
+  }, [
+    params,
+    isDark,
+    paletteId,
+    themeId,
+    overlayParams,
+    showActivePattern,
+    gridLabelsEnabled,
+    gridLabelSize,
+    stockVisible,
+    toolpathVisible,
+  ])
 
   const handlePreset = (name: ViewPresetName) => {
     const camera = cameraRef.current
@@ -233,6 +254,14 @@ export function Scene3D({
   return (
     <div className="relative min-h-0 w-full flex-1">
       <div ref={containerRef} className="h-full w-full" />
+      <div className="absolute top-3 left-3 flex flex-wrap items-center gap-1.5">
+        <button type="button" onClick={onToggleStockVisible} className={buttonClass}>
+          {stockVisible ? 'Hide Stock' : 'Show Stock'}
+        </button>
+        <button type="button" onClick={onToggleToolpathVisible} className={buttonClass}>
+          {toolpathVisible ? 'Hide Toolpath' : 'Show Toolpath'}
+        </button>
+      </div>
       <div className="absolute right-3 bottom-3 flex flex-wrap items-center justify-end gap-1.5">
         {/* Two different kinds of action, grouped and separated by a hairline:
             the presets set a specific viewing angle, Fit View keeps whatever

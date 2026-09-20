@@ -7,6 +7,88 @@ zgodne z [SemVer](https://semver.org/). Ten plik pozostaje głównym, czytelnym
 thingsbypluzz/SimpleCAM), ale to infrastruktura pod izolację pracy
 (branch/worktree per zadanie), nie zamiennik tego changeloga.
 
+## [0.16.3] — 2026-09-20
+
+### Zmienione
+
+- **3D Preview: ścianki boczne (głębokość otworu/konturu) nie
+  wyróżniały się kolorem od górnej nakrywki/stock capu — zlewały się w
+  jedną płaską plamę.** Zgłoszone zrzutami ekranu: tylna ściana
+  cylindra Hole(s) niewidoczna na tle capu, ściany otwartego konturu
+  Outline (Inside) też, a nawet zamknięta bryła (Outline Outside/
+  Surface), która już miała cieniowanie ścian, nie wyróżniała się
+  wystarczająco. Przyczyna: pociemnienie ścian bocznych
+  (`theme.hole` × dawne `0.6`, `buildScene.ts`) dotyczyło dotąd
+  **wyłącznie zamkniętych** brył (`buildRectWallMesh()`/
+  `buildOutlineCirclePatternObjects()`) — otwarte ściany (Outline
+  Inside/On-line zewnętrzna, i cylinder wiercenia Hole(s), który w
+  ogóle nie miał żadnego cieniowania) zostawały jednolitym
+  `theme.hole`, na dawnym założeniu, że widoczne wnętrze przez
+  brakującą nakrywkę samo wystarczy jako wskazówka 3D. Złamane przez
+  osobny, płaski obiekt stock cap (`buildStockCapObject()`) siedzący
+  tuż przy otworze, w dokładnie tym samym, niepociemnionym kolorze —
+  ściana i cap zlewały się wizualnie. Naprawione: nowa, nazwana stała
+  `WALL_SHADE_FACTOR = 0.5` (zastępuje dawne magic number `0.6`,
+  jaśniejsza różnica dla lepszego kontrastu) stosowana teraz
+  **jednolicie do każdej ściany bocznej — otwartej i zamkniętej**,
+  łącznie z cylindrem Hole(s), który wcześniej nie miał cieniowania w
+  ogóle. Stock cap i nakrywki zamkniętych brył zostają bez zmian
+  (pełny `theme.hole`) — kontrast rośnie tylko po stronie ścian.
+  Wyłącznie warstwa renderowania (`buildScene.ts`), silnik G-code bez
+  zmian.
+
+## [0.16.2] — 2026-09-20
+
+### Naprawiono
+
+- **3D Preview: toolpath najbliższego otworu (Hole(s)) znikał pod
+  kątem — głębsza część spirali stawała się niewidoczna, mimo że
+  otwory dalej od kamery renderowały się poprawnie w całości.** Ten
+  sam rodzaj bugu co [0.15.6] (bryła wzorca myląco okludująca inne
+  obiekty w zależności od kąta kamery), ale przeoczony wtedy dla jednej
+  osobnej bryły: stock cap (`buildStockCapObject()`, `buildScene.ts`) —
+  pojedynczy duży płaski quad rozciągnięty na cały widoczny obszar
+  siatki, z wyciętym otworem dokładnie na każdym wywierconym śladzie —
+  nigdy nie dostał `depthWrite: false`/`renderOrder = -1`, które
+  płaszczyzna materiału i siatka dostały w [0.15.6]. Przy patrzeniu na
+  otwór pod ostrym kątem (nieuniknione dla otworu najbliższego kamerze,
+  z powodu perspektywy) promień patrzenia w głąb otworu przecina
+  płaszczyznę capu POZA wyciętym otworem, zanim dotrze do głębokiego
+  punktu ścieżki — cap, mając `depthWrite: true`, wygrywał wtedy test
+  głębokości i okludował toolpath jak prawdziwa bryła, zamiast zostać
+  półprzezroczystym tłem jak płaszczyzna/siatka. Naprawione tym samym
+  zestawem dwóch właściwości. Cap jest płaskim (zerowej grubości)
+  kształtem, nie bryłą objętościową, więc nie dotyczy go osobny artefakt
+  nakładania się ścian `DoubleSide` naprawiony dla zamkniętych brył w
+  [0.15.6] — `side: DoubleSide` capu zostaje bez zmian. Wyłącznie warstwa
+  renderowania (`buildScene.ts`), silnik G-code bez zmian.
+
+## [0.16.1] — 2026-09-17
+
+### Dodano
+
+- **BL-36: Hide/Show Stock i Hide/Show Toolpath w 2D/3D Preview.**
+  Dwa nowe przyciski tekstowe w lewym górnym rogu obu podglądów (ten sam
+  styl co istniejące Top/Isometric/Front/Side/Fit View — żaden przycisk
+  podglądu nie używał dotąd ikon, więc tekst zamiast crossed-out-cube
+  ikony), etykieta zmienia się między "Hide"/"Show" zależnie od
+  aktualnej widoczności. Dostępne zawsze — niezależnie od trybu overlay
+  presetów (BL-3), i wpływają też na nałożone presety, nie tylko na
+  żywy wzorzec. Jeden wspólny stan (lokalny, nietrwały, resetuje się po
+  przeładowaniu) dzielony między obiema zakładkami Preview.
+  **Stock** = bryła wzorca (bore/wall/Surface "remaining material") +
+  stock cap razem — płaszczyzna materiału Z=0/tło i siatka zostają
+  zawsze widoczne, jako czysty kontekst referencyjny, nie "materiał do
+  usunięcia". **Toolpath** = ścieżka cięcia + przejazdy szybkie (G0 XY
+  i Z) razem, łącznie z kropkami startu w 2D — wektor offsetu, osie,
+  siatka, origin bez zmian. Nie wpływa na `canGenerate` (czysty
+  przełącznik widoku, w odróżnieniu od trybu overlay). Silnik G-code
+  bez zmian — wyłącznie warstwa renderowania (`buildScene.ts`,
+  `drawToolpath.ts`), przez dwa nowe parametry `showStock`/
+  `showToolpath` przeprowadzone przez wspólne funkcje dyspozycyjne
+  (`buildPatternObjects`/`drawPatternGeometry`), więc naprawa objęła
+  Hole(s), Outline (Circle/Rectangle) i Surface jednolicie.
+
 ## [0.16.0] — 2026-09-14
 
 Aplikacja przemianowana z **SimpleCAM** na **OnlyPaths**, ze slogan "Helps

@@ -364,11 +364,13 @@ function drawHolesGeometry(
   pattern: Extract<ResolvedPattern, { kind: 'holes' }>,
   theme: Theme,
   arrowSize: number,
+  showStock: boolean,
+  showToolpath: boolean,
 ) {
   const { points, holeRadius, toolPathRadius, params } = pattern
   const { geometry } = params
 
-  if (points.length > 1) {
+  if (showToolpath && points.length > 1) {
     ctx.strokeStyle = theme.rapid
     ctx.lineWidth = 1
     ctx.setLineDash([4, 4])
@@ -392,22 +394,26 @@ function drawHolesGeometry(
   for (const p of points) {
     const [px, py] = toPx(p.x, p.y)
 
-    ctx.beginPath()
-    ctx.arc(px, py, holeRadius * scale, 0, Math.PI * 2)
-    ctx.fillStyle = theme.holeFill
-    ctx.fill()
-    ctx.strokeStyle = theme.holeStroke
-    ctx.lineWidth = 1
-    drawGappedCircle(ctx, px, py, holeRadius * scale, tabRanges)
+    if (showStock) {
+      ctx.beginPath()
+      ctx.arc(px, py, holeRadius * scale, 0, Math.PI * 2)
+      ctx.fillStyle = theme.holeFill
+      ctx.fill()
+      ctx.strokeStyle = theme.holeStroke
+      ctx.lineWidth = 1
+      drawGappedCircle(ctx, px, py, holeRadius * scale, tabRanges)
+    }
 
-    ctx.strokeStyle = theme.toolpath
-    ctx.lineWidth = 1.5
-    drawGappedCircle(ctx, px, py, toolPathRadius * scale, tabRanges)
+    if (showToolpath) {
+      ctx.strokeStyle = theme.toolpath
+      ctx.lineWidth = 1.5
+      drawGappedCircle(ctx, px, py, toolPathRadius * scale, tabRanges)
 
-    ctx.beginPath()
-    ctx.arc(px, py, 2, 0, Math.PI * 2)
-    ctx.fillStyle = theme.toolpath
-    ctx.fill()
+      ctx.beginPath()
+      ctx.arc(px, py, 2, 0, Math.PI * 2)
+      ctx.fillStyle = theme.toolpath
+      ctx.fill()
+    }
   }
 
   drawOffsetVector(ctx, toPx, geometry.offsetX, geometry.offsetY, theme, arrowSize)
@@ -422,26 +428,32 @@ function drawOutlineCircleGeometry(
   pattern: Extract<ResolvedPattern, { kind: 'outlineCircle' }>,
   theme: Theme,
   arrowSize: number,
+  showStock: boolean,
+  showToolpath: boolean,
 ) {
   const { center, nominalRadius, toolRadius, tabRanges, params } = pattern
   const [px, py] = toPx(center.x, center.y)
 
-  ctx.beginPath()
-  ctx.arc(px, py, nominalRadius * scale, 0, Math.PI * 2)
-  ctx.fillStyle = theme.holeFill
-  ctx.fill()
-  ctx.strokeStyle = theme.holeStroke
-  ctx.lineWidth = 1
-  drawGappedCircle(ctx, px, py, nominalRadius * scale, tabRanges)
+  if (showStock) {
+    ctx.beginPath()
+    ctx.arc(px, py, nominalRadius * scale, 0, Math.PI * 2)
+    ctx.fillStyle = theme.holeFill
+    ctx.fill()
+    ctx.strokeStyle = theme.holeStroke
+    ctx.lineWidth = 1
+    drawGappedCircle(ctx, px, py, nominalRadius * scale, tabRanges)
+  }
 
-  ctx.strokeStyle = theme.toolpath
-  ctx.lineWidth = 1.5
-  drawGappedCircle(ctx, px, py, toolRadius * scale, tabRanges)
+  if (showToolpath) {
+    ctx.strokeStyle = theme.toolpath
+    ctx.lineWidth = 1.5
+    drawGappedCircle(ctx, px, py, toolRadius * scale, tabRanges)
 
-  ctx.beginPath()
-  ctx.arc(px + toolRadius * scale, py, 2, 0, Math.PI * 2)
-  ctx.fillStyle = theme.toolpath
-  ctx.fill()
+    ctx.beginPath()
+    ctx.arc(px + toolRadius * scale, py, 2, 0, Math.PI * 2)
+    ctx.fillStyle = theme.toolpath
+    ctx.fill()
+  }
 
   drawOffsetVector(ctx, toPx, params.outline.offsetX, params.outline.offsetY, theme, arrowSize)
 }
@@ -454,31 +466,37 @@ function drawOutlineRectGeometry(
   pattern: Extract<ResolvedPattern, { kind: 'outlineRect' }>,
   theme: Theme,
   arrowSize: number,
+  showStock: boolean,
+  showToolpath: boolean,
 ) {
   const { nominalCorners, toolCorners, sideTabRanges, params } = pattern
 
-  ctx.beginPath()
-  nominalCorners.forEach((p, i) => {
-    const [x, y] = toPx(p.x, p.y)
-    if (i === 0) ctx.moveTo(x, y)
-    else ctx.lineTo(x, y)
-  })
-  ctx.closePath()
-  ctx.fillStyle = theme.holeFill
-  ctx.fill()
-  ctx.strokeStyle = theme.holeStroke
-  ctx.lineWidth = 1
-  drawGappedRectangle(ctx, toPx, nominalCorners, sideTabRanges)
+  if (showStock) {
+    ctx.beginPath()
+    nominalCorners.forEach((p, i) => {
+      const [x, y] = toPx(p.x, p.y)
+      if (i === 0) ctx.moveTo(x, y)
+      else ctx.lineTo(x, y)
+    })
+    ctx.closePath()
+    ctx.fillStyle = theme.holeFill
+    ctx.fill()
+    ctx.strokeStyle = theme.holeStroke
+    ctx.lineWidth = 1
+    drawGappedRectangle(ctx, toPx, nominalCorners, sideTabRanges)
+  }
 
-  ctx.strokeStyle = theme.toolpath
-  ctx.lineWidth = 1.5
-  drawGappedRectangle(ctx, toPx, toolCorners, sideTabRanges)
+  if (showToolpath) {
+    ctx.strokeStyle = theme.toolpath
+    ctx.lineWidth = 1.5
+    drawGappedRectangle(ctx, toPx, toolCorners, sideTabRanges)
 
-  const [startX, startY] = toPx(toolCorners[0].x, toolCorners[0].y)
-  ctx.beginPath()
-  ctx.arc(startX, startY, 2, 0, Math.PI * 2)
-  ctx.fillStyle = theme.toolpath
-  ctx.fill()
+    const [startX, startY] = toPx(toolCorners[0].x, toolCorners[0].y)
+    ctx.beginPath()
+    ctx.arc(startX, startY, 2, 0, Math.PI * 2)
+    ctx.fillStyle = theme.toolpath
+    ctx.fill()
+  }
 
   drawOffsetVector(ctx, toPx, params.outline.offsetX, params.outline.offsetY, theme, arrowSize)
 }
@@ -495,86 +513,92 @@ function drawSurfaceGeometry(
   pattern: Extract<ResolvedPattern, { kind: 'surface' }>,
   theme: Theme,
   arrowSize: number,
+  showStock: boolean,
+  showToolpath: boolean,
 ) {
   const { nominalBounds, lines, method, params } = pattern
 
-  ctx.beginPath()
-  const corners: Point2D[] = [
-    { x: nominalBounds.minX, y: nominalBounds.minY },
-    { x: nominalBounds.maxX, y: nominalBounds.minY },
-    { x: nominalBounds.maxX, y: nominalBounds.maxY },
-    { x: nominalBounds.minX, y: nominalBounds.maxY },
-  ]
-  corners.forEach((p, i) => {
-    const [x, y] = toPx(p.x, p.y)
-    if (i === 0) ctx.moveTo(x, y)
-    else ctx.lineTo(x, y)
-  })
-  ctx.closePath()
-  ctx.fillStyle = theme.holeFill
-  ctx.fill()
-  ctx.strokeStyle = theme.holeStroke
-  ctx.lineWidth = 1
-  ctx.stroke()
-
-  ctx.strokeStyle = theme.toolpath
-  ctx.lineWidth = 1.5
-
-  const drawArrowOnLine = (line: RasterLine, forward: boolean) => {
-    const from = forward ? line.from : line.to
-    const to = forward ? line.to : line.from
-    const [fx, fy] = toPx(from.x, from.y)
-    const [tx, ty] = toPx(to.x, to.y)
-    const midX = (fx + tx) / 2
-    const midY = (fy + ty) / 2
-    const dx = tx - fx
-    const dy = ty - fy
-    const len = Math.hypot(dx, dy) || 1
-    drawArrowhead(ctx, midX, midY, dx / len, dy / len, arrowSize * 0.7, theme.toolpath)
-  }
-
-  if (method === 'zigzag') {
-    const waypoints = zigzagWaypoints(lines)
+  if (showStock) {
     ctx.beginPath()
-    waypoints.forEach((p, i) => {
+    const corners: Point2D[] = [
+      { x: nominalBounds.minX, y: nominalBounds.minY },
+      { x: nominalBounds.maxX, y: nominalBounds.minY },
+      { x: nominalBounds.maxX, y: nominalBounds.maxY },
+      { x: nominalBounds.minX, y: nominalBounds.maxY },
+    ]
+    corners.forEach((p, i) => {
       const [x, y] = toPx(p.x, p.y)
       if (i === 0) ctx.moveTo(x, y)
       else ctx.lineTo(x, y)
     })
+    ctx.closePath()
+    ctx.fillStyle = theme.holeFill
+    ctx.fill()
+    ctx.strokeStyle = theme.holeStroke
+    ctx.lineWidth = 1
     ctx.stroke()
-    lines.forEach((line, i) => drawArrowOnLine(line, i % 2 === 0))
-  } else {
-    lines.forEach((line, i) => {
-      const [fx, fy] = toPx(line.from.x, line.from.y)
-      const [tx, ty] = toPx(line.to.x, line.to.y)
-      ctx.beginPath()
-      ctx.moveTo(fx, fy)
-      ctx.lineTo(tx, ty)
-      ctx.stroke()
-      drawArrowOnLine(line, true)
-
-      if (i < lines.length - 1) {
-        const [nx, ny] = toPx(lines[i + 1].from.x, lines[i + 1].from.y)
-        ctx.strokeStyle = theme.rapid
-        ctx.lineWidth = 1
-        ctx.setLineDash([4, 4])
-        ctx.beginPath()
-        ctx.moveTo(tx, ty)
-        ctx.lineTo(nx, ny)
-        ctx.stroke()
-        ctx.setLineDash([])
-        ctx.strokeStyle = theme.toolpath
-        ctx.lineWidth = 1.5
-      }
-    })
   }
 
-  if (lines.length > 0) {
-    const [startX, startY] = toPx(lines[0].from.x, lines[0].from.y)
-    ctx.beginPath()
-    ctx.arc(startX, startY, 2, 0, Math.PI * 2)
-    ctx.fillStyle = theme.toolpath
-    ctx.fill()
+  if (showToolpath) {
+    ctx.strokeStyle = theme.toolpath
+    ctx.lineWidth = 1.5
+
+    const drawArrowOnLine = (line: RasterLine, forward: boolean) => {
+      const from = forward ? line.from : line.to
+      const to = forward ? line.to : line.from
+      const [fx, fy] = toPx(from.x, from.y)
+      const [tx, ty] = toPx(to.x, to.y)
+      const midX = (fx + tx) / 2
+      const midY = (fy + ty) / 2
+      const dx = tx - fx
+      const dy = ty - fy
+      const len = Math.hypot(dx, dy) || 1
+      drawArrowhead(ctx, midX, midY, dx / len, dy / len, arrowSize * 0.7, theme.toolpath)
+    }
+
+    if (method === 'zigzag') {
+      const waypoints = zigzagWaypoints(lines)
+      ctx.beginPath()
+      waypoints.forEach((p, i) => {
+        const [x, y] = toPx(p.x, p.y)
+        if (i === 0) ctx.moveTo(x, y)
+        else ctx.lineTo(x, y)
+      })
+      ctx.stroke()
+      lines.forEach((line, i) => drawArrowOnLine(line, i % 2 === 0))
+    } else {
+      lines.forEach((line, i) => {
+        const [fx, fy] = toPx(line.from.x, line.from.y)
+        const [tx, ty] = toPx(line.to.x, line.to.y)
+        ctx.beginPath()
+        ctx.moveTo(fx, fy)
+        ctx.lineTo(tx, ty)
+        ctx.stroke()
+        drawArrowOnLine(line, true)
+
+        if (i < lines.length - 1) {
+          const [nx, ny] = toPx(lines[i + 1].from.x, lines[i + 1].from.y)
+          ctx.strokeStyle = theme.rapid
+          ctx.lineWidth = 1
+          ctx.setLineDash([4, 4])
+          ctx.beginPath()
+          ctx.moveTo(tx, ty)
+          ctx.lineTo(nx, ny)
+          ctx.stroke()
+          ctx.setLineDash([])
+          ctx.strokeStyle = theme.toolpath
+          ctx.lineWidth = 1.5
+        }
+      })
+    }
+
+    if (lines.length > 0) {
+      const [startX, startY] = toPx(lines[0].from.x, lines[0].from.y)
+      ctx.beginPath()
+      ctx.arc(startX, startY, 2, 0, Math.PI * 2)
+      ctx.fillStyle = theme.toolpath
+      ctx.fill()
+    }
   }
 
   drawOffsetVector(ctx, toPx, params.surface.offsetX, params.surface.offsetY, theme, arrowSize)
@@ -591,19 +615,21 @@ function drawPatternGeometry(
   pattern: ResolvedPattern,
   theme: Theme,
   arrowSize: number,
+  showStock: boolean,
+  showToolpath: boolean,
 ) {
   switch (pattern.kind) {
     case 'holes':
-      drawHolesGeometry(ctx, toPx, scale, pattern, theme, arrowSize)
+      drawHolesGeometry(ctx, toPx, scale, pattern, theme, arrowSize, showStock, showToolpath)
       break
     case 'outlineCircle':
-      drawOutlineCircleGeometry(ctx, toPx, scale, pattern, theme, arrowSize)
+      drawOutlineCircleGeometry(ctx, toPx, scale, pattern, theme, arrowSize, showStock, showToolpath)
       break
     case 'outlineRect':
-      drawOutlineRectGeometry(ctx, toPx, pattern, theme, arrowSize)
+      drawOutlineRectGeometry(ctx, toPx, pattern, theme, arrowSize, showStock, showToolpath)
       break
     case 'surface':
-      drawSurfaceGeometry(ctx, toPx, pattern, theme, arrowSize)
+      drawSurfaceGeometry(ctx, toPx, pattern, theme, arrowSize, showStock, showToolpath)
       break
   }
 }
@@ -627,6 +653,8 @@ export function drawToolpath(
   camera: Camera2D,
   overlayParams: WizardParams[] = [],
   showActivePattern = true,
+  showStock = true,
+  showToolpath = true,
 ) {
   const theme = buildTheme(paletteId, isDark, themeId)
 
@@ -728,7 +756,7 @@ export function drawToolpath(
   ctx.font = '10px ui-monospace, monospace'
 
   for (const pattern of allPatterns) {
-    drawPatternGeometry(ctx, toPx, camera.scale, pattern, theme, arrowSize)
+    drawPatternGeometry(ctx, toPx, camera.scale, pattern, theme, arrowSize, showStock, showToolpath)
   }
 
   // Origin marker

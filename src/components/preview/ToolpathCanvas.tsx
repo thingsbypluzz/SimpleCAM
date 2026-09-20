@@ -12,6 +12,10 @@ interface ToolpathCanvasProps {
   themeId: ThemeId
   overlayParams: WizardParams[]
   showActivePattern: boolean
+  stockVisible: boolean
+  toolpathVisible: boolean
+  onToggleStockVisible: () => void
+  onToggleToolpathVisible: () => void
 }
 
 // Wheel deltaY -> zoom factor, exponential so repeated small scroll ticks
@@ -26,6 +30,10 @@ export function ToolpathCanvas({
   themeId,
   overlayParams,
   showActivePattern,
+  stockVisible,
+  toolpathVisible,
+  onToggleStockVisible,
+  onToggleToolpathVisible,
 }: ToolpathCanvasProps) {
   const containerRef = useRef<HTMLDivElement>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
@@ -77,7 +85,20 @@ export function ToolpathCanvas({
       const ctx = canvas.getContext('2d')
       if (!ctx) return
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
-      drawToolpath(ctx, width, height, params, isDark, paletteId, themeId, camera, overlayParams, showActivePattern)
+      drawToolpath(
+        ctx,
+        width,
+        height,
+        params,
+        isDark,
+        paletteId,
+        themeId,
+        camera,
+        overlayParams,
+        showActivePattern,
+        stockVisible,
+        toolpathVisible,
+      )
     }
 
     render()
@@ -85,7 +106,17 @@ export function ToolpathCanvas({
     const resizeObserver = new ResizeObserver(render)
     resizeObserver.observe(container)
     return () => resizeObserver.disconnect()
-  }, [params, isDark, paletteId, themeId, overlayParams, showActivePattern, camera])
+  }, [
+    params,
+    isDark,
+    paletteId,
+    themeId,
+    overlayParams,
+    showActivePattern,
+    camera,
+    stockVisible,
+    toolpathVisible,
+  ])
 
   // One-time initial fit, once the container has a real size — mirrors
   // Scene3D.tsx's hasFramedRef latch (there reset per new THREE camera;
@@ -175,6 +206,22 @@ export function ToolpathCanvas({
   return (
     <div ref={containerRef} className="relative min-h-0 w-full flex-1">
       <canvas ref={canvasRef} />
+      <div className="absolute top-3 left-3 flex flex-wrap items-center gap-1.5">
+        <button
+          type="button"
+          onClick={onToggleStockVisible}
+          className="rounded-md border border-field-border bg-field-bg/90 px-2.5 py-1 text-xs font-medium text-value shadow-sm hover:bg-field-bg"
+        >
+          {stockVisible ? 'Hide Stock' : 'Show Stock'}
+        </button>
+        <button
+          type="button"
+          onClick={onToggleToolpathVisible}
+          className="rounded-md border border-field-border bg-field-bg/90 px-2.5 py-1 text-xs font-medium text-value shadow-sm hover:bg-field-bg"
+        >
+          {toolpathVisible ? 'Hide Toolpath' : 'Show Toolpath'}
+        </button>
+      </div>
       <div className="absolute right-3 bottom-3">
         <button
           type="button"

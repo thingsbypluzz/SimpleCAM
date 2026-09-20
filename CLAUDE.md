@@ -453,23 +453,31 @@ znikać albo zmieniać jasność zależnie od kąta kamery i Offset X/Y —
 wyłącznie warstwa renderowania Three.js, silnik G-code nigdy nie był
 dotknięty:
 
-- **`depthWrite: false` na płaszczyźnie materiału i siatce**
-  (`buildToolpathScene()`). Obie są z założenia czysto wizualnym tłem,
-  nigdy realnym przesłaniaczem — ale przy 0.6 opacity w dark mode są
-  wystarczająco "gęste", że domyślny `depthWrite: true` pozwalał
-  transparent-sortowi Three.js (sortowanie po odległości od kamery)
-  narysować je PO jakiejś bryle wzorca siedzącej za nimi (np. stock
-  Surface, poniżej `Z=0`) i wyczyścić ją z bufora głębokości —
-  czysty efekt "znika/pojawia się", nie migotanie. `depthTest` zostaje
-  włączony (wciąż poprawnie chowają się za realnie nieprzezroczystymi
-  obiektami, np. znacznikiem originu).
-- **`renderOrder = -1` na tej samej płaszczyźnie i siatce.** Samo
-  wyłączenie `depthWrite` usuwało całkowite znikanie, ale nie
-  niespójną jasność — kolejność blendowania (płaszczyzna PRZED czy PO
-  bryle) nadal zależała od transparent-sortu. Wymuszenie płaszczyzny/
-  siatki jako zawsze-rysowanych-najpierw usuwa tę niejednoznaczność:
-  każda bryła wzorca blenduje się na wierzchu w stałej kolejności,
-  niezależnie od kamery.
+- **`depthWrite: false` na płaszczyźnie materiału, siatce i stock capie**
+  (`buildToolpathScene()`/`buildStockCapObject()`). Wszystkie trzy są z
+  założenia czysto wizualnym tłem, nigdy realnym przesłaniaczem — ale
+  przy 0.6 opacity w dark mode są wystarczająco "gęste", że domyślny
+  `depthWrite: true` pozwalał transparent-sortowi Three.js (sortowanie po
+  odległości od kamery) narysować je PO jakiejś bryle wzorca siedzącej za
+  nimi (np. stock Surface, poniżej `Z=0`) i wyczyścić ją z bufora
+  głębokości — czysty efekt "znika/pojawia się", nie migotanie. Stock cap
+  ma dodatkowo swój własny wariant tego samego problemu: to jeden duży
+  płaski quad rozciągnięty na cały widoczny obszar siatki, z wyciętym
+  otworem dokładnie na śladzie każdego otworu/konturu — przy patrzeniu
+  pod ostrym kątem (typowo dla otworu najbliższego kamerze, z powodu
+  perspektywy) promień patrzenia w głąb otworu przecina płaszczyznę capu
+  POZA wyciętym otworem, zanim dotrze do głębokiego punktu toolpath, więc
+  bez `depthWrite: false` cap wygrywał test głębokości i okludował
+  toolpath jak prawdziwa bryła. `depthTest` zostaje włączony wszędzie
+  (wciąż poprawnie chowają się za realnie nieprzezroczystymi obiektami,
+  np. znacznikiem originu).
+- **`renderOrder = -1` na płaszczyźnie materiału, siatce i stock capie.**
+  Samo wyłączenie `depthWrite` usuwało całkowite znikanie, ale nie
+  niespójną jasność — kolejność blendowania (tło PRZED czy PO bryle)
+  nadal zależała od transparent-sortu. Wymuszenie tła jako
+  zawsze-rysowanego-najpierw usuwa tę niejednoznaczność: każda bryła
+  wzorca blenduje się na wierzchu w stałej kolejności, niezależnie od
+  kamery.
 - **`side: THREE.FrontSide` zamiast `DoubleSide` dla każdej zamkniętej
   bryły** (`buildRectWallMesh()`, `buildOutlineCirclePatternObjects()`)
   — WebGL nie sortuje trójkątów wewnątrz jednego draw call po
@@ -479,19 +487,29 @@ dotknięty:
   pociemnienie zależne od kąta). Zamknięta bryła nie ma niczego pustego
   do zajrzenia do środka, więc `FrontSide` (tylko bliższa ściana) jest
   poprawny i przy okazji usuwa ten artefakt. Otwarte ściany (Inside,
-  zewnętrzna ściana On-line) zostają `DoubleSide` — tam trzeba widzieć
-  wnętrze z góry/od środka.
+  zewnętrzna ściana On-line, i cylinder wiercenia Hole(s), zawsze
+  otwarty) zostają `DoubleSide` — tam trzeba widzieć wnętrze z góry/od
+  środka. Stock cap (`buildStockCapObject()`), jako płaski, zerowej
+  grubości kształt (nie bryła objętościowa), nie podlega temu artefaktowi
+  wcale — jego `DoubleSide` zostaje bez zmian.
   Skutek uboczny `FrontSide`: przypadkowe nakładanie się ścian
   `DoubleSide` było jedyną wizualną wskazówką, że zamknięta bryła to
   w ogóle 3D (goły `MeshBasicMaterial` nie ma modelu oświetlenia) — bez
   niego bryła czytała się jako płaski zabarwiony kształt. Naprawione
-  **sztucznym cieniowaniem**: ścianki boczne zamkniętej bryły (box i
-  cylinder) rysowane 40% ciemniejszym odcieniem (`theme.hole` przez
-  `THREE.Color.multiplyScalar(0.6)`) niż górna/dolna nakrywka —
+  **sztucznym cieniowaniem**: ścianki boczne KAŻDEJ bryły — otwartej i
+  zamkniętej, box i cylinder, łącznie z cylindrem wiercenia Hole(s) —
+  rysowane odcieniem `theme.hole` pomnożonym przez `WALL_SHADE_FACTOR`
+  (`buildScene.ts`, dziś `0.5`) niż górna/dolna nakrywka (albo, dla
+  otwartych brył bez własnej nakrywki, niż sąsiadujący stock cap) —
   identycznie jak płasko cieniowany sprite izometryczny, niezależne od
-  kamery. Otwarte ściany zostają jednolitym kolorem jak wcześniej — już
-  czytają się jako 3D dzięki widocznemu wnętrzu przez brakującą
-  nakrywkę.
+  kamery. Pierwotnie (`0.6`, i tylko dla zamkniętych brył) ściany
+  otwarte zostawały jednolitym kolorem na założeniu, że widoczne wnętrze
+  przez brakującą nakrywkę samo w sobie wystarczy jako wskazówka 3D — to
+  założenie okazało się fałszywe, gdy sąsiadujący, osobny stock cap
+  używa dokładnie tego samego, niepociemnionego koloru: ściana i cap
+  zlewały się w jedną płaską plamę. Stąd jednolita zasada dziś: KAŻDA
+  ściana boczna (otwarta czy zamknięta) jest ciemniejsza niż KAŻDA
+  sąsiadująca nakrywka/góra, bez wyjątków.
 
 ### Etykiety siatki w 3D Preview
 

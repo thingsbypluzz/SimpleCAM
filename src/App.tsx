@@ -221,6 +221,10 @@ function App() {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false)
   const [overlayEnabled, setOverlayEnabled] = useState(false)
   const [overlaySlots, setOverlaySlots] = useState<Set<PresetSlotId>>(new Set())
+  // BL-36: independent of overlayEnabled/canGenerate — pure view toggles,
+  // local-only (not persisted), shared between the 2D and 3D Preview Tabs.
+  const [stockVisible, setStockVisible] = useState(true)
+  const [toolpathVisible, setToolpathVisible] = useState(true)
   const [justLoadedSlot, setJustLoadedSlot] = useState<PresetSlotId | null>(null)
 
   // Any parameter change invalidates the last generated snapshot — Copy/
@@ -865,6 +869,10 @@ function App() {
                 themeId={appearance.theme}
                 overlayParams={overlayParams}
                 showActivePattern={!overlayEnabled}
+                stockVisible={stockVisible}
+                toolpathVisible={toolpathVisible}
+                onToggleStockVisible={() => setStockVisible((v) => !v)}
+                onToggleToolpathVisible={() => setToolpathVisible((v) => !v)}
               />
             )}
 
@@ -885,6 +893,10 @@ function App() {
                   showActivePattern={!overlayEnabled}
                   gridLabelsEnabled={appearance.grid3DLabelsEnabled}
                   gridLabelSize={appearance.grid3DLabelSize}
+                  stockVisible={stockVisible}
+                  toolpathVisible={toolpathVisible}
+                  onToggleStockVisible={() => setStockVisible((v) => !v)}
+                  onToggleToolpathVisible={() => setToolpathVisible((v) => !v)}
                 />
               </Suspense>
             )}
