@@ -13,7 +13,71 @@ projektową** (w przeciwieństwie do "Kluczowe decyzje projektowe" w
 zrozumienie, punkt wyjścia do realnej implementacji w przyszłości, kiedy
 padnie wyraźne "przechodzimy do X".
 
-Obecnie pusty.
+### `BL-25` — Tryb edycji przywołanego presetu (sesja `/grill-me`, 2026-09-20)
+
+**Wejście w tryb edycji — dwuklik, nie jeden klik.** Pierwszy klik na
+nieaktywny (jeszcze niezaładowany) slot ładuje go — dokładnie jak dziś,
+bez ryzyka. Drugi klik na TEN SAM, już aktywny slot uzbraja tryb edycji
+("arm in place") — **bez przeładowania** z presetu: bieżące, ewentualnie
+już zmienione parametry stają się tym, co dalej zapisuje się live. To
+świadome odejście od dosłownego pierwotnego zapisu BL-25 ("wczytanie
+zaznacza") — zabezpiecza przed przypadkowym uzbrojeniem live-save samym
+odruchowym przywołaniem presetu.
+
+**Toggle jest "sticky", nie resetuje się po rozbrojeniu.** Po załadowaniu
+danego slotu każdy kolejny klik na TĘ SAMĄ ikonę przełącza tryb edycji
+on/off (klik2=uzbrój, klik3=rozbrój, klik4=uzbrój ponownie, …). Tylko
+kliknięcie na INNY zajęty slot zmienia, który slot jest "aktywny" — ładuje
+nowy i cicho rozbraja poprzedni, bez potwierdzenia (poprzedni jest już
+bezpiecznie zsynchronizowany live-save'ami, nic nie ginie).
+
+**Zapis: live, na każdą zmianę — bez bramki Generate.** W trybie
+uzbrojonym każda zmiana parametru zapisuje natychmiast do `localStorage`
+pod aktywnym slotem — bez czekania na Generate, bez potwierdzenia
+nadpisania za każdym razem (potwierdzenie pytane jest raz, tylko przy
+samym akcie uzbrojenia — patrz niżej, celowo brak). Bramka: live-save
+pisze tylko, gdy bieżące parametry przechodzą tę samą `isGeometryValid`
+(per-operation), którą dziś sprawdza przycisk Generate — nigdy nie
+zapisuje transientnego/połamanego stanu (np. pustego pola w trakcie
+wpisywania). Miękkie `fitWarnings` (nie blokują Generate) też nie blokują
+live-save.
+
+**Wskaźnik wizualny — dwa elementy.** (1) Pierścień na ikonie uzbrojonego
+slotu — reużywa dokładnie styl dzisiejszego 1.5s flasha `justLoadedSlot`,
+ale nie gaśnie, dopóki edycja jest uzbrojona. (2) Stały napis "Auto-save
+Mode Enabled" po lewej stronie grupy ikon Preset Bar, widoczny cały czas
+uzbrojenia (generyczny tekst, bez numeru slotu — pierścień już to
+pokazuje). Kolor tekstu zmienia się na czerwony/ostrzegawczy (token
+motywu, nie hardkodowany hex) dokładnie w momentach, gdy bieżące
+parametry nie przechodzą walidacji (live-save właśnie nic nie zapisuje) —
+wraca do zwykłego koloru, gdy znów poprawne. Sam tekst się nie zmienia,
+tylko kolor. Brak dialogu/toastu przy samym uzbrojeniu — spójne z resztą
+appki (load/overlay toggle też są natychmiastowe); baner pełni rolę
+ciągłego potwierdzenia zamiast jednorazowego.
+
+**Interakcje z innymi mechanizmami:**
+- **Overlay mode** — włączenie `overlayEnabled` automatycznie rozbraja
+  tryb edycji, jeśli był uzbrojony; te dwa mechanizmy nigdy nie działają
+  naraz (Overlay całkowicie przejmuje semantykę kliknięcia w Preset Bar).
+- **Slot `"0"` (auto-save sesji)** — bez zmian, Generate nadal zapisuje do
+  ukrytego slotu `"0"` jak dziś, niezależnie od tego, czy coś jest
+  uzbrojone. Dwa niezależne mechanizmy.
+- **Zmiana `operation` w trakcie edycji** — świadomie bez specjalnego
+  przypadku; live-save pisze dalej nawet jeśli użytkownik przełączy np. z
+  Hole(s) na Outline w trakcie edycji — preset zamienia się w to, co
+  aktualnie zbudowane.
+- **Usunięcie uzbrojonego slotu** — automatycznie rozbraja tryb edycji
+  (cel przestaje istnieć); dalsze zmiany wracają do dzisiejszego
+  zachowania (tylko slot `"0"`, na Generate).
+- **Trwałość** — stan uzbrojenia żyje wyłącznie w pamięci (React state),
+  nie w `localStorage`; odświeżenie strony zawsze startuje rozbrojone.
+- **Krok 4 "Save current settings as preset"** — bez zmian, żadnej
+  wizualnej flagi ani specjalnej interakcji dla uzbrojonego slotu.
+
+**Poza zakresem tej dyskusji:** sama implementacja (kod), aktualizacja
+`CLAUDE.md`/`CHANGELOG.md` (dopiero przy realnej implementacji), i
+jakikolwiek dodatkowy setting włączający/wyłączający to zachowanie (nie
+było dyskutowane — zastępuje dzisiejsze zachowanie bezwarunkowo).
 
 ## Backlog (`BL-#`)
 
@@ -108,16 +172,16 @@ faktycznym.
   "unikalne IP" to tylko przybliżenie "unikalnych ludzi" (NAT zaniża,
   rotacja IP zawyża), oraz implikacje RODO przy liczeniu po IP (strona
   hostowana na `.pl`).
-- **`BL-25`** *(Otwarty)* — **Tryb edycji przywołanego presetu.** Pomysł: wczytanie
-  presetu z Preset Bar podświetla/zaznacza go; póki jest zaznaczony,
-  dalsze zmiany zapisują się automatycznie z powrotem do tego slotu
-  presetu, zamiast tylko do ukrytego slotu sesji (dzisiejsze zachowanie
-  auto-save wyłącznie do slotu `"0"`, `lib/storage.ts`). Ponowny klik w
-  ten sam preset odznacza go, wracając do dzisiejszego zachowania (zmiany
-  trafiają tylko do slotu sesji 0). To realna zmiana ustalonej, świadomej
+- **`BL-25`** *(Otwarty)* — **Tryb edycji przywołanego presetu.** Zakres w
+  pełni dopracowany sesją `/grill-me` (2026-09-20) — pełny zapis w
+  "Pomysły w dyskusji" wyżej. Skrót: drugi klik na już załadowany slot
+  Preset Bar uzbraja live-save do tego slotu (nie pierwszy klik/samo
+  wczytanie), dalsze zmiany zapisują się natychmiast (bez bramki
+  Generate, z bramką walidacji), wskaźnik to trwały pierścień na ikonie +
+  baner "Auto-save Mode Enabled". To realna zmiana ustalonej, świadomej
   decyzji projektowej (presety są dziś jawnie zapisywane wyłącznie
-  ręcznie, bez auto-nadpisywania) — wymaga pełnej dyskusji przed
-  dopracowaniem zakresu, nie drobna poprawka.
+  ręcznie, bez auto-nadpisywania) — implementacja dopiero po wyraźnym
+  "przechodzimy do BL-25".
 - **`BL-26`** *(Otwarty)* — **Przytrzymanie przycisku `NumberInput` (auto-repeat).**
   Dziś klik na strzałkę góra/dół (`src/components/wizard/NumberInput.tsx`,
   `useNumberField.onAdjust`) to zawsze dokładnie jeden krok — świadomie
