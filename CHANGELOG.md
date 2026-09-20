@@ -7,6 +7,57 @@ zgodne z [SemVer](https://semver.org/). Ten plik pozostaje głównym, czytelnym
 thingsbypluzz/SimpleCAM), ale to infrastruktura pod izolację pracy
 (branch/worktree per zadanie), nie zamiennik tego changeloga.
 
+## [0.16.11] — 2026-09-20
+
+### Zmieniono
+
+- **3D Preview: siatka/płaszczyzna dociśnięta do rzeczywistych danych,
+  zamiast symetrycznego paddingu wokół centroidu origin+dane.** Follow-up
+  do `[0.16.10]` (BL-31) — ustalone w sesji `/grill-me`. Dotąd
+  `bounds.expandByPoint(0,0,0)` zawsze wymuszało origin w bounding boxie, a
+  siatka była kwadratem symetrycznym wokół WŁASNEGO centroidu tego boxa —
+  gdy wzorzec leżał całkowicie po jednej stronie originu (np. cały w
+  ćwiartce I), kwadrat i tak "przelewał się" w puste ćwiartki po drugiej.
+  Naprawione: nowy, osobny bounding box tylko na potrzeby siatki/płaszczyzny
+  (`dataBounds`, bez wymuszonego originu) — padding 25% liczony od rozmiaru
+  samych danych, dopiero potem box rozciągany dokładnie do originu (zero
+  dodatkowego marginesu, gdy ten leży poza podpadowanymi danymi; brak
+  zmiany, gdy origin już jest w środku — typowy, dotychczasowy przypadek).
+  `GridHelper` zostaje kwadratem (świadomy kompromis z sesji `/grill-me` —
+  bez przechodzenia na ręcznie budowaną, w pełni asymetryczną geometrię
+  linii) — oś, która wyznacza wspólny rozmiar, zachowuje swój poprawny
+  środek, druga dostaje symetryczne dopompowanie wokół WŁASNEGO środka.
+  Kamera "Fit View" (`frameCamera()`) i wszystkie cosmetic-scale (groty
+  strzałek, etykiety, znacznik originu) bez zmian — nadal liczone z
+  dotychczasowego `bounds`/`span` (origin+dane), nie z nowego,
+  mniejszego boxa siatki. Wyłącznie 3D Preview — 2D ma ten sam root cause
+  (`computeCombinedBounds()`), ale świadomie poza zakresem (dużo słabszy
+  objaw, tylko kadrowanie kamery, nie fizyczna geometria).
+
+## [0.16.10] — 2026-09-20
+
+### Naprawiono
+
+- **`BL-31` zamknięte — 3D Preview: osie X/Y miały stałą, symetryczną wokół
+  originu długość zamiast dopasowanej do faktycznie renderowanej siatki.**
+  `axisLength = planeSize * 0.55` (`buildToolpathScene()`,
+  `buildScene.ts`) był jednym skalarem identycznym w obu kierunkach każdej
+  osi — poprawnym tylko, gdy wzorzec leżał mniej więcej centralnie wokół
+  originu (0,0). Siatka/płaszczyzna materiału tymczasem od dawna
+  rekalibruje swój środek do `gridCenterX`/`gridCenterZ` (step-snapped
+  centroid bounding-boxa wzorca), więc przy Rectangle Cornered (cały
+  wzorzec w jednej ćwiartce) albo dużym Offset X/Y ramię osi wystawało
+  poza faktycznie renderowaną siatkę w jednym kierunku, a w drugim nie
+  sięgało do niej wcale. Naprawione: cztery niezależne długości ramion
+  (`xArmPos`/`xArmNeg`/`yArmPos`/`yArmNeg`), liczone od originu do
+  realnej krawędzi siatki w danym kierunku (`Math.max(0, ...)` — ramię
+  nie wystaje, gdy origin leży całkowicie poza siatką po tej stronie).
+  Reużywa dokładnie tych samych granic (`gridHalfExtent`,
+  `minTickX`/`maxTickX`/`minTickY`/`maxTickY`), które etykiety siatki już
+  liczyły dla siebie — wyniesione wyżej i współdzielone zamiast liczone
+  drugi raz. Dotyczy wyłącznie 3D Preview — 2D nie ma tego problemu (jego
+  osie są zakotwiczone do krawędzi canvasu, nie do granic danych).
+
 ## [0.16.9] — 2026-09-20
 
 ### Naprawiono

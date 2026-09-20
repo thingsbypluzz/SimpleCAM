@@ -146,23 +146,6 @@ faktycznym.
   przycinania linii skanu (rastra) do granicy koła — dodatkowa
   złożoność geometryczna nieobecna przy Rectangle (gdzie linie rastra
   po prostu biegną od krawędzi do krawędzi).
-- **`BL-31`** *(Otwarty)* — **Oś X/Y w 3D Preview: stała długość
-  zamiast dopasowanej do renderowanego obszaru.** `axisLength =
-  planeSize * 0.55` (`buildScene.ts::buildToolpathScene()`) to jeden
-  skalar, symetryczny wokół originu (0,0) w obu kierunkach każdej osi —
-  poprawne tylko gdy wzorzec leży mniej więcej centralnie wokół
-  originu. Siatka/płaszczyzna materiału tymczasem rekalibruje swój
-  środek do `gridCenterX`/`gridCenterZ` (centroid bounding-boxa
-  wzorca — patrz "Etykiety siatki w 3D Preview" w `CLAUDE.md`), więc
-  przy Rectangle Cornered (wzorzec leży w całości w jednej ćwiartce
-  względem originu) albo dużym Offset X/Y oś wystaje poza faktycznie
-  renderowaną siatkę w jednym kierunku, a w drugim może nie sięgać
-  wystarczająco daleko. 2D Preview nie ma tego problemu — tam osie są
-  zakotwiczone do krawędzi canvasu (`EDGE_MARGIN`, `drawToolpath.ts`),
-  niezależnie od pozycji danych. Wymaga liczenia długości każdego
-  ramienia osi osobno, względem faktycznych granic renderowanej
-  płaszczyzny (`gridCenterX/Z` ± `gridSize/2`), nie jednego wspólnego
-  skalara liczonego od originu.
 - **`BL-32`** *(Zrealizowany, 2026-09-13)* — **Siatka w motywach Arcade
   Studio ledwie widoczna.** Pełny opis w `CHANGELOG.md`, `[0.15.4]`–
   `[0.15.5]`.

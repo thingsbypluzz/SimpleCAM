@@ -1575,22 +1575,58 @@ export function buildToolpathScene(
 
   const size = new THREE.Vector3()
   bounds.getSize(size)
+  // `bounds`/`size`/`span` (origin always forced in) stay exactly as
+  // before — still the returned camera-framing bounds AND still what every
+  // cosmetic scale factor below (arrow/label/origin-marker sizes,
+  // edgeMargin) is proportional to. Fit View's own framing is unaffected
+  // by the grid-sizing change below (/grill-me decision, follow-up to
+  // BL-31), so nothing that scales relative to it should shrink either.
   const span = Math.max(size.x, size.z, 10)
-  const padding = span * 0.25
-  const planeSize = span + padding * 2
+
+  // Grid/plane footprint — a SEPARATE box, data-only (no forced origin),
+  // padded around the data itself, then extended just enough to reach the
+  // origin with zero extra margin on that side. NOT one flat symmetric
+  // padding around the origin+data centroid (`bounds` above) — that always
+  // bled space into empty quadrants whenever the pattern sat entirely on
+  // one side of the origin (reported against an N-Holes-on-Circle pattern
+  // sitting wholly in quadrant I). If the origin already falls inside the
+  // padded data box (the common case — most patterns sit at or around the
+  // origin already), the final expandByPoint is a no-op and this produces
+  // essentially the same footprint as before.
+  const dataBounds = new THREE.Box3()
+  for (const pattern of allPatterns) {
+    expandBoundsForPattern(dataBounds, pattern)
+  }
+  if (dataBounds.isEmpty()) dataBounds.expandByPoint(toThree(0, 0, 0))
+  const dataSize = new THREE.Vector3()
+  dataBounds.getSize(dataSize)
+  const dataSpan = Math.max(dataSize.x, dataSize.z, 10)
+  const dataPadding = dataSpan * 0.25
+  const gridBounds = dataBounds
+    .clone()
+    .expandByVector(new THREE.Vector3(dataPadding, 0, dataPadding))
+    .expandByPoint(toThree(0, 0, 0))
+  const gridBoundsSize = new THREE.Vector3()
+  gridBounds.getSize(gridBoundsSize)
+  const planeSize = Math.max(gridBoundsSize.x, gridBoundsSize.z, 10)
   const center = new THREE.Vector3()
-  bounds.getCenter(center)
+  gridBounds.getCenter(center)
 
   // "Nice" grid step (1-2-5-10-20-50... sequence), same helper and same
   // "aim for ~8 divisions across" target as the 2D preview's grid
   // (drawToolpath.ts) — planeSize/2 is the 3D equivalent of 2D's
   // half-visible-width. Snapping the grid/plane's center to a multiple of
-  // that step (instead of the raw bounding-box center) means every grid
-  // line lands on a real, nameable CNC coordinate (0, 5, 10, ...) instead
-  // of an arbitrary offset — a prerequisite for the coordinate labels
-  // added below, and a byproduct is the grid stops being purely
-  // decorative. The snap shifts the center by at most half a step,
-  // imperceptible against the plane's own padding margin.
+  // that step (instead of the raw gridBounds center) means every grid line
+  // lands on a real, nameable CNC coordinate (0, 5, 10, ...) instead of an
+  // arbitrary offset — a prerequisite for the coordinate labels added
+  // below, and a byproduct is the grid stops being purely decorative. The
+  // snap shifts the center by at most half a step, imperceptible against
+  // the plane's own padding margin. `GridHelper` below is always a square,
+  // so whichever of X/Z needs more room to reach its own padded data (and
+  // possibly the origin) sets `planeSize` for both — the shorter axis gets
+  // symmetric filler around its own (already-correct) center, not around
+  // some unrelated point; the longer axis's own edges are unaffected by
+  // that filler.
   const gridStep = niceStep(planeSize / 8)
   const gridCenterX = Math.round(center.x / gridStep) * gridStep
   const gridCenterZ = Math.round(center.z / gridStep) * gridStep
@@ -1675,33 +1711,55 @@ export function buildToolpathScene(
   // is the fixed physical reference point, independent of where the holes
   // happen to sit). Each gets an arrowhead + text label at its positive end
   // to show direction, not just orientation.
-  const axisLength = planeSize * 0.55
+  //
+  // Each arm's length is computed separately, from the origin out to the
+  // actual rendered grid edge in that direction (BL-31) — NOT one shared
+  // scalar symmetric around the origin. A single symmetric length was only
+  // correct when the pattern sat roughly centered on the origin; the
+  // grid/plane above already recenters to gridCenterX/gridCenterZ (the
+  // pattern's own bounding-box centroid), so e.g. Rectangle Cornered (whole
+  // pattern in one quadrant) or a large Offset X/Y made one arm overshoot
+  // past the visible grid while the opposite arm fell short of it. Reuses
+  // the exact same edge boundaries the grid tick-labels below already
+  // compute (gridHalfExtent ± gridCenterX/Z) — same edges, same math,
+  // shared instead of duplicated. `Math.max(0, ...)` clamps an arm to zero
+  // rather than negative if the origin sits entirely past that edge (grid
+  // doesn't span across it at all in that direction).
+  const gridHalfExtent = gridHalfCells * gridStep
+  const minTickX = gridCenterX - gridHalfExtent
+  const maxTickX = gridCenterX + gridHalfExtent
+  const minTickY = -gridCenterZ - gridHalfExtent
+  const maxTickY = -gridCenterZ + gridHalfExtent
+  const xArmPos = Math.max(0, maxTickX) // +X, world X unchanged by toThree()
+  const xArmNeg = Math.max(0, -minTickX) // -X
+  const yArmPos = Math.max(0, maxTickY) // +Y (CNC), maps to world -Z
+  const yArmNeg = Math.max(0, -minTickY) // -Y (CNC)
   const arrowSize = span * 0.05
 
   const xAxisGeometry = new THREE.BufferGeometry().setFromPoints([
-    toThree(-axisLength, 0, 0),
-    toThree(axisLength, 0, 0),
+    toThree(-xArmNeg, 0, 0),
+    toThree(xArmPos, 0, 0),
   ])
   objects.push(new THREE.Line(xAxisGeometry, new THREE.LineBasicMaterial({ color: theme.axisX })))
   objects.push(
-    createArrowhead(theme.axisX, arrowSize, toThree(axisLength, 0, 0), new THREE.Vector3(1, 0, 0)),
+    createArrowhead(theme.axisX, arrowSize, toThree(xArmPos, 0, 0), new THREE.Vector3(1, 0, 0)),
   )
   const xLabel = createTextSprite('X', theme.axisX, span * 0.09)
-  xLabel.position.copy(toThree(axisLength + arrowSize * 1.5, 0, 0))
+  xLabel.position.copy(toThree(xArmPos + arrowSize * 1.5, 0, 0))
   xLabel.userData.pixelHeight = labelPixelHeight
   objects.push(xLabel)
   labels.push(xLabel)
 
   const yAxisGeometry = new THREE.BufferGeometry().setFromPoints([
-    toThree(0, -axisLength, 0),
-    toThree(0, axisLength, 0),
+    toThree(0, -yArmNeg, 0),
+    toThree(0, yArmPos, 0),
   ])
   objects.push(new THREE.Line(yAxisGeometry, new THREE.LineBasicMaterial({ color: theme.axisY })))
   objects.push(
-    createArrowhead(theme.axisY, arrowSize, toThree(0, axisLength, 0), new THREE.Vector3(0, 0, -1)),
+    createArrowhead(theme.axisY, arrowSize, toThree(0, yArmPos, 0), new THREE.Vector3(0, 0, -1)),
   )
   const yLabel = createTextSprite('Y', theme.axisY, span * 0.09)
-  yLabel.position.copy(toThree(0, axisLength + arrowSize * 1.5, 0))
+  yLabel.position.copy(toThree(0, yArmPos + arrowSize * 1.5, 0))
   yLabel.userData.pixelHeight = labelPixelHeight
   objects.push(yLabel)
   labels.push(yLabel)
@@ -1726,15 +1784,13 @@ export function buildToolpathScene(
   // disabled; origin/"X"/"Y" above are unaffected by that checkbox.
   if (gridLabelsEnabled) {
     const tickLabelSize = span * 0.045
-    const gridHalfExtent = gridHalfCells * gridStep
     const edgeMargin = span * 0.06
     const tickLiftY = span * 0.02
 
     // X ticks: the coordinate along the line (x) is unchanged; only the
     // cross-axis position (world Z) moves, to just outside the grid's near
-    // and far edges.
-    const minTickX = gridCenterX - gridHalfExtent
-    const maxTickX = gridCenterX + gridHalfExtent
+    // and far edges. gridHalfExtent/minTickX/maxTickX are computed above,
+    // shared with the axis-arm-length math (BL-31).
     const tickStartX = Math.ceil(minTickX / gridStep) * gridStep
     for (let x = tickStartX; x <= maxTickX; x += gridStep) {
       const label = String(Math.round(x))
@@ -1752,9 +1808,9 @@ export function buildToolpathScene(
 
     // CNC-Y ticks run along world -Z (toThree(0, y, 0) → (0, 0, -y)) — see
     // the mapping note on toThree() above. Cross-axis position (world X)
-    // moves to just outside the grid's left and right edges.
-    const minTickY = -gridCenterZ - gridHalfExtent
-    const maxTickY = -gridCenterZ + gridHalfExtent
+    // moves to just outside the grid's left and right edges. minTickY/
+    // maxTickY are computed above, shared with the axis-arm-length math
+    // (BL-31).
     const tickStartY = Math.ceil(minTickY / gridStep) * gridStep
     for (let y = tickStartY; y <= maxTickY; y += gridStep) {
       const label = String(Math.round(y))
