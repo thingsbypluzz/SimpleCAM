@@ -94,6 +94,15 @@ function unidirectionalSurfaceToolpath(cx: number, cy: number, params: WizardPar
       if (i < rasterLines.length - 1) {
         lines.push(`G0 Z${fmt(feeds.safeZ)}`)
         lines.push(`G0 X${fmt(rasterLines[i + 1].from.x)} Y${fmt(rasterLines[i + 1].from.y)}`)
+        // Rapid down to one stepdown above the target level first (BL-35)
+        // — the old single G1 plunged at Plunge Rate through the entire
+        // empty distance from Safe Z, not just through material. Same
+        // "rapid to just above, then plunge only the final stepdown"
+        // shape as buildLevelDescents()/zTransitionMoves() use for the
+        // first entry into each level. Relative to toZ (not a fixed
+        // Start Z-based height) so it stays correct on every level, not
+        // just the first.
+        lines.push(`G0 Z${fmt(toZ + feeds.stepdown)}`)
         lines.push(`G1 Z${fmt(toZ)} F${fmt(feeds.plungeRate)}`)
       }
     })

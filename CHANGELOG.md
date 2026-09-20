@@ -7,6 +7,55 @@ zgodne z [SemVer](https://semver.org/). Ten plik pozostaje głównym, czytelnym
 thingsbypluzz/SimpleCAM), ale to infrastruktura pod izolację pracy
 (branch/worktree per zadanie), nie zamiennik tego changeloga.
 
+## [0.16.7] — 2026-09-20
+
+### Zmienione
+
+- **3D Preview: ruch szybki (G0) i nieskrawający ruch pionowy (G1) słabo
+  widoczne — teraz jeden wspólny kolor (`theme.toolpath`) dla całego
+  ruchu narzędzia, rozróżniony wyłącznie stylem linii: pełna dla
+  realnego skrawania, kreskowana dla G0, kropkowana dla G1
+  nieskrawającego (krok między przejściami Standard Hole/Outline, tryb
+  Plunge przejścia Z Surface).** Wcześniej rapidy miały osobny kolor
+  (`theme.rapid`, usunięty z lokalnego `Theme` w `buildScene.ts` — 2D
+  Preview zachowuje swój niezależnie), ale nieskrawający G1 był po
+  prostu wtopiony w tę samą pełną linię co cięcie. Surface był
+  najgorszy: `buildSurfaceToolpathPoints3D()` świadomie sklejała nawet
+  prawdziwe retrakty/reposition (G0) w jedną ciągłą linię razem z
+  cięciem, bez żadnego wskazania ruchu szybkiego. Przy okazji
+  naprawiona rozbieżność z `[0.16.6]` (BL-35) — wizualizacja reentry
+  Unidirectional teraz też rapiduje do `toZ + stepdown` przed
+  kropkowanym plunge'em ostatniego stepdown, zamiast jednego odcinka do
+  `toZ`. Techniczne: `helixPoints3D()`/`standardHolePoints3D()`/
+  `rectRampPoints3D()`/`rectStandardPoints3D()`/
+  `buildSurfaceToolpathPoints3D()` zwracają teraz `ToolpathSegment3D[]`
+  (kilka stylowanych odcinków) zamiast płaskiego `Vector3[]` — jeden
+  `THREE.Line`/`LineDashedMaterial` może mieć tylko jeden wzór kreski na
+  całą długość, więc trzy style na jednej "ścieżce" wymagają wielu
+  osobnych obiektów (`createSegmentBuilder3D()`/`buildToolpathLines3D()`
+  w `buildScene.ts`). Wyłącznie warstwa renderowania, silnik G-code bez
+  zmian.
+
+## [0.16.6] — 2026-09-20
+
+### Naprawiono
+
+- **`BL-35`: Surface Unidirectional — reentry między liniami rastra
+  plunge'ował na Plunge Rate przez cały dystans od Safe Z, zamiast
+  tylko przez ostatni stepdown.** `unidirectionalSurfaceToolpath()`
+  (`lib/surface.ts`) między dwiema liniami tego samego poziomu robił:
+  retrakt na Safe Z, reposition XY, a potem jeden `G1 Z<toZ>
+  F<plungeRate>` przez cały pusty dystans — inaczej niż reszta appki,
+  gdzie każde przejście Z (np. `buildLevelDescents()`/
+  `zTransitionMoves()`) rapiduje do wysokości tuż nad celem, a plunge'uje
+  tylko ostatni stepdown. Naprawione: dodany `G0 Z<toZ + stepdown>`
+  przed finalnym plunge'em — rapid do jednego stepdown powyżej
+  docelowego poziomu, dopiero stamtąd plunge na Plunge Rate przez sam
+  ostatni kawałek. Wysokość referencyjna liczona względem `toZ` (nie
+  stałego `Start Z`), więc poprawna na każdym poziomie, nie tylko
+  pierwszym. Dotyczy wyłącznie Unidirectional (Zigzag nie ma reentry —
+  jedna ciągła ścieżka `G1` na poziom).
+
 ## [0.16.5] — 2026-09-20
 
 ### Zmienione

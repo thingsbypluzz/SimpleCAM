@@ -181,21 +181,22 @@ function helixPoints3D(
   startZ: number,
   tabs: TabsConfig3D | null,
   direction: 'cw' | 'ccw',
-) {
+): ToolpathSegment3D[] {
   const sign = direction === 'cw' ? -1 : 1
-  const points: THREE.Vector3[] = [toThree(cx + radius, cy, startZ)]
+  const builder = createSegmentBuilder3D(toThree(cx + radius, cy, startZ))
   let currentZ = startZ
 
   if (tabs) {
     const tabBandTopZ = -(totalDepth - tabs.tabHeight)
     const spiralDepth = totalDepth + startZ - tabs.tabHeight
     let angle = 0
+    const spiralPoints: THREE.Vector3[] = []
 
     for (const turnDepth of computeDepthPasses(spiralDepth, stepdown)) {
       for (let i = 1; i <= SEGMENTS_PER_TURN; i++) {
         const a = angle + (2 * Math.PI * i) / SEGMENTS_PER_TURN
         const z = currentZ - (turnDepth * i) / SEGMENTS_PER_TURN
-        points.push(toThree(cx + radius * Math.cos(sign * a), cy + radius * Math.sin(sign * a), z))
+        spiralPoints.push(toThree(cx + radius * Math.cos(sign * a), cy + radius * Math.sin(sign * a), z))
       }
       angle += 2 * Math.PI
       currentZ -= turnDepth
@@ -203,27 +204,33 @@ function helixPoints3D(
 
     // Square off the helical ledge the spiral leaves behind at the tab-band
     // top before descending into the tabbed passes — mirrors the fix in
-    // helix.ts (see its comment for the full explanation).
+    // helix.ts (see its comment for the full explanation). Still part of
+    // the same continuous, real cutting motion as the spiral above it.
     for (let i = 1; i <= SEGMENTS_PER_TURN; i++) {
       const a = (2 * Math.PI * i) / SEGMENTS_PER_TURN
-      points.push(toThree(cx + radius * Math.cos(sign * a), cy + radius * Math.sin(sign * a), currentZ))
+      spiralPoints.push(toThree(cx + radius * Math.cos(sign * a), cy + radius * Math.sin(sign * a), currentZ))
     }
+    builder.add('solid', spiralPoints)
 
     for (const passDepth of computeDepthPasses(tabs.tabHeight, stepdown)) {
       currentZ -= passDepth
-      points.push(toThree(cx + radius, cy, currentZ))
-      points.push(...tabbedCirclePoints3D(cx, cy, radius, currentZ, tabBandTopZ, tabs.tabRanges, direction))
+      // Straight step-down between tabbed passes — same non-cutting
+      // vertical G1 move as Standard Hole's between-pass step, once tabs
+      // switch Helix over to flat stepdown-incremented passes.
+      builder.add('dotted', [toThree(cx + radius, cy, currentZ)])
+      builder.add('solid', tabbedCirclePoints3D(cx, cy, radius, currentZ, tabBandTopZ, tabs.tabRanges, direction))
     }
 
-    return points
+    return builder.segments
   }
 
   let angle = 0
+  const spiralPoints: THREE.Vector3[] = []
   for (const turnDepth of computeDepthPasses(totalDepth + startZ, stepdown)) {
     for (let i = 1; i <= SEGMENTS_PER_TURN; i++) {
       const a = angle + (2 * Math.PI * i) / SEGMENTS_PER_TURN
       const z = currentZ - (turnDepth * i) / SEGMENTS_PER_TURN
-      points.push(toThree(cx + radius * Math.cos(sign * a), cy + radius * Math.sin(sign * a), z))
+      spiralPoints.push(toThree(cx + radius * Math.cos(sign * a), cy + radius * Math.sin(sign * a), z))
     }
     angle += 2 * Math.PI
     currentZ -= turnDepth
@@ -231,9 +238,10 @@ function helixPoints3D(
 
   for (let i = 1; i <= SEGMENTS_PER_TURN; i++) {
     const a = angle + (2 * Math.PI * i) / SEGMENTS_PER_TURN
-    points.push(toThree(cx + radius * Math.cos(sign * a), cy + radius * Math.sin(sign * a), currentZ))
+    spiralPoints.push(toThree(cx + radius * Math.cos(sign * a), cy + radius * Math.sin(sign * a), currentZ))
   }
-  return points
+  builder.add('solid', spiralPoints)
+  return builder.segments
 }
 
 // Mirrors src/lib/standardHole.ts. `tabs`: when set (BL-14), passes at or
@@ -249,25 +257,29 @@ function standardHolePoints3D(
   startZ: number,
   tabs: TabsConfig3D | null,
   direction: 'cw' | 'ccw',
-) {
+): ToolpathSegment3D[] {
   const sign = direction === 'cw' ? -1 : 1
-  const points: THREE.Vector3[] = [toThree(cx + radius, cy, startZ)]
+  const builder = createSegmentBuilder3D(toThree(cx + radius, cy, startZ))
   let currentZ = startZ
   const tabBandTopZ = tabs ? -(totalDepth - tabs.tabHeight) : 0
 
   for (const passDepth of computeDepthPasses(totalDepth + startZ, stepdown)) {
     currentZ -= passDepth
-    points.push(toThree(cx + radius, cy, currentZ))
+    // Straight step-down between full-circle passes — a non-cutting
+    // vertical G1 move, not part of the flat pass it leads into.
+    builder.add('dotted', [toThree(cx + radius, cy, currentZ)])
     if (tabs && currentZ <= tabBandTopZ + TAB_BAND_EPSILON) {
-      points.push(...tabbedCirclePoints3D(cx, cy, radius, currentZ, tabBandTopZ, tabs.tabRanges, direction))
+      builder.add('solid', tabbedCirclePoints3D(cx, cy, radius, currentZ, tabBandTopZ, tabs.tabRanges, direction))
     } else {
+      const passPoints: THREE.Vector3[] = []
       for (let i = 1; i <= SEGMENTS_PER_TURN; i++) {
         const a = (2 * Math.PI * i) / SEGMENTS_PER_TURN
-        points.push(toThree(cx + radius * Math.cos(sign * a), cy + radius * Math.sin(sign * a), currentZ))
+        passPoints.push(toThree(cx + radius * Math.cos(sign * a), cy + radius * Math.sin(sign * a), currentZ))
       }
+      builder.add('solid', passPoints)
     }
   }
-  return points
+  return builder.segments
 }
 
 // Rectangle analog of tabbedCirclePoints3D — walks the 4-corner perimeter,
@@ -335,22 +347,23 @@ function rectStandardPoints3D(
   stepdown: number,
   startZ: number,
   tabs: RectTabsConfig3D | null,
-): THREE.Vector3[] {
-  const points: THREE.Vector3[] = [toThree(corners[0].x, corners[0].y, startZ)]
+): ToolpathSegment3D[] {
+  const builder = createSegmentBuilder3D(toThree(corners[0].x, corners[0].y, startZ))
   const tabBandTopZ = tabs ? -(totalDepth - tabs.tabHeight) : 0
   const sideRanges = tabs ? sideRangesFor(corners, tabs.tabCount, tabs.tabWidth) : [[], [], [], []]
 
   let currentZ = startZ
   for (const passDepth of computeDepthPasses(totalDepth + startZ, stepdown)) {
     currentZ -= passDepth
-    points.push(toThree(corners[0].x, corners[0].y, currentZ))
+    // Straight step-down between passes — non-cutting vertical G1 move.
+    builder.add('dotted', [toThree(corners[0].x, corners[0].y, currentZ)])
     if (tabs && currentZ <= tabBandTopZ + TAB_BAND_EPSILON) {
-      points.push(...tabbedRectanglePoints3D(corners, sideRanges, currentZ, tabBandTopZ))
+      builder.add('solid', tabbedRectanglePoints3D(corners, sideRanges, currentZ, tabBandTopZ))
     } else {
-      points.push(...tabbedRectanglePoints3D(corners, [[], [], [], []], currentZ, currentZ))
+      builder.add('solid', tabbedRectanglePoints3D(corners, [[], [], [], []], currentZ, currentZ))
     }
   }
-  return points
+  return builder.segments
 }
 
 // Mirrors lib/outlineRectangle.ts's rectRampToolpath — same ramp-edge
@@ -364,46 +377,53 @@ function rectRampPoints3D(
   stepdown: number,
   startZ: number,
   tabs: RectTabsConfig3D | null,
-): THREE.Vector3[] {
+): ToolpathSegment3D[] {
   const ordered = [0, 1, 2, 3].map((i) => corners[(i + rampEdge) % 4])
-  const points: THREE.Vector3[] = [toThree(ordered[0].x, ordered[0].y, startZ)]
+  const builder = createSegmentBuilder3D(toThree(ordered[0].x, ordered[0].y, startZ))
   let currentZ = startZ
 
-  const lap = (nextZ: number) => {
-    points.push(toThree(ordered[1].x, ordered[1].y, nextZ))
+  const lapPoints = (nextZ: number): THREE.Vector3[] => {
+    const pts: THREE.Vector3[] = [toThree(ordered[1].x, ordered[1].y, nextZ)]
     for (let i = 1; i < 4; i++) {
       const p = ordered[(i + 1) % 4]
-      points.push(toThree(p.x, p.y, nextZ))
+      pts.push(toThree(p.x, p.y, nextZ))
     }
+    return pts
   }
 
   if (tabs) {
     const tabBandTopZ = -(totalDepth - tabs.tabHeight)
     const rampDepth = totalDepth + startZ - tabs.tabHeight
     const sideRanges = sideRangesFor(ordered, tabs.tabCount, tabs.tabWidth)
+    const rampPoints: THREE.Vector3[] = []
 
     for (const turnDepth of computeDepthPasses(rampDepth, stepdown)) {
       const nextZ = currentZ - turnDepth
-      lap(nextZ)
+      rampPoints.push(...lapPoints(nextZ))
       currentZ = nextZ
     }
-    lap(currentZ)
+    rampPoints.push(...lapPoints(currentZ))
+    builder.add('solid', rampPoints)
 
     for (const passDepth of computeDepthPasses(tabs.tabHeight, stepdown)) {
       currentZ -= passDepth
-      points.push(toThree(ordered[0].x, ordered[0].y, currentZ))
-      points.push(...tabbedRectanglePoints3D(ordered, sideRanges, currentZ, tabBandTopZ))
+      // Straight step-down between tabbed passes — non-cutting vertical G1
+      // move, once tabs switch Ramp over to flat stepdown-incremented passes.
+      builder.add('dotted', [toThree(ordered[0].x, ordered[0].y, currentZ)])
+      builder.add('solid', tabbedRectanglePoints3D(ordered, sideRanges, currentZ, tabBandTopZ))
     }
   } else {
+    const rampPoints: THREE.Vector3[] = []
     for (const turnDepth of computeDepthPasses(totalDepth + startZ, stepdown)) {
       const nextZ = currentZ - turnDepth
-      lap(nextZ)
+      rampPoints.push(...lapPoints(nextZ))
       currentZ = nextZ
     }
-    lap(currentZ)
+    rampPoints.push(...lapPoints(currentZ))
+    builder.add('solid', rampPoints)
   }
 
-  return points
+  return builder.segments
 }
 
 // Mirrors lib/surfaceZTransition.ts's zTransitionMoves Helix branch, but
@@ -460,63 +480,74 @@ function surfaceHelixPoints3D(
 }
 
 // Mirrors lib/surface.ts's zigzagSurfaceToolpath/unidirectionalSurfaceToolpath
-// exactly, but emits one continuous Vector3 point list instead of G-code
-// lines — including the between-level retract+reposition and (for
-// Unidirectional) the between-line Safe-Z retract as straight segments, so
-// the whole toolpath renders as a single THREE.Line.
-function buildSurfaceToolpathPoints3D(surface: WizardParams['surface'], feeds: WizardParams['feeds']): THREE.Vector3[] {
+// exactly, but emits styled segments instead of G-code lines: the
+// between-level retract+reposition and (for Unidirectional) the
+// between-line Safe-Z retract are 'dashed' (real G0 rapids — previously
+// merged into the same solid line as actual cutting, indistinguishable
+// from it), the Plunge-mode Z-transition is 'dotted' (non-cutting vertical
+// G1, same category as Standard Hole/Outline's between-pass step), the
+// Helix-mode Z-transition and every raster cutting line stay 'solid'.
+function buildSurfaceToolpathPoints3D(surface: WizardParams['surface'], feeds: WizardParams['feeds']): ToolpathSegment3D[] {
   const bounds = surfaceToolBounds(surface)
   const corner = surfaceStartCorner(surface)
   const stepoverMm = surfaceStepoverMm(surface)
   const descents = buildLevelDescents(feeds.startZ, surface.totalDepth, feeds.stepdown)
-  const points: THREE.Vector3[] = [toThree(corner.x, corner.y, feeds.startZ)]
+  const builder = createSegmentBuilder3D(toThree(corner.x, corner.y, feeds.startZ))
   let currentX = corner.x
   let currentY = corner.y
 
   const pushZTransition = (toZ: number) => {
     if (surface.zTransitionMode === 'plunge') {
-      points.push(toThree(currentX, currentY, toZ))
+      builder.add('dotted', [toThree(currentX, currentY, toZ)])
       return
     }
-    points.push(
-      ...surfaceHelixPoints3D(currentX, currentY, surface.helixRadius, feeds.startZ, toZ, feeds.stepdown, surface.rasterDirection),
+    builder.add(
+      'solid',
+      surfaceHelixPoints3D(currentX, currentY, surface.helixRadius, feeds.startZ, toZ, feeds.stepdown, surface.rasterDirection),
     )
+  }
+
+  const addLevelRetract = () => {
+    builder.add('dashed', [
+      toThree(currentX, currentY, feeds.safeZ),
+      toThree(corner.x, corner.y, feeds.safeZ),
+      toThree(corner.x, corner.y, feeds.startZ),
+    ])
+    currentX = corner.x
+    currentY = corner.y
   }
 
   if (surface.method === 'zigzag') {
     const waypoints = zigzagWaypoints(computeRasterLines(bounds, surface.rasterDirection, stepoverMm))
     descents.forEach(({ toZ }, idx) => {
-      if (idx > 0) {
-        points.push(toThree(currentX, currentY, feeds.safeZ))
-        points.push(toThree(corner.x, corner.y, feeds.safeZ))
-        points.push(toThree(corner.x, corner.y, feeds.startZ))
-        currentX = corner.x
-        currentY = corner.y
-      }
+      if (idx > 0) addLevelRetract()
       pushZTransition(toZ)
+      const rasterPoints: THREE.Vector3[] = []
       for (let i = 1; i < waypoints.length; i++) {
-        points.push(toThree(waypoints[i].x, waypoints[i].y, toZ))
+        rasterPoints.push(toThree(waypoints[i].x, waypoints[i].y, toZ))
       }
+      builder.add('solid', rasterPoints)
       currentX = waypoints[waypoints.length - 1].x
       currentY = waypoints[waypoints.length - 1].y
     })
   } else {
     const rasterLines = computeRasterLines(bounds, surface.rasterDirection, stepoverMm)
     descents.forEach(({ toZ }, idx) => {
-      if (idx > 0) {
-        points.push(toThree(currentX, currentY, feeds.safeZ))
-        points.push(toThree(corner.x, corner.y, feeds.safeZ))
-        points.push(toThree(corner.x, corner.y, feeds.startZ))
-        currentX = corner.x
-        currentY = corner.y
-      }
+      if (idx > 0) addLevelRetract()
       pushZTransition(toZ)
       rasterLines.forEach((line, i) => {
-        points.push(toThree(line.to.x, line.to.y, toZ))
+        builder.add('solid', [toThree(line.to.x, line.to.y, toZ)])
         if (i < rasterLines.length - 1) {
-          points.push(toThree(line.to.x, line.to.y, feeds.safeZ))
-          points.push(toThree(rasterLines[i + 1].from.x, rasterLines[i + 1].from.y, feeds.safeZ))
-          points.push(toThree(rasterLines[i + 1].from.x, rasterLines[i + 1].from.y, toZ))
+          // BL-35: retract + reposition + rapid down to one stepdown above
+          // the next line's target (all real G0, dashed), then plunge only
+          // that last stepdown (G1, dotted) — mirrors lib/surface.ts's
+          // fixed unidirectionalSurfaceToolpath() sequence exactly.
+          builder.add('dashed', [
+            toThree(line.to.x, line.to.y, feeds.safeZ),
+            toThree(rasterLines[i + 1].from.x, rasterLines[i + 1].from.y, feeds.safeZ),
+            toThree(rasterLines[i + 1].from.x, rasterLines[i + 1].from.y, toZ + feeds.stepdown),
+          ])
+          builder.add('dotted', [toThree(rasterLines[i + 1].from.x, rasterLines[i + 1].from.y, toZ)])
         }
       })
       currentX = rasterLines[rasterLines.length - 1].to.x
@@ -524,15 +555,17 @@ function buildSurfaceToolpathPoints3D(surface: WizardParams['surface'], feeds: W
     })
   }
 
-  return points
+  return builder.segments
 }
 
 interface Theme {
   material: number
   materialOpacity: number
   grid: number
+  // No separate "rapid" color in 3D — every tool-motion line shares this
+  // one color, told apart by dash pattern instead (see ToolpathLineStyle).
+  // 2D Preview still has its own separate rapid accent (drawToolpath.ts).
   toolpath: number
-  rapid: number
   origin: number
   hole: number
   axisX: number
@@ -564,7 +597,6 @@ function buildTheme(paletteId: PaletteId, isDark: boolean, themeId: ThemeId): Th
     materialOpacity: isDark ? MATERIAL_OPACITY_DARK : MATERIAL_OPACITY_LIGHT,
     grid: hexToThreeColor(accents.grid),
     toolpath: hexToThreeColor(accents.toolpath),
-    rapid: hexToThreeColor(accents.rapid),
     origin: hexToThreeColor(fixed.origin),
     hole: hexToThreeColor(accents.hole),
     axisX: hexToThreeColor(fixed.axisX),
@@ -831,22 +863,69 @@ function buildOffsetVectorObjects(offsetX: number, offsetY: number, theme: Theme
   ]
 }
 
+// Every tool-motion line (cutting, rapid, non-cutting vertical step) shares
+// one color (theme.toolpath) — no separate "rapid" accent in 3D anymore —
+// and is told apart purely by dash pattern: 'solid' for actual cutting
+// (circles/arcs/raster/ramp), 'dashed' for G0 rapid (traverse, retract,
+// reposition), 'dotted' for a G1 move that isn't cutting laterally (Standard
+// Hole/Outline's straight step-down between passes, Surface's Plunge-mode
+// Z-transition). Previously rapids used a separate theme.rapid color/dashed
+// style and non-cutting G1 steps were silently merged into the same solid
+// line as real cutting, indistinguishable from it — both fixed together
+// here, since achieving three different styles along what was one
+// continuous polyline per pattern requires splitting it into multiple
+// THREE.Line objects (LineDashedMaterial can only apply one dash pattern to
+// an entire line, per its own cumulative distance from computeLineDistances()).
+type ToolpathLineStyle = 'solid' | 'dashed' | 'dotted'
+
+interface ToolpathSegment3D {
+  style: ToolpathLineStyle
+  points: THREE.Vector3[]
+}
+
+function toolpathLineMaterial(style: ToolpathLineStyle, theme: Theme, span: number): THREE.Material {
+  if (style === 'solid') return new THREE.LineBasicMaterial({ color: theme.toolpath })
+  // 'dotted' uses a much shorter dash than 'dashed' (and a slightly larger
+  // gap) so it reads as discrete dots instead of short dashes.
+  const dashSize = style === 'dashed' ? span * 0.02 : span * 0.003
+  const gapSize = style === 'dashed' ? span * 0.01 : span * 0.008
+  return new THREE.LineDashedMaterial({ color: theme.toolpath, dashSize, gapSize })
+}
+
+function buildToolpathLine3D(points: THREE.Vector3[], style: ToolpathLineStyle, theme: Theme, span: number): THREE.Line {
+  const geometry = new THREE.BufferGeometry().setFromPoints(points)
+  const line = new THREE.Line(geometry, toolpathLineMaterial(style, theme, span))
+  if (style !== 'solid') line.computeLineDistances()
+  return line
+}
+
+// Turns a list of styled segments (each already including its own shared
+// boundary point with the previous segment, so there's no visual gap
+// between styles) into actual THREE.Line objects. Segments with fewer than
+// 2 points (nothing was pushed onto them) are dropped.
+function buildToolpathLines3D(segments: ToolpathSegment3D[], theme: Theme, span: number): THREE.Line[] {
+  return segments.filter((s) => s.points.length > 1).map((s) => buildToolpathLine3D(s.points, s.style, theme, span))
+}
+
+// Accumulates styled segments where each new leg starts exactly where the
+// previous one ended (shared vertex — no gap), mirroring how the old flat
+// Vector3[] builders in this file used to just keep pushing onto one array.
+function createSegmentBuilder3D(start: THREE.Vector3) {
+  const segments: ToolpathSegment3D[] = []
+  let cursor = start
+  return {
+    add(style: ToolpathLineStyle, points: THREE.Vector3[]) {
+      if (points.length === 0) return
+      segments.push({ style, points: [cursor, ...points] })
+      cursor = points[points.length - 1]
+    },
+    segments,
+  }
+}
+
 function rapidZLineObjects(x: number, y: number, safeZ: number, startZ: number, bottomZ: number, theme: Theme, span: number) {
-  const rapidZMaterial = () =>
-    new THREE.LineDashedMaterial({ color: theme.rapid, dashSize: span * 0.02, gapSize: span * 0.01 })
-
-  const descentLine = new THREE.Line(
-    new THREE.BufferGeometry().setFromPoints([toThree(x, y, safeZ), toThree(x, y, startZ)]),
-    rapidZMaterial(),
-  )
-  descentLine.computeLineDistances()
-
-  const retractLine = new THREE.Line(
-    new THREE.BufferGeometry().setFromPoints([toThree(x, y, bottomZ), toThree(x, y, safeZ)]),
-    rapidZMaterial(),
-  )
-  retractLine.computeLineDistances()
-
+  const descentLine = buildToolpathLine3D([toThree(x, y, safeZ), toThree(x, y, startZ)], 'dashed', theme, span)
+  const retractLine = buildToolpathLine3D([toThree(x, y, bottomZ), toThree(x, y, safeZ)], 'dashed', theme, span)
   return [descentLine, retractLine]
 }
 
@@ -875,13 +954,7 @@ function buildHolesPatternObjects(
   // Rapid traverse between holes, at Safe Z
   if (showToolpath && points.length > 1) {
     const rapidPoints = points.map((p) => toThree(p.x, p.y, feeds.safeZ))
-    const rapidGeometry = new THREE.BufferGeometry().setFromPoints(rapidPoints)
-    const rapidLine = new THREE.Line(
-      rapidGeometry,
-      new THREE.LineDashedMaterial({ color: theme.rapid, dashSize: span * 0.02, gapSize: span * 0.01 }),
-    )
-    rapidLine.computeLineDistances()
-    objects.push(rapidLine)
+    objects.push(buildToolpathLine3D(rapidPoints, 'dashed', theme, span))
   }
 
   for (const p of points) {
@@ -934,7 +1007,7 @@ function buildHolesPatternObjects(
 
     // Actual tool-center toolpath
     if (showToolpath) {
-      const pathPoints =
+      const pathSegments =
         method === 'helix'
           ? helixPoints3D(p.x, p.y, toolRadius, geometry.totalDepth, feeds.stepdown, feeds.startZ, tabsConfig, 'ccw')
           : standardHolePoints3D(
@@ -947,9 +1020,7 @@ function buildHolesPatternObjects(
               tabsConfig,
               'ccw',
             )
-      const pathGeometry = new THREE.BufferGeometry().setFromPoints(pathPoints)
-      const pathLine = new THREE.Line(pathGeometry, new THREE.LineBasicMaterial({ color: theme.toolpath }))
-      objects.push(pathLine)
+      objects.push(...buildToolpathLines3D(pathSegments, theme, span))
     }
   }
 
@@ -1081,7 +1152,7 @@ function buildOutlineCirclePatternObjects(
       ? { tabHeight: outline.tabHeight, tabRanges: computeTabRanges(outline.tabCount, outline.tabWidth, toolRadius) }
       : null
 
-    const pathPoints =
+    const pathSegments =
       outline.method === 'helix'
         ? helixPoints3D(center.x, center.y, toolRadius, outline.totalDepth, feeds.stepdown, feeds.startZ, tabsConfig, direction)
         : standardHolePoints3D(
@@ -1094,8 +1165,7 @@ function buildOutlineCirclePatternObjects(
             tabsConfig,
             direction,
           )
-    const pathGeometry = new THREE.BufferGeometry().setFromPoints(pathPoints)
-    objects.push(new THREE.Line(pathGeometry, new THREE.LineBasicMaterial({ color: theme.toolpath })))
+    objects.push(...buildToolpathLines3D(pathSegments, theme, span))
   }
 
   return objects
@@ -1259,12 +1329,11 @@ function buildOutlineRectPatternObjects(
       ? { tabHeight: outline.tabHeight, tabCount: outline.tabCount, tabWidth: outline.tabWidth }
       : null
 
-    const pathPoints =
+    const pathSegments =
       outline.method === 'ramp'
         ? rectRampPoints3D(toolCorners, rampEdge, outline.totalDepth, feeds.stepdown, feeds.startZ, tabs)
         : rectStandardPoints3D(toolCorners, outline.totalDepth, feeds.stepdown, feeds.startZ, tabs)
-    const pathGeometry = new THREE.BufferGeometry().setFromPoints(pathPoints)
-    objects.push(new THREE.Line(pathGeometry, new THREE.LineBasicMaterial({ color: theme.toolpath })))
+    objects.push(...buildToolpathLines3D(pathSegments, theme, span))
   }
 
   return objects
@@ -1324,9 +1393,8 @@ function buildSurfacePatternObjects(
   }
 
   if (showToolpath) {
-    const pathPoints = buildSurfaceToolpathPoints3D(surface, feeds)
-    const pathGeometry = new THREE.BufferGeometry().setFromPoints(pathPoints)
-    objects.push(new THREE.Line(pathGeometry, new THREE.LineBasicMaterial({ color: theme.toolpath })))
+    const pathSegments = buildSurfaceToolpathPoints3D(surface, feeds)
+    objects.push(...buildToolpathLines3D(pathSegments, theme, span))
   }
 
   return objects

@@ -544,6 +544,47 @@ dotknięty:
   ściana boczna (otwarta czy zamknięta) jest ciemniejsza niż KAŻDA
   sąsiadująca nakrywka/góra, bez wyjątków.
 
+### Styl linii ruchu narzędzia w 3D Preview
+
+Wszystkie linie reprezentujące ruch narzędzia — cięcie, ruch szybki
+(G0), nieskrawający pionowy ruch G1 — dzielą **jeden wspólny kolor**
+(`theme.toolpath`); nie ma osobnego koloru "rapid" w 3D (2D Preview ma
+swój własny, niezależny — `drawToolpath.ts` — bez zmian). Rozróżnienie
+idzie wyłącznie przez **styl linii** (`ToolpathLineStyle` w
+`buildScene.ts`):
+
+- **`solid`** — realne skrawanie: pełne okręgi/spirale/łuki Helixa,
+  linie rastra Surface, ramp Outline.
+- **`dashed`** — prawdziwy ruch szybki G0: przejazd między otworami,
+  najazd Safe Z → Start Z i retrakt (`rapidZLineObjects()`), retrakt/
+  reposition między poziomami i (Unidirectional) między liniami rastra
+  Surface.
+- **`dotted`** — nieskrawający, pionowy ruch G1: krok w dół między
+  pełnymi przejściami Standard Hole/Outline (i tabbowana faza Helixa/
+  Rampu, gdy przechodzą na płaskie przejścia), tryb Plunge przejścia Z
+  Surface, ostatni odcinek plunge'a reentry Unidirectional (BL-35).
+
+Trzy różne style na tym, co koncepcyjnie jest "jedną ścieżką", wymagają
+**wielu osobnych obiektów `THREE.Line`** — `LineDashedMaterial` ma jeden
+wzór kreski na całą długość linii (liczony od jej własnej skumulowanej
+odległości, `computeLineDistances()`), więc nie da się zmieszać stylów
+w jednym obiekcie. `createSegmentBuilder3D()` akumuluje kolejne odcinki
+(każdy dzieli wspólny punkt graniczny z poprzednim — brak przerwy
+wizualnej), `buildToolpathLines3D()` zamienia je na rzeczywiste
+`THREE.Line` (pomijając zdegenerowane odcinki < 2 punktów).
+`helixPoints3D()`/`standardHolePoints3D()`/`rectRampPoints3D()`/
+`rectStandardPoints3D()`/`buildSurfaceToolpathPoints3D()` zwracają dziś
+`ToolpathSegment3D[]`, nie płaski `Vector3[]` jak wcześniej.
+
+Przed tą zmianą: rapidy miały osobny kolor (`theme.rapid`) i były już
+kreskowane, ale nieskrawający ruch G1 (krok Standard Hole, Plunge
+Surface) był po prostu wtopiony w tę samą pełną linię co realne
+skrawanie — nierozróżnialny wzrokowo. Surface był najgorszym
+przypadkiem: `buildSurfaceToolpathPoints3D()` świadomie sklejała nawet
+retrakt/reposition (prawdziwe G0) w jedną ciągłą linię razem z
+cięciem — dosłownie żadnego wskazania, że tam jest ruch szybki, nie
+skrawanie.
+
 ### Etykiety siatki w 3D Preview
 
 Siatka 3D (`GridHelper`, `buildScene.ts`) jest wyrównana do "ładnych"
