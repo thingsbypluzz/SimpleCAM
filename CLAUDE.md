@@ -453,22 +453,33 @@ znikać albo zmieniać jasność zależnie od kąta kamery i Offset X/Y —
 wyłącznie warstwa renderowania Three.js, silnik G-code nigdy nie był
 dotknięty:
 
-- **`depthWrite: false` na płaszczyźnie materiału, siatce i stock capie**
-  (`buildToolpathScene()`/`buildStockCapObject()`). Wszystkie trzy są z
-  założenia czysto wizualnym tłem, nigdy realnym przesłaniaczem — ale
-  przy 0.6 opacity w dark mode są wystarczająco "gęste", że domyślny
-  `depthWrite: true` pozwalał transparent-sortowi Three.js (sortowanie po
-  odległości od kamery) narysować je PO jakiejś bryle wzorca siedzącej za
-  nimi (np. stock Surface, poniżej `Z=0`) i wyczyścić ją z bufora
-  głębokości — czysty efekt "znika/pojawia się", nie migotanie. Stock cap
-  ma dodatkowo swój własny wariant tego samego problemu: to jeden duży
-  płaski quad rozciągnięty na cały widoczny obszar siatki, z wyciętym
-  otworem dokładnie na śladzie każdego otworu/konturu — przy patrzeniu
-  pod ostrym kątem (typowo dla otworu najbliższego kamerze, z powodu
-  perspektywy) promień patrzenia w głąb otworu przecina płaszczyznę capu
-  POZA wyciętym otworem, zanim dotrze do głębokiego punktu toolpath, więc
-  bez `depthWrite: false` cap wygrywał test głębokości i okludował
-  toolpath jak prawdziwa bryła. `depthTest` zostaje włączony wszędzie
+- **`depthWrite: false` na WSZYSTKICH przezroczystych obiektach sceny** —
+  płaszczyźnie materiału, siatce, stock capie (`buildToolpathScene()`/
+  `buildStockCapObject()`) i **każdej bryle wzorca** (cylinder wiercenia
+  Hole(s), ściana/cap Outline Circle w `wallMaterial()`,
+  `buildRectWallMesh()` — więc też Outline Rectangle i Surface). Wszystkie
+  są z założenia czysto wizualnym odniesieniem, nigdy realnym
+  przesłaniaczem — ale przy 0.6 opacity w dark mode są wystarczająco
+  "gęste", że domyślny `depthWrite: true` pozwalał transparent-sortowi
+  Three.js (sortowanie po odległości od kamery) narysować jeden obiekt PO
+  drugim siedzącym za nim i wyczyścić go z bufora głębokości — czysty
+  efekt "znika/pojawia się", nie migotanie. Stock cap ma dodatkowo swój
+  własny wariant tego problemu: to jeden duży płaski quad rozciągnięty na
+  cały widoczny obszar siatki, z wyciętym otworem dokładnie na śladzie
+  każdego otworu/konturu — przy patrzeniu pod ostrym kątem (typowo dla
+  otworu najbliższego kamerze, z powodu perspektywy) promień patrzenia w
+  głąb otworu przecina płaszczyznę capu POZA wyciętym otworem, zanim
+  dotrze do głębokiego punktu toolpath. Bryły wzorca (cylinder/ściany)
+  dostały tę samą poprawkę osobno, później — pojedynczy wzorzec cierpiał
+  na to najwyżej w niewielkim stopniu (własne nakładanie się bliskiej/
+  dalekiej ściany tej samej bryły, patrz `FrontSide` niżej), ale tryb
+  **overlay presetów** (BL-3) prowadzi kilka NIEZALEŻNYCH wzorców przez
+  ten sam `allPatterns`/`buildPatternObjects()` loop
+  (`buildToolpathScene()`) — ich bryły mogą wylądować blisko siebie na
+  ekranie, i bez tej poprawki bryła jednego presetu potrafiła wygrać test
+  głębokości przeciw bryle/toolpathowi innego presetu, twardo go
+  chowając zamiast blendować, z tym, "który wygrywa", zmieniającym się
+  przy najmniejszym ruchu kamery. `depthTest` zostaje włączony wszędzie
   (wciąż poprawnie chowają się za realnie nieprzezroczystymi obiektami,
   np. znacznikiem originu).
 - **`renderOrder = -1` na płaszczyźnie materiału, siatce i stock capie.**

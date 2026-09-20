@@ -909,6 +909,15 @@ function buildHolesPatternObjects(
           transparent: true,
           opacity: 0.3,
           side: THREE.DoubleSide,
+          // Same depthWrite fix as the stock cap (0.16.2) — without it,
+          // overlaid patterns' bore cylinders can win the depth test
+          // against each other's coils/walls depending on camera-distance
+          // sort order, hard-hiding one instead of blending, and flipping
+          // which one wins with tiny camera moves. Never an issue for a
+          // single pattern alone (at most its own front/back wall overlap),
+          // but overlay mode routes several independent patterns' bore
+          // cylinders through this same near-camera screen space.
+          depthWrite: false,
         }),
       )
       hole.position.copy(toThree(p.x, p.y, (feeds.startZ - geometry.totalDepth) / 2))
@@ -993,12 +1002,30 @@ function buildOutlineCirclePatternObjects(
     // the darkening needs to hold against the separate flat stock cap
     // object sitting at the rim, not just against a cap that's part of
     // this same mesh.
+    // depthWrite: false on both materials — same fix as the stock cap
+    // (0.16.2) and the Hole(s) bore cylinder above, generalized: overlay
+    // mode can stack several independent patterns' walls in the same
+    // screen space, and without this, one can win the depth test against
+    // another (or against a different pattern's coil) depending on
+    // camera-distance sort order, hard-hiding it instead of blending.
     const wallMaterial = (closed: boolean): THREE.Material | THREE.Material[] => {
       const side = closed ? THREE.FrontSide : THREE.DoubleSide
       const sideColor = new THREE.Color(theme.hole).multiplyScalar(WALL_SHADE_FACTOR)
-      const sideMaterial = new THREE.MeshBasicMaterial({ color: sideColor, transparent: true, opacity: 0.3, side })
+      const sideMaterial = new THREE.MeshBasicMaterial({
+        color: sideColor,
+        transparent: true,
+        opacity: 0.3,
+        side,
+        depthWrite: false,
+      })
       if (!closed) return sideMaterial
-      const capMaterial = new THREE.MeshBasicMaterial({ color: theme.hole, transparent: true, opacity: 0.3, side })
+      const capMaterial = new THREE.MeshBasicMaterial({
+        color: theme.hole,
+        transparent: true,
+        opacity: 0.3,
+        side,
+        depthWrite: false,
+      })
       return [sideMaterial, capMaterial, capMaterial]
     }
 
@@ -1112,10 +1139,22 @@ function buildRectWallMesh(corners: Point2D[], boreHeight: number, centerZ: numb
   // separate flat stock cap object, which sits right at the opening in
   // the same undarkened theme.hole and reads as one continuous flat tint
   // with an undarkened wall.
+  // depthWrite: false on both — same fix as the stock cap (0.16.2) and
+  // the Hole(s)/Outline Circle walls above, generalized: overlay mode can
+  // stack several independent patterns' walls in the same screen space,
+  // and without this, one can win the depth test against another (or
+  // against a different pattern's coil) depending on camera-distance sort
+  // order, hard-hiding it instead of blending.
   const wallColor = new THREE.Color(theme.hole).multiplyScalar(WALL_SHADE_FACTOR)
-  const wallMaterial = new THREE.MeshBasicMaterial({ color: wallColor, transparent: true, opacity: 0.3, side })
+  const wallMaterial = new THREE.MeshBasicMaterial({
+    color: wallColor,
+    transparent: true,
+    opacity: 0.3,
+    side,
+    depthWrite: false,
+  })
   const capMaterial = closed
-    ? new THREE.MeshBasicMaterial({ color: theme.hole, transparent: true, opacity: 0.3, side })
+    ? new THREE.MeshBasicMaterial({ color: theme.hole, transparent: true, opacity: 0.3, side, depthWrite: false })
     : new THREE.MeshBasicMaterial({ visible: false })
   const mesh = new THREE.Mesh(
     new THREE.BoxGeometry(width, boreHeight, height),

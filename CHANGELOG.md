@@ -7,6 +7,30 @@ zgodne z [SemVer](https://semver.org/). Ten plik pozostaje głównym, czytelnym
 thingsbypluzz/SimpleCAM), ale to infrastruktura pod izolację pracy
 (branch/worktree per zadanie), nie zamiennik tego changeloga.
 
+## [0.16.4] — 2026-09-20
+
+### Naprawiono
+
+- **3D Preview: bryły wzorca (cylinder wiercenia Hole(s), ściany
+  Outline/Surface) potrafiły okludować się nawzajem w trybie overlay
+  presetów (BL-3) — z kilkoma nałożonymi wzorcami, otwory najbliższe
+  kamerze nie renderowały toolpath, a drobny ruch kamerą pokazywał
+  najwyżej jeden z nich naraz, nigdy wszystkie.** Ta sama klasa buga co
+  `[0.16.2]` (stock cap), tym razem dla samych brył wzorca — nigdy nie
+  dostały `depthWrite: false`, mimo że `buildToolpathScene()` prowadzi
+  WSZYSTKIE wzorce (żywy i każdy nałożony overlay) przez ten sam
+  `allPatterns`/`buildPatternObjects()` loop. Dla pojedynczego wzorca to
+  było niewielkim problemem (najwyżej własne nakładanie się bliskiej/
+  dalekiej ściany tej samej bryły), ale z kilkoma niezależnymi wzorcami
+  nałożonymi naraz w overlay mode ich bryły potrafiły wylądować blisko
+  siebie na ekranie i rywalizować o bufor głębokości. Naprawione: ten
+  sam `depthWrite: false`, który `[0.16.2]` dał stock capowi, dodany też
+  do cylindra wiercenia Hole(s), ścian Outline Circle
+  (`wallMaterial()`) i `buildRectWallMesh()` (Outline Rectangle i
+  Surface) — żadna inna właściwość (kolor/`WALL_SHADE_FACTOR`,
+  `side`) nie zmieniona. Wyłącznie warstwa renderowania
+  (`buildScene.ts`), silnik G-code bez zmian.
+
 ## [0.16.3] — 2026-09-20
 
 ### Zmienione
