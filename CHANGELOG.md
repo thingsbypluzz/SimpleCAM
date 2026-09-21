@@ -7,6 +7,64 @@ zgodne z [SemVer](https://semver.org/). Ten plik pozostaje głównym, czytelnym
 thingsbypluzz/SimpleCAM), ale to infrastruktura pod izolację pracy
 (branch/worktree per zadanie), nie zamiennik tego changeloga.
 
+## [0.18.0] — 2026-09-21
+
+### Dodano
+
+- **OP-2: Pocket (kieszeniowanie).** Piąta operacja obok Hole(s)/Outline/
+  Surface, poprzedzona pełną sesją `/grill-me`. Kształty: Rectangle
+  Cornered/Centered i Circle. Dwie metody (`PocketMethodType`): **Raster**
+  (tylko Rectangle — reużycie silnika Surface 1:1, granica to prostokąt
+  **zainsetowany** o promień narzędzia, odwrotność overtravel'u Surface'a)
+  i **Spiral** (Rectangle + Circle — Circle dostaje wyłącznie tę metodę,
+  bramkowanie po kształcie jak `OutlineMethod`). Czyszczenie zawsze
+  inside-out (środek → ściana), wejście zawsze w **centrum kieszeni**
+  (Plunge/Helix, wyśrodkowana wersja mechanizmu Surface'a — bez
+  narożnikowej matematyki stycznej). Geometria Spiral: każdy pierścień to
+  **ramp (90°, stała `POCKET_RAMP_ANGLE_DEG`, niekonfigurowalna — `BL-41`)
+  + pełny flat obrót** (`fullCircleMove()` bez zmian dla Circle; prosty G1
+  dla Rectangle, ramp zawsze wzdłuż aktualnie rosnącego/dłuższego boku) —
+  rozprasza promieniowe zaangażowanie freza zamiast jednego skoku na pełną
+  szerokość stepover naraz, a pełny obrót gwarantuje kompletną, domkniętą
+  ścianę pierścienia. Dla `width ≠ height` pierścienie rosną per-oś, z
+  clampingiem niezależnym na każdej osi (`computeLinePositions()`
+  reużyty wprost z Surface'a). Per-poziom pełny XY clear
+  (`buildLevelDescents()` reużyty 1:1). Roughing-only w v1 — zewnętrzny
+  pierścień/linia raster JEST ścianą, bez osobnego finishing passa
+  (`BL-42`). Bez Tabs (jak Surface). Stepover — identyczny mechanizm co
+  Surface. Adaptive Clearing świadomie odłożone jako `OP-5`. Nowe moduły
+  silnika: `lib/pocketGeometry.ts`, `lib/pocketSpiral.ts`,
+  `lib/pocketZTransition.ts`, `lib/pocket.ts`; nowe rejestry
+  `config/pocketMethodMeta.ts`/`config/pocketMeta.ts`; nowy
+  `Step2GeometryPocket.tsx` + `PocketMethodPicker.tsx`. Preview 2D i 3D
+  rysują pierścienie/raster **dokładnie** — ramp między pierścieniami
+  (krzywa dla Circle, `circleRingRampPoints()` w `lib/pocketSpiral.ts`,
+  reużyta wprost przez silnik G-code; prosty odcinek dla Rectangle)
+  narysowany razem z pełnym flat pierścieniem, nie tylko rozłączone
+  kształty — wychwycone i poprawione w tej samej sesji podczas
+  weryfikacji wizualnej użytkownika (bez dostępu do maszyny), zanim
+  cokolwiek zostało scommitowane. Ta sama sesja wychwyciła też realny
+  bug silnika: `pocketZTransitionMoves()` (tryb Helix) nie miała
+  własnego "flat finishing pass" po spirali (`helix.ts`'s Hole(s)
+  Helix ma go od zawsze) — spiralne rampowanie zostawia śrubową, nie
+  płaską, powierzchnię na promieniu `helixRadius`, więc bez tego
+  przejazdu większość obwodu wejścia Helix zostawała nietknięta na
+  docelowej głębokości; naprawione, dotyczy Circle Spiral, Rectangle
+  Spiral i Raster w trybie Helix jednakowo. Trzecia runda tej samej
+  sesji poprawiła też sam kąt rampy Circle — stały `90°` skalował
+  długość łuku z promieniem przy ~stałym Δr, więc promieniowe
+  zaangażowanie freza na jednostkę łuku rosło jak `1/promień`
+  (agresywnie blisko środka, ledwie zauważalnie przy ścianie, zgłoszone
+  bezpośrednio z wizualizacji przy realnym przykładzie ⌀45mm/6mm bit).
+  Zamiast kąta, stała jest teraz **długość łuku** rampy
+  (`rampSweepDegFor()`, `RAMP_LENGTH_FACTOR = 3` × Δr tej transycji,
+  podzielone przez jej średni promień) — stałe promieniowe
+  zaangażowanie na każdym pierścieniu. Preview 3D — reużycie
+  modelu Outline Inside (otwarta ściana + stock cap z otworem w
+  kształcie granicy zewnętrznej). Pełny opis architektury i wszystkich
+  rozstrzygnięć sesji `/grill-me` w `CLAUDE.md`
+  i `ideas.md`. 312 testów po tej zmianie (z 276 przed).
+
 ## [0.17.3] — 2026-09-21
 
 ### Dodano

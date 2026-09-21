@@ -6,6 +6,9 @@ import {
   isOutlineToolDiameterValid,
   isStartZValid,
   isStepdownValid,
+  isPocketHelixRadiusValid,
+  isPocketStepoverValid,
+  isPocketToolDiameterValid,
   isSurfaceHelixRadiusValid,
   isSurfaceStepoverValid,
   isSurfaceToolDiameterValid,
@@ -16,6 +19,8 @@ import {
   outlineFootprint,
   outlineZSpan,
   patternSpan,
+  pocketFootprint,
+  pocketZSpan,
   surfaceFootprint,
   surfaceZSpan,
   zSpan,
@@ -397,6 +402,82 @@ describe('machineFitWarnings — Surface', () => {
       ...DEFAULT_WIZARD_PARAMS,
       operation: 'surface' as const,
       surface: { ...DEFAULT_WIZARD_PARAMS.surface, width: 500, height: 10, toolDiameter: 0 },
+    }
+    const machine = { ...DEFAULT_MACHINE_SETTINGS, travelX: 100, travelY: 1000, travelZ: 1000 }
+    const warnings = machineFitWarnings(params, machine)
+    expect(warnings).toHaveLength(1)
+    expect(warnings[0]).toContain('X span')
+  })
+})
+
+describe('isPocketToolDiameterValid', () => {
+  it('rect: valid when the tool is smaller than the shorter side', () => {
+    expect(isPocketToolDiameterValid({ ...DEFAULT_WIZARD_PARAMS.pocket, width: 50, height: 30, toolDiameter: 4 })).toBe(true)
+  })
+
+  it('rect: invalid at or above the shorter side', () => {
+    expect(isPocketToolDiameterValid({ ...DEFAULT_WIZARD_PARAMS.pocket, width: 50, height: 30, toolDiameter: 30 })).toBe(false)
+  })
+
+  it('circle: invalid at or above the diameter', () => {
+    expect(isPocketToolDiameterValid({ ...DEFAULT_WIZARD_PARAMS.pocket, shape: 'circle', diameter: 20, toolDiameter: 20 })).toBe(
+      false,
+    )
+    expect(isPocketToolDiameterValid({ ...DEFAULT_WIZARD_PARAMS.pocket, shape: 'circle', diameter: 20, toolDiameter: 19 })).toBe(
+      true,
+    )
+  })
+})
+
+describe('isPocketStepoverValid', () => {
+  it('valid within 1-100%, invalid outside', () => {
+    expect(isPocketStepoverValid({ ...DEFAULT_WIZARD_PARAMS.pocket, stepoverPercent: 1 })).toBe(true)
+    expect(isPocketStepoverValid({ ...DEFAULT_WIZARD_PARAMS.pocket, stepoverPercent: 100 })).toBe(true)
+    expect(isPocketStepoverValid({ ...DEFAULT_WIZARD_PARAMS.pocket, stepoverPercent: 0 })).toBe(false)
+    expect(isPocketStepoverValid({ ...DEFAULT_WIZARD_PARAMS.pocket, stepoverPercent: 101 })).toBe(false)
+  })
+})
+
+describe('isPocketHelixRadiusValid', () => {
+  it('vacuously valid outside Helix mode', () => {
+    expect(isPocketHelixRadiusValid({ ...DEFAULT_WIZARD_PARAMS.pocket, zTransitionMode: 'plunge', helixRadius: -5 })).toBe(true)
+  })
+
+  it("in Helix mode, the ceiling is the pocket's own smallest wall extent, not the stepover", () => {
+    // rect wall half-dims: (50-4)/2=23, (30-4)/2=13 -> ceiling is 13
+    const pocket = { ...DEFAULT_WIZARD_PARAMS.pocket, zTransitionMode: 'helix' as const, width: 50, height: 30, toolDiameter: 4 }
+    expect(isPocketHelixRadiusValid({ ...pocket, helixRadius: 13 })).toBe(true)
+    expect(isPocketHelixRadiusValid({ ...pocket, helixRadius: 13.1 })).toBe(false)
+    expect(isPocketHelixRadiusValid({ ...pocket, helixRadius: 0 })).toBe(false)
+  })
+})
+
+describe('pocketFootprint', () => {
+  it('rect: the tool-center wall (inset, not overtravel like Surface), doubled', () => {
+    const pocket = { ...DEFAULT_WIZARD_PARAMS.pocket, width: 50, height: 30, toolDiameter: 4 }
+    expect(pocketFootprint(pocket)).toEqual({ x: 46, y: 26 })
+  })
+
+  it('circle: the tool-center wall diameter', () => {
+    const pocket = { ...DEFAULT_WIZARD_PARAMS.pocket, shape: 'circle' as const, diameter: 20, toolDiameter: 4 }
+    expect(pocketFootprint(pocket)).toEqual({ x: 16, y: 16 })
+  })
+})
+
+describe('pocketZSpan', () => {
+  it('sums safeZ and totalDepth', () => {
+    const pocket = { ...DEFAULT_WIZARD_PARAMS.pocket, totalDepth: 4 }
+    const feeds = { ...DEFAULT_WIZARD_PARAMS.feeds, safeZ: 5 }
+    expect(pocketZSpan(pocket, feeds)).toBe(9)
+  })
+})
+
+describe('machineFitWarnings — Pocket', () => {
+  it('uses pocketFootprint/pocketZSpan when operation is pocket', () => {
+    const params = {
+      ...DEFAULT_WIZARD_PARAMS,
+      operation: 'pocket' as const,
+      pocket: { ...DEFAULT_WIZARD_PARAMS.pocket, width: 500, height: 10, toolDiameter: 0 },
     }
     const machine = { ...DEFAULT_MACHINE_SETTINGS, travelX: 100, travelY: 1000, travelZ: 1000 }
     const warnings = machineFitWarnings(params, machine)

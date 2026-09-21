@@ -3,15 +3,12 @@ import type { WizardParams } from '../../types/wizard'
 import { POSITIONING_LIST } from '../../config/positioningMeta'
 import { OUTLINE_SHAPE_LIST } from '../../config/outlineMeta'
 import { SURFACE_SHAPE_LIST } from '../../config/surfaceMeta'
+import { POCKET_SHAPE_LIST } from '../../config/pocketMeta'
 
 interface Step1PositioningProps {
   params: WizardParams
   onChange: (patch: Partial<WizardParams>) => void
 }
-
-// Placeholder row for future operations (see CLAUDE.md's "Przyszłe
-// operacje") — purely visual, no WizardParams field backs this yet.
-const OPERATION_PLACEHOLDERS = ['Pocket']
 
 // Shared visual shell for an operation block — active (expanded, with its
 // own pattern/shape list) or inactive (collapsed to a single clickable
@@ -79,7 +76,7 @@ function OptionButton({
 }
 
 export function Step1Positioning({ params, onChange }: Step1PositioningProps) {
-  const { geometry, outline, surface, operation } = params
+  const { geometry, outline, surface, pocket, operation } = params
 
   return (
     <div className="flex flex-col gap-2">
@@ -131,15 +128,29 @@ export function Step1Positioning({ params, onChange }: Step1PositioningProps) {
         ))}
       </OperationBlock>
 
-      {OPERATION_PLACEHOLDERS.map((label) => (
-        <div
-          key={label}
-          className="flex cursor-not-allowed items-center justify-between rounded-lg border border-dashed border-empty-border px-3 py-2 opacity-60"
-        >
-          <span className="text-sm font-semibold text-empty-fg">{label}</span>
-          <span className="text-xs text-empty-fg">Coming soon</span>
-        </div>
-      ))}
+      <OperationBlock
+        title="Pocket"
+        isActive={operation === 'pocket'}
+        onActivate={() => onChange({ operation: 'pocket' })}
+      >
+        {POCKET_SHAPE_LIST.map((opt) => (
+          <OptionButton
+            key={opt.value}
+            isSelected={operation === 'pocket' && pocket.shape === opt.value}
+            onClick={() =>
+              onChange({
+                operation: 'pocket',
+                // Circle only ever offers Spiral (see pocketMethodMeta.ts) —
+                // switching to it while Raster is selected would otherwise
+                // leave a stale, invalid method/shape combination stored.
+                pocket: { ...pocket, shape: opt.value, method: opt.value === 'circle' ? 'spiral' : pocket.method },
+              })
+            }
+            Icon={opt.Icon}
+            label={opt.title}
+          />
+        ))}
+      </OperationBlock>
     </div>
   )
 }

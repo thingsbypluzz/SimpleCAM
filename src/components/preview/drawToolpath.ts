@@ -6,7 +6,15 @@ import { rectCorners, rectToolDimensions } from '../../lib/outlineRectangleGeome
 import { sideRangesFor, type SideTabRange } from '../../lib/outlineRectangleTabs'
 import { surfaceNominalBounds, surfaceStepoverMm, surfaceToolBounds, type SurfaceBounds } from '../../lib/surfaceGeometry'
 import { computeRasterLines, zigzagWaypoints, type RasterLine } from '../../lib/surfaceRaster'
-import type { Point2D, WizardParams } from '../../types/wizard'
+import {
+  pocketCenter,
+  pocketCircleWallRadius,
+  pocketRectRasterBounds,
+  pocketRectWallHalfDims,
+  pocketStepoverMm,
+} from '../../lib/pocketGeometry'
+import { circleRingRampPoints, rampSweepDegFor, pocketCircleRingRadii, pocketRectRingDims, type RectRingDims } from '../../lib/pocketSpiral'
+import type { Point2D, PocketMethodType, PocketShape, WizardParams } from '../../types/wizard'
 import type { ThemeId } from '../../types/theme'
 import { type Camera2D, type DataBounds, worldToScreen } from './camera2d'
 
@@ -231,8 +239,48 @@ type ResolvedPattern =
       lines: RasterLine[]
       method: WizardParams['surface']['method']
     }
+  | {
+      kind: 'pocket'
+      params: WizardParams
+      center: Point2D
+      shape: PocketShape
+      method: PocketMethodType
+      // Nominal (un-inset) boundary — what's actually rendered as "stock",
+      // same convention as Outline's nominalCorners/Surface's nominalBounds.
+      nominal: { shape: 'circle'; radius: number } | { shape: 'rect'; halfWidth: number; halfHeight: number }
+      // Only one of these three is ever non-empty for a given
+      // shape/method combination — see resolvePattern() below.
+      circleRings: number[]
+      rectRings: RectRingDims[]
+      rasterLines: RasterLine[]
+    }
 
 function resolvePattern(params: WizardParams): ResolvedPattern {
+  if (params.operation === 'pocket') {
+    const { pocket } = params
+    const center = pocketCenter(pocket)
+    const isCircle = pocket.shape === 'circle'
+    const nominal: Extract<ResolvedPattern, { kind: 'pocket' }>['nominal'] = isCircle
+      ? { shape: 'circle', radius: pocket.diameter / 2 }
+      : { shape: 'rect', halfWidth: pocket.width / 2, halfHeight: pocket.height / 2 }
+
+    let circleRings: number[] = []
+    let rectRings: RectRingDims[] = []
+    let rasterLines: RasterLine[] = []
+
+    const stepoverMm = pocketStepoverMm(pocket)
+    if (pocket.method === 'raster') {
+      rasterLines = computeRasterLines(pocketRectRasterBounds(pocket), pocket.rasterDirection, stepoverMm)
+    } else if (isCircle) {
+      const startRadius = pocket.zTransitionMode === 'helix' ? pocket.helixRadius : 0
+      circleRings = pocketCircleRingRadii(startRadius, pocketCircleWallRadius(pocket), stepoverMm)
+    } else {
+      const { halfWidth, halfHeight } = pocketRectWallHalfDims(pocket)
+      rectRings = pocketRectRingDims(halfWidth, halfHeight, stepoverMm)
+    }
+
+    return { kind: 'pocket', params, center, shape: pocket.shape, method: pocket.method, nominal, circleRings, rectRings, rasterLines }
+  }
   if (params.operation === 'surface') {
     const { surface } = params
     const nominalBounds = surfaceNominalBounds(surface)
@@ -324,6 +372,13 @@ function computeCombinedBounds(patterns: ResolvedPattern[]): DataBounds {
         allX.push(p.x)
         allY.push(p.y)
       }
+    } else if (pattern.kind === 'pocket') {
+      // Nominal boundary is always >= the tool-center wall (inset), so it's
+      // the true physical extent — same reasoning as outlineFootprint()'s
+      // Inside case in lib/validation.ts.
+      const r = pattern.nominal.shape === 'circle' ? pattern.nominal.radius : Math.max(pattern.nominal.halfWidth, pattern.nominal.halfHeight)
+      allX.push(pattern.center.x - r, pattern.center.x + r)
+      allY.push(pattern.center.y - r, pattern.center.y + r)
     } else {
       allX.push(pattern.bounds.minX, pattern.bounds.maxX)
       allY.push(pattern.bounds.minY, pattern.bounds.maxY)
@@ -608,6 +663,153 @@ function drawSurfaceGeometry(
   drawOffsetVector(ctx, toPx, params.surface.offsetX, params.surface.offsetY, theme, arrowSize)
 }
 
+// Pocket: nominal boundary (fill, same convention as Outline/Surface) +
+// toolpath (stroke). Raster draws the exact same continuous zigzag
+// polyline as Surface's Zigzag (Pocket Raster has no Unidirectional-style
+// sub-variant — see CLAUDE.md's Pocket design notes). Spiral draws the
+// real ring-to-ring ramp too — a curved polyline for Circle
+// (circleRingRampPoints(), lib/pocketSpiral.ts) and a straight jog for
+// Rectangle — before each ring's complete, closed circle/rectangle,
+// exactly mirroring what pocket.ts actually cuts (previously this drew
+// only the disconnected rings, leaving the ramp implicit — confusing for
+// visual verification, since it made every ring look like a fully
+// independent pass instead of one continuous spiral).
+function drawPocketGeometry(
+  ctx: CanvasRenderingContext2D,
+  toPx: (x: number, y: number) => [number, number],
+  scale: number,
+  pattern: Extract<ResolvedPattern, { kind: 'pocket' }>,
+  theme: Theme,
+  arrowSize: number,
+  showStock: boolean,
+  showToolpath: boolean,
+) {
+  const { center, nominal, circleRings, rectRings, rasterLines, params } = pattern
+  const [cx, cy] = toPx(center.x, center.y)
+
+  if (showStock) {
+    ctx.fillStyle = theme.holeFill
+    ctx.strokeStyle = theme.holeStroke
+    ctx.lineWidth = 1
+    if (nominal.shape === 'circle') {
+      ctx.beginPath()
+      ctx.arc(cx, cy, nominal.radius * scale, 0, Math.PI * 2)
+      ctx.fill()
+      ctx.stroke()
+    } else {
+      const corners: Point2D[] = [
+        { x: center.x - nominal.halfWidth, y: center.y - nominal.halfHeight },
+        { x: center.x + nominal.halfWidth, y: center.y - nominal.halfHeight },
+        { x: center.x + nominal.halfWidth, y: center.y + nominal.halfHeight },
+        { x: center.x - nominal.halfWidth, y: center.y + nominal.halfHeight },
+      ]
+      ctx.beginPath()
+      corners.forEach((p, i) => {
+        const [x, y] = toPx(p.x, p.y)
+        if (i === 0) ctx.moveTo(x, y)
+        else ctx.lineTo(x, y)
+      })
+      ctx.closePath()
+      ctx.fill()
+      ctx.stroke()
+    }
+  }
+
+  if (showToolpath) {
+    ctx.strokeStyle = theme.toolpath
+    ctx.lineWidth = 1.5
+
+    // Ring-to-ring ramp (BL — visual QA fix): circleRings[0]/rectRings[0]
+    // is the Z-entry point, not a real ring to connect FROM anything —
+    // the ramp only exists for transitions between two actual rings
+    // (i = 1..length-1), same convention as pocket.ts/pocketSpiral.ts.
+    let circleAngleDeg = 0
+    circleRings.forEach((radius, i) => {
+      if (i > 0) {
+        const rampPoints = circleRingRampPoints(circleRings[i - 1], radius, circleAngleDeg, center.x, center.y)
+        ctx.beginPath()
+        rampPoints.forEach((p, j) => {
+          const [x, y] = toPx(p.x, p.y)
+          if (j === 0) ctx.moveTo(x, y)
+          else ctx.lineTo(x, y)
+        })
+        ctx.stroke()
+        circleAngleDeg += rampSweepDegFor(circleRings[i - 1], radius)
+      }
+      ctx.beginPath()
+      ctx.arc(cx, cy, Math.max(0, radius) * scale, 0, Math.PI * 2)
+      ctx.stroke()
+    })
+
+    // Same ramp treatment for Rectangle — a single straight line from
+    // wherever the tool currently is (the Z-entry point for the first
+    // ring, this ring's own bottom-left corner for the rest) to the next
+    // ring's bottom-left corner, mirroring rectRingMoves()'s ramp exactly.
+    let rectPrevCorner: Point2D =
+      params.pocket.zTransitionMode === 'helix'
+        ? { x: center.x + params.pocket.helixRadius, y: center.y }
+        : center
+    rectRings.forEach((dims) => {
+      const corners: Point2D[] = [
+        { x: center.x - dims.halfWidth, y: center.y - dims.halfHeight },
+        { x: center.x + dims.halfWidth, y: center.y - dims.halfHeight },
+        { x: center.x + dims.halfWidth, y: center.y + dims.halfHeight },
+        { x: center.x - dims.halfWidth, y: center.y + dims.halfHeight },
+      ]
+      const [rampFromX, rampFromY] = toPx(rectPrevCorner.x, rectPrevCorner.y)
+      const [rampToX, rampToY] = toPx(corners[0].x, corners[0].y)
+      ctx.beginPath()
+      ctx.moveTo(rampFromX, rampFromY)
+      ctx.lineTo(rampToX, rampToY)
+      ctx.stroke()
+
+      ctx.beginPath()
+      corners.forEach((p, i) => {
+        const [x, y] = toPx(p.x, p.y)
+        if (i === 0) ctx.moveTo(x, y)
+        else ctx.lineTo(x, y)
+      })
+      ctx.closePath()
+      ctx.stroke()
+      rectPrevCorner = corners[0]
+    })
+
+    if (rasterLines.length > 0) {
+      const waypoints = zigzagWaypoints(rasterLines)
+      ctx.beginPath()
+      waypoints.forEach((p, i) => {
+        const [x, y] = toPx(p.x, p.y)
+        if (i === 0) ctx.moveTo(x, y)
+        else ctx.lineTo(x, y)
+      })
+      ctx.stroke()
+      rasterLines.forEach((line, i) => {
+        const forward = i % 2 === 0
+        const from = forward ? line.from : line.to
+        const to = forward ? line.to : line.from
+        const [fx, fy] = toPx(from.x, from.y)
+        const [tx, ty] = toPx(to.x, to.y)
+        const midX = (fx + tx) / 2
+        const midY = (fy + ty) / 2
+        const dx = tx - fx
+        const dy = ty - fy
+        const len = Math.hypot(dx, dy) || 1
+        drawArrowhead(ctx, midX, midY, dx / len, dy / len, arrowSize * 0.7, theme.toolpath)
+      })
+    }
+
+    // Entry point marker — always the pocket's own center, regardless of
+    // method/shape (see CLAUDE.md's Pocket design notes: entry is always
+    // centered).
+    ctx.beginPath()
+    ctx.arc(cx, cy, 2, 0, Math.PI * 2)
+    ctx.fillStyle = theme.toolpath
+    ctx.fill()
+  }
+
+  drawOffsetVector(ctx, toPx, params.pocket.offsetX, params.pocket.offsetY, theme, arrowSize)
+}
+
 // Draws one pattern's full geometry as one atomic unit — this is what
 // makes pattern-level (not element-level) draw ordering control occlusion
 // between overlaid presets and the active pattern (see BL-3: active
@@ -634,6 +836,9 @@ function drawPatternGeometry(
       break
     case 'surface':
       drawSurfaceGeometry(ctx, toPx, pattern, theme, arrowSize, showStock, showToolpath)
+      break
+    case 'pocket':
+      drawPocketGeometry(ctx, toPx, scale, pattern, theme, arrowSize, showStock, showToolpath)
       break
   }
 }

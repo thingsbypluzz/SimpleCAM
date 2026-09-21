@@ -4,7 +4,7 @@ export type PositioningMode = 'single' | 'grid' | 'gridCentered' | 'circle' | 'c
 
 export type InterpolationMode = 'arc' | 'linear'
 
-export type OperationType = 'holes' | 'outline' | 'surface'
+export type OperationType = 'holes' | 'outline' | 'surface' | 'pocket'
 
 export type OutlineShape = 'rectCornered' | 'rectCentered' | 'circle'
 
@@ -17,6 +17,13 @@ export type SurfaceMethodType = 'zigzag' | 'unidirectional'
 export type RasterDirection = 'x' | 'y'
 
 export type ZTransitionMode = 'plunge' | 'helix'
+
+export type PocketShape = 'rectCornered' | 'rectCentered' | 'circle'
+
+// 'raster' only valid for rectCornered/rectCentered (reuses the Surface
+// raster engine, which has no circle-clipping math); 'spiral' is valid for
+// every shape — see CLAUDE.md's Pocket design notes.
+export type PocketMethodType = 'raster' | 'spiral'
 
 // 'ramp' only valid for rectCornered/rectCentered; 'helix' only for circle;
 // 'standard' is valid for every shape, which is why it's the shared default.
@@ -78,6 +85,22 @@ export interface SurfaceParams {
   helixRadius: number // only enforced/shown when zTransitionMode === 'helix'
 }
 
+export interface PocketParams {
+  shape: PocketShape
+  method: PocketMethodType
+  toolDiameter: number
+  totalDepth: number
+  width: number
+  height: number
+  diameter: number
+  offsetX: number
+  offsetY: number
+  stepoverPercent: number // 1-100, single source of truth — mm value is derived
+  rasterDirection: RasterDirection // only enforced/shown when method === 'raster'
+  zTransitionMode: ZTransitionMode
+  helixRadius: number // only enforced/shown when zTransitionMode === 'helix'
+}
+
 export interface FeedsParams {
   stepdown: number
   feedrateXY: number
@@ -101,6 +124,7 @@ export interface WizardParams {
   geometry: GeometryParams
   outline: OutlineParams
   surface: SurfaceParams
+  pocket: PocketParams
   feeds: FeedsParams
   output: OutputOptions
 }
@@ -153,6 +177,21 @@ export const DEFAULT_WIZARD_PARAMS: WizardParams = {
     offsetY: 0,
     rasterDirection: 'x',
     stepoverPercent: 40,
+    zTransitionMode: 'plunge',
+    helixRadius: 1,
+  },
+  pocket: {
+    shape: 'rectCornered',
+    method: 'spiral',
+    toolDiameter: 3.175,
+    totalDepth: 4,
+    width: 50,
+    height: 30,
+    diameter: 45,
+    offsetX: 0,
+    offsetY: 0,
+    stepoverPercent: 40,
+    rasterDirection: 'x',
     zTransitionMode: 'plunge',
     helixRadius: 1,
   },

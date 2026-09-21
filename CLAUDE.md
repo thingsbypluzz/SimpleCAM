@@ -26,7 +26,7 @@ bez logowania, bez backendu, bez CAD-a.
 
 ## Stan projektu
 
-Appka obsługuje dziś trzy operacje (`WizardParams.operation`):
+Appka obsługuje dziś cztery operacje (`WizardParams.operation`):
 
 - **Hole(s)** — wiercenie/frezowanie okrągłych otworów. Dwie metody
   (`MethodType`: Helix / Standard Hole) × pięć wariantów pozycjonowania
@@ -40,12 +40,15 @@ Appka obsługuje dziś trzy operacje (`WizardParams.operation`):
   odłożone, `BL-30`). Dwie metody (`SurfaceMethodType`: Zigzag /
   Unidirectional), kierunek rastra X/Y, stepover jako % średnicy
   narzędzia.
+- **Pocket** — kieszeniowanie (usuwanie materiału wewnątrz zamkniętego
+  konturu). Rectangle Cornered/Centered i Circle. Dwie metody
+  (`PocketMethodType`: Raster / Spiral), Raster tylko dla Rectangle.
 
 Pełne uzasadnienie i historia każdej decyzji — łącznie z tym, jak
 appka doszła do dzisiejszego stanu, wersja po wersji — żyje wyłącznie w
 **`CHANGELOG.md`**; ten plik opisuje tylko to, co jest prawdą dziś.
-Planowane rozszerzenia (Pocket, Surface, i cała reszta odłożonych
-pomysłów) — patrz **`ideas.md`**.
+Planowane rozszerzenia (Text/Font Tracing, Adaptive Clearing, i cała
+reszta odłożonych pomysłów) — patrz **`ideas.md`**.
 
 ## Backlog i pomysły na przyszłość
 
@@ -196,6 +199,133 @@ decyzją projektową).
   brak osobnego stock-cap-z-otworem (`buildStockCapObject()` zwraca
   `null` dla Surface — blok "pozostałego materiału" już jest tą
   wizualizacją).
+- **Pocket — kieszeniowanie, tylko roughing w v1:** rozstrzygnięcia sesji
+  `/grill-me` (2026-09-21). **Dwie metody** (`PocketMethodType`:
+  `'raster' | 'spiral'`, płaski rejestr `config/pocketMethodMeta.ts` jak
+  `SURFACE_METHOD_META`): **Raster** — tylko Rectangle
+  (Cornered/Centered), dosłowne reużycie silnika rastra Surface'a
+  (`computeRasterLines`/`zigzagWaypoints`), ale granica to prostokąt
+  **zainsetowany** o promień narzędzia (`pocketRectRasterBounds()`,
+  `lib/pocketGeometry.ts`) — odwrotność Surface'owego overtravel'u
+  (granica się kurczy, nie rośnie, bo ściana kieszeni to twardy limit
+  geometryczny, nie margines najazdu). **Spiral** — Rectangle (oba
+  warianty) i Circle; bramkowanie metody po kształcie identyczne z
+  `OutlineMethod` (`pocketMethodAllowed()`/`pocketMethodListForShape()`)
+  — Circle dostaje wyłącznie Spiral, `Step1Positioning.tsx` resetuje
+  metodę na `'spiral'` automatycznie przy przejściu na Circle.
+
+  **Kierunek czyszczenia:** zawsze inside-out (środek → ściana), zawsze
+  konwencjonalne frezowanie (CCW) — Pocket nie ma pojęcia offset mode
+  jak Outline, to zawsze cięcie od wewnątrz. **Wejście** zawsze w
+  **centrum kieszeni** (`pocketCenter()`, ten sam origin-convention co
+  `rectCorners()` — Cornered: origin w lewym dolnym rogu, Centered:
+  wyśrodkowany), przez `ZTransitionMode` (Plunge/Helix,
+  `lib/pocketZTransition.ts::pocketZTransitionMoves()`) — wyśrodkowana
+  wersja mechanizmu Surface'a (`surfaceZTransition.ts`), prostsza niż
+  jego narożnikowy `helixCenterFor`/`helixDirectionFor` (brak stycznej
+  do wyprowadzania — okrąg wyśrodkowany na kieszeni nie ma
+  uprzywilejowanego kierunku wyjścia, bo pierwszy pierścień/linia
+  rastra i tak zaczyna własnym, niezależnym punktem odniesienia). Tryb
+  Helix kończy się **płaskim przejazdem czyszczącym** na promieniu
+  `helixRadius`, dokładnie na `toZ` (mirror `helix.ts`'s Hole(s) Helix
+  "flat finishing pass") — spiralne rampowanie w dół zostawia śrubową,
+  nie płaską, powierzchnię (tylko jeden punkt obrotu faktycznie trafia
+  w `toZ`), a to, co następuje potem (pierwszy ramp pierścienia/linia
+  rastra/prostokąta), przechodzi przez ten promień tylko przelotnie
+  blisko własnego punktu startowego — bez tego przejazdu większość
+  obwodu wejścia Helix zostawałaby nietknięta na docelowej głębokości.
+  Wychwycone sesją weryfikacji wizualnej użytkownika (2026-09-21, bez
+  dostępu do maszyny), naprawione w tej samej, jeszcze
+  niescommitowanej turze co reszta OP-2.
+
+  **Geometria Spiral (`lib/pocketSpiral.ts`):** każdy pierścień to
+  **ramp + pełny flat obrót**. Flat — pełny, domknięty obrót na
+  docelowym rozmiarze, gwarantujący kompletną ścianę pierścienia,
+  spójnie z tym, że wszystko inne w silniku (Standard Hole, Helix
+  cleanup przy tabsach, `pocketZTransitionMoves()`'s finishing pass
+  niżej) zawsze generuje pełne 360°, nigdy częściowe — **nigdy nie
+  pomijany, niezależnie od kąta rampy** (patrz niżej), bo ramp dotyka
+  promienia docelowego tylko w jednym punkcie, nigdy na całym obwodzie.
+
+  Ramp dla **Circle** — kąt **wyliczany per pierścień**
+  (`rampSweepDegFor()`), nie stała (poprzednia wersja, stała 90°,
+  okazała się błędna sesją weryfikacji wizualnej, 2026-09-21: przy
+  stałym kącie długość łuku rośnie z promieniem, a Δr rampu zostaje
+  ~stały, więc promieniowe zaangażowanie freza na jednostkę przebytego
+  łuku skaluje się jak 1/promień — agresywnie blisko środka,
+  niepotrzebnie długo przy ścianie). Zamiast kąta, stała jest **długość
+  łuku** rampy — `RAMP_LENGTH_FACTOR = 3` (niekonfigurowalna, `BL-41`
+  gdyby miała stać się polem UI) razy Δr tej konkretnej transycji
+  (`radiusTo - radiusFrom`, nie zakładany stepover — pierwszy/ostatni
+  pierścień mogą mieć inny Δr), podzielona przez średni promień
+  transycji (`(radiusFrom+radiusTo)/2` — dla pierwszego pierścienia,
+  `radiusFrom=0`, to dodatkowo obniża efektywny promień, żądając
+  jeszcze łagodniejszego/dłuższego rampu tam, gdzie krzywizna jest
+  najostrzejsza). Wynik: `Δr / długość_łuku = 1/RAMP_LENGTH_FACTOR`,
+  stałe na każdym promieniu. Sufit 360° w kodzie jest defensywny, nie
+  realnie osiągalny przy `RAMP_LENGTH_FACTOR=3` — najgorszy fizycznie
+  możliwy przypadek (`radiusFrom=0`) daje zawsze dokładnie `2 ×
+  RAMP_LENGTH_FACTOR` radianów (~343.8° przy 3), niezależnie od
+  `radiusTo`, poniżej pełnego obrotu. Ramp to G1-owa aproksymacja
+  spirali (promień rośnie liniowo przez wyliczony kąt — dialekt
+  G-code, wspólny podzbiór GRBL/Marlin/Mach3, nie wspiera natywnego
+  G2/G3 ze zmiennym promieniem, więc ramp zawsze emituje G1
+  niezależnie od przełącznika interpolacji, z gęstością 5°/segment jak
+  wszędzie indziej, ale liczbą segmentów skalowaną do rzeczywistego
+  kąta), potem pełny obrót przez `fullCircleMove()` bez zmian
+  (respektuje przełącznik G2/G3 vs G1 jak wszędzie indziej). Kąt
+  startowy kolejnego rampu to zawsze `poprzedni + rampSweepDegFor(...)
+  tej transycji`, bez zawijania do 0 — pierścienie faktycznie
+  spiralnie "obracają się" wokół siebie. Dla **Rectangle**
+  (`rectRingMoves()`/`pocketRectRingDims()`): ramp to pojedynczy prosty
+  odcinek G1 z narożnika poprzedniego pierścienia (albo z punktu, w
+  którym skończył się Z-entry, dla pierwszego pierścienia) do narożnika
+  nowego pierścienia (zawsze lewy-dolny, CCW), potem pełne okrążenie 4
+  boków z powrotem do tego narożnika. Dla `width ≠ height` pierścienie
+  rosną **per-oś**, ze wspólnego kroku (`computeLinePositions()`
+  reużyty wprost z `surfaceRaster.ts`, liczony na dłuższej z dwóch
+  połówek wymiaru) — oś, która pierwsza osiągnie swój cel, przestaje
+  rosnąć i zostaje zaciśnięta (`Math.min`), druga rośnie dalej; w
+  stanie ustalonym dla wydłużonej kieszeni ramp między kolejnymi
+  pierścieniami faktycznie sprowadza się do ruchu tylko wzdłuż jednej
+  osi — dosłownie "ramp wzdłuż aktualnie rosnącego/dłuższego boku".
+  Degenerate leading `(0,0)` (zawsze pierwszy element
+  `computeLinePositions(0, max, ...)`) jest odrzucany — to nie
+  prawdziwy pierścień do wycięcia, tylko punkt środka.
+
+  **Głębokość:** per-poziom pełny XY clear, 1:1 reużycie
+  `buildLevelDescents()` z Surface'a — każdy poziom Z zaczyna od
+  `Start Z`, pełny retrakt na `Safe Z` i reposition nad środkiem
+  kieszeni między poziomami.
+
+  **Roughing-only w v1** (`BL-42` dla finishing passa/stock-to-leave) —
+  zewnętrzny pierścień (Spiral) albo skrajna linia raster (Raster,
+  przycięta dokładnie do zainsetowanej granicy) JEST ścianą, bez
+  osobnego, dokładnego przejazdu wykończeniowego. **Bez Tabs** — jak
+  Surface, Pocket nie przewierca na wylot, nic do przytrzymania
+  mostkiem. **Stepover** — identyczny mechanizm co Surface
+  (`stepoverPercent` + `pocketStepoverMm()`, pole mm tylko-do-odczytu).
+  **Adaptive Clearing** (alternatywna strategia roughingu ze stałym
+  zaangażowaniem narzędzia) świadomie odłożone jako `OP-5`.
+
+  **Preview 2D** (`drawToolpath.ts::drawPocketGeometry()`) i **Preview
+  3D** (`buildScene.ts::buildPocketToolpathObjects3D()`) rysują Spiral
+  **dokładnie** — ramp (krzywa dla Circle, przez `circleRingRampPoints()`
+  wyeksportowaną z `lib/pocketSpiral.ts` i reużytą wprost przez silnik
+  G-code w `circleRingMoves()`, żeby podgląd nigdy nie rozjechał się z
+  tym, co faktycznie tnie frez; prosty odcinek dla Rectangle) + pełny
+  flat pierścień, w tej samej kolejności co silnik. Pierwsza wersja (do
+  sesji weryfikacji wizualnej, 2026-09-21) rysowała pierścienie jako
+  osobne, rozłączone kształty bez rampy między nimi — mylące przy
+  weryfikacji wizualnej bez dostępu do maszyny, bo każdy pierścień
+  wyglądał jak niezależne przejście zamiast fragmentu jednej spirali.
+  Wizualizacja bryły 3D reużywa wprost modelu
+  Outline Inside (otwarta ściana — `DoubleSide`, brak nakrywek — + stock
+  cap z otworem w kształcie granicy zewnętrznej, ten sam
+  `buildRectWallMesh()`/`circlePath()`/`rectPath()`) — Pocket fizycznie
+  jest dokładnie tym samym zjawiskiem co Outline Inside (pustka
+  wewnątrz zachowanego materiału), nie ma własnego modelu bryły jak
+  Surface.
 - **Ruch między otworami:** powrót na `Safe Z` przed `G0` do kolejnego
   punktu XY.
 - **Wrzeciono:** tylko `M3` (bez `M4`).
@@ -866,11 +996,12 @@ analizy — lokalny dla tej maszyny, bo `.claude/` jest wykluczone z gita.
 ```
 src/
   types/wizard.ts          — typy WizardParams + DEFAULT_WIZARD_PARAMS.
-                              `operation: 'holes' | 'outline' | 'surface'`,
-                              `geometry`/`method` (Hole(s)), `outline`
-                              (Outline) i `surface` (Surface) żyją obok
-                              siebie — każdy zawsze obecny w WizardParams
-                              niezależnie od aktywnej operacji.
+                              `operation: 'holes' | 'outline' | 'surface' |
+                              'pocket'`, `geometry`/`method` (Hole(s)),
+                              `outline` (Outline), `surface` (Surface) i
+                              `pocket` (Pocket) żyją obok siebie — każdy
+                              zawsze obecny w WizardParams niezależnie od
+                              aktywnej operacji.
   types/machine.ts          — MachineSettings + DEFAULT_MACHINE_SETTINGS
                               (Machine Settings) — osobny plik od
                               `wizard.ts`, inny rodzaj danych (jeden
@@ -950,6 +1081,20 @@ src/
                               (Rectangle Cornered/Centered),
                               `surfaceShapeLabel()`/`surfaceShapeSlug()`/
                               `surfaceShapeLines()`/`surfaceSummary()`.
+  config/pocketMethodMeta.ts — analogicznie dla Pocket (Raster/Spiral):
+                              `POCKET_METHOD_META`, płaski rejestr jak
+                              `surfaceMethodMeta.ts`, plus
+                              `pocketMethodAllowed()`/
+                              `pocketMethodListForShape()` — Raster
+                              bramkowane do Rectangle (jedyne miejsce w
+                              tym rejestrze, gdzie metoda NIE jest
+                              uniwersalna dla każdego kształtu, w
+                              odróżnieniu od Surface).
+  config/pocketMeta.ts      — analogicznie dla Pocket (kształt):
+                              `POCKET_SHAPE_META`/`POCKET_SHAPE_LIST`
+                              (Rectangle Cornered/Centered/Circle),
+                              `pocketShapeLabel()`/`pocketShapeSlug()`/
+                              `pocketShapeLines()`/`pocketSummary()`.
   components/SettingsModal.tsx — Settings Modal. Siedem Settings Nav
                               Items, w tej kolejności: **Machine** (X/Y/Z
                               travel, dialekt, Start/End G-Code),
@@ -1010,22 +1155,30 @@ src/
   components/wizard/        — komponenty poszczególnych kroków wizarda.
                               `Step1Positioning.tsx` = wyłącznie operacja +
                               pattern picker, nic liczbowego — pionowy
-                              stos operacji (Hole(s)/Outline/Surface
-                              rozwinięte z kompaktową listą wariantów w
-                              środku; Pocket jako wyszarzone "Coming
-                              soon"). `Step2Geometry.tsx` = cienki router
-                              na `params.operation` →
-                              `Step2GeometryHoles.tsx` /
-                              `Step2GeometryOutline.tsx` /
-                              `Step2GeometrySurface.tsx`
-                              (`SurfaceMethodPicker.tsx` — Zigzag/
-                              Unidirectional, wzorzec `OutlineMethodPicker`;
-                              toggle Raster Direction/Z-Transition Mode
-                              inline w `Step2GeometrySurface.tsx`, bez
-                              osobnych plików — dwuopcjowy tekstowy toggle
-                              bez rejestru do współdzielenia). Wszystkie
-                              pola liczbowe na Krokach 2/3 idą przez
-                              `useNumberField()`.
+                              stos operacji (Hole(s)/Outline/Surface/
+                              Pocket, wszystkie rozwinięte z kompaktową
+                              listą wariantów w środku — Pocket resetuje
+                              `pocket.method` na `'spiral'`, gdy klik w
+                              Circle, bo Raster jest tam niedostępne).
+                              `Step2Geometry.tsx` = cienki router na
+                              `params.operation` → `Step2GeometryHoles.tsx`
+                              / `Step2GeometryOutline.tsx` /
+                              `Step2GeometrySurface.tsx` /
+                              `Step2GeometryPocket.tsx`
+                              (`SurfaceMethodPicker.tsx`/
+                              `PocketMethodPicker.tsx` — wzorzec
+                              `OutlineMethodPicker`, `PocketMethodPicker`
+                              filtruje listę metod po kształcie
+                              (`pocketMethodListForShape()`) zamiast
+                              renderować wszystkie na stałe jak
+                              `SurfaceMethodPicker`; toggle Raster
+                              Direction/Z-Transition Mode inline w obu
+                              `Step2GeometrySurface.tsx`/
+                              `Step2GeometryPocket.tsx` (osobne kopie, bez
+                              wspólnego pliku), bez osobnych plików —
+                              dwuopcjowy tekstowy toggle bez rejestru do
+                              współdzielenia). Wszystkie pola liczbowe na
+                              Krokach 2/3 idą przez `useNumberField()`.
   components/wizard/useNumberField.ts — hook `useNumberField(value, onCommit)`
                               — oddziela wyświetlany tekst inputa od
                               zatwierdzonej wartości, żeby pole dało się
@@ -1320,6 +1473,48 @@ src/
                                  prosty plunge (NIE toggle Plunge/Helix)
                                  między liniami, wzorzec z
                                  `standardHole.ts`.
+    pocketGeometry.ts              — `pocketCenter()` (origin-convention
+                                 jak `rectCorners()`), `pocketRectWallHalfDims()`/
+                                 `pocketCircleWallRadius()` (ściana =
+                                 nominał zainsetowany o promień narzędzia —
+                                 odwrotny znak niż Surface'owy overtravel),
+                                 `pocketRectRasterBounds()` (granica Raster,
+                                 wyśrodkowana na `pocketCenter()`),
+                                 `pocketStepoverMm()` (jedyne źródło prawdy
+                                 % → mm, jak Surface).
+    pocketSpiral.ts                 — geometria metody Spiral.
+                                 `rampSweepDegFor()` (kąt rampy per
+                                 pierścień, z `RAMP_LENGTH_FACTOR = 3`,
+                                 stałą niekonfigurowalną — `BL-41` gdyby
+                                 miała być polem UI — trzymającą stałą
+                                 DŁUGOŚĆ ŁUKU rampy zamiast stałego kąta,
+                                 patrz "Kluczowe decyzje projektowe"
+                                 wyżej). `pocketCircleRingRadii()`/
+                                 `pocketRectRingDims()` — sekwencje
+                                 pierścieni (`computeLinePositions()`
+                                 reużyty z `surfaceRaster.ts`), rosnące od
+                                 punktu wejścia Z-entry do ściany, per-oś
+                                 clampowane dla Rectangle. `circleRingMoves()`/
+                                 `rectRingMoves()` — jeden pierścień = ramp
+                                 (zawsze G1 dla Circle, bo dialekt nie
+                                 wspiera G2/G3 ze zmiennym promieniem; dla
+                                 Rectangle zawsze prosty odcinek) + pełny
+                                 flat obrót (`fullCircleMove()` bez zmian
+                                 dla Circle, respektuje toggle interpolacji).
+    pocketZTransition.ts            — `pocketZTransitionMoves()` — wersja
+                                 Plunge/Helix wyśrodkowana na
+                                 `pocketCenter()` (bez narożnikowej
+                                 matematyki stycznej Surface'a), zawsze CCW.
+                                 `buildLevelDescents()` reużyte wprost z
+                                 `surfaceZTransition.ts`, bez kopii.
+    pocket.ts                       — `generatePocketRaster`/
+                                 `generatePocketSpiral` — ten sam szkielet
+                                 co `surface.ts` (jeden syntetyczny
+                                 punkt-środek, `assembleProgram()`), per-
+                                 poziom pełny XY clear
+                                 (`buildLevelDescents()`). Spiral rozgałęzia
+                                 się po `pocket.shape` (Circle/Rectangle) na
+                                 osobne funkcje poziomu.
     validation.ts                — `isToolDiameterValid`, `isStepdownValid`,
                                  `isCircleHoleCountValid` (limit 100),
                                  `isTabHeightValid`/`isTabWidthValid`,
@@ -1328,10 +1523,17 @@ src/
                                  `isOutlineTabWidthValid`,
                                  `isSurfaceToolDiameterValid`/
                                  `isSurfaceStepoverValid`/
-                                 `isSurfaceHelixRadiusValid` — blokują
-                                 Generate i pokazują inline error w Kroku
-                                 2/3. `outlineFootprint`/`outlineZSpan`,
+                                 `isSurfaceHelixRadiusValid`,
+                                 `isPocketToolDiameterValid`/
+                                 `isPocketStepoverValid`/
+                                 `isPocketHelixRadiusValid` (sufit to
+                                 najmniejszy dostępny promień/połówka
+                                 wymiaru kieszeni, nie stepover jak
+                                 Surface) — blokują Generate i pokazują
+                                 inline error w Kroku 2/3.
+                                 `outlineFootprint`/`outlineZSpan`,
                                  `surfaceFootprint`/`surfaceZSpan`,
+                                 `pocketFootprint`/`pocketZSpan`,
                                  `patternSpan`/`zSpan`/
                                  `machineFitWarnings()` — nieblokujący
                                  soft-warning na Kroku 4, rozgałęziony po
@@ -1407,7 +1609,12 @@ pomocnicze funkcje w `config/positioningMeta.ts`, nie przez rozproszone
 `config/outlineMeta.ts`, Surface analogicznie przez `config/surfaceMeta.ts`
 (kształt) i `config/surfaceMethodMeta.ts` (metoda, z własnym `generate` —
 płaski rejestr, nie bespoke-switch jak `lib/outline.ts`, bo metody Surface
-nie są ograniczone per-kształt). Wszystkie kolory podglądu 2D/3D idą przez
+nie są ograniczone per-kształt), Pocket analogicznie przez
+`config/pocketMeta.ts` (kształt) i `config/pocketMethodMeta.ts` (metoda,
+z własnym `generate` — płaski rejestr jak Surface, ale z dodatkowym
+`pocketMethodListForShape()` filtrem, bo Raster JEST ograniczone
+per-kształt, w odróżnieniu od Surface). Wszystkie kolory podglądu 2D/3D
+idą przez
 `config/palettes.ts` (`getFixedColors()`/`getPaletteAccents()`/
 `hexToThreeColor()`), nie przez osobne stałe kolorów w
 `drawToolpath.ts`/`buildScene.ts`.

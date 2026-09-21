@@ -40,6 +40,8 @@ import {
 } from './config/outlineMeta'
 import { SURFACE_METHOD_META } from './config/surfaceMethodMeta'
 import { SURFACE_SHAPE_META, surfaceShapeIcon, surfaceShapeLines, surfaceSummary } from './config/surfaceMeta'
+import { POCKET_METHOD_META } from './config/pocketMethodMeta'
+import { POCKET_SHAPE_META, pocketShapeIcon, pocketShapeLines, pocketSummary } from './config/pocketMeta'
 import { fmt } from './lib/format'
 import { deriveOverlayParams } from './lib/overlayParams'
 import { generateOutline } from './lib/outline'
@@ -65,6 +67,9 @@ import {
   isOutlineTabHeightValid,
   isOutlineTabWidthValid,
   isOutlineToolDiameterValid,
+  isPocketHelixRadiusValid,
+  isPocketStepoverValid,
+  isPocketToolDiameterValid,
   isStartZValid,
   isStepdownValid,
   isSurfaceHelixRadiusValid,
@@ -110,6 +115,10 @@ function surfaceSizeValue(surface: WizardParams['surface']): string {
   return `${surface.width}×${surface.height}`
 }
 
+function pocketSizeValue(pocket: WizardParams['pocket']): string {
+  return pocket.shape === 'circle' ? `⌀${pocket.diameter}` : `${pocket.width}×${pocket.height}`
+}
+
 interface Step4Badge {
   Icon: ComponentType<{ className?: string }>
   colorClassName: string
@@ -151,6 +160,7 @@ function collapsedStepTitle(stepId: number, params: WizardParams): string {
     case 1:
       if (params.operation === 'outline') return `Shape — ${outlineSummary(params.outline)}`
       if (params.operation === 'surface') return `Shape — ${surfaceSummary(params.surface)}`
+      if (params.operation === 'pocket') return `Shape — ${pocketSummary(params.pocket)}`
       return `Pattern — ${positioningSummary(params.geometry)}`
     case 2: {
       if (params.operation === 'outline') {
@@ -162,6 +172,11 @@ function collapsedStepTitle(stepId: number, params: WizardParams): string {
         const { surface } = params
         const offset = offsetSummary(surface)
         return `Geometry — Tool ⌀${surface.toolDiameter}mm, ${SURFACE_SHAPE_META[surface.shape].title} ${surfaceSizeValue(surface)}mm, Depth ${surface.totalDepth}mm${offset ? ` — Offset ${offset}` : ''} — Method: ${SURFACE_METHOD_META[surface.method].title}`
+      }
+      if (params.operation === 'pocket') {
+        const { pocket } = params
+        const offset = offsetSummary(pocket)
+        return `Geometry — Tool ⌀${pocket.toolDiameter}mm, ${POCKET_SHAPE_META[pocket.shape].title} ${pocketSizeValue(pocket)}mm, Depth ${pocket.totalDepth}mm${offset ? ` — Offset ${offset}` : ''} — Method: ${POCKET_METHOD_META[pocket.method].title}`
       }
       const offset = offsetSummary(params.geometry)
       return `Geometry — Tool ⌀${params.geometry.toolDiameter}mm, Hole ⌀${params.geometry.holeDiameter}mm, Depth ${params.geometry.totalDepth}mm${offset ? ` — Offset ${offset}` : ''} — Method: ${METHOD_META[params.method].title}`
@@ -265,9 +280,17 @@ function App() {
       ? activeOutlineMethodMeta(params.outline)
       : params.operation === 'surface'
         ? SURFACE_METHOD_META[params.surface.method]
-        : METHOD_META[params.method]
+        : params.operation === 'pocket'
+          ? POCKET_METHOD_META[params.pocket.method]
+          : METHOD_META[params.method]
   const offset = offsetSummary(
-    params.operation === 'outline' ? params.outline : params.operation === 'surface' ? params.surface : params.geometry,
+    params.operation === 'outline'
+      ? params.outline
+      : params.operation === 'surface'
+        ? params.surface
+        : params.operation === 'pocket'
+          ? params.pocket
+          : params.geometry,
   )
   const isGeometryValid =
     params.operation === 'outline'
@@ -282,12 +305,18 @@ function App() {
           isStartZValid(params.feeds) &&
           isSurfaceStepoverValid(params.surface) &&
           isSurfaceHelixRadiusValid(params.surface)
-        : isToolDiameterValid(params.geometry) &&
-          isStepdownValid(params.feeds) &&
-          isStartZValid(params.feeds) &&
-          isCircleHoleCountValid(params.geometry) &&
-          isTabHeightValid(params.geometry) &&
-          isTabWidthValid(params.geometry)
+        : params.operation === 'pocket'
+          ? isPocketToolDiameterValid(params.pocket) &&
+            isStepdownValid(params.feeds) &&
+            isStartZValid(params.feeds) &&
+            isPocketStepoverValid(params.pocket) &&
+            isPocketHelixRadiusValid(params.pocket)
+          : isToolDiameterValid(params.geometry) &&
+            isStepdownValid(params.feeds) &&
+            isStartZValid(params.feeds) &&
+            isCircleHoleCountValid(params.geometry) &&
+            isTabHeightValid(params.geometry) &&
+            isTabWidthValid(params.geometry)
   const fitWarnings = machineFitWarnings(params, machine)
   const step4BadgeInfo = step4Badge(generatedGCode, fitWarnings)
 
@@ -378,7 +407,9 @@ function App() {
         ? generateOutline(params, machine)
         : params.operation === 'surface'
           ? SURFACE_METHOD_META[params.surface.method].generate(params, machine)
-          : METHOD_META[params.method].generate(params, machine)
+          : params.operation === 'pocket'
+            ? POCKET_METHOD_META[params.pocket.method].generate(params, machine)
+            : METHOD_META[params.method].generate(params, machine)
     setGeneratedGCode(gcode)
     saveSlot(AUTO_SAVE_SLOT, params)
     setShowRestoredBanner(false)
@@ -531,7 +562,9 @@ function App() {
                 ? outlineShapeIcon(preset.outline.shape)
                 : preset.operation === 'surface'
                   ? surfaceShapeIcon(preset.surface.shape)
-                  : positioningIcon(preset.geometry.positioning)
+                  : preset.operation === 'pocket'
+                    ? pocketShapeIcon(preset.pocket.shape)
+                    : positioningIcon(preset.geometry.positioning)
               : null
             const isOverlaySelected = overlayEnabled && overlaySlots.has(id)
             const isEditingSlot = editModeEnabled && editingSlot === id
@@ -761,11 +794,19 @@ function App() {
                         ? `Shape: ${outlineSummary(params.outline)}`
                         : params.operation === 'surface'
                           ? `Shape: ${surfaceSummary(params.surface)}`
-                          : `Pattern: ${positioningSummary(params.geometry)}`
+                          : params.operation === 'pocket'
+                            ? `Shape: ${pocketSummary(params.pocket)}`
+                            : `Pattern: ${positioningSummary(params.geometry)}`
                     }
                   >
                     <span className="text-[10px] font-semibold uppercase text-muted">
-                      {params.operation === 'outline' ? 'Outline' : params.operation === 'surface' ? 'Surface' : 'Hole(s)'}
+                      {params.operation === 'outline'
+                        ? 'Outline'
+                        : params.operation === 'surface'
+                          ? 'Surface'
+                          : params.operation === 'pocket'
+                            ? 'Pocket'
+                            : 'Hole(s)'}
                     </span>
                     {(() => {
                       const Icon =
@@ -773,7 +814,9 @@ function App() {
                           ? outlineShapeIcon(params.outline.shape)
                           : params.operation === 'surface'
                             ? surfaceShapeIcon(params.surface.shape)
-                            : positioningIcon(params.geometry.positioning)
+                            : params.operation === 'pocket'
+                              ? pocketShapeIcon(params.pocket.shape)
+                              : positioningIcon(params.geometry.positioning)
                       return <Icon className="h-8 w-8 text-accent" />
                     })()}
                     <div className="flex flex-col items-center">
@@ -781,7 +824,9 @@ function App() {
                         ? outlineShapeLines(params.outline)
                         : params.operation === 'surface'
                           ? surfaceShapeLines(params.surface)
-                          : positioningLines(params.geometry)
+                          : params.operation === 'pocket'
+                            ? pocketShapeLines(params.pocket)
+                            : positioningLines(params.geometry)
                       ).map((line, i) => (
                         <span
                           key={i}
@@ -890,6 +935,52 @@ function App() {
                       value={`${params.surface.totalDepth}`}
                       unit="mm"
                       title={`Depth to Remove: ${params.surface.totalDepth} mm`}
+                    />
+                  </div>
+                )}
+
+                {step.id === 2 && params.operation === 'pocket' && (
+                  <div className="flex flex-col items-center gap-4">
+                    <span className="text-[10px] font-semibold uppercase text-muted">
+                      {step.title}
+                    </span>
+                    <MiniStat
+                      icon={<activeMethodDisplay.Icon className="h-8 w-8" />}
+                      label="METHOD"
+                      value={activeMethodDisplay.shortLabel}
+                      title={`Method: ${activeMethodDisplay.title}`}
+                    />
+                    <MiniStat
+                      icon={(() => {
+                        const ShapeIcon = pocketShapeIcon(params.pocket.shape)
+                        return <ShapeIcon className="h-8 w-8" />
+                      })()}
+                      label="SIZE"
+                      value={pocketSizeValue(params.pocket)}
+                      unit="mm"
+                      title={`${POCKET_SHAPE_META[params.pocket.shape].title}: ${pocketSizeValue(params.pocket)}mm`}
+                    />
+                    {offset && (
+                      <MiniStat
+                        icon={<OffsetIcon className="h-8 w-8" />}
+                        label="OFFSET"
+                        value={offset}
+                        title={`Offset: ${offset}`}
+                      />
+                    )}
+                    <MiniStat
+                      icon={<BitIcon className="h-8 w-8" />}
+                      label="BIT"
+                      value={`${params.pocket.toolDiameter}`}
+                      unit="mm"
+                      title={`Tool Diameter: ${params.pocket.toolDiameter} mm`}
+                    />
+                    <MiniStat
+                      icon={<DepthIcon className="h-8 w-8" />}
+                      label="DEPTH"
+                      value={`${params.pocket.totalDepth}`}
+                      unit="mm"
+                      title={`Total Depth: ${params.pocket.totalDepth} mm`}
                     />
                   </div>
                 )}
