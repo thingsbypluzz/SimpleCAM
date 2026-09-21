@@ -95,6 +95,13 @@ export function deleteSlot(id: SlotId): void {
   writeStorage(storage)
 }
 
+// BL-40: "Reset All Settings" — clears every slot at once, including the
+// hidden auto-save slot "0", not just the named presets deleteSlot()
+// removes one at a time.
+export function clearAllSlots(): void {
+  writeStorage({ version: SCHEMA_VERSION, slots: {} })
+}
+
 // All occupied preset slots (1-5), read once at startup for the header —
 // excludes the hidden auto-save slot (0).
 export function loadPresetSlots(): Partial<Record<PresetSlotId, WizardParams>> {

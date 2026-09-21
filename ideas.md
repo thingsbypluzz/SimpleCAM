@@ -180,6 +180,19 @@ faktycznym.
   decyzji, jak pogodzić te dwa różne kształty/zakresy stanu (i czy nowy
   przycisk pisze do tego samego `localStorage`, czy tylko lokalnie
   nadpisuje na czas sesji).
+- **`BL-39`** *(Zrealizowany, 2026-09-21)* — **Przełączanie presetu
+  resetowało aktywny krok wizarda na Step 4.** Usunięte oba wywołania
+  `setActiveStep(4)` w `handleLoadPreset`/`handlePresetSlotClick`
+  (`src/App.tsx`) — aktywny krok akordeonu zostaje teraz bez zmian przy
+  wczytaniu/przełączeniu presetu, w obu trybach. Drobna poprawka, bez
+  wpisu w `CHANGELOG.md`.
+- **`BL-40`** *(Zrealizowany, 2026-09-21)* — **Przycisk "Reset All
+  Settings to Defaults" w Settings Modal.** Zakres rozszerzony w
+  dyskusji poza pierwotny opis — czyści wszystkie cztery klucze
+  `localStorage`, nie tylko trzy: Appearance, Tool Diameters, Machine
+  Settings (dialekt/travel/G-code/mostki) i wszystkie sloty presetów
+  łącznie z ukrytym `"0"`. Osobna pozycja Settings Nav "Reset" (między
+  "Privacy" a "About"). Pełny opis: `CHANGELOG.md`, `[0.17.2]`.
 
 elementów UI, dziś aktywnie używany w `CLAUDE.md`:
 **<https://claude.ai/code/artifact/ea21c02e-41ed-4bb5-90ec-48ae9a61c23e>**.

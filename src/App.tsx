@@ -47,6 +47,7 @@ import { presetLabel } from './lib/presetLabel'
 import {
   AUTO_SAVE_SLOT,
   PRESET_SLOT_IDS,
+  clearAllSlots,
   deleteSlot,
   loadPresetSlots,
   loadSlot,
@@ -56,6 +57,9 @@ import {
 import { loadAppearanceSettings, saveAppearanceSettings } from './lib/appearanceStorage'
 import { loadMachineSettings, saveMachineSettings } from './lib/machineStorage'
 import { loadToolDiameterOptions, saveToolDiameterOptions } from './lib/toolDiameterStorage'
+import { DEFAULT_APPEARANCE_SETTINGS } from './types/appearance'
+import { DEFAULT_MACHINE_SETTINGS } from './types/machine'
+import { DEFAULT_TOOL_DIAMETER_OPTIONS } from './types/toolDiameters'
 import {
   isCircleHoleCountValid,
   isOutlineTabHeightValid,
@@ -338,6 +342,32 @@ function App() {
     setToolDiameters(next)
   }
 
+  // BL-40: "Reset All Settings" — wipes every localStorage key the app
+  // owns and syncs in-memory state to match, all four independent stores
+  // at once (Appearance/Tool Diameters/Machine each their own key, plus
+  // every preset slot including the hidden auto-save session slot "0").
+  // Leaves the live, currently-open wizard params untouched — this clears
+  // what's saved, not what's on screen. generatedGCode is invalidated
+  // since Machine's dialect/header/footer may have just changed underneath
+  // it (same reasoning as handleSaveMachine's affectsGCode above).
+  // Overlay/Edit Mode selections are cleared too since the presets they'd
+  // reference no longer exist.
+  const handleResetAllSettings = () => {
+    clearAllSlots()
+    setPresetSlots({})
+    saveAppearanceSettings(DEFAULT_APPEARANCE_SETTINGS)
+    setAppearance(DEFAULT_APPEARANCE_SETTINGS)
+    saveToolDiameterOptions(DEFAULT_TOOL_DIAMETER_OPTIONS)
+    setToolDiameters(DEFAULT_TOOL_DIAMETER_OPTIONS)
+    saveMachineSettings(DEFAULT_MACHINE_SETTINGS)
+    setMachine(DEFAULT_MACHINE_SETTINGS)
+    setGeneratedGCode(null)
+    setEditModeEnabled(false)
+    setEditingSlot(null)
+    setOverlayEnabled(false)
+    setOverlaySlots(new Set())
+  }
+
   // Generate is also the auto-save trigger for the hidden slot 0 — see
   // CLAUDE.md, Etap 5, "localStorage": persisted on Generate rather than on
   // every keystroke, so a snapshot only survives once the user considered
@@ -369,14 +399,14 @@ function App() {
   // BL-25: plain, ordinary load — the only thing a Preset Bar click does
   // outside edit mode. No arming path exists here at all; that only ever
   // happens through handlePresetSlotClick below, and only while
-  // editModeEnabled.
+  // editModeEnabled. BL-39: doesn't touch activeStep — whichever wizard
+  // step was open stays open across a preset switch.
   const handleLoadPreset = (id: PresetSlotId) => {
     const preset = presetSlots[id]
     if (!preset) return
     setParams(preset)
     setGeneratedGCode(null)
     setShowRestoredBanner(false)
-    setActiveStep(4)
     // Brief flash on the loaded preset's icon — confirms "this is what just
     // got loaded" (same 1.5s timing convention as "Copied!"/"✓ Saved").
     setJustLoadedSlot(id)
@@ -388,7 +418,8 @@ function App() {
   // on, "nothing selected" is a valid state). Clicking any other occupied
   // slot loads it AND arms it in the same action — the explicit Edit Mode
   // toggle is the deliberate gesture now, so load+arm together is safe and
-  // predictable, unlike the old two-click model this replaces.
+  // predictable, unlike the old two-click model this replaces. BL-39:
+  // doesn't touch activeStep either, same reasoning as handleLoadPreset.
   const handlePresetSlotClick = (id: PresetSlotId) => {
     const preset = presetSlots[id]
     if (!preset) return
@@ -399,7 +430,6 @@ function App() {
     setParams(preset)
     setGeneratedGCode(null)
     setShowRestoredBanner(false)
-    setActiveStep(4)
     setEditingSlot(id)
   }
 
@@ -1066,6 +1096,7 @@ function App() {
           onSaveAppearance={handleSaveAppearance}
           toolDiameters={toolDiameters}
           onSaveToolDiameters={handleSaveToolDiameters}
+          onResetAll={handleResetAllSettings}
           onClose={() => setIsSettingsOpen(false)}
         />
       )}

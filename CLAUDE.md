@@ -942,7 +942,7 @@ src/
                               (Rectangle Cornered/Centered),
                               `surfaceShapeLabel()`/`surfaceShapeSlug()`/
                               `surfaceShapeLines()`/`surfaceSummary()`.
-  components/SettingsModal.tsx — Settings Modal. Sześć Settings Nav
+  components/SettingsModal.tsx — Settings Modal. Siedem Settings Nav
                               Items, w tej kolejności: **Machine** (X/Y/Z
                               travel, dialekt, Start/End G-Code),
                               **Tabs** (Default Tab Sizes), **Tool
@@ -955,9 +955,24 @@ src/
                               potwierdzeniem), **Appearance**
                               (Theme, Preview Color Palette, Grid Labels 3D
                               — patrz "Motywy (Theme) i Palety..." niżej),
-                              **Privacy**, **About** (nazwa/wersja appki) —
-                              ta ostatnia zawsze na końcu nawigacji.
-                              **Privacy** to statyczny tekst w czterech
+                              **Privacy**, **Reset** (`BL-40`), **About**
+                              (nazwa/wersja appki) — ta ostatnia zawsze na
+                              końcu nawigacji. **Reset** to jeden przycisk
+                              "Reset All Settings to Defaults" —
+                              `onResetAll` (`App.tsx`), czerwony styl
+                              (tokeny `status-delete-*`, żeby odróżnić od
+                              węższego "Reset to Default" w Tool
+                              Diameters), `window.confirm()` przed akcją —
+                              czyści naraz wszystkie cztery klucze
+                              `localStorage`, które appka posiada:
+                              Appearance, Tool Diameters, Machine Settings
+                              i wszystkie sloty presetów (`clearAllSlots()`
+                              w `lib/storage.ts`, łącznie z ukrytym
+                              auto-save sesji `"0"`, nie tylko widoczne
+                              `"1"`–`"5"` jak `deleteSlot()`). Nie rusza
+                              bieżących, aktualnie edytowanych w wizardzie
+                              parametrów — czyści to, co zapisane, nie to,
+                              co na ekranie. **Privacy** to statyczny tekst w czterech
                               blokach: co appka robi (brak backendu/bazy/
                               kont, wszystko liczone lokalnie), co i gdzie
                               jest przechowywane (`localStorage`, per-

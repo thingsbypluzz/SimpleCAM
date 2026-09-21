@@ -7,6 +7,29 @@ zgodne z [SemVer](https://semver.org/). Ten plik pozostaje głównym, czytelnym
 thingsbypluzz/SimpleCAM), ale to infrastruktura pod izolację pracy
 (branch/worktree per zadanie), nie zamiennik tego changeloga.
 
+## [0.17.2] — 2026-09-21
+
+### Dodano
+
+- **`BL-40` — przycisk "Reset All Settings to Defaults" w Settings
+  Modal.** Nowa, osobna pozycja Settings Nav "Reset" (między "Privacy"
+  a "About") — czyści wszystkie cztery klucze `localStorage`, które
+  appka posiada, naraz: Appearance (motyw/paleta/grid labels), Tool
+  Diameters, Machine Settings (dialekt, X/Y/Z travel, Start/End
+  G-Code, domyślne rozmiary mostków) i wszystkie sloty presetów
+  łącznie z ukrytym auto-save sesji `"0"`, nie tylko widoczne `"1"`–
+  `"5"` (nowe `clearAllSlots()` w `lib/storage.ts`, w odróżnieniu od
+  `deleteSlot()` kasującego jeden slot naraz). Nie rusza bieżących,
+  aktualnie edytowanych w wizardzie parametrów — czyści to, co
+  zapisane, nie to, co na ekranie; `generatedGCode` unieważniane (ten
+  sam powód co `affectsGCode` przy ręcznej zmianie dialektu), Overlay/
+  Edit Mode (`BL-25`) też się czyszczą, skoro odnosiłyby się do
+  presetów, których już nie ma. Potwierdzenie: `window.confirm()`, ten
+  sam wzorzec co istniejący "Reset to Default" w Tool Diameters —
+  osobna etykieta ("Reset All Settings to Defaults") i wyraźnie inny,
+  czerwony styl przycisku (tokeny `status-delete-*`), żeby nie pomylić
+  z węższym, jednosekcyjnym resetem.
+
 ## [0.17.1] — 2026-09-20
 
 ### Zmieniono

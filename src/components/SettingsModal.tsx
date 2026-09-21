@@ -18,6 +18,7 @@ interface SettingsModalProps {
   onSaveAppearance: (appearance: AppearanceSettings) => void
   toolDiameters: ToolDiameterOption[]
   onSaveToolDiameters: (options: ToolDiameterOption[]) => void
+  onResetAll: () => void
   onClose: () => void
 }
 
@@ -28,7 +29,7 @@ type TabDefaultField = 'defaultTabHeight' | 'defaultTabWidth' | 'defaultTabCount
 // per-field step/label differ.
 type NumericField = TravelField | TabDefaultField
 type CodeField = 'headerText' | 'footerText'
-type SectionId = 'machine' | 'tabs' | 'toolDiameters' | 'appearance' | 'about' | 'privacy'
+type SectionId = 'machine' | 'tabs' | 'toolDiameters' | 'appearance' | 'privacy' | 'reset' | 'about'
 
 const SECTIONS: { id: SectionId; label: string }[] = [
   { id: 'machine', label: 'Machine' },
@@ -36,6 +37,7 @@ const SECTIONS: { id: SectionId; label: string }[] = [
   { id: 'toolDiameters', label: 'Tool Diameters' },
   { id: 'appearance', label: 'Appearance' },
   { id: 'privacy', label: 'Privacy' },
+  { id: 'reset', label: 'Reset' },
   { id: 'about', label: 'About' },
 ]
 
@@ -71,6 +73,7 @@ export function SettingsModal({
   onSaveAppearance,
   toolDiameters,
   onSaveToolDiameters,
+  onResetAll,
   onClose,
 }: SettingsModalProps) {
   const [activeSection, setActiveSection] = useState<SectionId>('machine')
@@ -217,6 +220,21 @@ export function SettingsModal({
     if (!window.confirm('Reset the tool diameter list to its default values?')) return
     onSaveToolDiameters(DEFAULT_TOOL_DIAMETER_OPTIONS)
     setNewDiameterError(null)
+  }
+
+  // BL-40: distinct from handleResetToolDiameters above — this wipes every
+  // localStorage key the app owns (Appearance, Tool Diameters, Machine,
+  // and every preset slot including the hidden session one), not just one
+  // list. onResetAll (App.tsx) owns the actual reset + in-memory state
+  // sync; this is only the confirm gate.
+  const handleResetAll = () => {
+    if (
+      !window.confirm(
+        'Reset ALL settings to their defaults? This clears the theme, tool diameters, machine settings, and every saved preset — it cannot be undone.',
+      )
+    )
+      return
+    onResetAll()
   }
 
   return (
@@ -681,6 +699,38 @@ export function SettingsModal({
                   With that one disclosed exception, using OnlyPaths does not involve us
                   processing your personal data at all.
                 </p>
+              </div>
+            </>
+          )}
+
+          {activeSection === 'reset' && (
+            <>
+              <h2 className="text-sm font-semibold text-fg">Reset</h2>
+
+              <p className="text-sm text-muted">
+                Clears every setting OnlyPaths keeps in your browser and puts it back to first-run
+                defaults:
+              </p>
+
+              <ul className="flex list-disc flex-col gap-1 pl-5 text-sm text-muted">
+                <li>Theme, Preview Color Palette, and Grid Labels (Appearance)</li>
+                <li>The Tool Diameters list</li>
+                <li>Machine Settings — dialect, X/Y/Z travel, Start/End G-Code, default tab sizes</li>
+                <li>Every saved preset, including the hidden auto-save from your last session</li>
+              </ul>
+
+              <p className="text-sm text-muted">
+                It does not touch what's currently open in the wizard — only what's saved.
+              </p>
+
+              <div className="border-t border-border pt-4">
+                <button
+                  type="button"
+                  onClick={handleResetAll}
+                  className="rounded-md border border-status-delete-fg px-3 py-1.5 text-sm font-medium text-status-delete-fg hover:bg-status-delete-bg"
+                >
+                  Reset All Settings to Defaults
+                </button>
               </div>
             </>
           )}
