@@ -7,6 +7,27 @@ zgodne z [SemVer](https://semver.org/). Ten plik pozostaje głównym, czytelnym
 thingsbypluzz/SimpleCAM), ale to infrastruktura pod izolację pracy
 (branch/worktree per zadanie), nie zamiennik tego changeloga.
 
+## [0.17.3] — 2026-09-21
+
+### Dodano
+
+- **`BL-38` — przycisk włącz/wyłącz etykiety siatki wprost w 3D
+  Preview.** Trzeci przycisk w rzędzie obok "Hide Stock"/"Hide
+  Toolpath" (`BL-36`), lewy górny róg viewportu. W odróżnieniu od tych
+  dwóch (lokalny, sesyjny stan widoku, nie w `localStorage`) — nowy
+  przycisk czyta/zapisuje wprost `appearance.grid3DLabelsEnabled`,
+  dokładnie to samo, trwałe pole co checkbox "Show grid coordinate
+  labels" w Settings → Appearance (ten sam `handleSaveAppearance`).
+  Jedno źródło prawdy: kliknięcie w viewport i checkbox w Settings
+  zawsze pokazują zgodny stan, przełącznik przetrwa odświeżenie strony.
+  Origin "0,0" i etykiety osi "X"/"Y" zostają zawsze widoczne,
+  niezależnie od przycisku — dotyczy wyłącznie etykiet współrzędnych na
+  krawędziach siatki, tak jak dziś checkbox. Tylko 3D — 2D Preview ma
+  etykiety siatki stałego rozmiaru, nieskonfigurowalne, świadomie bez
+  odpowiednika. Żadnych zmian w `buildScene.ts`/`SettingsModal.tsx` —
+  cała logika gate'owania etykiet już istniała, to druga, szybsza
+  ścieżka do tego samego pola.
+
 ## [0.17.2] — 2026-09-21
 
 ### Dodano

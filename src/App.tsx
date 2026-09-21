@@ -1070,6 +1070,12 @@ function App() {
                   toolpathVisible={toolpathVisible}
                   onToggleStockVisible={() => setStockVisible((v) => !v)}
                   onToggleToolpathVisible={() => setToolpathVisible((v) => !v)}
+                  onToggleGridLabels={() =>
+                    handleSaveAppearance({
+                      ...appearance,
+                      grid3DLabelsEnabled: !appearance.grid3DLabelsEnabled,
+                    })
+                  }
                 />
               </Suspense>
             )}

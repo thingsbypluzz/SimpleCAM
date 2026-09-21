@@ -625,7 +625,15 @@ wszystko, Settings → Appearance → "Grid Labels"
 (`AppearanceSettings.grid3DLabelSize`, `Grid3DLabelSize` w
 `types/appearance.ts`). Checkbox "Show grid coordinate labels"
 (`grid3DLabelsEnabled`) wyłącza wyłącznie budowanie sprite'ów siatki —
-origin/osie zostają zawsze widoczne niezależnie od niego.
+origin/osie zostają zawsze widoczne niezależnie od niego. **Drugi,
+szybszy dostęp do tego samego pola** (`BL-38`): przycisk "Hide/Show
+Grid Labels" w lewym górnym rogu 3D Preview, w tym samym rzędzie co
+"Hide Stock"/"Hide Toolpath" (`BL-36`) — w odróżnieniu od tamtych
+dwóch (lokalny, sesyjny stan widoku) ten przycisk czyta/zapisuje
+wprost `appearance.grid3DLabelsEnabled` przez ten sam
+`handleSaveAppearance`, co checkbox w Settings — jedno źródło prawdy,
+zawsze zgodne, trwałe w `localStorage`. Tylko 3D — 2D Preview ma
+etykiety stałego rozmiaru, nieskonfigurowalne, bez odpowiednika.
 
 ### Zoom/pan na 2D Preview
 

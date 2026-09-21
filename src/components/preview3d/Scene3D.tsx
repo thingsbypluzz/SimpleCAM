@@ -21,6 +21,11 @@ interface Scene3DProps {
   toolpathVisible: boolean
   onToggleStockVisible: () => void
   onToggleToolpathVisible: () => void
+  // BL-38: unlike stockVisible/toolpathVisible (local, session-only view
+  // state), this flips the same persisted appearance.grid3DLabelsEnabled
+  // the Settings > Appearance checkbox reads/writes — a faster path to
+  // the same field, not a separate toggle.
+  onToggleGridLabels: () => void
 }
 
 const PRESET_BUTTONS: { name: ViewPresetName; label: string }[] = [
@@ -43,6 +48,7 @@ export function Scene3D({
   toolpathVisible,
   onToggleStockVisible,
   onToggleToolpathVisible,
+  onToggleGridLabels,
 }: Scene3DProps) {
   const containerRef = useRef<HTMLDivElement>(null)
   const sceneRef = useRef<THREE.Scene | null>(null)
@@ -260,6 +266,9 @@ export function Scene3D({
         </button>
         <button type="button" onClick={onToggleToolpathVisible} className={buttonClass}>
           {toolpathVisible ? 'Hide Toolpath' : 'Show Toolpath'}
+        </button>
+        <button type="button" onClick={onToggleGridLabels} className={buttonClass}>
+          {gridLabelsEnabled ? 'Hide Grid Labels' : 'Show Grid Labels'}
         </button>
       </div>
       <div className="absolute right-3 bottom-3 flex flex-wrap items-center justify-end gap-1.5">
