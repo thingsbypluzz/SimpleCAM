@@ -13,7 +13,58 @@ projektową** (w przeciwieństwie do "Kluczowe decyzje projektowe" w
 zrozumienie, punkt wyjścia do realnej implementacji w przyszłości, kiedy
 padnie wyraźne "przechodzimy do X".
 
-Obecnie pusty.
+### `OP-2` — Pocket (sesja `/grill-me`, 2026-09-21)
+
+**Dwie metody** (`PocketMethodType`: `'raster' | 'spiral'`), rejestr
+metadanych jak `SURFACE_METHOD_META`:
+
+- **Raster** — tylko Rectangle (Cornered/Centered). Reużycie silnika
+  Surface 1:1 (`computeRasterLines`/`zigzagWaypoints`), granica to
+  prostokąt zainsetowany o promień narzędzia (odwrotność
+  `surfaceToolBounds` — granica się kurczy, nie rośnie, bo ściana
+  kieszeni to twardy limit, nie overtravel).
+- **Spiral** — Rectangle (oba warianty) i Circle. Bramkowanie metody po
+  kształcie identyczne z `OutlineMethod` (Ramp/Helix ograniczone
+  per-kształt, Standard wszędzie) — Circle dostaje wyłącznie Spiral.
+
+**Kierunek czyszczenia:** inside-out (środek → ściana). Wejście zawsze
+w centrum kieszeni, `ZTransitionMode` (Plunge/Helix) reużyty 1:1 z
+Surface, wersja wyśrodkowana (prostsza niż narożnikowy
+`helixCenterFor`/`helixDirectionFor` Surface'a — brak stycznej do
+wyprowadzania).
+
+**Geometria Spiral:** każdy pierścień = ramp (90°, stała,
+niekonfigurowalna w v1 — patrz `BL-41`) + pełny flat obrót
+(`fullCircleMove()`, bez zmian). Ramp rozprasza promieniowe
+zaangażowanie freza zamiast jednego skoku na pełną szerokość stepover w
+jednym ruchu; flat-pass gwarantuje kompletną, domkniętą ścianę
+pierścienia — spójne z tym, że wszystko inne w silniku (Standard Hole,
+Helix cleanup, tabs) zawsze generuje pełne 360°, nigdy częściowe. Dla
+Rectangle: ramp wzdłuż dłuższego boku (mirror Outline Ramp), potem
+pełne 4-bokowe okrążenie. Dla prostokątów o `width ≠ height` pierścienie
+rosną per-oś, z clampingiem do docelowego wymiaru na każdej osi
+niezależnie (oś, która pierwsza osiągnie ścianę, przestaje rosnąć) —
+ramp zawsze na aktualnie rosnącym/dłuższym boku danego pierścienia, nie
+ustalony raz na starcie.
+
+**Głębokość:** per-poziom pełny XY clear, 1:1 reużycie
+`buildLevelDescents()` — każdy poziom Z zaczyna od `startZ`, pełny
+retrakt na Safe Z między poziomami.
+
+**Bez finishing passa w v1** (patrz `BL-42`) — zewnętrzny
+pierścień/linia raster JEST ścianą (roughing-only). Bez Tabs (jak
+Surface — Pocket nie przewierca na wylot). Stepover — identyczny
+mechanizm co Surface (`stepoverPercent` + pole mm tylko-do-odczytu).
+
+**Preview 3D:** reużycie modelu Outline Inside (otwarta ściana + stock
+cap z otworem w kształcie granicy zewnętrznej).
+
+**Kształty:** Rectangle Cornered + Centered (oba warianty), Circle
+(tylko metoda Spiral).
+
+Z tej sesji wyłoniły się też trzy świadomie odłożone pozycje: `OP-5`
+(Adaptive Clearing), `BL-41` (konfigurowalny kąt rampy), `BL-42`
+(finishing wall pass / stock-to-leave) — patrz niżej.
 
 ## Backlog (`BL-#`)
 
@@ -187,6 +238,19 @@ faktycznym.
   Settings (dialekt/travel/G-code/mostki) i wszystkie sloty presetów
   łącznie z ukrytym `"0"`. Osobna pozycja Settings Nav "Reset" (między
   "Privacy" a "About"). Pełny opis: `CHANGELOG.md`, `[0.17.2]`.
+- **`BL-41`** *(Otwarty)* 🟢 — **Konfigurowalny kąt rampy dla Pocket
+  Spiral.** Z sesji `/grill-me` `OP-2`: kąt rampy między pierścieniami
+  offsetu to dziś ustalona stała (90°) wpisana w silnik, nie pole UI.
+  Mogłaby stać się polem liczbowym (jak Helix Radius) do dostrajania per
+  materiał/narzędzie — sam mechanizm rampy już istnieje, to tylko
+  odsłonięcie stałej jako parametru + walidacja zakresu.
+- **`BL-42`** *(Otwarty)* 🟠 — **Finishing wall pass / stock-to-leave dla
+  Pocket.** Z sesji `/grill-me` `OP-2`: v1 to roughing-only (zewnętrzny
+  pierścień/linia raster JEST ścianą). Osobny, dokładny przejazd
+  wykończeniowy (nowy parametr `stockToLeave`, roughing zatrzymuje się
+  tym promieniem przed granicą, potem jeden przejazd reużywający Outline
+  Rectangle/Circle toolpath na granicy offsetu) dałby czystszą ścianę —
+  większy zakres niż `BL-41`, dotyka kilku miejsc silnika na raz.
 
 elementów UI, dziś aktywnie używany w `CLAUDE.md`:
 **<https://claude.ai/code/artifact/ea21c02e-41ed-4bb5-90ec-48ae9a61c23e>**.
@@ -209,6 +273,8 @@ Surface, 2026-09-12, i historia implementacji w `CHANGELOG.md`,
 - **`OP-2` — Pocket.** Kieszeniowanie — wybieranie materiału wewnątrz
   zamkniętego konturu (nie tylko po samej linii), wymaga strategii
   wypełnienia (np. zigzag/spiral) nieobecnej dziś w silniku w ogóle.
+  Zakres dopracowany sesją `/grill-me` (2026-09-21) — pełne ustalenia w
+  "Pomysły w dyskusji" wyżej; implementacja jeszcze nie rozpoczęta.
 - **`OP-4` — Text/Font Tracing.** Wybór czcionki i generowanie ścieżki
   narzędzia po napisie — albo tracing obrysu (konturu) każdej litery,
   albo, dla specjalnych czcionek jednoliniowych, tracing wprost po
@@ -217,6 +283,12 @@ Surface, 2026-09-12, i historia implementacji w `CHANGELOG.md`,
   glifów czcionki (najpewniej z plików fontowych, np. przez jakąś
   bibliotekę do path-data) — geometria wejściowa nieporównywalna z
   dzisiejszymi kształtami parametrycznymi (Rectangle/Circle).
+- **`OP-5` — Adaptive Clearing dla Pocket.** Alternatywna strategia
+  roughingu z utrzymaniem stałego zaangażowania narzędzia
+  (trochoidalne/adaptacyjne czyszczenie) — lepsza żywotność narzędzia
+  przy twardszych materiałach niż dzisiejsze Raster/Spiral. Świadomie
+  odłożone podczas sesji `/grill-me` `OP-2` (2026-09-21) jako zbyt duży
+  dodatkowy zakres na start Pocket v1.
 
 **Każda z `OP-#` wymaga własnej, pełnej sesji `/grill-me` przed
 napisaniem jakiegokolwiek kodu** — nieporównywalnie większy zakres
