@@ -5,7 +5,14 @@ import { assembleProgram, rapidToTop } from './program'
 import { buildLevelDescents } from './surfaceZTransition'
 import { computeRasterLines, zigzagWaypoints } from './surfaceRaster'
 import { pocketZTransitionMoves } from './pocketZTransition'
-import { circleRingMoves, pocketCircleRingRadii, pocketRectRingDims, rectRingMoves } from './pocketSpiral'
+import {
+  circleRingMoves,
+  pocketCircleRingRadii,
+  pocketRectRingDims,
+  RECT_HELIX_ENTRY_FRACTION,
+  rectRingMoves,
+  type RectRingDims,
+} from './pocketSpiral'
 import {
   pocketCenter,
   pocketCircleWallRadius,
@@ -47,10 +54,26 @@ function spiralRectLevel(cx: number, cy: number, toZ: number, params: WizardPara
   const stepoverMm = pocketStepoverMm(pocket)
   const rings = pocketRectRingDims(halfWidth, halfHeight, stepoverMm)
 
+  // Bootstrap ring 1 exactly like every later ring — Plunge enters at the
+  // degenerate (0,0) "ring" (collapses to the pocket center regardless of
+  // fraction), Helix enters at the (helixRadius,helixRadius) bounding
+  // square, at the fraction that lands exactly on its own flat-finishing-
+  // pass's end point. See RECT_HELIX_ENTRY_FRACTION's doc comment.
+  let prevDims: RectRingDims =
+    pocket.zTransitionMode === 'helix' ? { halfWidth: pocket.helixRadius, halfHeight: pocket.helixRadius } : { halfWidth: 0, halfHeight: 0 }
+  let fraction = pocket.zTransitionMode === 'helix' ? RECT_HELIX_ENTRY_FRACTION : 0
+
   const lines: string[] = []
   for (const dims of rings) {
-    const { lines: ringLines } = rectRingMoves(dims, { centerX: cx, centerY: cy, z: toZ, feed: feeds.feedrateXY })
+    const { lines: ringLines, nextFraction } = rectRingMoves(prevDims, dims, fraction, {
+      centerX: cx,
+      centerY: cy,
+      z: toZ,
+      feed: feeds.feedrateXY,
+    })
     lines.push(...ringLines)
+    prevDims = dims
+    fraction = nextFraction
   }
   return lines
 }

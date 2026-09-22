@@ -48,7 +48,7 @@ describe('generatePocketRaster', () => {
 })
 
 describe('generatePocketSpiral — Rectangle', () => {
-  it('grows rings from the center outward, each a ramp line + closed CCW 4-edge lap', () => {
+  it('grows rings from the center outward, each ring a gradual multi-segment ramp + a CCW lap closing back onto the ramp', () => {
     const params = buildParams({
       pocket: { shape: 'rectCornered', width: 10, height: 10, toolDiameter: 2, stepoverPercent: 100, totalDepth: 1 },
       feeds: { stepdown: 1 },
@@ -56,22 +56,29 @@ describe('generatePocketSpiral — Rectangle', () => {
     const lines = generatePocketSpiral(params, DEFAULT_MACHINE_SETTINGS)
 
     // center = (5,5), wall half-dims = (4,4) -> rings at half=2 then half=4.
+    // Unlike the old corner-to-corner ramp (a fixed 1-segment-per-ring
+    // count), the gradual ramp's segment count follows rectRampSweepFor()
+    // — see pocketSpiral.test.ts for the exact math (this 106 follows from
+    // ring 1's from-zero square growth hitting the 1-full-loop cap, plus
+    // ring 2's uncapped ~0.3536 sweep).
     const cutLines = lines.filter((l) => l.startsWith('G1 X'))
-    expect(cutLines).toHaveLength(10) // 2 rings x (1 ramp + 4 edges)
-    expect(cutLines.slice(0, 5)).toEqual([
-      'G1 X3 Y3 Z-1 F800',
-      'G1 X7 Y3 Z-1 F800',
-      'G1 X7 Y7 Z-1 F800',
-      'G1 X3 Y7 Z-1 F800',
-      'G1 X3 Y3 Z-1 F800',
-    ])
-    expect(cutLines.slice(5)).toEqual([
-      'G1 X1 Y1 Z-1 F800',
-      'G1 X9 Y1 Z-1 F800',
-      'G1 X9 Y9 Z-1 F800',
-      'G1 X1 Y9 Z-1 F800',
-      'G1 X1 Y1 Z-1 F800',
-    ])
+    expect(cutLines).toHaveLength(106)
+    expect(cutLines.every((l) => l.startsWith('G1 '))).toBe(true) // rectangles never use G2/G3
+
+    // The whole point of the fix: ring 1's ramp does NOT jump straight
+    // from the center to its full corner (3,3) in one move.
+    expect(cutLines[0]).not.toBe('G1 X3 Y3 Z-1 F800')
+
+    // Every cutting move stays within the outer wall (halfWidth=halfHeight
+    // =4 around center (5,5)) — no ramp point overshoots past the pocket.
+    for (const line of cutLines) {
+      const match = line.match(/^G1 X(-?[\d.]+) Y(-?[\d.]+)/)
+      expect(match).not.toBeNull()
+      expect(Number(match![1])).toBeGreaterThanOrEqual(1 - 1e-9)
+      expect(Number(match![1])).toBeLessThanOrEqual(9 + 1e-9)
+      expect(Number(match![2])).toBeGreaterThanOrEqual(1 - 1e-9)
+      expect(Number(match![2])).toBeLessThanOrEqual(9 + 1e-9)
+    }
   })
 })
 

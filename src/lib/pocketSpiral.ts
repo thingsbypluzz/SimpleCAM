@@ -179,6 +179,129 @@ function rectRingCorners(centerX: number, centerY: number, dims: RectRingDims): 
   ]
 }
 
+// Perimeter of a (halfWidth, halfHeight) rectangle — the Rectangle
+// equivalent of Circle's circumference (2*PI*radius), used the same way:
+// converting a physical ramp LENGTH into a fraction of one full trip
+// around the boundary. width=2*halfWidth, height=2*halfHeight, perimeter
+// = 2*(width+height) = 4*halfWidth + 4*halfHeight.
+function rectPerimeter(halfWidth: number, halfHeight: number): number {
+  return 4 * halfWidth + 4 * halfHeight
+}
+
+// Direct Rectangle analogue of Circle's angle: a single scalar `fraction`
+// (any real number, wrapped mod 1) locating a point on a (halfWidth,
+// halfHeight) rectangle's boundary, CCW from the bottom-left corner
+// (fraction 0). Each of the 4 edges spans exactly 0.25 of the loop,
+// regardless of the rectangle's aspect ratio (an approximation — arc
+// length isn't literally uniform across mismatched edge lengths, same
+// level of rigor Circle's own linear radius/angle interpolation already
+// uses, not a physically exact parametrization). At halfWidth=halfHeight=0
+// every fraction collapses to (centerX, centerY) — correct for the Plunge
+// Z-entry bootstrap (see rectRingMoves() below).
+export function rectPointAtPerimeterFraction(
+  centerX: number,
+  centerY: number,
+  halfWidth: number,
+  halfHeight: number,
+  fraction: number,
+): Point2D {
+  const u = ((fraction % 1) + 1) % 1
+  const edgePos = u * 4
+  const edgeIndex = Math.min(3, Math.floor(edgePos))
+  const local = edgePos - edgeIndex
+  const hw = halfWidth
+  const hh = halfHeight
+  switch (edgeIndex) {
+    case 0: // bottom edge: (-hw,-hh) -> (hw,-hh)
+      return { x: centerX - hw + local * 2 * hw, y: centerY - hh }
+    case 1: // right edge: (hw,-hh) -> (hw,hh)
+      return { x: centerX + hw, y: centerY - hh + local * 2 * hh }
+    case 2: // top edge: (hw,hh) -> (-hw,hh)
+      return { x: centerX + hw - local * 2 * hw, y: centerY + hh }
+    default: // left edge: (-hw,hh) -> (-hw,-hh)
+      return { x: centerX - hw, y: centerY + hh - local * 2 * hh }
+  }
+}
+
+// Direct Rectangle analogue of rampSweepDegFor() — see that function's
+// comment for the full derivation; only the "radius" metric changes.
+// deltaK is the Euclidean magnitude of this transition's own growth
+// (usually ~stepover in both axes, but the first/last ring or a clamped
+// axis can differ), avgPerimeter is the Rectangle equivalent of avgRadius
+// (using perimeter instead of circumference — same proportionality:
+// physical length / a size measure of the loop = fraction of the loop).
+// Returned as a 0-1 fraction of one full trip around the perimeter
+// (Circle returns degrees; Rectangle has no natural "degrees", so this
+// stays in fraction units — rectRingRampPoints() below converts it to the
+// same segment-density input rampSegmentCountFor() already expects).
+// Capped at 1 (one full loop) for the same defensive reason as Circle's
+// 360° cap — reachable here: the from-zero/square case lands just over
+// 100% before the cap (see pocketSpiral.test.ts).
+export function rectRampSweepFor(fromDims: RectRingDims, toDims: RectRingDims): number {
+  const deltaHW = toDims.halfWidth - fromDims.halfWidth
+  const deltaHH = toDims.halfHeight - fromDims.halfHeight
+  const deltaK = Math.sqrt(deltaHW * deltaHW + deltaHH * deltaHH)
+  const avgPerimeter = (rectPerimeter(fromDims.halfWidth, fromDims.halfHeight) + rectPerimeter(toDims.halfWidth, toDims.halfHeight)) / 2
+  if (avgPerimeter <= 0) return 1
+  const rampLength = RAMP_LENGTH_FACTOR * deltaK
+  return Math.min(1, rampLength / avgPerimeter)
+}
+
+// Pure geometry for one ring transition's ramp — the Rectangle analogue of
+// circleRingRampPoints(): (halfWidth, halfHeight) AND perimeter fraction
+// interpolated together, linearly, over rectRampSweepFor()'s sweep.
+// Shared by rectRingMoves() below (formats these into G1 lines) and by
+// both previews, so the ramp drawn on screen can never drift from what
+// the engine actually cuts — same reasoning as Circle's shared ramp point
+// function.
+export function rectRingRampPoints(
+  fromDims: RectRingDims,
+  toDims: RectRingDims,
+  startFraction: number,
+  centerX: number,
+  centerY: number,
+): Point2D[] {
+  const sweep = rectRampSweepFor(fromDims, toDims)
+  const segments = rampSegmentCountFor(sweep * 360)
+  const points: Point2D[] = []
+  for (let step = 1; step <= segments; step++) {
+    const t = step / segments
+    const halfWidth = fromDims.halfWidth + (toDims.halfWidth - fromDims.halfWidth) * t
+    const halfHeight = fromDims.halfHeight + (toDims.halfHeight - fromDims.halfHeight) * t
+    const fraction = startFraction + sweep * t
+    points.push(rectPointAtPerimeterFraction(centerX, centerY, halfWidth, halfHeight, fraction))
+  }
+  return points
+}
+
+// Full CCW lap of one ring's boundary, starting and ending at whatever
+// point `startFraction` lands on — NOT always the bottom-left corner
+// (see rectRingMoves() below: the ramp advancing `fraction` past 1 full
+// edge or more, exactly like Circle's angle, means the lap's own start
+// point keeps moving around the perimeter across rings). Walks whichever
+// corners remain ahead in CCW order, then closes back to the exact start
+// point — skipped when the start already lands exactly on the last corner
+// visited (the historical "always starts at the corner" case), so no
+// zero-length G1 gets emitted. Includes the start point itself as the
+// first element (self-contained, mirrors rectRingCorners()) — callers
+// chaining onto an already-drawn ramp that ends at this same point (both
+// rectRingMoves() and both previews) drop that first element themselves.
+export function rectFullLapPoints(centerX: number, centerY: number, dims: RectRingDims, startFraction: number): Point2D[] {
+  const u = ((startFraction % 1) + 1) % 1
+  const startPoint = rectPointAtPerimeterFraction(centerX, centerY, dims.halfWidth, dims.halfHeight, u)
+  const corners = rectRingCorners(centerX, centerY, dims)
+  const edgeIndex = Math.min(3, Math.floor(u * 4))
+  const points: Point2D[] = [startPoint]
+  for (let i = 1; i <= 4; i++) {
+    points.push(corners[(edgeIndex + i) % 4])
+  }
+  const last = points[points.length - 1]
+  if (last.x !== startPoint.x || last.y !== startPoint.y) {
+    points.push(startPoint)
+  }
+  return points
+}
+
 interface RectRingOptions {
   centerX: number
   centerY: number
@@ -186,26 +309,39 @@ interface RectRingOptions {
   feed: number
 }
 
-// One ring transition for Rectangle Spiral: a single straight ramp (G1)
-// from wherever the tool currently is (the previous ring's start corner,
-// or the Z-entry point for the first ring — G-code is sequential, so no
-// explicit "from" coordinate is needed here) to this ring's start corner
-// (bottom-left), then a full CCW 4-edge lap back to that same corner. In
-// the steady-state case for an elongated (non-square) pocket, one axis is
-// already clamped at its wall target between consecutive rings, so this
-// straight ramp degenerates to a pure single-axis move — i.e. literally
-// "ramp along the [currently growing] edge" (see CLAUDE.md's Pocket design
-// notes). No G2/G3 involved anywhere here (rectangles are always straight
-// lines), so unlike Circle there's no interpolation-mode branch. Returns
-// `corner` so the caller (pocket.ts) can chain ring-to-ring purely for its
-// own bookkeeping — not read by this function itself.
-export function rectRingMoves(dims: RectRingDims, opts: RectRingOptions): { lines: string[]; corner: Point2D } {
-  const corners = rectRingCorners(opts.centerX, opts.centerY, dims)
-  const start = corners[0]
-  const lines: string[] = [`G1 X${fmt(start.x)} Y${fmt(start.y)} Z${fmt(opts.z)} F${fmt(opts.feed)}`]
-  for (let i = 1; i <= corners.length; i++) {
-    const p = corners[i % corners.length]
-    lines.push(`G1 X${fmt(p.x)} Y${fmt(p.y)} Z${fmt(opts.z)} F${fmt(opts.feed)}`)
-  }
-  return { lines, corner: start }
+// The midpoint of the right edge of a (helixRadius, helixRadius) square —
+// i.e. rectPointAtPerimeterFraction(cx, cy, helixRadius, helixRadius,
+// RECT_HELIX_ENTRY_FRACTION) === (cx + helixRadius, cy) exactly (verified
+// by hand: edge index 1 at local=0.5 -> (cx+hw, cy-hh+hh) = (cx+hw, cy)).
+// That point is exactly where the Helix Z-entry's own flat finishing pass
+// (pocketZTransitionMoves()) already ends. Treating the circular Helix
+// boundary as its bounding square, entered at this fraction, lets
+// rectRingMoves() bootstrap ring 1 with no special-casing — same call as
+// every later ring, just seeded with this fromDims/startFraction instead
+// of the Plunge case's degenerate (0,0)/0.
+export const RECT_HELIX_ENTRY_FRACTION = 0.375
+
+// One ring transition for Rectangle Spiral: a gradual ramp (G1 polygon —
+// rectangles are always straight lines, so no interpolation-mode branch
+// like Circle has) growing (halfWidth, halfHeight) from fromDims to
+// toDims WHILE sweeping rectRampSweepFor()'s fraction of the perimeter
+// (rectRingRampPoints()), then a full CCW lap of toDims starting exactly
+// where the ramp left off (rectFullLapPoints()) — mirrors circleRingMoves
+// exactly, just with perimeter fraction standing in for angle and
+// (halfWidth,halfHeight) standing in for radius. Returns `nextFraction`
+// for the caller to chain into the next ring — never wraps, keeps
+// advancing across rings, same as Circle's nextAngleDeg.
+export function rectRingMoves(
+  fromDims: RectRingDims,
+  toDims: RectRingDims,
+  startFraction: number,
+  opts: RectRingOptions,
+): { lines: string[]; nextFraction: number } {
+  const toLine = (p: Point2D) => `G1 X${fmt(p.x)} Y${fmt(p.y)} Z${fmt(opts.z)} F${fmt(opts.feed)}`
+
+  const rampPoints = rectRingRampPoints(fromDims, toDims, startFraction, opts.centerX, opts.centerY)
+  const nextFraction = startFraction + rectRampSweepFor(fromDims, toDims)
+  const lapPoints = rectFullLapPoints(opts.centerX, opts.centerY, toDims, nextFraction).slice(1)
+
+  return { lines: [...rampPoints.map(toLine), ...lapPoints.map(toLine)], nextFraction }
 }

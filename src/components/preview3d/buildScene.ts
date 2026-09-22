@@ -22,7 +22,17 @@ import {
   pocketRectWallHalfDims,
   pocketStepoverMm,
 } from '../../lib/pocketGeometry'
-import { circleRingRampPoints, rampSweepDegFor, pocketCircleRingRadii, pocketRectRingDims, type RectRingDims } from '../../lib/pocketSpiral'
+import {
+  circleRingRampPoints,
+  rampSweepDegFor,
+  pocketCircleRingRadii,
+  pocketRectRingDims,
+  RECT_HELIX_ENTRY_FRACTION,
+  rectFullLapPoints,
+  rectRampSweepFor,
+  rectRingRampPoints,
+  type RectRingDims,
+} from '../../lib/pocketSpiral'
 import { niceStep } from '../preview/drawToolpath'
 import type { Point2D, PocketShape, RasterDirection, WizardParams } from '../../types/wizard'
 import type { ThemeId } from '../../types/theme'
@@ -592,18 +602,6 @@ function pocketCircleRingLoopPoints3D(centerX: number, centerY: number, radius: 
   return points
 }
 
-function pocketRectRingLoopPoints3D(centerX: number, centerY: number, dims: RectRingDims, z: number): THREE.Vector3[] {
-  const { halfWidth: hw, halfHeight: hh } = dims
-  const corners: [number, number][] = [
-    [centerX - hw, centerY - hh],
-    [centerX + hw, centerY - hh],
-    [centerX + hw, centerY + hh],
-    [centerX - hw, centerY + hh],
-    [centerX - hw, centerY - hh],
-  ]
-  return corners.map(([x, y]) => toThree(x, y, z))
-}
-
 // Centered Z-entry helix — mirrors lib/pocketZTransition.ts's
 // pocketZTransitionMoves exactly (Vector3 samples instead of G-code
 // lines, same convention as surfaceHelixPoints3D above), but always
@@ -709,13 +707,22 @@ function buildPocketToolpathObjects3D(
     descents.forEach(({ toZ }, idx) => {
       if (idx > 0) addLevelRetract()
       pushZTransition(toZ)
-      // Same chaining as Circle above — the ramp for Rectangle needs no
-      // extra geometry function: builder.add() already draws an implicit
-      // connecting leg from wherever the cursor currently is to the new
-      // ring's first point (bottom-left corner), which IS the ramp here
-      // (a single straight line, see rectRingMoves()).
+      // Gradual ramp (halfWidth/halfHeight + perimeter fraction together,
+      // rectRingRampPoints()) + full lap starting wherever the ramp left
+      // off, not always the corner (rectFullLapPoints()) — chained through
+      // the same builder as one continuous 'solid' polyline, exactly
+      // mirroring lib/pocketSpiral.ts's rectRingMoves(), same pattern as
+      // Circle above. Bootstrapped from the Z-entry exactly like the
+      // engine — see RECT_HELIX_ENTRY_FRACTION's doc comment.
+      let prevDims: RectRingDims =
+        pocket.zTransitionMode === 'helix' ? { halfWidth: pocket.helixRadius, halfHeight: pocket.helixRadius } : { halfWidth: 0, halfHeight: 0 }
+      let fraction = pocket.zTransitionMode === 'helix' ? RECT_HELIX_ENTRY_FRACTION : 0
       for (const dims of rings) {
-        builder.add('solid', pocketRectRingLoopPoints3D(center.x, center.y, dims, toZ))
+        builder.add('solid', rectRingRampPoints(prevDims, dims, fraction, center.x, center.y).map((p) => toThree(p.x, p.y, toZ)))
+        const nextFraction = fraction + rectRampSweepFor(prevDims, dims)
+        builder.add('solid', rectFullLapPoints(center.x, center.y, dims, nextFraction).map((p) => toThree(p.x, p.y, toZ)))
+        prevDims = dims
+        fraction = nextFraction
       }
     })
   }

@@ -13,7 +13,17 @@ import {
   pocketRectWallHalfDims,
   pocketStepoverMm,
 } from '../../lib/pocketGeometry'
-import { circleRingRampPoints, rampSweepDegFor, pocketCircleRingRadii, pocketRectRingDims, type RectRingDims } from '../../lib/pocketSpiral'
+import {
+  circleRingRampPoints,
+  rampSweepDegFor,
+  pocketCircleRingRadii,
+  pocketRectRingDims,
+  RECT_HELIX_ENTRY_FRACTION,
+  rectFullLapPoints,
+  rectRampSweepFor,
+  rectRingRampPoints,
+  type RectRingDims,
+} from '../../lib/pocketSpiral'
 import type { Point2D, PocketMethodType, PocketShape, WizardParams } from '../../types/wizard'
 import type { ThemeId } from '../../types/theme'
 import { type Camera2D, type DataBounds, worldToScreen } from './camera2d'
@@ -741,37 +751,40 @@ function drawPocketGeometry(
       ctx.stroke()
     })
 
-    // Same ramp treatment for Rectangle — a single straight line from
-    // wherever the tool currently is (the Z-entry point for the first
-    // ring, this ring's own bottom-left corner for the rest) to the next
-    // ring's bottom-left corner, mirroring rectRingMoves()'s ramp exactly.
-    let rectPrevCorner: Point2D =
+    // Same ramp treatment for Rectangle — a gradual ramp (halfWidth/
+    // halfHeight grow WHILE sweeping a perimeter fraction, exactly like
+    // Circle grows radius while sweeping an angle) followed by a full lap
+    // starting wherever the ramp left off (not always the corner — see
+    // rectFullLapPoints()'s doc comment). Both geometry functions come
+    // straight from pocketSpiral.ts, never reimplemented here, so this
+    // preview can't drift from what the engine actually cuts.
+    let rectPrevDims: RectRingDims =
       params.pocket.zTransitionMode === 'helix'
-        ? { x: center.x + params.pocket.helixRadius, y: center.y }
-        : center
+        ? { halfWidth: params.pocket.helixRadius, halfHeight: params.pocket.helixRadius }
+        : { halfWidth: 0, halfHeight: 0 }
+    let rectFraction = params.pocket.zTransitionMode === 'helix' ? RECT_HELIX_ENTRY_FRACTION : 0
     rectRings.forEach((dims) => {
-      const corners: Point2D[] = [
-        { x: center.x - dims.halfWidth, y: center.y - dims.halfHeight },
-        { x: center.x + dims.halfWidth, y: center.y - dims.halfHeight },
-        { x: center.x + dims.halfWidth, y: center.y + dims.halfHeight },
-        { x: center.x - dims.halfWidth, y: center.y + dims.halfHeight },
-      ]
-      const [rampFromX, rampFromY] = toPx(rectPrevCorner.x, rectPrevCorner.y)
-      const [rampToX, rampToY] = toPx(corners[0].x, corners[0].y)
+      const rampPoints = rectRingRampPoints(rectPrevDims, dims, rectFraction, center.x, center.y)
       ctx.beginPath()
-      ctx.moveTo(rampFromX, rampFromY)
-      ctx.lineTo(rampToX, rampToY)
-      ctx.stroke()
-
-      ctx.beginPath()
-      corners.forEach((p, i) => {
+      rampPoints.forEach((p, j) => {
         const [x, y] = toPx(p.x, p.y)
-        if (i === 0) ctx.moveTo(x, y)
+        if (j === 0) ctx.moveTo(x, y)
         else ctx.lineTo(x, y)
       })
-      ctx.closePath()
       ctx.stroke()
-      rectPrevCorner = corners[0]
+
+      const nextFraction = rectFraction + rectRampSweepFor(rectPrevDims, dims)
+      const lapPoints = rectFullLapPoints(center.x, center.y, dims, nextFraction)
+      ctx.beginPath()
+      lapPoints.forEach((p, j) => {
+        const [x, y] = toPx(p.x, p.y)
+        if (j === 0) ctx.moveTo(x, y)
+        else ctx.lineTo(x, y)
+      })
+      ctx.stroke()
+
+      rectPrevDims = dims
+      rectFraction = nextFraction
     })
 
     if (rasterLines.length > 0) {

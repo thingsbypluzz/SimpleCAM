@@ -7,6 +7,51 @@ zgodne z [SemVer](https://semver.org/). Ten plik pozostaje głównym, czytelnym
 thingsbypluzz/SimpleCAM), ale to infrastruktura pod izolację pracy
 (branch/worktree per zadanie), nie zamiennik tego changeloga.
 
+## [0.18.1] — 2026-09-22
+
+### Zmieniono
+
+- **Pocket Spiral, Rectangle: ramp z przekątnej/L-kształtu na gradual
+  (stopniowy), mirror Circle'owego `RAMP_LENGTH_FACTOR`.** Kolejna
+  runda weryfikacji wizualnej (bez dostępu do maszyny): ramp między
+  pierścieniami Rectangle wyglądał jak jedna, ciągła linia po
+  przekątnej przez całą kieszeń. Root cause — `rectRingMoves()` łączyła
+  narożnik poprzedniego pierścienia z narożnikiem nowego JEDNYM prostym
+  odcinkiem G1; ponieważ dla kwadratowego wzrostu (i początkowej fazy
+  KAŻDEGO prostokąta, zanim jedna oś dobije do ściany) każdy pierścień
+  różni się od poprzedniego o stały `stepoverMm` na obu osiach naraz,
+  wszystkie te krótkie odcinki leżały na jednej linii `y=x` i wizualnie
+  zlewały się w jedną przekątną. Pierwsza próba naprawy (L-ramp:
+  rozbicie na dwa odcinki jednoosiowe, X potem Y) okazała się
+  niewystarczająca — użytkownik słusznie zauważył, że to nadal 100%
+  stepoveru pokonywane w jednym, krótkim ruchu, tylko inaczej pocięte
+  na osie, ten sam problem co Circle miał przed `RAMP_LENGTH_FACTOR`.
+  Naprawione właściwie: ramp teraz interpoluje `(halfWidth, halfHeight,
+  fraction)` razem, gdzie `fraction` (0–1) to bezpośredni odpowiednik
+  kąta Circle — pozycja na obwodzie prostokąta, CCW od lewego-dolnego
+  narożnika. `rectRampSweepFor()` (analogon `rampSweepDegFor()`, obwód
+  zamiast promienia, ta sama stała `RAMP_LENGTH_FACTOR` reużyta wprost)
+  wylicza, jaki ułamek pełnej pętli ramp powinien przejechać — dłuższy
+  tor niż bezpośredni skok, więc wzrost rozmiaru pierścienia jest
+  stopniowy, nie natychmiastowy. Konsekwencja strukturalna: pełny obrót
+  pierścienia (`rectFullLapPoints()`) przestaje zawsze zaczynać się w
+  narożniku — zaczyna się dokładnie tam, gdzie skończył ramp (czasem w
+  połowie boku), dokładnie jak kąt startowy rampu Circle nigdy nie
+  wraca do 0°. Wejście Z (Plunge/Helix) bootstrapuje się bez osobnej
+  gałęzi kodu — Plunge jako degenerate `{0,0}`, Helix jako kwadrat
+  `{helixRadius,helixRadius}` wchodzący przy nowej stałej
+  `RECT_HELIX_ENTRY_FRACTION = 0.375` (matematycznie dokładnie punkt,
+  w którym kończy się płaski przejazd czyszczący Helixa). Przy okazji
+  usunięta 3-krotna duplikacja geometrii narożników pierścienia (silnik
+  `pocketSpiral.ts`, podgląd 2D `drawToolpath.ts`, podgląd 3D
+  `buildScene.ts` — każdy miał własną kopię), wychwycona osobnym
+  przejściem badawczym w tej samej sesji: oba podglądy teraz reużywają
+  wprost `rectRingRampPoints()`/`rectFullLapPoints()` z
+  `pocketSpiral.ts`, tak jak Circle już robił. Kierunek naprawy (gradual
+  ramp, nie kolejny wariant "podziel na więcej prostych odcinków")
+  uzgodniony z użytkownikiem przez dwie rundy wizualizacji porównawczych
+  (Artifact). 321 testów po tej zmianie (z 312 przed).
+
 ## [0.18.0] — 2026-09-21
 
 ### Dodano

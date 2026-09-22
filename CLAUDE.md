@@ -276,19 +276,68 @@ decyzją projektową).
   (respektuje przełącznik G2/G3 vs G1 jak wszędzie indziej). Kąt
   startowy kolejnego rampu to zawsze `poprzedni + rampSweepDegFor(...)
   tej transycji`, bez zawijania do 0 — pierścienie faktycznie
-  spiralnie "obracają się" wokół siebie. Dla **Rectangle**
-  (`rectRingMoves()`/`pocketRectRingDims()`): ramp to pojedynczy prosty
-  odcinek G1 z narożnika poprzedniego pierścienia (albo z punktu, w
-  którym skończył się Z-entry, dla pierwszego pierścienia) do narożnika
-  nowego pierścienia (zawsze lewy-dolny, CCW), potem pełne okrążenie 4
-  boków z powrotem do tego narożnika. Dla `width ≠ height` pierścienie
-  rosną **per-oś**, ze wspólnego kroku (`computeLinePositions()`
-  reużyty wprost z `surfaceRaster.ts`, liczony na dłuższej z dwóch
-  połówek wymiaru) — oś, która pierwsza osiągnie swój cel, przestaje
-  rosnąć i zostaje zaciśnięta (`Math.min`), druga rośnie dalej; w
-  stanie ustalonym dla wydłużonej kieszeni ramp między kolejnymi
-  pierścieniami faktycznie sprowadza się do ruchu tylko wzdłuż jednej
-  osi — dosłownie "ramp wzdłuż aktualnie rosnącego/dłuższego boku".
+  spiralnie "obracają się" wokół siebie.
+
+  Ramp dla **Rectangle** — ten sam mechanizm co Circle, przeniesiony z
+  promienia na obwód prostokąta (sesja weryfikacji wizualnej,
+  2026-09-22 — poprzednia wersja, pojedynczy prosty odcinek G1 z
+  narożnika do narożnika, okazała się dokładnie tym samym błędem co
+  Circle sprzed `RAMP_LENGTH_FACTOR`: cały skok Δ (stepover) pokonywany
+  w jednym, krótkim ruchu na pełnej głębokości — 100% zaangażowania
+  natychmiast, niezależnie czy po przekątnej, czy rozbity na dwa
+  odcinki jednoosiowe). Zamiast kąta na okręgu, `fraction` (0–1,
+  `rectPointAtPerimeterFraction()`) lokalizuje punkt na obwodzie
+  prostokąta (halfWidth, halfHeight) — CCW od lewego-dolnego narożnika,
+  każdy z 4 boków to dokładnie 0.25 pętli niezależnie od proporcji
+  boków (przybliżenie, ta sama rzetelność co liniowa interpolacja
+  promień/kąt w Circle — nie fizycznie dokładna parametryzacja).
+  `rectRampSweepFor()` — bezpośredni odpowiednik `rampSweepDegFor()`:
+  `deltaK = √(ΔhalfWidth² + ΔhalfHeight²)` zamiast Δr, `avgPerimeter`
+  (obwód, nie promień) zamiast `avgRadius`, ta sama stała
+  `RAMP_LENGTH_FACTOR` (reużyta wprost z Circle, nie duplikat), wynik
+  jako **ułamek 0–1** pełnej pętli (Circle zwraca stopnie — Rectangle
+  nie ma naturalnych "stopni", ułamek trafia bezpośrednio do
+  `rampSegmentCountFor(sweep × 360)`, reużytego bez zmian). Sufit **1**
+  (pełna pętla) jest tu realnie osiągalny (w odróżnieniu od Circle) —
+  kwadratowy wzrost od zera (pierwszy pierścień, wejście Plunge) daje
+  zawsze ułamek tuż powyżej 100%, niezależnie od rozmiaru pierścienia
+  (patrz `pocketSpiral.test.ts`).
+
+  `rectRingRampPoints()` interpoluje `(halfWidth, halfHeight, fraction)`
+  razem, liniowo, przez wyliczoną liczbę segmentów — halfWidth/halfHeight
+  rosną **stopniowo** w trakcie ruchu wzdłuż obwodu, nie skokiem na
+  końcu. Kluczowa konsekwencja: ramp **nie kończy się już w narożniku**
+  nowego pierścienia — kończy się tam, gdzie wylądował ułamek (czasem w
+  połowie boku) — więc pełny obrót pierścienia (`rectFullLapPoints()`)
+  **też przestaje zawsze zaczynać się w lewym-dolnym rogu**: startuje
+  dokładnie tam, gdzie skończył ramp, okrąża pozostałe narożniki w
+  kolejności CCW i domyka się z powrotem do tego samego (niekoniecznie
+  narożnikowego) punktu. `fraction` startowy kolejnego rampu to zawsze
+  `poprzedni + rectRampSweepFor(...)`, bez zawijania — dokładnie ten sam
+  wzorzec "nigdy nie resetuj się do 0" co kąt w Circle.
+
+  **Bootstrap Z-entry, bez specjalnych przypadków:** Plunge wchodzi jako
+  degenerate `{halfWidth: 0, halfHeight: 0}` przy `fraction=0` (każdy
+  ułamek zwija się do środka kieszeni — naturalny przypadek brzegowy
+  `rectPointAtPerimeterFraction()`). Helix wchodzi jako kwadrat
+  `{halfWidth: helixRadius, halfHeight: helixRadius}` przy
+  `fraction=RECT_HELIX_ENTRY_FRACTION` (stała `0.375`) — środek prawego
+  boku tego kwadratu wypada dokładnie w `(centerX+helixRadius,
+  centerY)`, czyli dokładnie tam, gdzie kończy się płaski przejazd
+  czyszczący Helixa (ten sam punkt, kąt 0, co circle'owy odpowiednik).
+  Dzięki temu `rectRingMoves()` obsługuje pierwszy pierścień dokładnie
+  tak samo jak każdy kolejny — brak osobnej gałęzi bootstrap w
+  `pocket.ts` ani w żadnym z podglądów.
+
+  Dla `width ≠ height` pierścienie rosną **per-oś**, ze wspólnego kroku
+  (`computeLinePositions()` reużyty wprost z `surfaceRaster.ts`, liczony
+  na dłuższej z dwóch połówek wymiaru) — oś, która pierwsza osiągnie
+  swój cel, przestaje rosnąć i zostaje zaciśnięta (`Math.min`), druga
+  rośnie dalej. Mechanizm gradual-rampu obejmuje **każde** przejście
+  jednolicie, także ten "stan ustalony" wydłużonej kieszeni (bez
+  osobnej gałęzi/uproszczenia do prostego ruchu jednoosiowego, jak w
+  poprzedniej wersji) — nawet wtedy pełny skok Δ rozkłada się na
+  dłuższym torze zamiast jednego krótkiego ruchu.
   Degenerate leading `(0,0)` (zawsze pierwszy element
   `computeLinePositions(0, max, ...)`) jest odrzucany — to nie
   prawdziwy pierścień do wycięcia, tylko punkt środka.
@@ -1495,12 +1544,22 @@ src/
                                  reużyty z `surfaceRaster.ts`), rosnące od
                                  punktu wejścia Z-entry do ściany, per-oś
                                  clampowane dla Rectangle. `circleRingMoves()`/
-                                 `rectRingMoves()` — jeden pierścień = ramp
-                                 (zawsze G1 dla Circle, bo dialekt nie
-                                 wspiera G2/G3 ze zmiennym promieniem; dla
-                                 Rectangle zawsze prosty odcinek) + pełny
-                                 flat obrót (`fullCircleMove()` bez zmian
-                                 dla Circle, respektuje toggle interpolacji).
+                                 `rectRingMoves()` — jeden pierścień = gradual
+                                 ramp (zawsze G1, dialekt nie wspiera G2/G3 ze
+                                 zmiennym promieniem/rozmiarem) + pełny flat
+                                 obrót (`fullCircleMove()` dla Circle,
+                                 respektuje toggle interpolacji;
+                                 `rectFullLapPoints()` dla Rectangle, zawsze
+                                 G1, start w punkcie gdzie skończył się ramp,
+                                 nie zawsze w narożniku). `rectRampSweepFor()`/
+                                 `rectPointAtPerimeterFraction()`/
+                                 `rectRingRampPoints()` — odpowiedniki
+                                 `rampSweepDegFor()`/`circleRingRampPoints()`
+                                 dla Rectangle, obwód zamiast promienia,
+                                 ułamek 0–1 zamiast stopni. `RECT_HELIX_ENTRY_
+                                 FRACTION` — punkt bootstrapu dla wejścia
+                                 Helix, patrz "Kluczowe decyzje projektowe"
+                                 wyżej.
     pocketZTransition.ts            — `pocketZTransitionMoves()` — wersja
                                  Plunge/Helix wyśrodkowana na
                                  `pocketCenter()` (bez narożnikowej

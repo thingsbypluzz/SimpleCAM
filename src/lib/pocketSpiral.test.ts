@@ -1,5 +1,15 @@
 import { describe, expect, it } from 'vitest'
-import { circleRingMoves, pocketCircleRingRadii, pocketRectRingDims, rampSweepDegFor, rectRingMoves } from './pocketSpiral'
+import {
+  circleRingMoves,
+  pocketCircleRingRadii,
+  pocketRectRingDims,
+  rampSweepDegFor,
+  RECT_HELIX_ENTRY_FRACTION,
+  rectFullLapPoints,
+  rectPointAtPerimeterFraction,
+  rectRampSweepFor,
+  rectRingMoves,
+} from './pocketSpiral'
 
 describe('pocketCircleRingRadii', () => {
   it('grows from startRadius to wallRadius, snapped exactly onto the wall', () => {
@@ -87,15 +97,105 @@ describe('circleRingMoves', () => {
   })
 })
 
+describe('rectPointAtPerimeterFraction', () => {
+  const dims = { halfWidth: 5, halfHeight: 3 }
+
+  it('places the four quarter-fractions exactly on the four corners, CCW from bottom-left', () => {
+    expect(rectPointAtPerimeterFraction(0, 0, dims.halfWidth, dims.halfHeight, 0)).toEqual({ x: -5, y: -3 })
+    expect(rectPointAtPerimeterFraction(0, 0, dims.halfWidth, dims.halfHeight, 0.25)).toEqual({ x: 5, y: -3 })
+    expect(rectPointAtPerimeterFraction(0, 0, dims.halfWidth, dims.halfHeight, 0.5)).toEqual({ x: 5, y: 3 })
+    expect(rectPointAtPerimeterFraction(0, 0, dims.halfWidth, dims.halfHeight, 0.75)).toEqual({ x: -5, y: 3 })
+  })
+
+  it('wraps fractions outside [0,1) onto their mod-1 equivalent', () => {
+    expect(rectPointAtPerimeterFraction(0, 0, dims.halfWidth, dims.halfHeight, 1)).toEqual({ x: -5, y: -3 })
+    expect(rectPointAtPerimeterFraction(0, 0, dims.halfWidth, dims.halfHeight, -0.25)).toEqual({ x: -5, y: 3 }) // same as 0.75
+  })
+
+  it('collapses to the center at halfWidth=halfHeight=0, regardless of fraction — the Plunge Z-entry bootstrap', () => {
+    expect(rectPointAtPerimeterFraction(4, 7, 0, 0, 0.6)).toEqual({ x: 4, y: 7 })
+  })
+
+  it('RECT_HELIX_ENTRY_FRACTION on a (r,r) square lands exactly on the Helix Z-entry exit point (centerX+r, centerY)', () => {
+    expect(rectPointAtPerimeterFraction(2, -1, 3, 3, RECT_HELIX_ENTRY_FRACTION)).toEqual({ x: 5, y: -1 })
+  })
+})
+
+describe('rectRampSweepFor', () => {
+  it('same Δk, larger perimeter -> smaller sweep fraction (constant engagement-per-length, not constant fraction) — steady-state, one axis already clamped', () => {
+    const nearWall = rectRampSweepFor({ halfWidth: 10, halfHeight: 3 }, { halfWidth: 10, halfHeight: 6 }) // Δk=3, avgPerimeter=58
+    const farWall = rectRampSweepFor({ halfWidth: 40, halfHeight: 3 }, { halfWidth: 40, halfHeight: 6 }) // Δk=3, avgPerimeter=178
+    expect(nearWall).toBeGreaterThan(farWall)
+    expect(nearWall).toBeCloseTo(0.1552, 3)
+    expect(farWall).toBeCloseTo(0.0506, 3)
+  })
+
+  it('square growth from zero (Plunge entry into ring 1) is a constant fraction regardless of ring size — already above the 1-full-loop cap', () => {
+    expect(rectRampSweepFor({ halfWidth: 0, halfHeight: 0 }, { halfWidth: 5, halfHeight: 5 })).toBe(1)
+    expect(rectRampSweepFor({ halfWidth: 0, halfHeight: 0 }, { halfWidth: 50, halfHeight: 50 })).toBe(1)
+  })
+})
+
+describe('rectFullLapPoints', () => {
+  it('starts and ends at a non-corner point when the fraction lands partway along an edge', () => {
+    const dims = { halfWidth: 6, halfHeight: 6 }
+    const points = rectFullLapPoints(0, 0, dims, 0.375) // midpoint of the right edge
+    expect(points[0]).toEqual({ x: 6, y: 0 })
+    expect(points[points.length - 1]).toEqual({ x: 6, y: 0 })
+    expect(points).toHaveLength(6) // start + 4 corners + close
+  })
+
+  it('collapses to the historical corner-start shape when the fraction lands exactly on a corner (no duplicate closing point)', () => {
+    const dims = { halfWidth: 5, halfHeight: 3 }
+    const points = rectFullLapPoints(0, 0, dims, 0)
+    expect(points).toEqual([
+      { x: -5, y: -3 },
+      { x: 5, y: -3 },
+      { x: 5, y: 3 },
+      { x: -5, y: 3 },
+      { x: -5, y: -3 },
+    ])
+  })
+})
+
 describe('rectRingMoves', () => {
-  it('one ramp line to the bottom-left corner, then a full CCW 4-edge lap back to it', () => {
-    const { lines, corner } = rectRingMoves({ halfWidth: 5, halfHeight: 3 }, { centerX: 0, centerY: 0, z: -1, feed: 800 })
-    expect(lines).toHaveLength(5) // 1 ramp + 4 edges
-    expect(corner).toEqual({ x: -5, y: -3 })
-    expect(lines[0]).toBe('G1 X-5 Y-3 Z-1 F800') // ramp destination = bottom-left
-    expect(lines[1]).toBe('G1 X5 Y-3 Z-1 F800') // bottom-right
-    expect(lines[2]).toBe('G1 X5 Y3 Z-1 F800') // top-right
-    expect(lines[3]).toBe('G1 X-5 Y3 Z-1 F800') // top-left
-    expect(lines[4]).toBe('G1 X-5 Y-3 Z-1 F800') // back to start
+  it('ramp (multi-segment, growing gradually) then a full CCW lap starting exactly where the ramp ends', () => {
+    const fromDims = { halfWidth: 3, halfHeight: 3 }
+    const toDims = { halfWidth: 6, halfHeight: 6 }
+    const { lines, nextFraction } = rectRingMoves(fromDims, toDims, 0, { centerX: 0, centerY: 0, z: -1, feed: 800 })
+
+    const sweep = rectRampSweepFor(fromDims, toDims)
+    expect(sweep).toBeCloseTo(0.3536, 3)
+    expect(nextFraction).toBeCloseTo(sweep, 9)
+
+    const rampSegments = Math.max(1, Math.round(72 * sweep))
+    const lapPointCount = rectFullLapPoints(0, 0, toDims, nextFraction).length - 1 // ramp's last point already covers the lap's own start point
+    expect(lines).toHaveLength(rampSegments + lapPointCount)
+
+    // Rectangles are always straight lines — no G2/G3 interpolation-mode
+    // branch, unlike Circle.
+    expect(lines.every((l) => l.startsWith('G1 '))).toBe(true)
+
+    // The whole point of the fix: the ramp's first point has NOT yet
+    // jumped to the target size (no 100%-stepover-in-one-move).
+    expect(lines[0]).not.toBe('G1 X-6 Y-6 Z-1 F800')
+
+    // The lap closes back exactly onto the ramp's own last point.
+    const rampEndPoint = rectPointAtPerimeterFraction(0, 0, toDims.halfWidth, toDims.halfHeight, nextFraction)
+    const match = lines[lines.length - 1].match(/^G1 X(-?[\d.]+) Y(-?[\d.]+) Z/)
+    expect(match).not.toBeNull()
+    expect(Number(match![1])).toBeCloseTo(rampEndPoint.x, 3)
+    expect(Number(match![2])).toBeCloseTo(rampEndPoint.y, 3)
+  })
+
+  it('degenerate Plunge bootstrap (fromDims = 0,0) grows outward from the pocket center, not straight to the ring corner', () => {
+    const { lines } = rectRingMoves(
+      { halfWidth: 0, halfHeight: 0 },
+      { halfWidth: 5, halfHeight: 3 },
+      0,
+      { centerX: 0, centerY: 0, z: -1, feed: 800 },
+    )
+    expect(lines[0]).not.toBe('G1 X0 Y0 Z-1 F800')
+    expect(lines[0]).not.toBe('G1 X-5 Y-3 Z-1 F800')
   })
 })
