@@ -7,6 +7,25 @@ zgodne z [SemVer](https://semver.org/). Ten plik pozostaje głównym, czytelnym
 thingsbypluzz/SimpleCAM), ale to infrastruktura pod izolację pracy
 (branch/worktree per zadanie), nie zamiennik tego changeloga.
 
+## [0.18.2] — 2026-09-25
+
+### Naprawiono
+
+- **Pocket, wejście Helix w trybie G2/G3 generowało łuk odrzucany przez
+  GRBL.** Narzędzie ustawiało się (`G0`) w środku kieszeni, a pierwszy
+  łuk helixa (`G3 … I J`) zaczynał się w punkcie `(środek + helixRadius,
+  środek)` — start łuku leżał więc `helixRadius` od jego środka, a koniec
+  `2×helixRadius`. GRBL odrzuca taki łuk (error 33, "invalid target") i
+  zatrzymuje program; w trybie G1 skutkiem był tylko krótki ukośny ruch
+  ze środka na okrąg. Dotyczyło Raster i Spiral, Circle i Rectangle.
+  Wychwycone przy przeglądzie kodu przed `OP-5`. Naprawione nowym
+  `pocketEntryPoint()` (`lib/pocketZTransition.ts`) — przy Helix
+  pozycjonowanie (na starcie i przy każdym powrocie między poziomami Z)
+  idzie wprost do punktu startowego spirali; podgląd 3D (najazd
+  `Safe Z → Start Z` i retrakt między poziomami) poprawiony tak samo.
+  Nowy test przechodzi przez cały program i sprawdza, że każdy G2/G3 ma
+  start i koniec w tej samej odległości od swojego środka.
+
 ## [0.18.1] — 2026-09-22
 
 ### Zmieniono

@@ -22,6 +22,7 @@ import {
   pocketRectWallHalfDims,
   pocketStepoverMm,
 } from '../../lib/pocketGeometry'
+import { pocketEntryPoint } from '../../lib/pocketZTransition'
 import {
   circleRingRampPoints,
   rampSweepDegFor,
@@ -646,8 +647,9 @@ function buildPocketToolpathObjects3D(
   span: number,
 ): THREE.Object3D[] {
   const center = pocketCenter(pocket)
+  const entry = pocketEntryPoint(center.x, center.y, pocket.zTransitionMode, pocket.helixRadius)
   const descents = buildLevelDescents(feeds.startZ, pocket.totalDepth, feeds.stepdown)
-  const builder = createSegmentBuilder3D(toThree(center.x, center.y, feeds.startZ))
+  const builder = createSegmentBuilder3D(toThree(entry.x, entry.y, feeds.startZ))
   const objects: THREE.Object3D[] = []
 
   const pushZTransition = (toZ: number) => {
@@ -665,7 +667,7 @@ function buildPocketToolpathObjects3D(
   }
 
   const addLevelRetract = () => {
-    builder.add('dashed', [toThree(center.x, center.y, feeds.safeZ), toThree(center.x, center.y, feeds.startZ)])
+    builder.add('dashed', [toThree(entry.x, entry.y, feeds.safeZ), toThree(entry.x, entry.y, feeds.startZ)])
   }
 
   if (pocket.method === 'raster') {
@@ -1635,7 +1637,8 @@ function buildPocketPatternObjects(
   objects.push(...buildOffsetVectorObjects(pocket.offsetX, pocket.offsetY, theme, arrowSize))
 
   if (showToolpath) {
-    objects.push(...rapidZLineObjects(center.x, center.y, feeds.safeZ, feeds.startZ, -pocket.totalDepth, theme, span))
+    const entry = pocketEntryPoint(center.x, center.y, pocket.zTransitionMode, pocket.helixRadius)
+    objects.push(...rapidZLineObjects(entry.x, entry.y, feeds.safeZ, feeds.startZ, -pocket.totalDepth, theme, span))
   }
 
   if (showStock) {

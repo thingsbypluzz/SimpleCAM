@@ -4,7 +4,7 @@ import { fmt } from './format'
 import { assembleProgram, rapidToTop } from './program'
 import { buildLevelDescents } from './surfaceZTransition'
 import { computeRasterLines, zigzagWaypoints } from './surfaceRaster'
-import { pocketZTransitionMoves } from './pocketZTransition'
+import { pocketEntryPoint, pocketZTransitionMoves } from './pocketZTransition'
 import {
   circleRingMoves,
   pocketCircleRingRadii,
@@ -110,13 +110,14 @@ function pocketToolpath(
 ): string[] {
   const { pocket, feeds, output } = params
   const descents = buildLevelDescents(feeds.startZ, pocket.totalDepth, feeds.stepdown)
+  const entry = pocketEntryPoint(cx, cy, pocket.zTransitionMode, pocket.helixRadius)
 
-  const lines: string[] = [`G0 X${fmt(cx)} Y${fmt(cy)}`, rapidToTop(feeds.startZ)]
+  const lines: string[] = [`G0 X${fmt(entry.x)} Y${fmt(entry.y)}`, rapidToTop(feeds.startZ)]
 
   descents.forEach(({ toZ }, idx) => {
     if (idx > 0) {
       lines.push(`G0 Z${fmt(feeds.safeZ)}`)
-      lines.push(`G0 X${fmt(cx)} Y${fmt(cy)}`)
+      lines.push(`G0 X${fmt(entry.x)} Y${fmt(entry.y)}`)
       lines.push(rapidToTop(feeds.startZ))
     }
     lines.push(

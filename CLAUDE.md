@@ -225,7 +225,11 @@ decyzją projektową).
   jego narożnikowy `helixCenterFor`/`helixDirectionFor` (brak stycznej
   do wyprowadzania — okrąg wyśrodkowany na kieszeni nie ma
   uprzywilejowanego kierunku wyjścia, bo pierwszy pierścień/linia
-  rastra i tak zaczyna własnym, niezależnym punktem odniesienia). Tryb
+  rastra i tak zaczyna własnym, niezależnym punktem odniesienia).
+  Pozycjonowanie XY przed zejściem (`pocketEntryPoint()`): środek
+  kieszeni dla Plunge, ale **punkt startowy spirali** `(centerX +
+  helixRadius, centerY)` dla Helix — pierwszy łuk G2/G3 musi zaczynać
+  się na własnym okręgu (inaczej GRBL error 33). Tryb
   Helix kończy się **płaskim przejazdem czyszczącym** na promieniu
   `helixRadius`, dokładnie na `toZ` (mirror `helix.ts`'s Hole(s) Helix
   "flat finishing pass") — spiralne rampowanie w dół zostawia śrubową,
