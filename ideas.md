@@ -13,12 +13,82 @@ projektową** (w przeciwieństwie do "Kluczowe decyzje projektowe" w
 zrozumienie, punkt wyjścia do realnej implementacji w przyszłości, kiedy
 padnie wyraźne "przechodzimy do X".
 
-Obecnie pusty. `OP-2` (Pocket) zaimplementowany — pełne rozstrzygnięcia
-sesji `/grill-me` (2026-09-21) żyją teraz w `CLAUDE.md`, historia
-implementacji w `CHANGELOG.md`, `[0.18.0]`. Z tej sesji wyłoniły się też
-trzy świadomie odłożone pozycje: `OP-5` (Adaptive Clearing), `BL-41`
-(konfigurowalny kąt rampy), `BL-42` (finishing wall pass /
-stock-to-leave) — patrz niżej.
+`OP-2` (Pocket) zaimplementowany — pełne rozstrzygnięcia sesji
+`/grill-me` (2026-09-21) żyją teraz w `CLAUDE.md`, historia
+implementacji w `CHANGELOG.md`, `[0.18.0]`/`[0.18.1]`. Z tej sesji
+wyłoniły się też trzy świadomie odłożone pozycje: `OP-5` (Adaptive
+Clearing), `BL-41` (konfigurowalny kąt rampy), `BL-42` (finishing wall
+pass / stock-to-leave) — patrz niżej.
+
+### `OP-5` — Adaptive Clearing: ustalenia sesji `/grill-me` (2026-09-25)
+
+Poprzedzone researchem (matematyka zaangażowania, algorytmy open-source
+typu FreeCAD Adaptive, ograniczenia GRBL). Motywacja użytkownika:
+żywotność freza, głębsze przejścia, szybszy roughing.
+
+**Matematyka, na której to stoi** (część wzorów wyprowadzona w
+researchu, bez publikowanego źródła — testy muszą je zweryfikować):
+- Kąt zaangażowania na prostej: `θ = arccos(1 − ae/R)`. Wewnątrz okręgu
+  rośnie tym bardziej, im mniejszy promień; w ostrym narożniku
+  prostokąta to `90° + θ` (główny problem dzisiejszego Rectangle
+  Spiral).
+- Rekurencja pierścieni o stałym zaangażowaniu `θ*` (odstęp mały przy
+  środku, rośnie ku ścianie) — nie da się z niej wyrosnąć z promienia 0,
+  stąd wymóg otworu startowego Helix.
+- Chip thinning: grubość wióra `= fz·sin θ`, mnożnik kompensacji posuwu
+  `1/sin θ` (przy 10% D ≈ ×1.67).
+
+**Rozstrzygnięcia:**
+- **Podejście:** spirala sterowana zaangażowaniem, liczona analitycznie
+  (bez symulacji materiału w stylu Fusion/FreeCAD — ta byłaby 5–10×
+  większa i potrzebna dopiero dla dowolnych konturów; świadomie **nie**
+  dodana do backlogu).
+- **UI:** trzecia metoda `'adaptive'` obok Raster/Spiral (Spiral bez
+  zmian). Circle **i** Rectangle od razu.
+- **Parametr:** Optimal Load **% D** ↔ **mm** (oba edytowalne,
+  wzajemnie przeliczane) + kąt zaangażowania tylko do odczytu. Źródło
+  prawdy: `%` (zmiana freza przelicza mm, kąt stały). Zakres 1–30%,
+  domyślnie 10%.
+- **Chip thinning:** tylko podpowiedź (mnożnik + sugerowany Feed XY),
+  appka nigdy sama nie zmienia posuwu.
+- **Wejście:** wymuszony Helix (toggle Z-Transition zablokowany z
+  wyjaśnieniem, zapisana wartość nietknięta — wzorzec Tabs→G1).
+  Istniejące pole Helix Radius + nieblokująca podpowiedź przy małym
+  promieniu względem freza.
+- **Skok helixa:** nowe pole **Ramp Angle** (domyślnie 2°), tylko
+  Adaptive — skok z kąta, nie ze Stepdown (przy głębokim Stepdown
+  obecny helix byłby praktycznie Plunge).
+- **Geometria, trzy fazy na każdym poziomie Z:**
+  - **A** — okręgi o stałym zaangażowaniu od Helixa do krótszego
+    wymiaru kieszeni (dla Circle to całe czyszczenie). Przejście między
+    okręgami: ramp o długości liczonej z Optimal Load (nie
+    `RAMP_LENGTH_FACTOR`).
+  - **B** — tylko prostokąt niekwadratowy: wydłużanie wzdłuż dłuższej
+    osi, **każdy koniec osobno**, łuki o stałym promieniu (krok z `θ*`)
+    + krótki powrót przez wycięty obszar, potem przejazd na drugi koniec.
+  - **C** — **każdy narożnik osobno**, łuki o malejącym promieniu,
+    obierane **do ostrego** (kieszeń identyczna jak z Raster/Spiral).
+    Kwadrat = A + C.
+- **Kierunek:** toggle Climb/Conventional, domyślnie Conventional,
+  stały we wszystkich fazach.
+- **Przejazdy łączące** (powroty, między końcami/narożnikami, do środka
+  przed kolejnym poziomem): G1 z nowym polem **Linking Feed** w Kroku 3
+  obok Feed XY (widoczne tylko dla Pocket + Adaptive), domyślnie =
+  Feed XY. Nigdy G0 poniżej Safe Z.
+- **Głębokość:** globalny Stepdown + podpowiedź, gdy < 1×D. Między
+  poziomami **bez retraktu** — powrót do środka na Linking Feed i helix
+  tylko nowego Stepdown; retrakt na Safe Z dopiero na końcu.
+- **Interpolacja:** łuki o stałym promieniu respektują toggle G2/G3 /
+  G1; rampy i powroty zawsze G1.
+- **Podglądy:** dokładna ścieżka z tych samych funkcji co silnik;
+  przejazdy łączące jako **dotted w nowym kolorze akcentowym
+  `linking`** (w paletach, obok toolpath/rapid; tylko Adaptive).
+- **Ściany:** bez przejazdu wykończeniowego — ząbki zostają do `BL-42`.
+- **Technicznie:** jedna czysta lista segmentów (linia/łuk + rodzaj
+  ruchu) wspólna dla silnika i obu podglądów; testy sprawdzają
+  zaangażowanie ≤ `θ*` + tolerancja przez zgrubną symulację siatki
+  (tylko w testach); nowe pola presetów przez istniejący merge z
+  wartościami domyślnymi.
 
 ## Backlog (`BL-#`)
 
@@ -208,6 +278,13 @@ faktycznym.
   tym promieniem przed granicą, potem jeden przejazd reużywający Outline
   Rectangle/Circle toolpath na granicy offsetu) dałby czystszą ścianę —
   większy zakres niż `BL-41`, dotyka kilku miejsc silnika na raz.
+- **`BL-43`** *(Otwarty)* 🟢 — **Rozmycie (blur) interfejsu pod Settings
+  Modal.** Przy otwartym Settings Modal cała warstwa appki pod nim
+  (Header, Wizard Section, Preview Section) rozmyta, żeby modal
+  wyraźniej odcinał się od tła. Najpewniej `backdrop-blur` na
+  istniejącym tle-nakładce modala w `SettingsModal.tsx`, spójnie we
+  wszystkich motywach; do sprawdzenia wydajność przy żywym 3D Preview
+  pod spodem.
 
 elementów UI, dziś aktywnie używany w `CLAUDE.md`:
 **<https://claude.ai/code/artifact/ea21c02e-41ed-4bb5-90ec-48ae9a61c23e>**.
@@ -239,7 +316,9 @@ implementacji w `CHANGELOG.md`, `[0.14.0]` i `[0.18.0]`).
   (trochoidalne/adaptacyjne czyszczenie) — lepsza żywotność narzędzia
   przy twardszych materiałach niż dzisiejsze Raster/Spiral. Świadomie
   odłożone podczas sesji `/grill-me` `OP-2` (2026-09-21) jako zbyt duży
-  dodatkowy zakres na start Pocket v1.
+  dodatkowy zakres na start Pocket v1. **W trakcie** — własna sesja
+  `/grill-me` odbyta 2026-09-25, ustalenia w "Pomysły w dyskusji" wyżej,
+  implementacja na branchu `op-5-adaptive-grill-me`.
 
 **Każda z `OP-#` wymaga własnej, pełnej sesji `/grill-me` przed
 napisaniem jakiegokolwiek kodu** — nieporównywalnie większy zakres
