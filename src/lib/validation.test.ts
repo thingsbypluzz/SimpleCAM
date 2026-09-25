@@ -6,8 +6,14 @@ import {
   isOutlineToolDiameterValid,
   isStartZValid,
   isStepdownValid,
+  isAdaptiveStepdownShallow,
+  isPocketHelixRadiusSmall,
   isPocketHelixRadiusValid,
+  isPocketLinkingFeedValid,
+  isPocketOptimalLoadValid,
+  isPocketRampAngleValid,
   isPocketStepoverValid,
+  suggestedAdaptiveStepdown,
   isPocketToolDiameterValid,
   isSurfaceHelixRadiusValid,
   isSurfaceStepoverValid,
@@ -443,12 +449,56 @@ describe('isPocketHelixRadiusValid', () => {
     expect(isPocketHelixRadiusValid({ ...DEFAULT_WIZARD_PARAMS.pocket, zTransitionMode: 'plunge', helixRadius: -5 })).toBe(true)
   })
 
-  it("in Helix mode, the ceiling is the pocket's own smallest wall extent, not the stepover", () => {
-    // rect wall half-dims: (50-4)/2=23, (30-4)/2=13 -> ceiling is 13
-    const pocket = { ...DEFAULT_WIZARD_PARAMS.pocket, zTransitionMode: 'helix' as const, width: 50, height: 30, toolDiameter: 4 }
-    expect(isPocketHelixRadiusValid({ ...pocket, helixRadius: 13 })).toBe(true)
-    expect(isPocketHelixRadiusValid({ ...pocket, helixRadius: 13.1 })).toBe(false)
+  it("in Helix mode, the ceiling is the pocket's own smallest wall extent when that's tighter than the tool radius", () => {
+    // rect wall half-dims: (12-4)/2=4, (8-4)/2=2 -> wall ceiling 2 < tool radius 2.5
+    const pocket = { ...DEFAULT_WIZARD_PARAMS.pocket, zTransitionMode: 'helix' as const, width: 12, height: 9, toolDiameter: 5 }
+    expect(isPocketHelixRadiusValid({ ...pocket, helixRadius: 2 })).toBe(true)
+    expect(isPocketHelixRadiusValid({ ...pocket, helixRadius: 2.1 })).toBe(false)
     expect(isPocketHelixRadiusValid({ ...pocket, helixRadius: 0 })).toBe(false)
+  })
+
+  it('never wider than the tool radius — a wider helix leaves an uncut post in the center', () => {
+    const pocket = { ...DEFAULT_WIZARD_PARAMS.pocket, zTransitionMode: 'helix' as const, width: 50, height: 30, toolDiameter: 6 }
+    expect(isPocketHelixRadiusValid({ ...pocket, helixRadius: 3 })).toBe(true)
+    expect(isPocketHelixRadiusValid({ ...pocket, helixRadius: 3.1 })).toBe(false)
+  })
+})
+
+describe('Pocket Adaptive validators', () => {
+  const adaptive = { ...DEFAULT_WIZARD_PARAMS.pocket, method: 'adaptive' as const }
+
+  it('Helix radius is enforced for Adaptive even with Plunge stored — Adaptive always enters by Helix', () => {
+    expect(isPocketHelixRadiusValid({ ...adaptive, zTransitionMode: 'plunge', helixRadius: 0 })).toBe(false)
+    expect(isPocketHelixRadiusValid({ ...adaptive, zTransitionMode: 'plunge', helixRadius: 1 })).toBe(true)
+  })
+
+  it('Optimal Load 1–30%, ramp angle 0.5–30°, linking feed > 0 — only for Adaptive', () => {
+    expect(isPocketOptimalLoadValid({ ...adaptive, optimalLoadPercent: 1 })).toBe(true)
+    expect(isPocketOptimalLoadValid({ ...adaptive, optimalLoadPercent: 30 })).toBe(true)
+    expect(isPocketOptimalLoadValid({ ...adaptive, optimalLoadPercent: 30.5 })).toBe(false)
+    expect(isPocketOptimalLoadValid({ ...adaptive, optimalLoadPercent: 0 })).toBe(false)
+    expect(isPocketRampAngleValid({ ...adaptive, rampAngleDeg: 0.4 })).toBe(false)
+    expect(isPocketRampAngleValid({ ...adaptive, rampAngleDeg: 2 })).toBe(true)
+    expect(isPocketLinkingFeedValid({ ...adaptive, linkingFeed: 0 })).toBe(false)
+    const spiral = { ...DEFAULT_WIZARD_PARAMS.pocket, method: 'spiral' as const, optimalLoadPercent: 0, rampAngleDeg: 0, linkingFeed: 0 }
+    expect(isPocketOptimalLoadValid(spiral) && isPocketRampAngleValid(spiral) && isPocketLinkingFeedValid(spiral)).toBe(true)
+  })
+
+  it("stepover isn't used by Adaptive, so it never blocks Generate there", () => {
+    expect(isPocketStepoverValid({ ...adaptive, stepoverPercent: 0 })).toBe(true)
+  })
+
+  it('hints: small helix below 25% of the tool diameter, stepdown below one diameter', () => {
+    expect(isPocketHelixRadiusSmall({ ...adaptive, toolDiameter: 6, helixRadius: 1 })).toBe(true)
+    expect(isPocketHelixRadiusSmall({ ...adaptive, toolDiameter: 6, helixRadius: 1.5 })).toBe(false)
+    expect(isAdaptiveStepdownShallow({ ...adaptive, toolDiameter: 6 }, 3)).toBe(true)
+    expect(isAdaptiveStepdownShallow({ ...adaptive, toolDiameter: 6 }, 6)).toBe(false)
+  })
+
+  it("the stepdown hint's Apply suggests 1.5× the tool diameter, which clears the hint", () => {
+    const pocket = { ...adaptive, toolDiameter: 3.175 }
+    expect(suggestedAdaptiveStepdown(pocket)).toBe(4.76)
+    expect(isAdaptiveStepdownShallow(pocket, suggestedAdaptiveStepdown(pocket))).toBe(false)
   })
 })
 

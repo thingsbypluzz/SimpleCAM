@@ -4,7 +4,8 @@ import { fmt } from './format'
 import { assembleProgram, rapidToTop } from './program'
 import { buildLevelDescents } from './surfaceZTransition'
 import { computeRasterLines, zigzagWaypoints } from './surfaceRaster'
-import { pocketZTransitionMoves } from './pocketZTransition'
+import { pocketEntryPoint, pocketZTransitionMoves } from './pocketZTransition'
+import { adaptiveMovesToGcode, buildAdaptiveToolpath } from './pocketAdaptive'
 import {
   circleRingMoves,
   pocketCircleRingRadii,
@@ -110,13 +111,14 @@ function pocketToolpath(
 ): string[] {
   const { pocket, feeds, output } = params
   const descents = buildLevelDescents(feeds.startZ, pocket.totalDepth, feeds.stepdown)
+  const entry = pocketEntryPoint(cx, cy, pocket.zTransitionMode, pocket.helixRadius)
 
-  const lines: string[] = [`G0 X${fmt(cx)} Y${fmt(cy)}`, rapidToTop(feeds.startZ)]
+  const lines: string[] = [`G0 X${fmt(entry.x)} Y${fmt(entry.y)}`, rapidToTop(feeds.startZ)]
 
   descents.forEach(({ toZ }, idx) => {
     if (idx > 0) {
       lines.push(`G0 Z${fmt(feeds.safeZ)}`)
-      lines.push(`G0 X${fmt(cx)} Y${fmt(cy)}`)
+      lines.push(`G0 X${fmt(entry.x)} Y${fmt(entry.y)}`)
       lines.push(rapidToTop(feeds.startZ))
     }
     lines.push(
@@ -146,4 +148,28 @@ export function generatePocketSpiral(params: WizardParams, machine: MachineSetti
 
 export function generatePocketRaster(params: WizardParams, machine: MachineSettings): string[] {
   return assembleProgram(params, machine, (cx, cy, p) => pocketToolpath(cx, cy, p, rasterRectLevel), [pocketStartPoint(params.pocket)])
+}
+
+// Adaptive has its own level structure (stays down between levels, helix
+// pitch from the ramp angle) inside buildAdaptiveToolpath(), so it bypasses
+// pocketToolpath(): position over the helix start, rapid to Start Z, then
+// the whole move list. assembleProgram() retracts to Safe Z afterwards.
+export function generatePocketAdaptive(params: WizardParams, machine: MachineSettings): string[] {
+  return assembleProgram(
+    params,
+    machine,
+    (_cx, _cy, p) => {
+      const toolpath = buildAdaptiveToolpath(p)
+      return [
+        `G0 X${fmt(toolpath.start.x)} Y${fmt(toolpath.start.y)}`,
+        rapidToTop(p.feeds.startZ),
+        ...adaptiveMovesToGcode(toolpath, {
+          cutFeed: p.feeds.feedrateXY,
+          linkFeed: p.pocket.linkingFeed,
+          interpolation: p.output.interpolation,
+        }),
+      ]
+    },
+    [pocketStartPoint(params.pocket)],
+  )
 }

@@ -21,9 +21,14 @@ export type ZTransitionMode = 'plunge' | 'helix'
 export type PocketShape = 'rectCornered' | 'rectCentered' | 'circle'
 
 // 'raster' only valid for rectCornered/rectCentered (reuses the Surface
-// raster engine, which has no circle-clipping math); 'spiral' is valid for
-// every shape — see CLAUDE.md's Pocket design notes.
-export type PocketMethodType = 'raster' | 'spiral'
+// raster engine, which has no circle-clipping math); 'spiral' and
+// 'adaptive' are valid for every shape — see CLAUDE.md's Pocket design
+// notes.
+export type PocketMethodType = 'raster' | 'spiral' | 'adaptive'
+
+// Pocket Adaptive only. Conventional = CCW for an internal cut under M3,
+// the convention every other Pocket method is fixed to.
+export type CutDirection = 'conventional' | 'climb'
 
 // 'ramp' only valid for rectCornered/rectCentered; 'helix' only for circle;
 // 'standard' is valid for every shape, which is why it's the shared default.
@@ -98,7 +103,16 @@ export interface PocketParams {
   stepoverPercent: number // 1-100, single source of truth — mm value is derived
   rasterDirection: RasterDirection // only enforced/shown when method === 'raster'
   zTransitionMode: ZTransitionMode
-  helixRadius: number // only enforced/shown when zTransitionMode === 'helix'
+  helixRadius: number // only enforced/shown when zTransitionMode === 'helix' (always, for Adaptive)
+  optimalLoadPercent: number // Adaptive only, 1-30, single source of truth — mm and engagement angle are derived
+  rampAngleDeg: number // Adaptive only — helix entry descent angle, independent of stepdown
+  cutDirection: CutDirection // Adaptive only
+  linkingFeed: number // Adaptive only, mm/min — G1 moves through already-cleared area
+  // Adaptive only: the Feed XY value in effect when chip-thinning
+  // compensation was last applied (null = never, or Feed XY edited by hand
+  // since). Keeps the suggestion from compounding on an already-compensated
+  // feed — see chipThinnedFeed().
+  chipThinningBaseFeed: number | null
 }
 
 export interface FeedsParams {
@@ -194,6 +208,11 @@ export const DEFAULT_WIZARD_PARAMS: WizardParams = {
     rasterDirection: 'x',
     zTransitionMode: 'plunge',
     helixRadius: 1,
+    optimalLoadPercent: 10,
+    rampAngleDeg: 2,
+    cutDirection: 'conventional',
+    linkingFeed: 800,
+    chipThinningBaseFeed: null,
   },
   feeds: {
     stepdown: 1,

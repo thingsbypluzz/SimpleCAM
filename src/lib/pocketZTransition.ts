@@ -1,7 +1,7 @@
 import { fmt } from './format'
 import { fullCircleMove } from './circle'
 import { computeDepthPasses } from './depthPasses'
-import type { InterpolationMode, ZTransitionMode } from '../types/wizard'
+import type { InterpolationMode, PocketParams, Point2D, ZTransitionMode } from '../types/wizard'
 
 export interface PocketZTransitionOptions {
   fromZ: number
@@ -14,6 +14,22 @@ export interface PocketZTransitionOptions {
   interpolation: InterpolationMode
   centerX: number
   centerY: number
+}
+
+// Adaptive always enters by Helix (constant engagement can't grow out of a
+// plunge-sized bore) — the stored zTransitionMode is kept untouched, only
+// ignored, the same way output.interpolation is ignored while Tabs force G1.
+export function effectivePocketZTransitionMode(pocket: Pick<PocketParams, 'method' | 'zTransitionMode'>): ZTransitionMode {
+  return pocket.method === 'adaptive' ? 'helix' : pocket.zTransitionMode
+}
+
+// Where the tool must be positioned (XY, before descending) for this
+// Z-transition: the pocket center for Plunge, but the helix's own start
+// point for Helix — its first arc starts there, and a G2/G3 whose start
+// isn't on the arc's circle (e.g. starting from the center) is rejected by
+// GRBL as an invalid target.
+export function pocketEntryPoint(centerX: number, centerY: number, mode: ZTransitionMode, helixRadius: number): Point2D {
+  return mode === 'helix' ? { x: centerX + helixRadius, y: centerY } : { x: centerX, y: centerY }
 }
 
 // Plunge: single vertical G1 straight down — the caller already

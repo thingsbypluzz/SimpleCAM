@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { generatePocketRaster, generatePocketSpiral } from './pocket'
 import { rampSweepDegFor } from './pocketSpiral'
+import { arcRadiusMismatches } from './gcodeTestUtils'
 import { DEFAULT_MACHINE_SETTINGS } from '../types/machine'
 import { DEFAULT_WIZARD_PARAMS, type WizardParams } from '../types/wizard'
 
@@ -17,6 +18,19 @@ function buildParams(overrides: {
     output: { ...DEFAULT_WIZARD_PARAMS.output, ...overrides.output },
   }
 }
+
+describe('Pocket Helix entry in G2/G3 mode', () => {
+  it.each(['raster', 'spiral'] as const)('%s: every arc starts on its own circle (tool positioned at the helix start, not the center)', (method) => {
+    const params = buildParams({
+      pocket: { shape: 'rectCentered', method, width: 20, height: 20, toolDiameter: 2, totalDepth: 2, zTransitionMode: 'helix', helixRadius: 1 },
+      feeds: { stepdown: 1 },
+      output: { interpolation: 'arc' },
+    })
+    const lines = method === 'raster' ? generatePocketRaster(params, DEFAULT_MACHINE_SETTINGS) : generatePocketSpiral(params, DEFAULT_MACHINE_SETTINGS)
+    expect(lines.some((l) => /^G3 /.test(l))).toBe(true)
+    expect(arcRadiusMismatches(lines)).toEqual([])
+  })
+})
 
 describe('generatePocketRaster', () => {
   it('enters at the pocket center, then rasters the tool-center wall (inset, not overtravel)', () => {

@@ -19,6 +19,18 @@ export function HelixIcon({ className }: IconProps) {
   )
 }
 
+// Pocket Adaptive — a small bore with successively larger half-arcs
+// stepping outward, the shape of its end-extension passes.
+export function AdaptiveIcon({ className }: IconProps) {
+  return (
+    <svg {...base} className={className}>
+      <circle cx="7" cy="12" r="2.5" />
+      <path d="M8.5 6.5a5.5 5.5 0 0 1 0 11" />
+      <path d="M11.5 3.5a8.5 8.5 0 0 1 0 17" />
+    </svg>
+  )
+}
+
 export function StandardHoleIcon({ className }: IconProps) {
   return (
     <svg {...base} className={className}>

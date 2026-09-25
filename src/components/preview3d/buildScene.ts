@@ -22,6 +22,8 @@ import {
   pocketRectWallHalfDims,
   pocketStepoverMm,
 } from '../../lib/pocketGeometry'
+import { effectivePocketZTransitionMode, pocketEntryPoint } from '../../lib/pocketZTransition'
+import { adaptiveMovePoints, buildAdaptiveToolpath, type AdaptiveMoveKind } from '../../lib/pocketAdaptive'
 import {
   circleRingRampPoints,
   rampSweepDegFor,
@@ -629,6 +631,38 @@ function pocketHelixEntryPoints3D(
   return points
 }
 
+// Pocket Adaptive: the exact move list the engine emits
+// (buildAdaptiveToolpath() + adaptiveMovePoints(), true helix Z included),
+// cutting moves 'solid', linking moves 'linking'. Consecutive moves of one
+// kind are merged into a single segment — Adaptive emits hundreds of short
+// arcs/lines per level, one THREE.Line each would be wasteful.
+function buildPocketAdaptiveObjects3D(
+  pocket: WizardParams['pocket'],
+  feeds: WizardParams['feeds'],
+  theme: Theme,
+  span: number,
+): THREE.Object3D[] {
+  const toolpath = buildAdaptiveToolpath({ pocket, feeds })
+  const builder = createSegmentBuilder3D(toThree(toolpath.start.x, toolpath.start.y, toolpath.start.z))
+  let current = toolpath.start
+  let pending: THREE.Vector3[] = []
+  let pendingKind: AdaptiveMoveKind | null = null
+  const flush = () => {
+    if (pendingKind) builder.add(pendingKind === 'cut' ? 'solid' : 'linking', pending)
+    pending = []
+  }
+  for (const move of toolpath.moves) {
+    if (move.kind !== pendingKind) {
+      flush()
+      pendingKind = move.kind
+    }
+    for (const p of adaptiveMovePoints(current, move)) pending.push(toThree(p.x, p.y, p.z))
+    current = move.to
+  }
+  flush()
+  return buildToolpathLines3D(builder.segments, theme, span)
+}
+
 // Builds Pocket's full toolpath: the Z-transition/retract chain (styled
 // via createSegmentBuilder3D, mirroring lib/pocket.ts's pocketToolpath()/
 // pocketZTransitionMoves() exactly — level 0 no retract, later levels
@@ -645,9 +679,12 @@ function buildPocketToolpathObjects3D(
   theme: Theme,
   span: number,
 ): THREE.Object3D[] {
+  if (pocket.method === 'adaptive') return buildPocketAdaptiveObjects3D(pocket, feeds, theme, span)
+
   const center = pocketCenter(pocket)
+  const entry = pocketEntryPoint(center.x, center.y, pocket.zTransitionMode, pocket.helixRadius)
   const descents = buildLevelDescents(feeds.startZ, pocket.totalDepth, feeds.stepdown)
-  const builder = createSegmentBuilder3D(toThree(center.x, center.y, feeds.startZ))
+  const builder = createSegmentBuilder3D(toThree(entry.x, entry.y, feeds.startZ))
   const objects: THREE.Object3D[] = []
 
   const pushZTransition = (toZ: number) => {
@@ -665,7 +702,7 @@ function buildPocketToolpathObjects3D(
   }
 
   const addLevelRetract = () => {
-    builder.add('dashed', [toThree(center.x, center.y, feeds.safeZ), toThree(center.x, center.y, feeds.startZ)])
+    builder.add('dashed', [toThree(entry.x, entry.y, feeds.safeZ), toThree(entry.x, entry.y, feeds.startZ)])
   }
 
   if (pocket.method === 'raster') {
@@ -739,6 +776,7 @@ interface Theme {
   // one color, told apart by dash pattern instead (see ToolpathLineStyle).
   // 2D Preview still has its own separate rapid accent (drawToolpath.ts).
   toolpath: number
+  linking: number
   origin: number
   hole: number
   axisX: number
@@ -770,6 +808,7 @@ function buildTheme(paletteId: PaletteId, isDark: boolean, themeId: ThemeId): Th
     materialOpacity: isDark ? MATERIAL_OPACITY_DARK : MATERIAL_OPACITY_LIGHT,
     grid: hexToThreeColor(accents.grid),
     toolpath: hexToThreeColor(accents.toolpath),
+    linking: hexToThreeColor(accents.linking),
     origin: hexToThreeColor(fixed.origin),
     hole: hexToThreeColor(accents.hole),
     axisX: hexToThreeColor(fixed.axisX),
@@ -1085,7 +1124,9 @@ function buildOffsetVectorObjects(offsetX: number, offsetY: number, theme: Theme
 // continuous polyline per pattern requires splitting it into multiple
 // THREE.Line objects (LineDashedMaterial can only apply one dash pattern to
 // an entire line, per its own cumulative distance from computeLineDistances()).
-type ToolpathLineStyle = 'solid' | 'dashed' | 'dotted'
+// 'linking' — Pocket Adaptive's G1 moves through already-cleared area:
+// dotted like 'dotted', but in the palette's own `linking` color.
+type ToolpathLineStyle = 'solid' | 'dashed' | 'dotted' | 'linking'
 
 interface ToolpathSegment3D {
   style: ToolpathLineStyle
@@ -1098,7 +1139,7 @@ function toolpathLineMaterial(style: ToolpathLineStyle, theme: Theme, span: numb
   // gap) so it reads as discrete dots instead of short dashes.
   const dashSize = style === 'dashed' ? span * 0.02 : span * 0.003
   const gapSize = style === 'dashed' ? span * 0.01 : span * 0.008
-  return new THREE.LineDashedMaterial({ color: theme.toolpath, dashSize, gapSize })
+  return new THREE.LineDashedMaterial({ color: style === 'linking' ? theme.linking : theme.toolpath, dashSize, gapSize })
 }
 
 function buildToolpathLine3D(points: THREE.Vector3[], style: ToolpathLineStyle, theme: Theme, span: number): THREE.Line {
@@ -1635,7 +1676,8 @@ function buildPocketPatternObjects(
   objects.push(...buildOffsetVectorObjects(pocket.offsetX, pocket.offsetY, theme, arrowSize))
 
   if (showToolpath) {
-    objects.push(...rapidZLineObjects(center.x, center.y, feeds.safeZ, feeds.startZ, -pocket.totalDepth, theme, span))
+    const entry = pocketEntryPoint(center.x, center.y, effectivePocketZTransitionMode(pocket), pocket.helixRadius)
+    objects.push(...rapidZLineObjects(entry.x, entry.y, feeds.safeZ, feeds.startZ, -pocket.totalDepth, theme, span))
   }
 
   if (showStock) {

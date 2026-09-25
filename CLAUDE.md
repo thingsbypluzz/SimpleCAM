@@ -41,8 +41,9 @@ Appka obsługuje dziś cztery operacje (`WizardParams.operation`):
   Unidirectional), kierunek rastra X/Y, stepover jako % średnicy
   narzędzia.
 - **Pocket** — kieszeniowanie (usuwanie materiału wewnątrz zamkniętego
-  konturu). Rectangle Cornered/Centered i Circle. Dwie metody
-  (`PocketMethodType`: Raster / Spiral), Raster tylko dla Rectangle.
+  konturu). Rectangle Cornered/Centered i Circle. Trzy metody
+  (`PocketMethodType`: Raster / Spiral / Adaptive), Raster tylko dla
+  Rectangle.
 
 Pełne uzasadnienie i historia każdej decyzji — łącznie z tym, jak
 appka doszła do dzisiejszego stanu, wersja po wersji — żyje wyłącznie w
@@ -200,9 +201,10 @@ decyzją projektową).
   `null` dla Surface — blok "pozostałego materiału" już jest tą
   wizualizacją).
 - **Pocket — kieszeniowanie, tylko roughing w v1:** rozstrzygnięcia sesji
-  `/grill-me` (2026-09-21). **Dwie metody** (`PocketMethodType`:
-  `'raster' | 'spiral'`, płaski rejestr `config/pocketMethodMeta.ts` jak
-  `SURFACE_METHOD_META`): **Raster** — tylko Rectangle
+  `/grill-me` (2026-09-21). **Trzy metody** (`PocketMethodType`:
+  `'raster' | 'spiral' | 'adaptive'`, płaski rejestr
+  `config/pocketMethodMeta.ts` jak `SURFACE_METHOD_META`; Adaptive —
+  osobny punkt niżej): **Raster** — tylko Rectangle
   (Cornered/Centered), dosłowne reużycie silnika rastra Surface'a
   (`computeRasterLines`/`zigzagWaypoints`), ale granica to prostokąt
   **zainsetowany** o promień narzędzia (`pocketRectRasterBounds()`,
@@ -211,8 +213,9 @@ decyzją projektową).
   geometryczny, nie margines najazdu). **Spiral** — Rectangle (oba
   warianty) i Circle; bramkowanie metody po kształcie identyczne z
   `OutlineMethod` (`pocketMethodAllowed()`/`pocketMethodListForShape()`)
-  — Circle dostaje wyłącznie Spiral, `Step1Positioning.tsx` resetuje
-  metodę na `'spiral'` automatycznie przy przejściu na Circle.
+  — Circle dostaje Spiral i Adaptive (nigdy Raster), `Step1Positioning.tsx`
+  resetuje metodę na `'spiral'` automatycznie przy przejściu na Circle
+  tylko wtedy, gdy wybrany był Raster.
 
   **Kierunek czyszczenia:** zawsze inside-out (środek → ściana), zawsze
   konwencjonalne frezowanie (CCW) — Pocket nie ma pojęcia offset mode
@@ -225,7 +228,15 @@ decyzją projektową).
   jego narożnikowy `helixCenterFor`/`helixDirectionFor` (brak stycznej
   do wyprowadzania — okrąg wyśrodkowany na kieszeni nie ma
   uprzywilejowanego kierunku wyjścia, bo pierwszy pierścień/linia
-  rastra i tak zaczyna własnym, niezależnym punktem odniesienia). Tryb
+  rastra i tak zaczyna własnym, niezależnym punktem odniesienia).
+  Helix Radius ≤ promień freza (i ≤ ściana kieszeni): spirala wycina
+  pierścień `r − R`…`r + R` wokół środka, więc większy promień zostawiłby
+  w środku niewycięty słupek, którego pierścienie Spiral/Adaptive (rosnące
+  od `r` na zewnątrz) już nie zbierają.
+  Pozycjonowanie XY przed zejściem (`pocketEntryPoint()`): środek
+  kieszeni dla Plunge, ale **punkt startowy spirali** `(centerX +
+  helixRadius, centerY)` dla Helix — pierwszy łuk G2/G3 musi zaczynać
+  się na własnym okręgu (inaczej GRBL error 33). Tryb
   Helix kończy się **płaskim przejazdem czyszczącym** na promieniu
   `helixRadius`, dokładnie na `toZ` (mirror `helix.ts`'s Hole(s) Helix
   "flat finishing pass") — spiralne rampowanie w dół zostawia śrubową,
@@ -375,6 +386,98 @@ decyzją projektową).
   jest dokładnie tym samym zjawiskiem co Outline Inside (pustka
   wewnątrz zachowanego materiału), nie ma własnego modelu bryły jak
   Surface.
+- **Pocket Adaptive — stałe zaangażowanie narzędzia, liczone
+  analitycznie** (sesja `/grill-me` `OP-5`, 2026-09-25). Bez symulacji
+  materiału (pełne adaptive w stylu Fusion/FreeCAD ma sens dopiero dla
+  dowolnych konturów, których appka nie ma) — cała geometria to wzory
+  zamknięte + bisekcja, `lib/pocketAdaptive.ts` (ścieżka) i
+  `lib/pocketAdaptiveMath.ts` (matematyka). Dla Circle i Rectangle.
+
+  **Parametr:** Optimal Load w **% średnicy** (źródło prawdy,
+  `optimalLoadPercent`, 1–30%, domyślnie 10%) ↔ **mm** — oba pola
+  edytowalne, wzajemnie przeliczane (`useNumberField(…, { syncWhenBlurred:
+  true })`), zmiana freza przelicza mm, % zostaje. Kąt zaangażowania
+  `θ* = arccos(1 − 2·%/100)` tylko do odczytu (to na nim pracuje
+  algorytm, z Hint Button wyjaśniającym pojęcie). Etykiety skrócone do
+  "Opt. Load [%]"/"Opt. Load [mm]" — trzy pola w jednym wierszu. Obok
+  podpowiedź **chip thinning** (`chipThinningFactor() = 1/sin θ*` +
+  sugerowany Feed XY, `chipThinnedFeed()`) z przyciskiem **Apply** —
+  wpisuje sugerowany Feed XY do Kroku 3 bez przełączania kroku i bez
+  zabierania fokusu; bez kliknięcia appka nigdy sama nie zmienia posuwu.
+  Apply zapamiętuje posuw bazowy (`pocket.chipThinningBaseFeed`), żeby
+  kolejna sugestia liczyła się od niego, a nie od już skompensowanej
+  wartości (inaczej mnożyłaby się przy każdym kliknięciu); zmiana Optimal
+  Load bazę zachowuje, ręczna edycja Feed XY w Kroku 3 ją kasuje (nowy
+  świadomy wybór). Gdy Feed XY mieści się w ±5%
+  (`CHIP_THINNING_TOLERANCE`) od `baza × mnożnik`, Krok 3 pokazuje przy
+  etykiecie Feedrate XY adnotację "(chip thinning applied)"
+  (`FieldRow`'s `annotation`), a Krok 2 zamiast Apply informuje, że posuw
+  jest już skompensowany.
+
+  **Wejście zawsze Helix** (`effectivePocketZTransitionMode()` zwraca
+  `'helix'` dla Adaptive; toggle Z-Transition wyszarzony z wyjaśnieniem,
+  zapisany `zTransitionMode` nietknięty — wzorzec Tabs→G1): pierścienie o
+  stałym zaangażowaniu nie mogą wyrosnąć z otworu o średnicy freza
+  (rekurencja daje z promienia 0 znowu 0). Skok spirali z nowego pola
+  **Ramp Angle** (`rampAngleDeg`, 0.5–30°, domyślnie 2°) — `2π·r·tan(kąt)`,
+  niezależnie od Stepdown. Helix Radius — istniejące pole (sufit = promień
+  freza, jak dla każdego Helixa w Pocket — patrz walidacja) +
+  nieblokująca podpowiedź, gdy < 25% D.
+
+  **Trzy fazy na każdym poziomie Z:**
+  - **A — okręgi** wokół środka od `helixRadius` do krótszego wymiaru
+    ściany (dla Circle — do ściany; to całe czyszczenie). Odstęp z
+    `nextConstantEngagementRadius()` (odwrócone prawo cosinusów, gęsto
+    przy środku, ku ścianie → `R(1 − cos θ)`), liczony dla `0.8·θ*`;
+    spiralny ramp między okręgami (G1, 2°/odcinek) dokładnie tak długi, żeby
+    jego odchylenie na zewnątrz dołożyło ≤ `0.2·θ*`. Pełny obrót po każdym
+    rampie (respektuje G2/G3 vs G1).
+  - **B — wydłużanie** (tylko prostokąt niekwadratowy): okrąg z fazy A
+    rozciągany wzdłuż dłuższej osi półłukami o promieniu = krótszy wymiar,
+    **każdy koniec osobno**. Krok: cięcie wzdłuż ściany startowej → półłuk →
+    przejazd łączący z powrotem w poprzek wyciętego koła.
+  - **C — narożniki**, **każdy osobno**, ćwierćłuki o malejącym promieniu
+    aż do ostrego narożnika ścieżki narzędzia (kieszeń identyczna jak z
+    Raster/Spiral), na końcu jeden prosty ruch w sam narożnik. Narożniki w
+    kolejności obrotu zgodnej z kierunkiem cięcia, żeby przejazd między
+    nimi zawsze biegł po już wyciętej ścianie. Kwadrat = A + C.
+
+  Kroki faz B i C dobiera `largestStepWithin()` (bisekcja) tak, żeby
+  **zaangażowanie wzdłuż całego łuku** (`maxArcEngagement()`: kąt z
+  prawa cosinusów względem poprzedniej granicy + odchylenie kierunku ruchu
+  od jej środka) nie przekroczyło `θ*` — sam wierzchołek łuku to za mało,
+  przy przesuniętych środkach maksimum leży na początku łuku. Kroki są
+  identyczne na każdym poziomie i dla wszystkich narożników — liczone raz
+  na ścieżkę. Model trzyma `θ*` z dokładnością do ~2–3° względem dokładnej
+  symulacji (siatka 0.002 mm, najgorszy narożnik); w trybie G1 łamana
+  łuków dodaje do ½ kąta odcinka.
+
+  **Kierunek:** toggle Climb/Conventional (`cutDirection`, domyślnie
+  Conventional = CCW jak reszta Pocket), jednolity we wszystkich fazach i
+  w helixie. **Przejazdy łączące** (powroty po łukach, między końcami i
+  narożnikami, do środka przed kolejnym poziomem) — zawsze G1 z polem
+  **Linking Feed** (`linkingFeed`, Krok 3 obok Feedrate XY, widoczne tylko
+  dla Pocket + Adaptive), nigdy G0 poniżej Safe Z. **Głębokość:** globalny
+  Stepdown + nieblokująca podpowiedź, gdy < 1×D (głębokie, lekkie
+  przejścia to główna korzyść Adaptive), z przyciskiem **Apply**
+  ustawiającym Stepdown na 1.5×D (`suggestedAdaptiveStepdown()`). **Bez retraktu między poziomami**
+  — kieszeń jest pusta na poprzedniej głębokości, więc powrót do startu
+  helixa na Linking Feed i helix tylko nowego Stepdown; retrakt na Safe Z
+  dopiero na końcu (`assembleProgram()`). **Ściany:** bez przejazdu
+  wykończeniowego — drobne ząbki między punktami styczności łuków zostają
+  (`BL-42`).
+
+  **Jedna lista ruchów** (`buildAdaptiveToolpath()` → `AdaptiveMove[]`:
+  linia/łuk × `'cut' | 'link'`) — konsumowana przez silnik
+  (`adaptiveMovesToGcode()`, `generatePocketAdaptive()` w `lib/pocket.ts`,
+  z pominięciem wspólnego `pocketToolpath()`) i oba podglądy
+  (`adaptiveMovePoints()`), więc nie ma ręcznego "mirrorowania" geometrii
+  jak w starszych metodach. Przejazdy łączące rysowane **kropkowaną linią
+  w kolorze `linking`** palety (2D i 3D). Testy (`pocketAdaptive.test.ts`):
+  granica zaangażowania odtworzona niezależnie z samych wyemitowanych
+  ruchów, pełne pokrycie kieszeni i brak wyjazdu za ścianę przez
+  symulację siatki (`pocketAdaptiveSim.ts`, tylko testy), spójność łuków
+  G2/G3 (`gcodeTestUtils.ts`).
 - **Ruch między otworami:** powrót na `Safe Z` przed `G0` do kolejnego
   punktu XY.
 - **Wrzeciono:** tylko `M3` (bez `M4`).
@@ -420,7 +523,12 @@ Artifact aktualizować tylko jeśli realny layout appki zmieni się na tyle,
   szerokości ma domyślną min-content podłogę, której flex-shrink nie
   może ominąć) — Grid X/Y, Offset X/Y, Hole Diameter+Total Depth,
   Circle Count/Diameter/Start Angle, Tabs Height/Width/Count, Surface
-  Method+Raster Direction, Surface Z-Transition Mode+Helix Radius (drugie
+  Method+Raster Direction, Pocket Method+Direction/Raster Direction (tu
+  Method ma szerokość własnych przycisków, `shrink-0`, a drugi toggle
+  zaczyna się po wyraźnym odstępie w tej samej linii — trzy przyciski metod
+  nie mieszczą się w połowie panelu; Direction jako "Conv."/"Climb", pełne
+  nazwy w tooltipie), Pocket
+  Optimal Load %/mm/Engagement (Adaptive), Surface Z-Transition Mode+Helix Radius (drugie
   pole puste, gdy tryb ≠ Helix — para zostaje w jednym wierszu, żeby
   uniknąć scrollowania). Pola o niepowiązanym znaczeniu zostają w
   kolumnie.
@@ -552,8 +660,10 @@ dwukolorowy (`--wordmark-only`/`--wordmark-paths`, + opcjonalny
 `text-fg`/`text-accent`.
 
 **Preview Color Palette** (`PaletteId`, `src/config/palettes.ts`)
-zmienia tylko kolory "akcentowe" — `toolpath`/`rapid`/`hole`/`grid` (2D
-i 3D) — nie rusza osi X/Y, origin, wektora offsetu ani **tła** podglądu
+zmienia tylko kolory "akcentowe" — `toolpath`/`rapid`/`hole`/`grid`/
+`linking` (2D i 3D; `linking` — przejazdy łączące Pocket Adaptive, odcień
+wyraźnie inny niż `toolpath` tej samej palety, nigdy bursztyn zarezerwowany
+dla wektora offsetu) — nie rusza osi X/Y, origin, wektora offsetu ani **tła** podglądu
 (`background`), bo to konwencja CNC/semantyczna i, dla tła, własność
 Theme, nie Palety. 4 palety: **Default** (natywny wygląd aktywnego
 Theme — jedyna, która różni się per Theme), **Ocean**, **Ember**,
@@ -561,7 +671,7 @@ Theme — jedyna, która różni się per Theme), **Ocean**, **Ember**,
 wybranego Theme). `getFixedColors(themeId, isDark)` (osie/origin/
 offset/tekst/**tło** — jeden zestaw per Theme, wspólny dla każdej
 Palety) i `getPaletteAccents(paletteId, isDark, themeId)`
-(grid/toolpath/rapid/hole — `Default` czyta `DEFAULT_ACCENTS[themeId]`,
+(grid/toolpath/rapid/hole/linking — `Default` czyta `DEFAULT_ACCENTS[themeId]`,
 pozostałe trzy z `ALTERNATE_PALETTES`, ignorując `themeId`) — jedyne
 źródło prawdy dla kolorów obu podglądów, konsumowane bezpośrednio jako
 JS hex/numeryczne wartości przez `drawToolpath.ts`/`buildScene.ts`
@@ -742,6 +852,9 @@ idzie wyłącznie przez **styl linii** (`ToolpathLineStyle` w
   pełnymi przejściami Standard Hole/Outline (i tabbowana faza Helixa/
   Rampu, gdy przechodzą na płaskie przejścia), tryb Plunge przejścia Z
   Surface, ostatni odcinek plunge'a reentry Unidirectional (BL-35).
+- **`linking`** — przejazdy łączące Pocket Adaptive (G1 przez już
+  wycięty obszar): kropkowane jak `dotted`, ale jako jedyny styl we
+  **własnym kolorze** — akcencie `linking` palety, nie `theme.toolpath`.
 
 Trzy różne style na tym, co koncepcyjnie jest "jedną ścieżką", wymagają
 **wielu osobnych obiektów `THREE.Line`** — `LineDashedMaterial` ma jeden
@@ -846,7 +959,11 @@ pole do `"0"` w locie, bo `Number('')` daje `0`). Commit dzieje się na
 **każdym** naciśnięciu klawisza, które parsuje się do skończonej liczby
 (`Number.isFinite`) — Preview zostaje live. `onBlur` resynchronizuje
 wyświetlany tekst z powrotem do `String(value)` (porządkuje puste
-pole/końcową kropkę), nie bramkuje aktualizacji Preview. Stosowane do
+pole/końcową kropkę), nie bramkuje aktualizacji Preview. Opcja
+`{ syncWhenBlurred: true }` — dla pary pól pokazujących tę samą wielkość w
+różnych jednostkach (Optimal Load % ↔ mm w Pocket Adaptive): tekst pola
+bez fokusu nadąża za wartością zmienianą przez drugie pole; domyślnie
+wyłączona, każde inne pole zmienia się wyłącznie samo. Stosowane do
 wszystkich 9 pól Kroku 2 i 5 pól Kroku 3. Pola X/Y/Z travel w Settings
 Modal używają osobnego wzorca (bufor tekstu + commit wyłącznie
 `onBlur`, bo to zapis do `localStorage`, nie live Preview) — ich
@@ -1130,7 +1247,7 @@ src/
                               (Rectangle Cornered/Centered),
                               `surfaceShapeLabel()`/`surfaceShapeSlug()`/
                               `surfaceShapeLines()`/`surfaceSummary()`.
-  config/pocketMethodMeta.ts — analogicznie dla Pocket (Raster/Spiral):
+  config/pocketMethodMeta.ts — analogicznie dla Pocket (Raster/Spiral/Adaptive):
                               `POCKET_METHOD_META`, płaski rejestr jak
                               `surfaceMethodMeta.ts`, plus
                               `pocketMethodAllowed()`/
@@ -1560,12 +1677,39 @@ src/
                                  FRACTION` — punkt bootstrapu dla wejścia
                                  Helix, patrz "Kluczowe decyzje projektowe"
                                  wyżej.
+    pocketAdaptiveMath.ts           — matematyka zaangażowania Adaptive:
+                                 `engagementAngleFor()` (% → θ),
+                                 `optimalLoadMm()`/`optimalLoadPercentFromMm()`,
+                                 `chipThinningFactor()`, `arcEngagement()`
+                                 (prawo cosinusów), `nextConstantEngagementRadius()`
+                                 (jego odwrotność), `maxArcEngagement()`
+                                 (wzdłuż całego łuku, z odchyleniem ruchu),
+                                 `largestStepWithin()` (bisekcja kroku).
+    pocketAdaptive.ts               — ścieżka Adaptive: `buildAdaptiveToolpath()`
+                                 (fazy A/B/C, patrz "Kluczowe decyzje
+                                 projektowe") → `AdaptiveMove[]`,
+                                 `adaptiveMovePoints()` (próbkowanie wspólne
+                                 dla G1 i obu podglądów),
+                                 `adaptiveMovesToGcode()`.
+    pocketAdaptiveSim.ts            — tylko testy: symulacja materiału na
+                                 siatce (pokrycie kieszeni, wyjazd za ścianę,
+                                 kontakt przejazdów łączących). Nie
+                                 importowany przez appkę.
+    gcodeTestUtils.ts               — tylko testy: `arcRadiusMismatches()` —
+                                 śledzi pozycję narzędzia przez program i
+                                 sprawdza, że każdy G2/G3 ma start i koniec w
+                                 tej samej odległości od środka (GRBL
+                                 error 33).
     pocketZTransition.ts            — `pocketZTransitionMoves()` — wersja
                                  Plunge/Helix wyśrodkowana na
                                  `pocketCenter()` (bez narożnikowej
                                  matematyki stycznej Surface'a), zawsze CCW.
                                  `buildLevelDescents()` reużyte wprost z
                                  `surfaceZTransition.ts`, bez kopii.
+                                 `pocketEntryPoint()` (środek dla Plunge,
+                                 start spirali dla Helix),
+                                 `effectivePocketZTransitionMode()`
+                                 (Adaptive → zawsze Helix).
     pocket.ts                       — `generatePocketRaster`/
                                  `generatePocketSpiral` — ten sam szkielet
                                  co `surface.ts` (jeden syntetyczny
@@ -1574,6 +1718,8 @@ src/
                                  (`buildLevelDescents()`). Spiral rozgałęzia
                                  się po `pocket.shape` (Circle/Rectangle) na
                                  osobne funkcje poziomu.
+                                 `generatePocketAdaptive` omija ten szkielet
+                                 (własna struktura poziomów, bez retraktu).
     validation.ts                — `isToolDiameterValid`, `isStepdownValid`,
                                  `isCircleHoleCountValid` (limit 100),
                                  `isTabHeightValid`/`isTabWidthValid`,
@@ -1585,11 +1731,20 @@ src/
                                  `isSurfaceHelixRadiusValid`,
                                  `isPocketToolDiameterValid`/
                                  `isPocketStepoverValid`/
-                                 `isPocketHelixRadiusValid` (sufit to
-                                 najmniejszy dostępny promień/połówka
-                                 wymiaru kieszeni, nie stepover jak
-                                 Surface) — blokują Generate i pokazują
-                                 inline error w Kroku 2/3.
+                                 `isPocketHelixRadiusValid` (sufit
+                                 `pocketMaxHelixRadius()` = mniejsze z:
+                                 najmniejszy promień/połówka wymiaru ściany
+                                 kieszeni, promień freza — szerszy helix
+                                 zostawia niewycięty słupek `r − R` w
+                                 środku; nie stepover jak Surface; dla
+                                 Adaptive zawsze sprawdzany),
+                                 `isPocketOptimalLoadValid`/
+                                 `isPocketRampAngleValid`/
+                                 `isPocketLinkingFeedValid` (tylko Adaptive)
+                                 — blokują Generate i pokazują inline error
+                                 w Kroku 2/3. `isPocketHelixRadiusSmall`/
+                                 `isAdaptiveStepdownShallow` — nieblokujące
+                                 podpowiedzi Adaptive.
                                  `outlineFootprint`/`outlineZSpan`,
                                  `surfaceFootprint`/`surfaceZSpan`,
                                  `pocketFootprint`/`pocketZSpan`,

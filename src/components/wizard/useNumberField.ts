@@ -22,8 +22,19 @@ export function roundToStepPrecision(n: number): number {
 // and only resyncs the display to the committed value on blur (clears a
 // leftover empty field, trims a trailing "."), never gating when Preview
 // updates.
-export function useNumberField(value: number, onCommit: (next: number) => void) {
+// `syncWhenBlurred`: for a field whose value can also change from outside
+// while it isn't being edited (two fields showing the same quantity in
+// different units, each derived from the other) — resyncs the display
+// whenever the committed value changes and this field doesn't have focus.
+// Off by default: every other field only ever changes through itself.
+export function useNumberField(value: number, onCommit: (next: number) => void, opts: { syncWhenBlurred?: boolean } = {}) {
   const [text, setText] = useState(() => String(value))
+  const [focused, setFocused] = useState(false)
+  const [lastValue, setLastValue] = useState(value)
+  if (opts.syncWhenBlurred && value !== lastValue) {
+    setLastValue(value)
+    if (!focused) setText(String(value))
+  }
 
   const onChange = (e: ChangeEvent<HTMLInputElement>) => {
     const next = e.target.value
@@ -32,7 +43,11 @@ export function useNumberField(value: number, onCommit: (next: number) => void) 
     if (Number.isFinite(parsed)) onCommit(parsed)
   }
 
-  const onBlur = () => setText(String(value))
+  const onFocus = () => setFocused(true)
+  const onBlur = () => {
+    setFocused(false)
+    setText(String(value))
+  }
 
   // Steps from the last *committed* value, not the possibly-empty/invalid
   // `text` currently on screen — used by NumberInput's custom up/down
@@ -49,5 +64,5 @@ export function useNumberField(value: number, onCommit: (next: number) => void) 
     onCommit(next)
   }
 
-  return { value: text, onChange, onBlur, onAdjust }
+  return { value: text, onChange, onFocus, onBlur, onAdjust }
 }

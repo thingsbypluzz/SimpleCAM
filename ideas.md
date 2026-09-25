@@ -13,12 +13,17 @@ projektową** (w przeciwieństwie do "Kluczowe decyzje projektowe" w
 zrozumienie, punkt wyjścia do realnej implementacji w przyszłości, kiedy
 padnie wyraźne "przechodzimy do X".
 
-Obecnie pusty. `OP-2` (Pocket) zaimplementowany — pełne rozstrzygnięcia
-sesji `/grill-me` (2026-09-21) żyją teraz w `CLAUDE.md`, historia
-implementacji w `CHANGELOG.md`, `[0.18.0]`. Z tej sesji wyłoniły się też
-trzy świadomie odłożone pozycje: `OP-5` (Adaptive Clearing), `BL-41`
-(konfigurowalny kąt rampy), `BL-42` (finishing wall pass /
-stock-to-leave) — patrz niżej.
+`OP-2` (Pocket) zaimplementowany — pełne rozstrzygnięcia sesji
+`/grill-me` (2026-09-21) żyją teraz w `CLAUDE.md`, historia
+implementacji w `CHANGELOG.md`, `[0.18.0]`/`[0.18.1]`. Z tej sesji
+wyłoniły się też trzy świadomie odłożone pozycje: `OP-5` (Adaptive
+Clearing), `BL-41` (konfigurowalny kąt rampy), `BL-42` (finishing wall
+pass / stock-to-leave) — patrz niżej.
+
+`OP-5` (Pocket Adaptive) zaimplementowany — rozstrzygnięcia sesji
+`/grill-me` (2026-09-25) żyją teraz w `CLAUDE.md`, historia
+implementacji (łącznie z korektą modelu zaangażowania po symulacji) w
+`CHANGELOG.md`, `[0.19.0]`.
 
 ## Backlog (`BL-#`)
 
@@ -208,6 +213,13 @@ faktycznym.
   tym promieniem przed granicą, potem jeden przejazd reużywający Outline
   Rectangle/Circle toolpath na granicy offsetu) dałby czystszą ścianę —
   większy zakres niż `BL-41`, dotyka kilku miejsc silnika na raz.
+- **`BL-43`** *(Otwarty)* 🟢 — **Rozmycie (blur) interfejsu pod Settings
+  Modal.** Przy otwartym Settings Modal cała warstwa appki pod nim
+  (Header, Wizard Section, Preview Section) rozmyta, żeby modal
+  wyraźniej odcinał się od tła. Najpewniej `backdrop-blur` na
+  istniejącym tle-nakładce modala w `SettingsModal.tsx`, spójnie we
+  wszystkich motywach; do sprawdzenia wydajność przy żywym 3D Preview
+  pod spodem.
 
 elementów UI, dziś aktywnie używany w `CLAUDE.md`:
 **<https://claude.ai/code/artifact/ea21c02e-41ed-4bb5-90ec-48ae9a61c23e>**.
@@ -221,10 +233,11 @@ Osobna, celowo **nie** `BL-#` kategoria — każda to nie drobna poprawka
 tylko kamień milowy wielkości całego etapu implementacji, z własną,
 dziś nieznaną taksonomią (operacja → pattern/sub-choice → parametry).
 Numer `OP-#` jest identyfikatorem, nie kolejnością realizacji. `OP-1`
-(Outline), `OP-2` (Pocket) i `OP-3` (Surface) zaimplementowane — patrz
-`CLAUDE.md`, "Kluczowe decyzje projektowe" (pełne rozstrzygnięcia sesji
-`/grill-me` dla Surface, 2026-09-12, i dla Pocket, 2026-09-21; historia
-implementacji w `CHANGELOG.md`, `[0.14.0]` i `[0.18.0]`).
+(Outline), `OP-2` (Pocket), `OP-3` (Surface) i `OP-5` (Pocket Adaptive)
+zaimplementowane — patrz `CLAUDE.md`, "Kluczowe decyzje projektowe"
+(pełne rozstrzygnięcia sesji `/grill-me` dla Surface, 2026-09-12, dla
+Pocket, 2026-09-21, i dla Adaptive, 2026-09-25; historia implementacji w
+`CHANGELOG.md`, `[0.14.0]`, `[0.18.0]` i `[0.19.0]`).
 
 - **`OP-4` — Text/Font Tracing.** Wybór czcionki i generowanie ścieżki
   narzędzia po napisie — albo tracing obrysu (konturu) każdej litery,
@@ -239,7 +252,10 @@ implementacji w `CHANGELOG.md`, `[0.14.0]` i `[0.18.0]`).
   (trochoidalne/adaptacyjne czyszczenie) — lepsza żywotność narzędzia
   przy twardszych materiałach niż dzisiejsze Raster/Spiral. Świadomie
   odłożone podczas sesji `/grill-me` `OP-2` (2026-09-21) jako zbyt duży
-  dodatkowy zakres na start Pocket v1.
+  dodatkowy zakres na start Pocket v1. **Zrealizowany** — własna sesja
+  `/grill-me` 2026-09-25, trzecia metoda Pocket (Circle + Rectangle,
+  stałe zaangażowanie liczone analitycznie). Pełny opis: `CHANGELOG.md`,
+  `[0.19.0]`.
 
 **Każda z `OP-#` wymaga własnej, pełnej sesji `/grill-me` przed
 napisaniem jakiegokolwiek kodu** — nieporównywalnie większy zakres

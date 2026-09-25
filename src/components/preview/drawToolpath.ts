@@ -13,6 +13,7 @@ import {
   pocketRectWallHalfDims,
   pocketStepoverMm,
 } from '../../lib/pocketGeometry'
+import { adaptiveMovePoints, buildAdaptiveToolpath, type AdaptiveToolpath } from '../../lib/pocketAdaptive'
 import {
   circleRingRampPoints,
   rampSweepDegFor,
@@ -38,6 +39,7 @@ interface Theme {
   holeStroke: string
   toolpath: string
   rapid: string
+  linking: string
   text: string
   offset: string
 }
@@ -61,6 +63,7 @@ function buildTheme(paletteId: PaletteId, isDark: boolean, themeId: ThemeId): Th
     holeStroke: accents.hole,
     toolpath: accents.toolpath,
     rapid: accents.rapid,
+    linking: accents.linking,
     text: fixed.text,
     offset: fixed.offset,
   }
@@ -258,12 +261,49 @@ type ResolvedPattern =
       // Nominal (un-inset) boundary — what's actually rendered as "stock",
       // same convention as Outline's nominalCorners/Surface's nominalBounds.
       nominal: { shape: 'circle'; radius: number } | { shape: 'rect'; halfWidth: number; halfHeight: number }
-      // Only one of these three is ever non-empty for a given
+      // Only one of these four is ever non-empty for a given
       // shape/method combination — see resolvePattern() below.
       circleRings: number[]
       rectRings: RectRingDims[]
       rasterLines: RasterLine[]
+      adaptive: AdaptiveToolpath | null
     }
+
+// Pocket Adaptive: the exact move list the engine emits (same
+// buildAdaptiveToolpath() + adaptiveMovePoints() sampling), cutting moves
+// solid in the toolpath color, linking moves dotted in the palette's
+// `linking` color. Consecutive moves of one kind share a single stroke.
+const LINK_DASH: [number, number] = [1.5, 3]
+
+function drawAdaptiveMoves(
+  ctx: CanvasRenderingContext2D,
+  toPx: (x: number, y: number) => [number, number],
+  toolpath: AdaptiveToolpath,
+  theme: Theme,
+) {
+  let current = toolpath.start
+  let i = 0
+  const moves = toolpath.moves
+  ctx.lineWidth = 1.5
+  while (i < moves.length) {
+    const kind = moves[i].kind
+    ctx.beginPath()
+    const [sx, sy] = toPx(current.x, current.y)
+    ctx.moveTo(sx, sy)
+    while (i < moves.length && moves[i].kind === kind) {
+      for (const p of adaptiveMovePoints(current, moves[i])) {
+        const [x, y] = toPx(p.x, p.y)
+        ctx.lineTo(x, y)
+      }
+      current = moves[i].to
+      i++
+    }
+    ctx.strokeStyle = kind === 'cut' ? theme.toolpath : theme.linking
+    ctx.setLineDash(kind === 'cut' ? [] : LINK_DASH)
+    ctx.stroke()
+  }
+  ctx.setLineDash([])
+}
 
 function resolvePattern(params: WizardParams): ResolvedPattern {
   if (params.operation === 'pocket') {
@@ -277,9 +317,12 @@ function resolvePattern(params: WizardParams): ResolvedPattern {
     let circleRings: number[] = []
     let rectRings: RectRingDims[] = []
     let rasterLines: RasterLine[] = []
+    let adaptive: AdaptiveToolpath | null = null
 
     const stepoverMm = pocketStepoverMm(pocket)
-    if (pocket.method === 'raster') {
+    if (pocket.method === 'adaptive') {
+      adaptive = buildAdaptiveToolpath(params)
+    } else if (pocket.method === 'raster') {
       rasterLines = computeRasterLines(pocketRectRasterBounds(pocket), pocket.rasterDirection, stepoverMm)
     } else if (isCircle) {
       const startRadius = pocket.zTransitionMode === 'helix' ? pocket.helixRadius : 0
@@ -289,7 +332,7 @@ function resolvePattern(params: WizardParams): ResolvedPattern {
       rectRings = pocketRectRingDims(halfWidth, halfHeight, stepoverMm)
     }
 
-    return { kind: 'pocket', params, center, shape: pocket.shape, method: pocket.method, nominal, circleRings, rectRings, rasterLines }
+    return { kind: 'pocket', params, center, shape: pocket.shape, method: pocket.method, nominal, circleRings, rectRings, rasterLines, adaptive }
   }
   if (params.operation === 'surface') {
     const { surface } = params
@@ -694,7 +737,7 @@ function drawPocketGeometry(
   showStock: boolean,
   showToolpath: boolean,
 ) {
-  const { center, nominal, circleRings, rectRings, rasterLines, params } = pattern
+  const { center, nominal, circleRings, rectRings, rasterLines, adaptive, params } = pattern
   const [cx, cy] = toPx(center.x, center.y)
 
   if (showStock) {
@@ -723,6 +766,10 @@ function drawPocketGeometry(
       ctx.fill()
       ctx.stroke()
     }
+  }
+
+  if (showToolpath && adaptive) {
+    drawAdaptiveMoves(ctx, toPx, adaptive, theme)
   }
 
   if (showToolpath) {

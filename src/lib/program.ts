@@ -102,7 +102,10 @@ export function assembleProgram(
   lines.push(...buildHeader(params, machine.dialect))
 
   for (const point of points) {
-    lines.push(...toolpathForPoint(point.x, point.y, params))
+    // Not `lines.push(...toolpath)`: spreading a very long program (Pocket
+    // Adaptive in G1 mode reaches hundreds of thousands of lines) into
+    // call arguments overflows the call stack.
+    for (const line of toolpathForPoint(point.x, point.y, params)) lines.push(line)
     lines.push(`G0 Z${fmt(feeds.safeZ)}`)
   }
 
