@@ -6,6 +6,8 @@ import { rectToolDimensions } from './outlineRectangleGeometry'
 import { circleOutlineRadiusAndDirection } from './outlineCircle'
 import { surfaceStepoverMm, surfaceToolBounds } from './surfaceGeometry'
 import { pocketCircleWallRadius, pocketRectWallHalfDims } from './pocketGeometry'
+import { effectivePocketZTransitionMode } from './pocketZTransition'
+import { MAX_OPTIMAL_LOAD_PERCENT, MIN_OPTIMAL_LOAD_PERCENT } from './pocketAdaptiveMath'
 
 export function isToolDiameterValid(geometry: GeometryParams): boolean {
   return geometry.toolDiameter <= geometry.holeDiameter
@@ -178,8 +180,47 @@ export function isPocketToolDiameterValid(pocket: PocketParams): boolean {
   return pocket.toolDiameter < Math.min(pocket.width, pocket.height)
 }
 
+// Adaptive derives its own pass spacing from Optimal Load — stepover isn't
+// used (or shown) there.
 export function isPocketStepoverValid(pocket: PocketParams): boolean {
+  if (pocket.method === 'adaptive') return true
   return pocket.stepoverPercent >= 1 && pocket.stepoverPercent <= 100
+}
+
+export function isPocketOptimalLoadValid(pocket: PocketParams): boolean {
+  if (pocket.method !== 'adaptive') return true
+  return pocket.optimalLoadPercent >= MIN_OPTIMAL_LOAD_PERCENT && pocket.optimalLoadPercent <= MAX_OPTIMAL_LOAD_PERCENT
+}
+
+export const MIN_RAMP_ANGLE_DEG = 0.5
+export const MAX_RAMP_ANGLE_DEG = 30
+
+export function isPocketRampAngleValid(pocket: PocketParams): boolean {
+  if (pocket.method !== 'adaptive') return true
+  return pocket.rampAngleDeg >= MIN_RAMP_ANGLE_DEG && pocket.rampAngleDeg <= MAX_RAMP_ANGLE_DEG
+}
+
+export function isPocketLinkingFeedValid(pocket: PocketParams): boolean {
+  if (pocket.method !== 'adaptive') return true
+  return pocket.linkingFeed > 0
+}
+
+// Non-blocking hints for Adaptive. A small helix bore means many helix
+// turns at a shallow ramp angle and very dense first rings; a stepdown
+// below one tool diameter leaves Adaptive's main benefit — deep, light
+// passes — unused.
+export function isPocketHelixRadiusSmall(pocket: PocketParams): boolean {
+  return pocket.method === 'adaptive' && pocket.helixRadius > 0 && pocket.helixRadius < pocket.toolDiameter * 0.25
+}
+
+// What the Step 3 hint's Apply button sets Stepdown to — mid-range of the
+// 1–2× diameter the hint recommends.
+export function suggestedAdaptiveStepdown(pocket: PocketParams): number {
+  return Math.round(pocket.toolDiameter * 1.5 * 100) / 100
+}
+
+export function isAdaptiveStepdownShallow(pocket: PocketParams, stepdown: number): boolean {
+  return pocket.method === 'adaptive' && stepdown > 0 && stepdown < pocket.toolDiameter
 }
 
 // The tool-center wall's nearest distance from the pocket's own center —
@@ -192,13 +233,20 @@ function pocketMinWallExtent(pocket: PocketParams): number {
 }
 
 // Only enforced in Helix mode — a Plunge transition has no radius to
-// bound. Ceiling is the pocket's own smallest wall extent (see
-// pocketMinWallExtent above), not stepover like Surface's
-// isSurfaceHelixRadiusValid — Pocket's helix is centered on the pocket
-// itself, so it must fit inside the wall, not inside one raster step.
+// bound. Two ceilings, the lower wins: the pocket's own smallest wall
+// extent (see pocketMinWallExtent above — Pocket's helix is centered on the
+// pocket itself, so it must fit inside the wall, not inside one raster step
+// like Surface's isSurfaceHelixRadiusValid), and the tool RADIUS: the helix
+// cuts an annulus from r − R to r + R around the center, so any r > R
+// leaves an uncut post of radius r − R standing in the middle — Spiral and
+// Adaptive only grow outward from r and never come back for it.
+export function pocketMaxHelixRadius(pocket: PocketParams): number {
+  return Math.min(pocketMinWallExtent(pocket), pocket.toolDiameter / 2)
+}
+
 export function isPocketHelixRadiusValid(pocket: PocketParams): boolean {
-  if (pocket.zTransitionMode !== 'helix') return true
-  return pocket.helixRadius > 0 && pocket.helixRadius <= pocketMinWallExtent(pocket)
+  if (effectivePocketZTransitionMode(pocket) !== 'helix') return true
+  return pocket.helixRadius > 0 && pocket.helixRadius <= pocketMaxHelixRadius(pocket)
 }
 
 // Pocket's counterpart to surfaceFootprint()/outlineFootprint() above —

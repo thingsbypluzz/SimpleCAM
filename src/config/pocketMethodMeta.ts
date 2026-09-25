@@ -1,6 +1,6 @@
 import type { ComponentType } from 'react'
-import { HelixIcon, ZigzagIcon } from '../components/icons'
-import { generatePocketRaster, generatePocketSpiral } from '../lib/pocket'
+import { AdaptiveIcon, HelixIcon, ZigzagIcon } from '../components/icons'
+import { generatePocketAdaptive, generatePocketRaster, generatePocketSpiral } from '../lib/pocket'
 import type { MachineSettings } from '../types/machine'
 import type { PocketMethodType, PocketShape, WizardParams } from '../types/wizard'
 
@@ -20,8 +20,8 @@ export interface PocketMethodMeta {
 // Flat registry, like SURFACE_METHOD_META — but unlike Surface, Pocket's
 // methods AREN'T both valid for every shape (see pocketMethodAllowed()
 // below): Raster reuses Surface's raster engine wholesale, which has no
-// circle-clipping math, so it's Rectangle-only. Spiral works for every
-// shape. See CLAUDE.md's Pocket design notes.
+// circle-clipping math, so it's Rectangle-only. Spiral and Adaptive work
+// for every shape. See CLAUDE.md's Pocket design notes.
 export const POCKET_METHOD_META: Record<PocketMethodType, PocketMethodMeta> = {
   raster: {
     value: 'raster',
@@ -42,15 +42,25 @@ export const POCKET_METHOD_META: Record<PocketMethodType, PocketMethodMeta> = {
     generate: generatePocketSpiral,
     stepdown: { fieldLabel: 'Stepdown [mm per level]', shortLabel: 'STEP' },
   },
+  adaptive: {
+    value: 'adaptive',
+    title: 'Adaptive',
+    shortLabel: 'Adaptive',
+    description:
+      'Constant tool engagement set by Optimal Load — gentle passes that allow much deeper stepdowns. Helix entry, stays down between levels.',
+    Icon: AdaptiveIcon,
+    generate: generatePocketAdaptive,
+    stepdown: { fieldLabel: 'Stepdown [mm per level]', shortLabel: 'STEP' },
+  },
 }
 
-export const POCKET_METHOD_LIST: PocketMethodMeta[] = [POCKET_METHOD_META.raster, POCKET_METHOD_META.spiral]
+export const POCKET_METHOD_LIST: PocketMethodMeta[] = [POCKET_METHOD_META.raster, POCKET_METHOD_META.spiral, POCKET_METHOD_META.adaptive]
 
 export function pocketMethodAllowed(shape: PocketShape, method: PocketMethodType): boolean {
-  return method === 'spiral' || shape !== 'circle'
+  return method !== 'raster' || shape !== 'circle'
 }
 
-// Methods available for the given shape — Circle only ever offers Spiral.
+// Methods available for the given shape — Circle offers Spiral and Adaptive, never Raster.
 export function pocketMethodListForShape(shape: PocketShape): PocketMethodMeta[] {
   return POCKET_METHOD_LIST.filter((m) => pocketMethodAllowed(shape, m.value))
 }

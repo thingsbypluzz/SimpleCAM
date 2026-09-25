@@ -5,6 +5,7 @@ import { assembleProgram, rapidToTop } from './program'
 import { buildLevelDescents } from './surfaceZTransition'
 import { computeRasterLines, zigzagWaypoints } from './surfaceRaster'
 import { pocketEntryPoint, pocketZTransitionMoves } from './pocketZTransition'
+import { adaptiveMovesToGcode, buildAdaptiveToolpath } from './pocketAdaptive'
 import {
   circleRingMoves,
   pocketCircleRingRadii,
@@ -147,4 +148,28 @@ export function generatePocketSpiral(params: WizardParams, machine: MachineSetti
 
 export function generatePocketRaster(params: WizardParams, machine: MachineSettings): string[] {
   return assembleProgram(params, machine, (cx, cy, p) => pocketToolpath(cx, cy, p, rasterRectLevel), [pocketStartPoint(params.pocket)])
+}
+
+// Adaptive has its own level structure (stays down between levels, helix
+// pitch from the ramp angle) inside buildAdaptiveToolpath(), so it bypasses
+// pocketToolpath(): position over the helix start, rapid to Start Z, then
+// the whole move list. assembleProgram() retracts to Safe Z afterwards.
+export function generatePocketAdaptive(params: WizardParams, machine: MachineSettings): string[] {
+  return assembleProgram(
+    params,
+    machine,
+    (_cx, _cy, p) => {
+      const toolpath = buildAdaptiveToolpath(p)
+      return [
+        `G0 X${fmt(toolpath.start.x)} Y${fmt(toolpath.start.y)}`,
+        rapidToTop(p.feeds.startZ),
+        ...adaptiveMovesToGcode(toolpath, {
+          cutFeed: p.feeds.feedrateXY,
+          linkFeed: p.pocket.linkingFeed,
+          interpolation: p.output.interpolation,
+        }),
+      ]
+    },
+    [pocketStartPoint(params.pocket)],
+  )
 }

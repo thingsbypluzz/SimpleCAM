@@ -150,6 +150,10 @@ export interface PaletteAccents {
   toolpath: string
   rapid: string
   hole: string
+  // Pocket Adaptive's linking moves (G1 through already-cleared area),
+  // drawn dotted — a hue clearly apart from `toolpath` in the same palette,
+  // never amber (reserved for the offset vector).
+  linking: string
 }
 
 export type PaletteId = 'default' | 'ocean' | 'ember' | 'violet'
@@ -182,12 +186,12 @@ export const PALETTE_LIST: PaletteMeta[] = [
 // FixedColors above, since it's a Theme property, not a Palette accent.
 const DEFAULT_ACCENTS: Record<ThemeId, { light: PaletteAccents; dark: PaletteAccents }> = {
   'sloppy-indigo': {
-    light: { grid: '#c0bfbc', toolpath: '#16a34a', rapid: '#cbd5e1', hole: '#94a3b8' },
-    dark: { grid: '#5e5c64', toolpath: '#4ade80', rapid: '#334155', hole: '#475569' },
+    light: { grid: '#c0bfbc', toolpath: '#16a34a', rapid: '#cbd5e1', hole: '#94a3b8', linking: '#6366f1' },
+    dark: { grid: '#5e5c64', toolpath: '#4ade80', rapid: '#334155', hole: '#475569', linking: '#a5b4fc' },
   },
   'shopfloor-amber': {
-    light: { grid: '#d6d1c7', toolpath: '#b45309', rapid: '#d6d1c7', hole: '#a8a29e' },
-    dark: { grid: '#3a3630', toolpath: '#fbbf24', rapid: '#3a3630', hole: '#57534e' },
+    light: { grid: '#d6d1c7', toolpath: '#b45309', rapid: '#d6d1c7', hole: '#a8a29e', linking: '#0f766e' },
+    dark: { grid: '#3a3630', toolpath: '#fbbf24', rapid: '#3a3630', hole: '#57534e', linking: '#2dd4bf' },
   },
   // Arcade Studio — dark-only (see FIXED_COLORS above), light===dark.
   // Restrained's toolpath is stepped down one notch (#00d5e3 vs full
@@ -213,12 +217,12 @@ const DEFAULT_ACCENTS: Record<ThemeId, { light: PaletteAccents; dark: PaletteAcc
   // two still shows up in toolpath/hole, just not in this now-neutral,
   // non-accent grid.
   'arcade-restrained': {
-    light: { grid: '#5e5c64', toolpath: '#00d5e3', rapid: '#1e2230', hole: '#7a3a5c' },
-    dark: { grid: '#5e5c64', toolpath: '#00d5e3', rapid: '#1e2230', hole: '#7a3a5c' },
+    light: { grid: '#5e5c64', toolpath: '#00d5e3', rapid: '#1e2230', hole: '#7a3a5c', linking: '#b69cff' },
+    dark: { grid: '#5e5c64', toolpath: '#00d5e3', rapid: '#1e2230', hole: '#7a3a5c', linking: '#b69cff' },
   },
   'arcade-full-neon': {
-    light: { grid: '#5e5c64', toolpath: '#00f0ff', rapid: '#1e2230', hole: '#ff007f' },
-    dark: { grid: '#5e5c64', toolpath: '#00f0ff', rapid: '#1e2230', hole: '#ff007f' },
+    light: { grid: '#5e5c64', toolpath: '#00f0ff', rapid: '#1e2230', hole: '#ff007f', linking: '#c77dff' },
+    dark: { grid: '#5e5c64', toolpath: '#00f0ff', rapid: '#1e2230', hole: '#ff007f', linking: '#c77dff' },
   },
 }
 
@@ -232,16 +236,16 @@ const DEFAULT_ACCENTS: Record<ThemeId, { light: PaletteAccents; dark: PaletteAcc
 // these was selected.
 const ALTERNATE_PALETTES: Record<Exclude<PaletteId, 'default'>, { light: PaletteAccents; dark: PaletteAccents }> = {
   ocean: {
-    light: { grid: '#c0bfbc', toolpath: '#0891b2', rapid: '#94a3b8', hole: '#64a0b8' },
-    dark: { grid: '#5e5c64', toolpath: '#22d3ee', rapid: '#3f4b5c', hole: '#3d5a6b' },
+    light: { grid: '#c0bfbc', toolpath: '#0891b2', rapid: '#94a3b8', hole: '#64a0b8', linking: '#6d28d9' },
+    dark: { grid: '#5e5c64', toolpath: '#22d3ee', rapid: '#3f4b5c', hole: '#3d5a6b', linking: '#c4b5fd' },
   },
   ember: {
-    light: { grid: '#c0bfbc', toolpath: '#c2410c', rapid: '#a8a29e', hole: '#8a7a6d' },
-    dark: { grid: '#5e5c64', toolpath: '#fb923c', rapid: '#44403c', hole: '#57453a' },
+    light: { grid: '#c0bfbc', toolpath: '#c2410c', rapid: '#a8a29e', hole: '#8a7a6d', linking: '#0e7490' },
+    dark: { grid: '#5e5c64', toolpath: '#fb923c', rapid: '#44403c', hole: '#57453a', linking: '#67e8f9' },
   },
   violet: {
-    light: { grid: '#c0bfbc', toolpath: '#7c3aed', rapid: '#a5a3b8', hole: '#8b7fae' },
-    dark: { grid: '#5e5c64', toolpath: '#a78bfa', rapid: '#3f3d56', hole: '#4c4166' },
+    light: { grid: '#c0bfbc', toolpath: '#7c3aed', rapid: '#a5a3b8', hole: '#8b7fae', linking: '#047857' },
+    dark: { grid: '#5e5c64', toolpath: '#a78bfa', rapid: '#3f3d56', hole: '#4c4166', linking: '#34d399' },
   },
 }
 

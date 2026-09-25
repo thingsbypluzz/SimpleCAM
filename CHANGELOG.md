@@ -7,6 +7,66 @@ zgodne z [SemVer](https://semver.org/). Ten plik pozostaje głównym, czytelnym
 thingsbypluzz/SimpleCAM), ale to infrastruktura pod izolację pracy
 (branch/worktree per zadanie), nie zamiennik tego changeloga.
 
+## [0.19.0] — 2026-09-26
+
+### Dodano
+
+- **OP-5: Pocket Adaptive — trzecia metoda kieszeniowania ze stałym
+  zaangażowaniem narzędzia.** Poprzedzona researchem (matematyka
+  zaangażowania, FreeCAD Adaptive, ograniczenia GRBL) i sesją
+  `/grill-me` (2026-09-25, ustalenia w `ideas.md`). Świadomie **bez
+  symulacji materiału** — dla dwóch kształtów appki (Circle, Rectangle)
+  cała geometria da się policzyć wzorami: okręgi o stałym zaangażowaniu
+  od otworu Helix (faza A), wydłużanie końców prostokąta półłukami, każdy
+  koniec osobno (B), obieranie każdego narożnika ćwierćłukami do ostrego
+  (C). Parametr Optimal Load w % średnicy ↔ mm (oba edytowalne), kąt
+  zaangażowania (z wyjaśnieniem w Hint Button) i mnożnik chip thinning z
+  przyciskiem Apply — wpisuje sugerowany Feed XY do Kroku 3, liczony od
+  zapamiętanego posuwu bazowego, żeby kolejne kliknięcia się nie mnożyły;
+  Krok 3 oznacza skompensowany posuw adnotacją (tolerancja ±5%);
+  wymuszone wejście Helix ze skokiem z nowego pola Ramp Angle (niezależnie
+  od Stepdown — przy głębokim przejściu dotychczasowy helix byłby
+  praktycznie wierceniem); toggle Climb/Conventional; osobny Linking Feed
+  dla przejazdów przez wycięty obszar (zawsze G1); bez retraktu między
+  poziomami Z; podpowiedź o głębszym Stepdown (1–2×D) z przyciskiem
+  Apply (ustawia 1.5×D). Przejazdy łączące
+  w podglądach kropkowane w nowym kolorze palety `linking`.
+
+  Weryfikacja wzorów (część wyprowadzona w researchu, bez publikowanego
+  źródła) przez symulację materiału w testach wykazała błąd pierwotnego
+  modelu: liczył zaangażowanie tylko w wierzchołku łuku, a przy
+  przesuniętych środkach kolejnych łuków maksimum leży na jego początku —
+  w ciasnych narożnikach mierzone było do ~60° przy celu 37°. Poprawione:
+  krok każdej fazy B/C dobierany bisekcją tak, żeby zaangażowanie wzdłuż
+  **całego** łuku (kąt z prawa cosinusów + odchylenie ruchu od środka
+  poprzedniej granicy) mieściło się w celu. Jednorazowa dokładna
+  symulacja (siatka 0.002 mm) najgorszego narożnika: 39.0° przy celu
+  36.9° (10% D) i 29.0° przy 25.8° (5% D). Testy: granica zaangażowania
+  odtworzona niezależnie z wyemitowanych ruchów, pełne pokrycie kieszeni
+  i brak wyjazdu za ścianę (symulacja siatki), spójność łuków G2/G3.
+  Nowe moduły: `lib/pocketAdaptive.ts`, `lib/pocketAdaptiveMath.ts`
+  (+ testowe `pocketAdaptiveSim.ts`, `gcodeTestUtils.ts`).
+
+### Naprawiono
+
+- **Pocket z wejściem Helix zostawiał niewycięty słupek w środku, gdy
+  Helix Radius był większy niż promień freza.** Spirala helixa wycina
+  pierścień od `r − R` do `r + R` wokół środka; przy `r > R` walec o
+  promieniu `r − R` zostawał nietknięty na całej głębokości (np. ⌀6,
+  r = 4 → słupek ⌀2 mm), bo pierścienie Spiral i Adaptive rosną od `r` na
+  zewnątrz. Dotyczyło Spiral (Circle, Rectangle) i Adaptive; Raster
+  przejeżdża całą powierzchnię, więc go ścinał. Zgłoszone przez
+  użytkownika przy przeglądzie Adaptive, potwierdzone symulacją
+  materiału. Walidacja Helix Radius ma teraz dwa sufity (niższy wygrywa):
+  ścianę kieszeni i promień freza (`pocketMaxHelixRadius()`); komunikat
+  błędu podaje wyliczoną wartość graniczną.
+- **Przepełnienie stosu przy bardzo długim programie.**
+  `assembleProgram()` dokładał ścieżkę przez `lines.push(...tablica)`;
+  przy setkach tysięcy linii (duża kieszeń Adaptive w trybie G1, np.
+  300×200 mm frezem ⌀3.175 przy 5% — ~500 tys. linii) przekraczało to
+  limit argumentów wywołania. Zamienione na zwykłą pętlę. Wychwycone
+  testem wydajności przed udostępnieniem Adaptive.
+
 ## [0.18.2] — 2026-09-25
 
 ### Naprawiono

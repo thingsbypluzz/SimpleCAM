@@ -68,6 +68,9 @@ import {
   isOutlineTabWidthValid,
   isOutlineToolDiameterValid,
   isPocketHelixRadiusValid,
+  isPocketLinkingFeedValid,
+  isPocketOptimalLoadValid,
+  isPocketRampAngleValid,
   isPocketStepoverValid,
   isPocketToolDiameterValid,
   isStartZValid,
@@ -310,7 +313,10 @@ function App() {
             isStepdownValid(params.feeds) &&
             isStartZValid(params.feeds) &&
             isPocketStepoverValid(params.pocket) &&
-            isPocketHelixRadiusValid(params.pocket)
+            isPocketHelixRadiusValid(params.pocket) &&
+            isPocketOptimalLoadValid(params.pocket) &&
+            isPocketRampAngleValid(params.pocket) &&
+            isPocketLinkingFeedValid(params.pocket)
           : isToolDiameterValid(params.geometry) &&
             isStepdownValid(params.feeds) &&
             isStartZValid(params.feeds) &&
