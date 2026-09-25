@@ -4,6 +4,7 @@ import type { ToolDiameterOption } from '../../types/toolDiameters'
 import { Step2GeometryHoles } from './Step2GeometryHoles'
 import { Step2GeometryOutline } from './Step2GeometryOutline'
 import { Step2GeometrySurface } from './Step2GeometrySurface'
+import { Step2GeometryPocket } from './Step2GeometryPocket'
 
 interface Step2GeometryProps {
   params: WizardParams
@@ -21,5 +22,6 @@ interface Step2GeometryProps {
 export function Step2Geometry(props: Step2GeometryProps) {
   if (props.params.operation === 'outline') return <Step2GeometryOutline {...props} />
   if (props.params.operation === 'surface') return <Step2GeometrySurface {...props} />
+  if (props.params.operation === 'pocket') return <Step2GeometryPocket {...props} />
   return <Step2GeometryHoles {...props} />
 }

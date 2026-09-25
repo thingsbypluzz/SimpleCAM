@@ -1,6 +1,7 @@
 import { patternSlug } from '../config/positioningMeta'
 import { outlineShapeSlug } from '../config/outlineMeta'
 import { surfaceShapeSlug } from '../config/surfaceMeta'
+import { pocketShapeSlug } from '../config/pocketMeta'
 import type { WizardParams } from '../types/wizard'
 
 export function buildFilename(params: WizardParams): string {
@@ -10,7 +11,9 @@ export function buildFilename(params: WizardParams): string {
       ? outlineShapeSlug(params.outline)
       : params.operation === 'surface'
         ? surfaceShapeSlug(params.surface)
-        : patternSlug(params.geometry)
+        : params.operation === 'pocket'
+          ? pocketShapeSlug(params.pocket)
+          : patternSlug(params.geometry)
   return `op-${slug}-${date}.gcode`
 }
 

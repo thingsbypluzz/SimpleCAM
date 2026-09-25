@@ -13,7 +13,12 @@ projektową** (w przeciwieństwie do "Kluczowe decyzje projektowe" w
 zrozumienie, punkt wyjścia do realnej implementacji w przyszłości, kiedy
 padnie wyraźne "przechodzimy do X".
 
-Obecnie pusty.
+Obecnie pusty. `OP-2` (Pocket) zaimplementowany — pełne rozstrzygnięcia
+sesji `/grill-me` (2026-09-21) żyją teraz w `CLAUDE.md`, historia
+implementacji w `CHANGELOG.md`, `[0.18.0]`. Z tej sesji wyłoniły się też
+trzy świadomie odłożone pozycje: `OP-5` (Adaptive Clearing), `BL-41`
+(konfigurowalny kąt rampy), `BL-42` (finishing wall pass /
+stock-to-leave) — patrz niżej.
 
 ## Backlog (`BL-#`)
 
@@ -187,6 +192,22 @@ faktycznym.
   Settings (dialekt/travel/G-code/mostki) i wszystkie sloty presetów
   łącznie z ukrytym `"0"`. Osobna pozycja Settings Nav "Reset" (między
   "Privacy" a "About"). Pełny opis: `CHANGELOG.md`, `[0.17.2]`.
+- **`BL-41`** *(Otwarty)* 🟢 — **Konfigurowalna długość rampy dla Pocket
+  Spiral.** Z sesji `/grill-me` `OP-2`, zrewidowane sesją weryfikacji
+  wizualnej (2026-09-21): kąt rampy między pierścieniami Circle nie jest
+  już stały — wyliczany per pierścień (`rampSweepDegFor()`) tak, żeby
+  długość łuku rampy była proporcjonalna do `RAMP_LENGTH_FACTOR = 3`
+  (stała, niekonfigurowalna) razy promieniowa zmiana tej transycji.
+  Mogłaby stać się polem liczbowym (jak Helix Radius) do dostrajania per
+  materiał/narzędzie — mechanizm już istnieje, to tylko odsłonięcie
+  `RAMP_LENGTH_FACTOR` jako parametru + walidacja zakresu.
+- **`BL-42`** *(Otwarty)* 🟠 — **Finishing wall pass / stock-to-leave dla
+  Pocket.** Z sesji `/grill-me` `OP-2`: v1 to roughing-only (zewnętrzny
+  pierścień/linia raster JEST ścianą). Osobny, dokładny przejazd
+  wykończeniowy (nowy parametr `stockToLeave`, roughing zatrzymuje się
+  tym promieniem przed granicą, potem jeden przejazd reużywający Outline
+  Rectangle/Circle toolpath na granicy offsetu) dałby czystszą ścianę —
+  większy zakres niż `BL-41`, dotyka kilku miejsc silnika na raz.
 
 elementów UI, dziś aktywnie używany w `CLAUDE.md`:
 **<https://claude.ai/code/artifact/ea21c02e-41ed-4bb5-90ec-48ae9a61c23e>**.
@@ -196,19 +217,15 @@ mockup przestanie być wierny.
 
 ## Przyszłe operacje (`OP-#`)
 
-Osobna, celowo **nie** `BL-#` kategoria — Pocket (patrz placeholder w
-`Step1Positioning.tsx`) to nie drobna poprawka tylko kamień milowy
-wielkości całego etapu implementacji, z własną, dziś nieznaną
-taksonomią (operacja → pattern/sub-choice → parametry). Numer `OP-#`
-jest identyfikatorem, nie kolejnością realizacji. `OP-1` (Outline) i
-`OP-3` (Surface) zaimplementowane — patrz `CLAUDE.md`, "Kluczowe
-decyzje projektowe" (pełne rozstrzygnięcia sesji `/grill-me` dla
-Surface, 2026-09-12, i historia implementacji w `CHANGELOG.md`,
-`[0.14.0]`).
+Osobna, celowo **nie** `BL-#` kategoria — każda to nie drobna poprawka
+tylko kamień milowy wielkości całego etapu implementacji, z własną,
+dziś nieznaną taksonomią (operacja → pattern/sub-choice → parametry).
+Numer `OP-#` jest identyfikatorem, nie kolejnością realizacji. `OP-1`
+(Outline), `OP-2` (Pocket) i `OP-3` (Surface) zaimplementowane — patrz
+`CLAUDE.md`, "Kluczowe decyzje projektowe" (pełne rozstrzygnięcia sesji
+`/grill-me` dla Surface, 2026-09-12, i dla Pocket, 2026-09-21; historia
+implementacji w `CHANGELOG.md`, `[0.14.0]` i `[0.18.0]`).
 
-- **`OP-2` — Pocket.** Kieszeniowanie — wybieranie materiału wewnątrz
-  zamkniętego konturu (nie tylko po samej linii), wymaga strategii
-  wypełnienia (np. zigzag/spiral) nieobecnej dziś w silniku w ogóle.
 - **`OP-4` — Text/Font Tracing.** Wybór czcionki i generowanie ścieżki
   narzędzia po napisie — albo tracing obrysu (konturu) każdej litery,
   albo, dla specjalnych czcionek jednoliniowych, tracing wprost po
@@ -217,6 +234,12 @@ Surface, 2026-09-12, i historia implementacji w `CHANGELOG.md`,
   glifów czcionki (najpewniej z plików fontowych, np. przez jakąś
   bibliotekę do path-data) — geometria wejściowa nieporównywalna z
   dzisiejszymi kształtami parametrycznymi (Rectangle/Circle).
+- **`OP-5` — Adaptive Clearing dla Pocket.** Alternatywna strategia
+  roughingu z utrzymaniem stałego zaangażowania narzędzia
+  (trochoidalne/adaptacyjne czyszczenie) — lepsza żywotność narzędzia
+  przy twardszych materiałach niż dzisiejsze Raster/Spiral. Świadomie
+  odłożone podczas sesji `/grill-me` `OP-2` (2026-09-21) jako zbyt duży
+  dodatkowy zakres na start Pocket v1.
 
 **Każda z `OP-#` wymaga własnej, pełnej sesji `/grill-me` przed
 napisaniem jakiegokolwiek kodu** — nieporównywalnie większy zakres

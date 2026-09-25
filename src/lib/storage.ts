@@ -13,7 +13,7 @@ import { DEFAULT_WIZARD_PARAMS, type MethodType, type OperationType, type Wizard
 // the same way appearanceStorage.ts already guards PaletteId/ThemeId closes
 // the whole class of bug, not just this one instance.
 function isOperationType(value: unknown): value is OperationType {
-  return value === 'holes' || value === 'outline' || value === 'surface'
+  return value === 'holes' || value === 'outline' || value === 'surface' || value === 'pocket'
 }
 
 function isMethodType(value: unknown): value is MethodType {
@@ -73,6 +73,7 @@ function mergeWithDefaults(saved: Partial<WizardParams> | undefined): WizardPara
     geometry: { ...DEFAULT_WIZARD_PARAMS.geometry, ...saved?.geometry },
     outline: { ...DEFAULT_WIZARD_PARAMS.outline, ...saved?.outline },
     surface: { ...DEFAULT_WIZARD_PARAMS.surface, ...saved?.surface },
+    pocket: { ...DEFAULT_WIZARD_PARAMS.pocket, ...saved?.pocket },
     feeds: { ...DEFAULT_WIZARD_PARAMS.feeds, ...saved?.feeds },
     output: { ...DEFAULT_WIZARD_PARAMS.output, ...saved?.output },
   }

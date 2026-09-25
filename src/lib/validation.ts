@@ -1,10 +1,11 @@
 import type { MachineSettings } from '../types/machine'
-import type { FeedsParams, GeometryParams, OutlineParams, SurfaceParams, WizardParams } from '../types/wizard'
+import type { FeedsParams, GeometryParams, OutlineParams, PocketParams, SurfaceParams, WizardParams } from '../types/wizard'
 import type { ToolDiameterOption } from '../types/toolDiameters'
 import { resolvePoints } from './positioning'
 import { rectToolDimensions } from './outlineRectangleGeometry'
 import { circleOutlineRadiusAndDirection } from './outlineCircle'
 import { surfaceStepoverMm, surfaceToolBounds } from './surfaceGeometry'
+import { pocketCircleWallRadius, pocketRectWallHalfDims } from './pocketGeometry'
 
 export function isToolDiameterValid(geometry: GeometryParams): boolean {
   return geometry.toolDiameter <= geometry.holeDiameter
@@ -166,6 +167,57 @@ export function surfaceZSpan(surface: SurfaceParams, feeds: FeedsParams): number
   return feeds.safeZ + surface.totalDepth
 }
 
+// Pocket validators — same "vacuously valid when not applicable"
+// convention as Surface's above. Unlike Surface, Pocket DOES have a "tool
+// must physically fit inside the shape" constraint (it always cuts
+// inside a closed boundary, never overtravels outward) — same formula as
+// isOutlineToolDiameterValid's 'inside' branch, since Pocket is inherently
+// always an inside cut.
+export function isPocketToolDiameterValid(pocket: PocketParams): boolean {
+  if (pocket.shape === 'circle') return pocket.toolDiameter < pocket.diameter
+  return pocket.toolDiameter < Math.min(pocket.width, pocket.height)
+}
+
+export function isPocketStepoverValid(pocket: PocketParams): boolean {
+  return pocket.stepoverPercent >= 1 && pocket.stepoverPercent <= 100
+}
+
+// The tool-center wall's nearest distance from the pocket's own center —
+// the hard ceiling for a centered Helix entry (it must land inside the
+// first ring, not past the wall).
+function pocketMinWallExtent(pocket: PocketParams): number {
+  if (pocket.shape === 'circle') return pocketCircleWallRadius(pocket)
+  const { halfWidth, halfHeight } = pocketRectWallHalfDims(pocket)
+  return Math.min(halfWidth, halfHeight)
+}
+
+// Only enforced in Helix mode — a Plunge transition has no radius to
+// bound. Ceiling is the pocket's own smallest wall extent (see
+// pocketMinWallExtent above), not stepover like Surface's
+// isSurfaceHelixRadiusValid — Pocket's helix is centered on the pocket
+// itself, so it must fit inside the wall, not inside one raster step.
+export function isPocketHelixRadiusValid(pocket: PocketParams): boolean {
+  if (pocket.zTransitionMode !== 'helix') return true
+  return pocket.helixRadius > 0 && pocket.helixRadius <= pocketMinWallExtent(pocket)
+}
+
+// Pocket's counterpart to surfaceFootprint()/outlineFootprint() above —
+// the tool-center wall (inset, not overtravel-expanded like Surface) is
+// exactly the area machineFitWarnings() needs to check against machine
+// travel.
+export function pocketFootprint(pocket: PocketParams): { x: number; y: number } {
+  if (pocket.shape === 'circle') {
+    const diameter = 2 * Math.max(0, pocketCircleWallRadius(pocket))
+    return { x: diameter, y: diameter }
+  }
+  const { halfWidth, halfHeight } = pocketRectWallHalfDims(pocket)
+  return { x: 2 * Math.max(0, halfWidth), y: 2 * Math.max(0, halfHeight) }
+}
+
+export function pocketZSpan(pocket: PocketParams, feeds: FeedsParams): number {
+  return feeds.safeZ + pocket.totalDepth
+}
+
 // X/Y extent of the resolved pattern, hole footprint included (radius, not
 // just center points) — the same bounding-box math buildScene.ts uses for
 // 3D Preview framing, computed fresh in CNC space rather than reusing its
@@ -201,7 +253,9 @@ export function machineFitWarnings(params: WizardParams, machine: MachineSetting
       ? outlineFootprint(params.outline)
       : params.operation === 'surface'
         ? surfaceFootprint(params.surface)
-        : patternSpan(params.geometry)
+        : params.operation === 'pocket'
+          ? pocketFootprint(params.pocket)
+          : patternSpan(params.geometry)
   const warnings: string[] = []
   if (span.x > machine.travelX) {
     warnings.push(
@@ -218,7 +272,9 @@ export function machineFitWarnings(params: WizardParams, machine: MachineSetting
       ? outlineZSpan(params.outline, params.feeds)
       : params.operation === 'surface'
         ? surfaceZSpan(params.surface, params.feeds)
-        : zSpan(params.geometry, params.feeds)
+        : params.operation === 'pocket'
+          ? pocketZSpan(params.pocket, params.feeds)
+          : zSpan(params.geometry, params.feeds)
   if (totalZ > machine.travelZ) {
     warnings.push(
       `Z span ${totalZ.toFixed(1)}mm exceeds the machine's Z travel (${machine.travelZ}mm).`,
