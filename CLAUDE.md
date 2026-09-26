@@ -623,7 +623,10 @@ bez skoku layoutu).
 funkcja w tym mechanizmie — iteruje po `PRESET_SLOT_IDS` (stabilna
 kolejność `[1]…[5]`), zmemoizowana w `App.tsx` (bez tego trafia jako
 nowa referencja do efektu przebudowującego scenę 3D przy każdym
-renderze).
+renderze). Bez zaznaczonych slotów zwraca zawsze tę samą zamrożoną pustą
+tablicę — oba podglądy traktują nową referencję `overlayParams` jako
+zmianę selekcji overlaya (re-frame kamery), a live-save w Edit Mode
+podmienia `presetSlots` przy każdej edycji.
 
 ### Motywy (Theme) i Palety kolorów podglądu 2D/3D
 
@@ -980,11 +983,18 @@ pole/końcową kropkę), nie bramkuje aktualizacji Preview. Opcja
 różnych jednostkach (Optimal Load % ↔ mm w Pocket Adaptive): tekst pola
 bez fokusu nadąża za wartością zmienianą przez drugie pole; domyślnie
 wyłączona, każde inne pole zmienia się wyłącznie samo. Stosowane do
-wszystkich 9 pól Kroku 2 i 5 pól Kroku 3. Pola X/Y/Z travel w Settings
-Modal używają osobnego wzorca (bufor tekstu + commit wyłącznie
+wszystkich pól liczbowych Kroków 2 i 3. Ponieważ tekst pola nie śledzi
+wartości z zewnątrz, wczytanie presetu (`handleLoadPreset`/
+`handlePresetSlotClick`) podbija licznik `paramsLoadGeneration` w
+`App.tsx`, używany jako `key` komponentów Kroku 2 i 3 — otwarty krok
+przemontowuje się i pokazuje wartości nowego presetu. Pola liczbowe w
+Settings Modal używają osobnego wzorca (bufor tekstu + commit wyłącznie
 `onBlur`, bo to zapis do `localStorage`, nie live Preview) — ich
 `onChange` zapisuje surowy string wprost, bez przechodzenia przez
-`Number()` przed wyświetleniem.
+`Number()` przed wyświetleniem. Bufory (także Start/End G-Code) są
+ponownie inicjowane z `machine`, gdy obiekt zostanie podmieniony z
+zewnątrz (np. "Reset All Settings" przy otwartym modalu) — wzorzec
+"adjust state while rendering", nie efekt.
 
 Wszystkie te pola renderują się przez `NumberInput`
 (`src/components/wizard/NumberInput.tsx`), nie goły `<input
@@ -1084,10 +1094,19 @@ ten mechanizm zostaje niezależny od Preset Bar). Etykieta slotu to
 auto-opis z parametrów (`presetLabel()`, `src/lib/presetLabel.ts`, np.
 `"5-Holes Circle • Helix • ⌀8mm"` dla Hole(s), `"Rectangle 50×30
 (Inside) • Ramp"` dla Outline — pattern/kształt jako główna tożsamość,
-method drugorzędny). Migracja schematu: płytki merge per-sekcja z
-`DEFAULT_WIZARD_PARAMS` przy wczytaniu. Błędy (private mode, quota
-exceeded, uszkodzony JSON) — cichy fallback do wartości domyślnych +
-`console.warn`, appka nigdy się nie wywala. Świadomie poza zakresem:
+method drugorzędny). Migracja schematu: merge per-sekcja i per-pole z
+`DEFAULT_WIZARD_PARAMS` przy wczytaniu (`mergeSection()` w
+`lib/storage.ts`) — każde pole musi mieć typ wartości domyślnej, a pola
+enumowe znaną wartość, inaczej dostaje domyślną; nieznane klucze są
+odrzucane; zapisane Circle + Raster w Pocket przechodzi na Spiral.
+`machineStorage.ts` sprawdza pola maszyny tak samo. Błędy (private mode,
+quota exceeded, uszkodzony JSON) — cichy fallback do wartości domyślnych +
+`console.warn`. Ostatnia linia obrony to `ErrorBoundary`
+(`components/ErrorBoundary.tsx`, owija `<App />` w `main.tsx`) — zamiast
+białego ekranu komunikat z przyciskami "Reload" i "Reset saved state"
+(usuwa wszystkie klucze `simplecam.*` i przeładowuje), bo auto-save slot
+`"0"` wczytuje się przy każdym starcie i błąd wywołany zapisanymi danymi
+powtarzałby się w nieskończoność. Świadomie poza zakresem:
 nazywanie presetów przez usera (tylko auto-opis), "Reset to defaults",
 grupowanie kilku operacji pod jednym presetem (sprzeczne z "jedno
 narzędzie na wygenerowany plik").
@@ -1282,6 +1301,10 @@ src/
                               (Rectangle Cornered/Centered/Circle),
                               `pocketShapeLabel()`/`pocketShapeSlug()`/
                               `pocketShapeLines()`/`pocketSummary()`.
+  components/ErrorBoundary.tsx — klasowy error boundary owijający
+                              `<App />` (`main.tsx`): zamiast białego ekranu
+                              komunikat z "Reload" i "Reset saved state"
+                              (usuwa klucze `simplecam.*`).
   components/SettingsModal.tsx — Settings Modal. Siedem Settings Nav
                               Items, w tej kolejności: **Machine** (X/Y/Z
                               travel, dialekt, Start/End G-Code),
@@ -1809,9 +1832,10 @@ src/
                                  `saveSlot`/`loadSlot`/`deleteSlot`/
                                  `loadPresetSlots`, klucz
                                  `simplecam.storage`, sloty `"0"`–`"5"`,
-                                 merge z `DEFAULT_WIZARD_PARAMS` przy
-                                 wczytaniu, try/catch + `console.warn` na
-                                 każdym I/O.
+                                 merge per-pole z `DEFAULT_WIZARD_PARAMS`
+                                 przy wczytaniu (straże typów i enumów,
+                                 `mergeSection()`), try/catch +
+                                 `console.warn` na każdym I/O.
     presetLabel.ts                — `presetLabel(params)` → auto-opis
                                  zapisanego slotu z parametrów (pattern/
                                  kształt jako główna tożsamość, method
@@ -1819,7 +1843,8 @@ src/
     machineStorage.ts             — `loadMachineSettings`/
                                  `saveMachineSettings`, klucz
                                  `simplecam.machine`, bez systemu slotów
-                                 (jeden płaski obiekt).
+                                 (jeden płaski obiekt), każde pole
+                                 sprawdzane przy wczytaniu.
     appearanceStorage.ts          — `loadAppearanceSettings`/
                                  `saveAppearanceSettings`, klucz
                                  `simplecam.appearance`, walidacja

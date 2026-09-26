@@ -1,4 +1,5 @@
 import { DEFAULT_MACHINE_SETTINGS, type Dialect, type MachineSettings } from '../types/machine'
+import { isValidTabCount } from './validation'
 
 // Separate localStorage key from simplecam.storage (the WizardParams preset
 // slots) — machine settings are a single global object describing the
@@ -13,29 +14,45 @@ function isDialect(value: unknown): value is Dialect {
   return typeof value === 'string' && (VALID_DIALECTS as string[]).includes(value)
 }
 
-function isFiniteAtLeast(value: unknown, min: number, inclusive: boolean): value is number {
-  return typeof value === 'number' && Number.isFinite(value) && (inclusive ? value >= min : value > min)
+function isPositive(value: unknown): value is number {
+  return typeof value === 'number' && Number.isFinite(value) && value > 0
 }
 
 export function loadMachineSettings(): MachineSettings {
   try {
     const raw = localStorage.getItem(MACHINE_STORAGE_KEY)
     if (!raw) return DEFAULT_MACHINE_SETTINGS
-    const parsed = JSON.parse(raw) as Partial<MachineSettings>
-    // A dialect from an older/corrupted save that no longer matches a known
-    // value falls back to the default rather than reaching an unhandled
-    // branch deeper in the engine (lib/program.ts).
+    const parsed = JSON.parse(raw) as Partial<Record<keyof MachineSettings, unknown>> | null
+    if (typeof parsed !== 'object' || parsed === null) return DEFAULT_MACHINE_SETTINGS
+    const d = DEFAULT_MACHINE_SETTINGS
+    // Per field (BL-57): a value of the wrong type or out of range falls
+    // back to its default instead of reaching the engine — e.g. a
+    // non-string headerText made assembleProgram()'s .trim() throw. A
+    // dialect from an older/corrupted save falls back the same way rather
+    // than reaching an unhandled branch in lib/program.ts. Numeric rules
+    // match SettingsModal's commitField (all > 0, dwell may be 0).
+    const positive = (key: 'travelX' | 'travelY' | 'travelZ' | 'defaultTabHeight' | 'defaultTabWidth' | 'spindleSpeed') =>
+      isPositive(parsed[key]) ? parsed[key] : d[key]
+    const text = (key: 'headerText' | 'footerText') =>
+      typeof parsed[key] === 'string' ? parsed[key] : d[key]
     return {
-      ...DEFAULT_MACHINE_SETTINGS,
-      ...parsed,
-      dialect: isDialect(parsed.dialect) ? parsed.dialect : DEFAULT_MACHINE_SETTINGS.dialect,
-      // Same acceptance rule as SettingsModal's commitField.
-      spindleSpeed: isFiniteAtLeast(parsed.spindleSpeed, 0, false)
-        ? parsed.spindleSpeed
-        : DEFAULT_MACHINE_SETTINGS.spindleSpeed,
-      dwellSeconds: isFiniteAtLeast(parsed.dwellSeconds, 0, true)
-        ? parsed.dwellSeconds
-        : DEFAULT_MACHINE_SETTINGS.dwellSeconds,
+      travelX: positive('travelX'),
+      travelY: positive('travelY'),
+      travelZ: positive('travelZ'),
+      dialect: isDialect(parsed.dialect) ? parsed.dialect : d.dialect,
+      headerText: text('headerText'),
+      footerText: text('footerText'),
+      defaultTabHeight: positive('defaultTabHeight'),
+      defaultTabWidth: positive('defaultTabWidth'),
+      defaultTabCount:
+        typeof parsed.defaultTabCount === 'number' && isValidTabCount(parsed.defaultTabCount)
+          ? parsed.defaultTabCount
+          : d.defaultTabCount,
+      spindleSpeed: positive('spindleSpeed'),
+      dwellSeconds:
+        typeof parsed.dwellSeconds === 'number' && Number.isFinite(parsed.dwellSeconds) && parsed.dwellSeconds >= 0
+          ? parsed.dwellSeconds
+          : d.dwellSeconds,
     }
   } catch (err) {
     console.warn('OnlyPaths: could not read machine settings from localStorage', err)

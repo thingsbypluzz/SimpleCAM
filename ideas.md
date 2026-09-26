@@ -253,27 +253,14 @@ Waga z review w nawiasie kwadratowym.
   prawej). Dotyczy dokumentacji Outline/Pocket/Hole(s) i realnego wyboru
   użytkownika w Adaptive. Zdecydować konwencję, poprawić kierunki albo
   etykiety, dodać test przypinający kierunek.
-- **`BL-47`** *(Otwarty)* 🟢 **[High]** — **Wczytanie presetu przy
-  otwartym Kroku 2/3 zostawia stare wartości w polach numerycznych**
-  (textarea Custom List naprawiona w 0.19.1 — tekst żyje w params).
-  Przemontować krok (klucz) przy wczytaniu presetu/resecie.
 - **`BL-50`** *(Otwarty)* 🟠 **[Medium]** — **Kąt zejścia Helix/Ramp poza
   Adaptive jest nieograniczony** (mały promień / krótki bok → prawie
   pionowe zejście na Feedrate XY). Limit kąta rampy albo ograniczenie
   pionowej składowej do Plunge Rate.
-- **`BL-52`** *(Otwarty)* 🟢 **[Medium]** — **W Edit Mode każda zmiana
-  parametru resetuje kamerę 2D/3D i dwukrotnie przebudowuje scenę 3D**
-  (nowa referencja `overlayParams`).
 - **`BL-55`** *(Otwarty)* 🟠 **[Medium–Low]** — **Limity bezpieczeństwa
   pętli (5000) po cichu obcinają poprawne zadania** — niewycięty
   materiał lub końcowe głębokie zejście. Zgłaszać obcięcie jako błąd
   walidacji.
-- **`BL-56`** *(Otwarty)* 🟢 **[Low–Medium]** — **Po "Reset All Settings"
-  Settings Modal pokazuje stare wartości, a blur potrafi je zapisać z
-  powrotem.**
-- **`BL-57`** *(Otwarty)* 🟠 **[Low–Medium]** — **Zagnieżdżone enumy w
-  zapisanych danych nie są walidowane i brak ErrorBoundary** — uszkodzony
-  zapis = biały ekran przy każdym starcie.
 - **`BL-58`** *(Otwarty)* 🟢 **[Low]** — **Skrypt deploy: strona jest
   zepsuta w trakcie wysyłki (i po nieudanej); podpowiedź wyłączenia
   weryfikacji certyfikatu; roczny cache dla `favicon.svg`.**
@@ -371,26 +358,6 @@ wierszy — stan kodu z dnia review (`main` @ `b867d4f`).
 - **Nakład:** łatwy (etykiety) / średni (odwrócenie kierunków + podglądy
   + testy).
 
-### `BL-47` — Wczytanie presetu przy otwartym Kroku 2/3
-- **Lokalizacja:** `src/App.tsx:441-471` (od `BL-39` wczytanie nie
-  zmienia `activeStep`); `useNumberField.ts:30-37` (tekst resynchronizuje
-  się tylko z `syncWhenBlurred`); `Step3Feeds.tsx:42-45`. (Część
-  dotycząca textarea Custom List rozwiązana w 0.19.1 przy `BL-48` —
-  tekst listy to dziś `geometry.customPointsText`, nie lokalny stan.)
-- **Problem:** po `BL-39` wczytanie/uzbrojenie presetu (Edit Mode) nie
-  odmontowuje aktywnego kroku. Każde pole `useNumberField` bez
-  `syncWhenBlurred` (wszystkie w Kroku 2, Plunge Rate, Start Z, Safe Z,
-  Linking Feed) pokazuje tekst poprzedniego presetu (wyjątek: zmiana
-  operacji — router Kroku 2 montuje inny komponent); w Edit Mode
-  dodatkowo live-save do uzbrojonego slotu.
-- **Scenariusz:** otwarty Krok 3, preset [1] ma Safe Z 5, [2] ma 1 — po
-  kliknięciu [2] pole dalej pokazuje "5", a podgląd i G-code używają 1.
-- **Proponowana zmiana:** licznik `paramsLoadGeneration` inkrementowany w
-  `handleLoadPreset`/`handlePresetSlotClick`/Reset, użyty jako `key` na
-  zawartości Active Step Panel (remount kroków); alternatywnie
-  `syncWhenBlurred` jako zachowanie domyślne.
-- **Nakład:** łatwy.
-
 ### `BL-50` — Nieograniczony kąt zejścia Helix/Ramp
 - **Lokalizacja:** `src/lib/helix.ts` (skok = stepdown na 360°);
   `outlineRectangle.ts:52-60` (cały stepdown na jednym boku);
@@ -407,25 +374,6 @@ wierszy — stan kodu z dnia review (`main` @ `b867d4f`).
   ustawienie — albo skalować posuw tak, żeby składowa pionowa nie
   przekraczała `plungeRate`. Minimum: nieblokujące ostrzeżenie.
 - **Nakład:** średni.
-
-### `BL-52` — Edit Mode resetuje kamerę i dubluje przebudowę 3D
-- **Lokalizacja:** `App.tsx:337-350`; `lib/overlayParams.ts:9-16`;
-  `Scene3D.tsx:204-221`; `ToolpathCanvas.tsx:135-140`.
-- **Problem:** przy uzbrojonym slocie każda zmiana parametru robi
-  `setPresetSlots({...prev})` → `useMemo` `overlayParams` zależy od
-  `presetSlots` → `deriveOverlayParams` zwraca nową pustą tablicę nawet
-  bez overlaya → oba podglądy traktują nową referencję jako "zmianę
-  wyboru overlaya": 3D re-frame'uje odległość/target, 2D robi pełny
-  re-fit (resetuje zoom/pan). Efekt treści 3D odpala się dwa razy na
-  edycję (raz dla `params`, raz dla `overlayParams`). Łamie
-  udokumentowaną zasadę "zwykła edycja nie rusza kamery". Zapis presetu
-  z Kroku 4 też daje jeden zbędny re-fit.
-- **Scenariusz:** Edit Mode, przybliżenie otworu w 2D, zmiana Depth —
-  widok wraca do dopasowania całości.
-- **Proponowana zmiana:** współdzielona zamrożona pusta tablica gdy
-  `overlaySlots.size === 0`; lepiej: zależność tylko od wpisów samych
-  nałożonych slotów albo porównanie zawartości zamiast referencji.
-- **Nakład:** łatwy.
 
 ### `BL-55` — Limity pętli obcinają poprawne zadania
 - **Lokalizacja:** `surfaceRaster.ts:8, 27-33`; `depthPasses.ts:7,19`;
@@ -446,40 +394,6 @@ wierszy — stan kodu z dnia review (`main` @ `b867d4f`).
 - **Proponowana zmiana:** helpery zgłaszają obcięcie (np. flaga w
   wyniku), wyświetlane jako blokujący błąd walidacji; limity tylko jako
   ochrona przed zamrożeniem UI, nie jako część semantyki wyniku.
-- **Nakład:** średni.
-
-### `BL-56` — Settings Modal po "Reset All Settings"
-- **Lokalizacja:** `SettingsModal.tsx:84-100, 180-185`; `App.tsx:390-404,
-  1195-1204` (brak `key`, modal nie zamykany).
-- **Problem:** bufory `text`/`codeText` inicjalizowane raz z `machine`.
-  Po resecie maszyna wraca do domyślnych, ale modal zostaje zamontowany:
-  sekcja Machine dalej pokazuje stare skoki osi i Start/End G-Code. Blur
-  textarea nagłówka (`handleCodeBlur`) — bufor różni się od pustego już
-  `machine.headerText`, więc stary nagłówek zapisuje się z powrotem.
-- **Scenariusz:** Reset All → Machine → klik w Start G-Code i poza nie →
-  stary nagłówek użytkownika wraca.
-- **Proponowana zmiana:** zamknąć modal po resecie, albo przemontować go
-  zmiennym `key`, albo resynchronizować bufory z `machine` w efekcie.
-- **Nakład:** łatwy.
-
-### `BL-57` — Niewalidowane enumy w zapisie, brak ErrorBoundary
-- **Lokalizacja:** `lib/storage.ts:69-80`; `lib/machineStorage.ts:140-144`;
-  `src/main.tsx` (brak ErrorBoundary).
-- **Problem:** pilnowane tylko `operation` i `method`. `geometry.positioning`,
-  `outline.shape/offsetMode/method`, enumy `surface.*`,
-  `pocket.shape/method/cutDirection`, `output.interpolation`, typ
-  `customPoints`, typy pól liczbowych — przechodzą bez sprawdzenia. Np.
-  `resolvePoints` zwraca `undefined` dla nieznanego pozycjonowania i
-  `.map` rzuca; `POCKET_METHOD_META[zły].title` rzuca w
-  `collapsedStepTitle`; `machine.headerText` nie-string → `.trim()` rzuca.
-  Slot "0" jest przywracany automatycznie przy starcie, a ErrorBoundary
-  nie ma — jedna zła wartość = biały ekran przy każdym przeładowaniu, do
-  ręcznego wyczyszczenia `localStorage`. Dziś tylko przy uszkodzonych
-  danych albo przyszłej zmianie nazwy enuma — dokładnie scenariusz, pod
-  który powstał `isOperationType`.
-- **Proponowana zmiana:** straże per pole (listy enumów już istnieją jako
-  `*_LIST`) + poprawka `pocketMethodAllowed`; ErrorBoundary na najwyższym
-  poziomie z przyciskiem "Reset saved state".
 - **Nakład:** średni.
 
 ### `BL-58` — Skrypt deploy

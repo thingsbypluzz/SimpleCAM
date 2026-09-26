@@ -8,6 +8,12 @@ describe('deriveOverlayParams', () => {
     expect(deriveOverlayParams(new Set(), {})).toEqual([])
   })
 
+  it('returns the same reference with nothing selected, even when presetSlots change (BL-52)', () => {
+    const before = deriveOverlayParams(new Set(), { '1': DEFAULT_WIZARD_PARAMS })
+    const after = deriveOverlayParams(new Set(), { '1': { ...DEFAULT_WIZARD_PARAMS, method: 'standard' } })
+    expect(after).toBe(before)
+  })
+
   it('returns selected presets in stable [1]-[5] order regardless of Set insertion order', () => {
     const preset1 = { ...DEFAULT_WIZARD_PARAMS, method: 'standard' as const }
     const preset3 = { ...DEFAULT_WIZARD_PARAMS, method: 'helix' as const }

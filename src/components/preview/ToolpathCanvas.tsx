@@ -10,7 +10,7 @@ interface ToolpathCanvasProps {
   isDark: boolean
   paletteId: PaletteId
   themeId: ThemeId
-  overlayParams: WizardParams[]
+  overlayParams: readonly WizardParams[]
   showActivePattern: boolean
   stockVisible: boolean
   toolpathVisible: boolean

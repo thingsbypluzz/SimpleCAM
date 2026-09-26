@@ -1851,7 +1851,7 @@ export function buildToolpathScene(
   isDark: boolean,
   paletteId: PaletteId,
   themeId: ThemeId,
-  overlayParams: WizardParams[] = [],
+  overlayParams: readonly WizardParams[] = [],
   showActivePattern = true,
   gridLabelsEnabled = true,
   gridLabelSize: Grid3DLabelSize = 'medium',

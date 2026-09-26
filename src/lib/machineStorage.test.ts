@@ -89,4 +89,18 @@ describe('loadMachineSettings / saveMachineSettings', () => {
       dwellSeconds: DEFAULT_MACHINE_SETTINGS.dwellSeconds,
     })
   })
+
+  it('falls back per field on wrong types instead of passing them through (BL-57)', () => {
+    localStorage.setItem(
+      'simplecam.machine',
+      JSON.stringify({ headerText: 42, footerText: 'M9', travelX: '400', travelY: 300, defaultTabCount: 2.5 }),
+    )
+    expect(loadMachineSettings()).toMatchObject({
+      headerText: DEFAULT_MACHINE_SETTINGS.headerText,
+      footerText: 'M9',
+      travelX: DEFAULT_MACHINE_SETTINGS.travelX,
+      travelY: 300,
+      defaultTabCount: DEFAULT_MACHINE_SETTINGS.defaultTabCount,
+    })
+  })
 })
