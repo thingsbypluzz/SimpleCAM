@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import {
   descentAngleDeg,
+  isStartZAboveCut,
+  minStartZ,
   descentWarnings,
   feedsWarnings,
   isCircleHoleCountValid,
@@ -697,5 +699,36 @@ describe('descent-angle warning (BL-50)', () => {
     }
     // Inside: tool-path 3 x 1, ramp along the 3 mm edge -> atan(3/3) = 45°.
     expect(descentAngleDeg(params)).toBeCloseTo(45, 5)
+  })
+})
+
+describe('Start Z floor (found by the BL-62 invariant test)', () => {
+  const holes = (startZ: number, tabs: boolean) => ({
+    ...DEFAULT_WIZARD_PARAMS,
+    method: 'helix' as const,
+    geometry: { ...DEFAULT_WIZARD_PARAMS.geometry, totalDepth: 0.6, tabsEnabled: tabs, tabHeight: 0.3 },
+    feeds: { ...DEFAULT_WIZARD_PARAMS.feeds, startZ },
+  })
+
+  it('is the cut floor without tabs, the tab band top with them', () => {
+    expect(minStartZ(holes(0, false))).toBeCloseTo(-0.6)
+    expect(minStartZ(holes(0, true))).toBeCloseTo(-0.3)
+  })
+
+  it('allows a negative Start Z above it, blocks one at or below it', () => {
+    expect(isStartZAboveCut(holes(-0.2, true))).toBe(true)
+    expect(isStartZAboveCut(holes(-0.4, true))).toBe(false) // inside the tab band: used to overshoot the floor
+    expect(isStartZAboveCut(holes(-0.4, false))).toBe(true)
+    expect(isStartZAboveCut(holes(-0.6, false))).toBe(false)
+  })
+
+  it('applies to operations without tabs too', () => {
+    const surface = {
+      ...DEFAULT_WIZARD_PARAMS,
+      operation: 'surface' as const,
+      surface: { ...DEFAULT_WIZARD_PARAMS.surface, totalDepth: 0.2 },
+      feeds: { ...DEFAULT_WIZARD_PARAMS.feeds, startZ: -0.3 },
+    }
+    expect(isStartZAboveCut(surface)).toBe(false)
   })
 })

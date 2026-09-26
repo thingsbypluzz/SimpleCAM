@@ -1813,6 +1813,25 @@ src/
                                  sprawdza, że każdy G2/G3 ma start i koniec w
                                  tej samej odległości od środka (GRBL
                                  error 33).
+    gcodeInvariants.test.ts         — test właściwościowy po wszystkich
+                                 operacjach i metodach: deterministyczny
+                                 PRNG losuje zestawy parametrów, te
+                                 przechodzące `isWizardParamsValid()` muszą
+                                 dać G-code spełniający niezmienniki: G0 w
+                                 XY tylko na Safe Z, każde F > 0, brak
+                                 NaN/Infinity, najniższe Z = dokładnie
+                                 −totalDepth, spójne łuki G2/G3, brak łuków,
+                                 gdy Krok 4 pokazuje G1, ostatnia linia
+                                 M30/M2, środek freza w granicach Surface /
+                                 w ścianach Pocket. `GCODE_FUZZ_SCALE=10` /
+                                 `GCODE_FUZZ_SEED=…` — większy przebieg
+                                 lokalnie.
+    interpolation.ts                — `forcedLinearReason()` — dlaczego
+                                 przełącznik interpolacji w Kroku 4 jest
+                                 zablokowany na G1 (prostokąt Outline,
+                                 mostki) albo `null`; czysta funkcja, żeby
+                                 test niezmienników mógł sprawdzić zgodność
+                                 z silnikiem.
     pocketZTransition.ts            — `pocketZTransitionMoves()` — wersja
                                  Plunge/Helix wyśrodkowana na
                                  `pocketCenter()` (bez narożnikowej
@@ -1833,7 +1852,15 @@ src/
                                  osobne funkcje poziomu.
                                  `generatePocketAdaptive` omija ten szkielet
                                  (własna struktura poziomów, bez retraktu).
-    validation.ts                — `isToolDiameterValid` (ostre `<` —
+    validation.ts                — `isWizardParamsValid()` — cała reguła
+                                 bramkująca Generate (i live-save Edit
+                                 Mode) dla aktywnej operacji, jedno źródło
+                                 prawdy dla `App.tsx` i testu
+                                 niezmienników. `minStartZ()`/
+                                 `isStartZAboveCut()` — Start Z może być
+                                 ujemny, ale musi leżeć powyżej dna cięcia
+                                 (z mostkami: powyżej górnej granicy pasma
+                                 mostków). `isToolDiameterValid` (ostre `<` —
                                  frez równy otworowi to ścieżka o zerowym
                                  promieniu), `isStepdownValid`,
                                  `isSafeZValid` (> 0)/
@@ -2040,7 +2067,8 @@ odpowiednich zadaniach:
     zapyta "czy CHANGELOG jest zaktualizowany" — to sygnał, że ta
     reguła została pominięta.
 - Odłożone pomysły i przyszłe operacje: **`ideas.md`**.
-- Brak testów E2E w MVP — tylko testy jednostkowe silnika G-code.
+- Brak testów E2E w MVP — tylko testy jednostkowe silnika G-code plus
+  test właściwościowy niezmienników (`gcodeInvariants.test.ts`).
 - Nie przeskakuj większych pozycji z `ideas.md` bez pytania — każda
   wymaga checkpointu do przeglądu przez użytkownika, duże pozycje
   (`OP-#`) też sesji `/grill-me`.

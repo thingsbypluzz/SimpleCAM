@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import type { WizardParams } from '../../types/wizard'
 import { buildFilename, downloadTextFile } from '../../lib/download'
+import { forcedLinearReason } from '../../lib/interpolation'
 import { presetLabel } from '../../lib/presetLabel'
 import { PRESET_SLOT_IDS, type PresetSlotId } from '../../lib/storage'
 import { Checkbox } from './Checkbox'
@@ -39,27 +40,15 @@ export function Step4Output({
   onSaveToPreset,
   warnings,
 }: Step4OutputProps) {
-  const { output, geometry, outline } = params
+  const { output } = params
   const [copied, setCopied] = useState(false)
   const [savedSlot, setSavedSlot] = useState<PresetSlotId | null>(null)
 
   const updateOutput = (patch: Partial<WizardParams['output']>) =>
     onChange({ output: { ...output, ...patch } })
 
-  // Rectangle Outline is always straight-edge G1, independent of tabs — no
-  // arc/circle geometry involved at all. Circle Outline follows the same
-  // tabs-force-G1 rule as Hole(s). See CLAUDE.md's Outline design notes.
-  // Surface and Pocket have no tabs at all (BL-51) — reading
-  // geometry.tabsEnabled for them locked the toggle on "G1" while the file
-  // still followed the saved output.interpolation.
-  const isRectOutline = params.operation === 'outline' && outline.shape !== 'circle'
-  const tabsForceLinear =
-    params.operation === 'outline'
-      ? outline.tabsEnabled
-      : params.operation === 'holes'
-        ? geometry.tabsEnabled
-        : false
-  const forcedLinear = isRectOutline || tabsForceLinear
+  const forcedLinearBy = forcedLinearReason(params)
+  const forcedLinear = forcedLinearBy !== null
 
   const handleCopy = async () => {
     if (!generatedGCode) return
@@ -119,7 +108,7 @@ export function Step4Output({
         </div>
         {forcedLinear && (
           <p className="text-xs text-muted">
-            {isRectOutline
+            {forcedLinearBy === 'rectOutline'
               ? 'G2/G3 disabled — Rectangle outlines are always straight-edge (G1).'
               : 'G2/G3 disabled — Tabs (Step 2) require G1 interpolation.'}
           </p>

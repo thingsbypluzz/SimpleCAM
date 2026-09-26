@@ -65,37 +65,7 @@ import { DEFAULT_TOOL_DIAMETER_OPTIONS } from './types/toolDiameters'
 import {
   descentWarnings,
   feedsWarnings,
-  isCircleHoleCountValid,
-  isCustomPointsValid,
-  isFeedrateXYValid,
-  isHolesSizeValid,
-  isOutlineSizeValid,
-  isOutlineTabCountValid,
-  isOutlineTabHeightValid,
-  isOutlineTabWidthValid,
-  isOutlineToolDiameterValid,
-  isPocketHelixRadiusValid,
-  isPocketLinkingFeedValid,
-  isPocketOptimalLoadValid,
-  isPocketRampAngleValid,
-  isPocketSizeValid,
-  isPocketStepoverValid,
-  isPocketToolDiameterValid,
-  isPocketToolpathWithinLimits,
-  isPassCountWithinLimit,
-  isPlungeRateValid,
-  isSafeZValid,
-  isStartZValid,
-  isStepdownValid,
-  isSurfaceHelixRadiusValid,
-  isSurfaceLineCountWithinLimit,
-  isSurfaceSizeValid,
-  isSurfaceStepoverValid,
-  isSurfaceToolDiameterValid,
-  isTabCountValid,
-  isTabHeightValid,
-  isTabWidthValid,
-  isToolDiameterValid,
+  isWizardParamsValid,
   machineFitWarnings,
 } from './lib/validation'
 import type { AppearanceSettings } from './types/appearance'
@@ -316,44 +286,7 @@ function App() {
           ? params.pocket
           : params.geometry,
   )
-  // Step 3 (feeds/Z) validity is shared by every operation.
-  const areFeedsValid =
-    isStepdownValid(params.feeds) &&
-    isStartZValid(params.feeds) &&
-    isSafeZValid(params.feeds) &&
-    isFeedrateXYValid(params.feeds) &&
-    isPlungeRateValid(params.feeds) &&
-    isPassCountWithinLimit(params)
-  const isGeometryValid =
-    areFeedsValid &&
-    (params.operation === 'outline'
-      ? isOutlineToolDiameterValid(params.outline) &&
-        isOutlineSizeValid(params.outline) &&
-        isOutlineTabHeightValid(params.outline) &&
-        isOutlineTabWidthValid(params.outline) &&
-        isOutlineTabCountValid(params.outline)
-      : params.operation === 'surface'
-        ? isSurfaceToolDiameterValid(params.surface) &&
-          isSurfaceSizeValid(params.surface) &&
-          isSurfaceStepoverValid(params.surface) &&
-          isSurfaceLineCountWithinLimit(params.surface) &&
-          isSurfaceHelixRadiusValid(params.surface)
-        : params.operation === 'pocket'
-          ? isPocketToolDiameterValid(params.pocket) &&
-            isPocketSizeValid(params.pocket) &&
-            isPocketStepoverValid(params.pocket) &&
-            isPocketHelixRadiusValid(params.pocket) &&
-            isPocketOptimalLoadValid(params.pocket) &&
-            isPocketRampAngleValid(params.pocket) &&
-            isPocketLinkingFeedValid(params.pocket) &&
-            isPocketToolpathWithinLimits(params)
-          : isToolDiameterValid(params.geometry) &&
-            isHolesSizeValid(params.geometry) &&
-            isCircleHoleCountValid(params.geometry) &&
-            isCustomPointsValid(params.geometry) &&
-            isTabHeightValid(params.geometry) &&
-            isTabWidthValid(params.geometry) &&
-            isTabCountValid(params.geometry))
+  const isGeometryValid = isWizardParamsValid(params)
   const fitWarnings = machineFitWarnings(params, machine)
   // Shown next to the machine-fit warnings in Step 4, but kept out of
   // step4Badge(), whose color means "doesn't fit the machine" only.

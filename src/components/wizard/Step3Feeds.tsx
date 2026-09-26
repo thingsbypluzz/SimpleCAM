@@ -8,13 +8,17 @@ import {
   isPlungeRateValid,
   isPocketLinkingFeedValid,
   isSafeZValid,
+  activeTotalDepth,
+  isStartZAboveCut,
   isStartZBelowStock,
+  minStartZ,
   isStartZValid,
   isStepdownValid,
   MAX_PASSES,
   suggestedAdaptiveStepdown,
 } from '../../lib/validation'
 import { isFeedChipThinningCompensated } from '../../lib/pocketAdaptiveMath'
+import { fmt } from '../../lib/format'
 import { FieldRow, inputClass } from './FieldRow'
 import { NumberInput } from './NumberInput'
 import { useNumberField } from './useNumberField'
@@ -128,7 +132,13 @@ export function Step3Feeds({ params, onChange, machine, stepdownLabel }: Step3Fe
           Start Z must not exceed Safe Z.
         </p>
       )}
-      {isStartZBelowStock(feeds) && (
+      {!isStartZAboveCut(params) && (
+        <p className="text-sm text-status-error">
+          Start Z must be above {fmt(minStartZ(params))} mm — at or below it, the rapid to Start Z would already be
+          deeper than {params.feeds.startZ < -activeTotalDepth(params) + 1e-9 ? 'the bottom of the cut' : 'the top of the tab band'}.
+        </p>
+      )}
+      {isStartZAboveCut(params) && isStartZBelowStock(feeds) && (
         <p className="rounded-md border border-status-warn-border bg-status-warn-bg px-3 py-2 text-xs text-status-warn-fg">
           Start Z is below 0 — the rapid down to it goes into the stock unless that material is already cut away.
         </p>
