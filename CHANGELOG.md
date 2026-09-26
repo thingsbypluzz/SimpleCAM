@@ -7,6 +7,24 @@ zgodne z [SemVer](https://semver.org/). Ten plik pozostaje głównym, czytelnym
 thingsbypluzz/SimpleCAM), ale to infrastruktura pod izolację pracy
 (branch/worktree per zadanie), nie zamiennik tego changeloga.
 
+## [0.20.10] — 2026-09-26
+
+### Zmieniono
+
+- **`BL-61`, etap 3 — Pocket na wspólnej liście ruchów.** Jedna
+  `buildPocketToolpath()` dla Raster, Spiral i Adaptive
+  (`lib/pocket.ts`): wejście Plunge/Helix (`appendPocketZTransition()`),
+  pierścienie Spiral (`appendCircleRing()`/`appendRectRing()`), łańcuch
+  Raster i ruchy Adaptive trafiają do jednej listy, z której powstaje
+  G-code oraz oba podglądy. Podgląd 3D i 2D przestały odtwarzać sekwencję
+  pierścieni/rastra na własną rękę. G-code wszystkich trzech metod
+  identyczny co do znaku (porównane na ~240 losowych programach).
+- Podgląd 2D Pocket rysuje teraz całą ścieżkę silnika: także wejście
+  Helix (dotąd widoczne tylko pośrednio w Circle) oraz przerywany przejazd
+  szybki z końca poziomu z powrotem nad punkt wejścia przed kolejnym
+  poziomem. Podgląd 3D rysuje końcowy wyjazd na Safe Z tam, gdzie
+  narzędzie faktycznie kończy, a nie nad punktem wejścia.
+
 ## [0.20.9] — 2026-09-26
 
 ### Zmieniono

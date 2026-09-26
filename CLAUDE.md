@@ -393,18 +393,13 @@ decyzją projektową).
   **Adaptive Clearing** (alternatywna strategia roughingu ze stałym
   zaangażowaniem narzędzia) świadomie odłożone jako `OP-5`.
 
-  **Preview 2D** (`drawToolpath.ts::drawPocketGeometry()`) i **Preview
-  3D** (`buildScene.ts::buildPocketToolpathObjects3D()`) rysują Spiral
-  **dokładnie** — ramp (krzywa dla Circle, przez `circleRingRampPoints()`
-  wyeksportowaną z `lib/pocketSpiral.ts` i reużytą wprost przez silnik
-  G-code w `circleRingMoves()`, żeby podgląd nigdy nie rozjechał się z
-  tym, co faktycznie tnie frez; prosty odcinek dla Rectangle) + pełny
-  flat pierścień, w tej samej kolejności co silnik. Pierwsza wersja (do
-  sesji weryfikacji wizualnej, 2026-09-21) rysowała pierścienie jako
-  osobne, rozłączone kształty bez rampy między nimi — mylące przy
-  weryfikacji wizualnej bez dostępu do maszyny, bo każdy pierścień
-  wyglądał jak niezależne przejście zamiast fragmentu jednej spirali.
-  Wizualizacja bryły 3D reużywa wprost modelu
+  **Preview 2D** (`drawToolpath.ts::drawPocketGeometry()` →
+  `drawToolpathMoves()`) i **Preview 3D** (`toolpathLines3D()`) rysują
+  każdą metodę wprost z listy ruchów silnika (`buildPocketToolpath()`,
+  `lib/pocket.ts` — patrz `lib/toolpath.ts`): wejście Helix/Plunge,
+  rampy i pełne pierścienie Spiral, łańcuch Raster, przejazdy Adaptive —
+  dokładnie to, co trafia do G-code, bez osobnego odtwarzania pętli. 2D
+  dokłada strzałki kierunku rastra i znacznik punktu wejścia. Wizualizacja bryły 3D reużywa wprost modelu
   Outline Inside (otwarta ściana — `DoubleSide`, brak nakrywek — + stock
   cap z otworem w kształcie granicy zewnętrznej, ten sam
   `buildRectWallMesh()`/`circlePath()`/`rectPath()`) — Pocket fizycznie
@@ -495,8 +490,9 @@ decyzją projektową).
 
   **Jedna lista ruchów** (`buildAdaptiveToolpath()` → lista ruchów
   `lib/toolpath.ts`: linia/łuk × `'cut' | 'link'`) — konsumowana przez silnik
-  (`adaptiveMovesToGcode()`, `generatePocketAdaptive()` w `lib/pocket.ts`,
-  z pominięciem wspólnego `pocketToolpath()`) i oba podglądy
+  (`generatePocketAdaptive()` w `lib/pocket.ts` — Adaptive ma własną
+  strukturę poziomów, `buildPocketToolpath()` dokłada tylko dojazd do
+  Start Z) i oba podglądy
   (`adaptiveMovePoints()`), więc nie ma ręcznego "mirrorowania" geometrii
   jak w starszych metodach. Przejazdy łączące rysowane **kropkowaną linią
   w kolorze `linking`** palety (2D i 3D). Testy (`pocketAdaptive.test.ts`):
@@ -900,7 +896,7 @@ wizualnej), `buildToolpathLines3D()` zamienia je na rzeczywiste
 `THREE.Line` (pomijając zdegenerowane odcinki < 2 punktów).
 `helixPoints3D()`/`standardHolePoints3D()`/`rectRampPoints3D()`/
 `rectStandardPoints3D()` zwracają `ToolpathSegment3D[]`. Operacje, które
-już budują wspólną listę ruchów (Surface, Pocket Adaptive), rysuje
+już budują wspólną listę ruchów (Surface, Pocket), rysuje
 `toolpathLines3D()` — styl wynika wprost z rodzaju ruchu (`MOVE_STYLE`:
 `cut` → `solid`, `rapid` → `dashed`, `plunge` → `dotted`, `link` →
 `linking`), a kolejne ruchy tego samego stylu dzielą jeden `THREE.Line`.
@@ -1611,7 +1607,7 @@ src/
                                ale `Vector3` zamiast stringów G-code —
                                dzielenie głębokości na przejścia idzie
                                przez wspólne `computeDepthPasses()`;
-                               Surface i Pocket Adaptive rysowane wprost z
+                               Surface i Pocket rysowane wprost z
                                listy ruchów silnika przez
                                `toolpathLines3D()`), bryła
                                finalnego kształtu, `buildStockCapObject()`
@@ -1835,7 +1831,8 @@ src/
                                  podgląd 3D ją konsumują — podgląd nie może
                                  rozjechać się z plikiem. Dziś: Surface
                                  (`buildSurfaceToolpath()`) i Pocket
-                                 Adaptive; pozostałe operacje czekają na
+                                 (`buildPocketToolpath()`, wszystkie
+                                 metody); Hole(s) i Outline czekają na
                                  kolejne kroki etapu 3.
     fuzzParams.ts                   — tylko testy: deterministyczny PRNG +
                                  losowe `WizardParams` per operacja (test
@@ -1878,16 +1875,23 @@ src/
                                  start spirali dla Helix),
                                  `effectivePocketZTransitionMode()`
                                  (Adaptive → zawsze Helix).
-    pocket.ts                       — `generatePocketRaster`/
-                                 `generatePocketSpiral` — ten sam szkielet
-                                 co `surface.ts` (jeden syntetyczny
-                                 punkt-środek, `assembleProgram()`), per-
-                                 poziom pełny XY clear
-                                 (`buildLevelDescents()`). Spiral rozgałęzia
-                                 się po `pocket.shape` (Circle/Rectangle) na
-                                 osobne funkcje poziomu.
-                                 `generatePocketAdaptive` omija ten szkielet
-                                 (własna struktura poziomów, bez retraktu).
+    pocket.ts                       — `buildPocketToolpath()` — jedna lista
+                                 ruchów dla każdej metody (`toolpath.ts`),
+                                 z której powstaje G-code
+                                 (`generatePocketRaster`/`Spiral`/
+                                 `Adaptive`) i oba podglądy. Raster/Spiral:
+                                 ten sam szkielet co `surface.ts` (jeden
+                                 syntetyczny punkt-środek,
+                                 `assembleProgram()`), per-poziom pełny XY
+                                 clear (`buildLevelDescents()`), wejście
+                                 `appendPocketZTransition()`, poziom przez
+                                 `LEVEL_CLEAR` (Spiral rozgałęzia się po
+                                 kształcie; pierścienie
+                                 `appendCircleRing()`/`appendRectRing()`
+                                 z `pocketSpiral.ts`). Adaptive: własna
+                                 struktura poziomów bez retraktu
+                                 (`buildAdaptiveToolpath()`), dokładany
+                                 tylko dojazd do Start Z.
     validation.ts                — `OPERATION_RULES` (rejestr per operacja,
                                  patrz „Zasada” niżej). `isWizardParamsValid()` — cała reguła
                                  bramkująca Generate (i live-save Edit

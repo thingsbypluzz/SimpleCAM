@@ -24,7 +24,21 @@ export interface Point3D {
 // a G1 prints X, Y and Z.
 export type Move =
   | { type: 'line'; kind: MoveKind; to: Point3D; axes?: 'xy' | 'z' }
-  | { type: 'arc'; kind: MoveKind; to: Point3D; center: Point2D; direction: ArcDirection; sweep: number }
+  | {
+      type: 'arc'
+      kind: MoveKind
+      to: Point3D
+      center: Point2D
+      direction: ArcDirection
+      sweep: number
+      // Optional exact geometry for arcs whose start point is derived from
+      // an angle rather than from wherever the previous move ended (Pocket
+      // Spiral rings): `from` is the arc's own start in XY, `radius` its
+      // exact radius. Used for I/J and G1 sampling so the output matches
+      // the pre-toolpath engines digit for digit.
+      from?: Point2D
+      radius?: number
+    }
 
 export interface Toolpath {
   start: Point3D
@@ -54,8 +68,9 @@ function arcEndPoint(from: Point3D, center: Point2D, direction: ArcDirection, sw
 export function movePoints(from: Point3D, move: Move): Point3D[] {
   if (move.type === 'line') return [move.to]
   const segments = Math.max(1, Math.round(move.sweep / SEGMENT_RAD))
-  const r = Math.hypot(from.x - move.center.x, from.y - move.center.y)
-  const a0 = Math.atan2(from.y - move.center.y, from.x - move.center.x)
+  const start = move.from ?? from
+  const r = move.radius ?? Math.hypot(start.x - move.center.x, start.y - move.center.y)
+  const a0 = Math.atan2(start.y - move.center.y, start.x - move.center.x)
   const sign = move.direction === 'ccw' ? 1 : -1
   const points: Point3D[] = []
   for (let i = 1; i < segments; i++) {
@@ -110,9 +125,17 @@ export class ToolpathBuilder {
     this.current = move.to
   }
 
-  arc(kind: MoveKind, center: Point2D, direction: ArcDirection, sweep: number, z = this.current.z) {
-    const to = arcEndPoint(this.current, center, direction, sweep, z)
-    this.moves.push({ type: 'arc', kind, to, center, direction, sweep })
+  arc(
+    kind: MoveKind,
+    center: Point2D,
+    direction: ArcDirection,
+    sweep: number,
+    z = this.current.z,
+    exact?: { from: Point2D; radius: number },
+  ) {
+    const from = exact ? { ...exact.from, z: this.current.z } : this.current
+    const to = arcEndPoint(from, center, direction, sweep, z)
+    this.moves.push({ type: 'arc', kind, to, center, direction, sweep, ...exact })
     this.current = to
   }
 
@@ -152,8 +175,9 @@ export function toolpathToGcode(
       const feed = feedFor(move.kind)
       if (opts.interpolation === 'arc') {
         const code = move.direction === 'cw' ? 'G2' : 'G3'
-        const i = move.center.x - current.x
-        const j = move.center.y - current.y
+        const arcStart = move.from ?? current
+        const i = move.center.x - arcStart.x
+        const j = move.center.y - arcStart.y
         lines.push(`${code} X${fmt(to.x)} Y${fmt(to.y)} Z${fmt(to.z)} I${fmt(i)} J${fmt(j)} F${fmt(feed)}`)
       } else {
         for (const p of movePoints(current, move)) {
