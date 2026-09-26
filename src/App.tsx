@@ -1208,6 +1208,7 @@ function App() {
                   gridLabelSize={appearance.grid3DLabelSize}
                   stockVisible={stockVisible}
                   toolpathVisible={toolpathVisible}
+                  renderPaused={isSettingsOpen}
                   onToggleStockVisible={() => setStockVisible((v) => !v)}
                   onToggleToolpathVisible={() => setToolpathVisible((v) => !v)}
                   onToggleGridLabels={() =>
