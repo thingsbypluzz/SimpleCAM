@@ -7,6 +7,20 @@ zgodne z [SemVer](https://semver.org/). Ten plik pozostaje głównym, czytelnym
 thingsbypluzz/SimpleCAM), ale to infrastruktura pod izolację pracy
 (branch/worktree per zadanie), nie zamiennik tego changeloga.
 
+## [0.20.5] — 2026-09-26
+
+### Zmieniono
+
+- **`BL-67`: własne ikony kształtów Pocket.** Pocket Rectangle używał
+  dotąd ikon Surface, a Pocket Circle ikony Outline Circle — w Kroku 1,
+  w podsumowaniach i na ikonach presetów operacji nie dało się odróżnić.
+  Nowe ikony: granica kształtu (linia 1.0) z cieńszą (0.7) spiralą
+  przeciwną do ruchu wskazówek zegara, od środka na zewnątrz, 1.75
+  obrotu — kwadratowa dla Rectangle (kropka origin w lewym dolnym rogu
+  albo w środku, jak rozróżnienie Cornered/Centered w innych
+  operacjach), Archimedesa dla Circle. Legenda ikon w Artifakcie
+  Interface Anatomy zaktualizowana.
+
 ## [0.20.4] — 2026-09-26
 
 Szósta grupa poprawek z code review (2026-09-26): skrypt deploy. Sama

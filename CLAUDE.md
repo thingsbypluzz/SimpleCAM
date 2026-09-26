@@ -1476,6 +1476,14 @@ src/
                               Zamyka się na klik na zewnątrz/Escape/scroll;
                               tylko jeden otwarty naraz.
   components/icons.tsx      — zestaw ikon SVG (własne, bez zależności).
+                              Pełna legenda (każda ikona, pogrupowana po
+                              operacjach + Step Summary + Header/kontrolki)
+                              w Artifakcie Interface Anatomy. Kształty
+                              Pocket mają własne ikony: granica (linia 1.0)
+                              + cieńsza (0.7) spirala CCW od środka, 1.75
+                              obrotu — kwadratowa dla Rectangle (kropka
+                              origin w rogu/środku), Archimedesa dla
+                              Circle.
   components/preview/       — podgląd 2D.
     ToolpathCanvas.tsx        — React wrapper: <canvas>, devicePixelRatio,
                                ResizeObserver, przerysowanie przy zmianie
