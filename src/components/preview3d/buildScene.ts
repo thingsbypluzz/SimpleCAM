@@ -13,30 +13,10 @@ import {
 import { sideRangesFor, type SideTabRange } from '../../lib/outlineRectangleTabs'
 import { outlineDirectionForOffsetMode } from '../../lib/outlineRectangle'
 import { surfaceNominalBounds, surfaceToolBounds, type SurfaceBounds } from '../../lib/surfaceGeometry'
-import { computeRasterLines, zigzagWaypoints } from '../../lib/surfaceRaster'
-import { buildLevelDescents } from '../../lib/surfaceZTransition'
 import { buildSurfaceToolpath } from '../../lib/surface'
+import { buildPocketToolpath } from '../../lib/pocket'
 import { movePoints, type MoveKind, type Toolpath } from '../../lib/toolpath'
-import {
-  pocketCenter,
-  pocketCircleWallRadius,
-  pocketRectRasterBounds,
-  pocketRectWallHalfDims,
-  pocketStepoverMm,
-} from '../../lib/pocketGeometry'
-import { effectivePocketZTransitionMode, pocketEntryPoint } from '../../lib/pocketZTransition'
-import { buildAdaptiveToolpath } from '../../lib/pocketAdaptive'
-import {
-  circleRingRampPoints,
-  rampSweepDegFor,
-  pocketCircleRingRadii,
-  pocketRectRingDims,
-  RECT_HELIX_ENTRY_FRACTION,
-  rectFullLapPoints,
-  rectRampSweepFor,
-  rectRingRampPoints,
-  type RectRingDims,
-} from '../../lib/pocketSpiral'
+import { pocketCenter } from '../../lib/pocketGeometry'
 import { niceStep } from '../preview/drawToolpath'
 import type { Point2D, PocketShape, WizardParams } from '../../types/wizard'
 import type { ThemeId } from '../../types/theme'
@@ -448,59 +428,6 @@ function rectRampPoints3D(
   return builder.segments
 }
 
-// Pocket ring loops — mirrors pocketSpiral.ts's ring generation
-// (pocketCircleRingRadii/pocketRectRingDims). Each loop is one complete,
-// closed ring at a fixed radius/size (the "flat pass" of circleRingMoves/
-// rectRingMoves); buildPocketToolpathObjects3D() below chains these
-// together with the real ramp (circleRingRampPoints() for Circle, an
-// implicit straight leg via createSegmentBuilder3D for Rectangle) into
-// one continuous polyline, same as preview/drawToolpath.ts's 2D
-// drawPocketGeometry.
-// startAngleDeg matters here, unlike a bare full circle: this loop's
-// output goes through createSegmentBuilder3D, which always prepends the
-// builder's current cursor (wherever the preceding ramp actually ended)
-// to these points — if this loop started at a fixed angle instead of
-// that same end angle, the builder would draw a spurious chord connecting
-// the two, growing longer each ring as the mismatch compounds (caught via
-// visual QA, 3D-only: 2D's ctx.arc() has no such forced connector between
-// separate strokes, so it never showed this).
-function pocketCircleRingLoopPoints3D(centerX: number, centerY: number, radius: number, z: number, startAngleDeg: number): THREE.Vector3[] {
-  const startRad = (startAngleDeg * Math.PI) / 180
-  const points: THREE.Vector3[] = []
-  for (let i = 0; i <= SEGMENTS_PER_TURN; i++) {
-    const a = startRad + (2 * Math.PI * i) / SEGMENTS_PER_TURN
-    points.push(toThree(centerX + radius * Math.cos(a), centerY + radius * Math.sin(a), z))
-  }
-  return points
-}
-
-// Centered Z-entry helix — mirrors lib/pocketZTransition.ts's
-// pocketZTransitionMoves exactly (Vector3 samples instead of G-code
-// lines, same convention as surfaceHelixPoints3D above), but always
-// centered directly on the pocket's own center, no corner-offset math.
-function pocketHelixEntryPoints3D(
-  centerX: number,
-  centerY: number,
-  radius: number,
-  fromZ: number,
-  toZ: number,
-  stepdown: number,
-): THREE.Vector3[] {
-  const points: THREE.Vector3[] = []
-  let z = fromZ
-  for (const turnDepth of computeDepthPasses(fromZ - toZ, stepdown)) {
-    for (let i = 1; i <= SEGMENTS_PER_TURN; i++) {
-      const a = (2 * Math.PI * i) / SEGMENTS_PER_TURN
-      const x = centerX + radius * Math.cos(a)
-      const y = centerY + radius * Math.sin(a)
-      const zz = z - (turnDepth * i) / SEGMENTS_PER_TURN
-      points.push(toThree(x, y, zz))
-    }
-    z -= turnDepth
-  }
-  return points
-}
-
 // Line style per move kind — see "Styl linii ruchu narzędzia w 3D Preview"
 // in CLAUDE.md.
 const MOVE_STYLE: Record<MoveKind, ToolpathLineStyle> = {
@@ -537,122 +464,6 @@ function toolpathLines3D(toolpath: Toolpath, theme: Theme, span: number, retract
   flush()
   if (retractToZ !== undefined) builder.add('dashed', [toThree(current.x, current.y, retractToZ)])
   return buildToolpathLines3D(builder.segments, theme, span)
-}
-
-// Pocket Adaptive: the exact move list the engine emits
-// (buildAdaptiveToolpath(), true helix Z included).
-function buildPocketAdaptiveObjects3D(
-  pocket: WizardParams['pocket'],
-  feeds: WizardParams['feeds'],
-  theme: Theme,
-  span: number,
-): THREE.Object3D[] {
-  return toolpathLines3D(buildAdaptiveToolpath({ pocket, feeds }), theme, span)
-}
-
-// Builds Pocket's full toolpath: the Z-transition/retract chain (styled
-// via createSegmentBuilder3D, mirroring lib/pocket.ts's pocketToolpath()/
-// pocketZTransitionMoves() exactly — level 0 no retract, later levels
-// dashed retract to Safe Z and back down centered, same as Surface) plus,
-// per level, either the exact raster zigzag chain (Raster method, same
-// treatment as Surface's Zigzag) or the exact ramp+flat ring sequence
-// (Spiral method — ramp and flat pass both chained through the same
-// builder as one continuous 'solid' polyline, mirroring
-// lib/pocketSpiral.ts's circleRingMoves()/rectRingMoves() exactly, not a
-// simplified set of disconnected rings).
-function buildPocketToolpathObjects3D(
-  pocket: WizardParams['pocket'],
-  feeds: WizardParams['feeds'],
-  theme: Theme,
-  span: number,
-): THREE.Object3D[] {
-  if (pocket.method === 'adaptive') return buildPocketAdaptiveObjects3D(pocket, feeds, theme, span)
-
-  const center = pocketCenter(pocket)
-  const entry = pocketEntryPoint(center.x, center.y, pocket.zTransitionMode, pocket.helixRadius)
-  const descents = buildLevelDescents(feeds.startZ, pocket.totalDepth, feeds.stepdown)
-  const builder = createSegmentBuilder3D(toThree(entry.x, entry.y, feeds.startZ))
-  const objects: THREE.Object3D[] = []
-
-  const pushZTransition = (toZ: number) => {
-    if (pocket.zTransitionMode === 'plunge') {
-      builder.add('dotted', [toThree(center.x, center.y, toZ)])
-      return
-    }
-    builder.add('solid', pocketHelixEntryPoints3D(center.x, center.y, pocket.helixRadius, feeds.startZ, toZ, feeds.stepdown))
-    // Flat finishing pass — mirrors pocketZTransitionMoves()'s own addition
-    // (lib/pocketZTransition.ts): a spiral turn descends continuously as it
-    // sweeps, so the descent above leaves a helical ledge, not a flat
-    // surface, at `toZ`. Starts at angle 0 — where pocketHelixEntryPoints3D
-    // always ends — so this collapses to a zero-length connector, no jump.
-    builder.add('solid', pocketCircleRingLoopPoints3D(center.x, center.y, pocket.helixRadius, toZ, 0))
-  }
-
-  const addLevelRetract = () => {
-    builder.add('dashed', [toThree(entry.x, entry.y, feeds.safeZ), toThree(entry.x, entry.y, feeds.startZ)])
-  }
-
-  if (pocket.method === 'raster') {
-    const bounds = pocketRectRasterBounds(pocket)
-    const stepoverMm = pocketStepoverMm(pocket)
-    const waypoints = zigzagWaypoints(computeRasterLines(bounds, pocket.rasterDirection, stepoverMm))
-    descents.forEach(({ toZ }, idx) => {
-      if (idx > 0) addLevelRetract()
-      pushZTransition(toZ)
-      builder.add('solid', waypoints.map((p) => toThree(p.x, p.y, toZ)))
-    })
-  } else if (pocket.shape === 'circle') {
-    const wallRadius = pocketCircleWallRadius(pocket)
-    const stepoverMm = pocketStepoverMm(pocket)
-    const startRadius = pocket.zTransitionMode === 'helix' ? pocket.helixRadius : 0
-    const radii = pocketCircleRingRadii(startRadius, wallRadius, stepoverMm)
-    descents.forEach(({ toZ }, idx) => {
-      if (idx > 0) addLevelRetract()
-      pushZTransition(toZ)
-      // Ramp (curved, radius+angle together) + flat ring loop, chained
-      // through the same builder as the Z-transition/retract above — one
-      // continuous 'solid' polyline per level, exactly mirroring the real
-      // toolpath (lib/pocketSpiral.ts's circleRingMoves()) instead of
-      // drawing each ring as a disconnected standalone Line.
-      let angleDeg = 0
-      for (let i = 1; i < radii.length; i++) {
-        builder.add(
-          'solid',
-          circleRingRampPoints(radii[i - 1], radii[i], angleDeg, center.x, center.y).map((p) => toThree(p.x, p.y, toZ)),
-        )
-        angleDeg += rampSweepDegFor(radii[i - 1], radii[i])
-        builder.add('solid', pocketCircleRingLoopPoints3D(center.x, center.y, radii[i], toZ, angleDeg))
-      }
-    })
-  } else {
-    const { halfWidth, halfHeight } = pocketRectWallHalfDims(pocket)
-    const stepoverMm = pocketStepoverMm(pocket)
-    const rings = pocketRectRingDims(halfWidth, halfHeight, stepoverMm, pocket.zTransitionMode === 'helix' ? pocket.helixRadius : 0)
-    descents.forEach(({ toZ }, idx) => {
-      if (idx > 0) addLevelRetract()
-      pushZTransition(toZ)
-      // Gradual ramp (halfWidth/halfHeight + perimeter fraction together,
-      // rectRingRampPoints()) + full lap starting wherever the ramp left
-      // off, not always the corner (rectFullLapPoints()) — chained through
-      // the same builder as one continuous 'solid' polyline, exactly
-      // mirroring lib/pocketSpiral.ts's rectRingMoves(), same pattern as
-      // Circle above. Bootstrapped from the Z-entry exactly like the
-      // engine — see RECT_HELIX_ENTRY_FRACTION's doc comment.
-      let prevDims: RectRingDims =
-        pocket.zTransitionMode === 'helix' ? { halfWidth: pocket.helixRadius, halfHeight: pocket.helixRadius } : { halfWidth: 0, halfHeight: 0 }
-      let fraction = pocket.zTransitionMode === 'helix' ? RECT_HELIX_ENTRY_FRACTION : 0
-      for (const dims of rings) {
-        builder.add('solid', rectRingRampPoints(prevDims, dims, fraction, center.x, center.y).map((p) => toThree(p.x, p.y, toZ)))
-        const nextFraction = fraction + rectRampSweepFor(prevDims, dims)
-        builder.add('solid', rectFullLapPoints(center.x, center.y, dims, nextFraction).map((p) => toThree(p.x, p.y, toZ)))
-        prevDims = dims
-        fraction = nextFraction
-      }
-    })
-  }
-
-  objects.push(...buildToolpathLines3D(builder.segments, theme, span))
-  return objects
 }
 
 interface Theme {
@@ -1556,11 +1367,6 @@ function buildPocketPatternObjects(
 
   objects.push(...buildOffsetVectorObjects(pocket.offsetX, pocket.offsetY, theme, arrowSize))
 
-  if (showToolpath) {
-    const entry = pocketEntryPoint(center.x, center.y, effectivePocketZTransitionMode(pocket), pocket.helixRadius)
-    objects.push(...rapidZLineObjects(entry.x, entry.y, feeds.safeZ, feeds.startZ, -pocket.totalDepth, theme, span))
-  }
-
   if (showStock) {
     const boreHeight = pocket.totalDepth
     const boreCenterZ = -pocket.totalDepth / 2
@@ -1578,7 +1384,9 @@ function buildPocketPatternObjects(
   }
 
   if (showToolpath) {
-    objects.push(...buildPocketToolpathObjects3D(pocket, feeds, theme, span))
+    // Entry rapid, Z entry, every level's clearing moves and the final
+    // retract — straight from the engine's move list (lib/pocket.ts).
+    objects.push(...toolpathLines3D(buildPocketToolpath(params), theme, span, feeds.safeZ))
   }
 
   return objects

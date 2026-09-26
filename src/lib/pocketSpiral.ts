@@ -1,5 +1,4 @@
-import { fmt } from './format'
-import { fullCircleMove } from './circle'
+import { fullTurn, toolpathToGcode, ToolpathBuilder } from './toolpath'
 import { computeLinePositions } from './surfaceRaster'
 import type { InterpolationMode, Point2D } from '../types/wizard'
 
@@ -98,36 +97,41 @@ export function circleRingRampPoints(
 // this ring's flat pass returns to its own start point, so it's simply
 // startAngleDeg + sweep; the angle keeps advancing (never wraps/resets)
 // as rings grow outward.
+export function appendCircleRing(
+  builder: ToolpathBuilder,
+  radiusFrom: number,
+  radiusTo: number,
+  startAngleDeg: number,
+  centerX: number,
+  centerY: number,
+  z: number,
+): number {
+  for (const p of circleRingRampPoints(radiusFrom, radiusTo, startAngleDeg, centerX, centerY)) {
+    builder.lineTo('cut', p.x, p.y, z)
+  }
+  const nextAngleDeg = startAngleDeg + rampSweepDegFor(radiusFrom, radiusTo)
+  const endRad = (nextAngleDeg * Math.PI) / 180
+  const from = { x: centerX + radiusTo * Math.cos(endRad), y: centerY + radiusTo * Math.sin(endRad) }
+  builder.arc('cut', { x: centerX, y: centerY }, 'ccw', fullTurn, z, { from, radius: radiusTo })
+  return nextAngleDeg
+}
+
+// G-code for one ring on its own (tests; lib/pocket.ts formats the whole
+// toolpath at once). Starts wherever the ramp starts.
 export function circleRingMoves(
   radiusFrom: number,
   radiusTo: number,
   startAngleDeg: number,
   opts: CircleRingOptions,
 ): { lines: string[]; nextAngleDeg: number } {
-  const lines = circleRingRampPoints(radiusFrom, radiusTo, startAngleDeg, opts.centerX, opts.centerY).map(
-    (p) => `G1 X${fmt(p.x)} Y${fmt(p.y)} Z${fmt(opts.z)} F${fmt(opts.feed)}`,
-  )
-
-  const nextAngleDeg = startAngleDeg + rampSweepDegFor(radiusFrom, radiusTo)
-  const endRad = (nextAngleDeg * Math.PI) / 180
-  const endX = opts.centerX + radiusTo * Math.cos(endRad)
-  const endY = opts.centerY + radiusTo * Math.sin(endRad)
-
-  lines.push(
-    ...fullCircleMove({
-      centerX: opts.centerX,
-      centerY: opts.centerY,
-      radius: radiusTo,
-      startX: endX,
-      startY: endY,
-      zStart: opts.z,
-      zEnd: opts.z,
-      feed: opts.feed,
-      interpolation: opts.interpolation,
-      direction: 'ccw',
-    }),
-  )
-
+  const a = (startAngleDeg * Math.PI) / 180
+  const builder = new ToolpathBuilder({
+    x: opts.centerX + radiusFrom * Math.cos(a),
+    y: opts.centerY + radiusFrom * Math.sin(a),
+    z: opts.z,
+  })
+  const nextAngleDeg = appendCircleRing(builder, radiusFrom, radiusTo, startAngleDeg, opts.centerX, opts.centerY, opts.z)
+  const lines = toolpathToGcode(builder.build(), { feeds: { cut: opts.feed }, interpolation: opts.interpolation, leadInRapid: false })
   return { lines, nextAngleDeg }
 }
 
@@ -344,17 +348,36 @@ export const RECT_HELIX_ENTRY_FRACTION = 0.375
 // (halfWidth,halfHeight) standing in for radius. Returns `nextFraction`
 // for the caller to chain into the next ring — never wraps, keeps
 // advancing across rings, same as Circle's nextAngleDeg.
+export function appendRectRing(
+  builder: ToolpathBuilder,
+  fromDims: RectRingDims,
+  toDims: RectRingDims,
+  startFraction: number,
+  centerX: number,
+  centerY: number,
+  z: number,
+): number {
+  const nextFraction = startFraction + rectRampSweepFor(fromDims, toDims)
+  const points = [
+    ...rectRingRampPoints(fromDims, toDims, startFraction, centerX, centerY),
+    ...rectFullLapPoints(centerX, centerY, toDims, nextFraction).slice(1),
+  ]
+  for (const p of points) builder.lineTo('cut', p.x, p.y, z)
+  return nextFraction
+}
+
+// G-code for one ring on its own (tests; lib/pocket.ts formats the whole
+// toolpath at once). Always G1 — a ramp that grows the rectangle has no
+// arc form.
 export function rectRingMoves(
   fromDims: RectRingDims,
   toDims: RectRingDims,
   startFraction: number,
   opts: RectRingOptions,
 ): { lines: string[]; nextFraction: number } {
-  const toLine = (p: Point2D) => `G1 X${fmt(p.x)} Y${fmt(p.y)} Z${fmt(opts.z)} F${fmt(opts.feed)}`
-
-  const rampPoints = rectRingRampPoints(fromDims, toDims, startFraction, opts.centerX, opts.centerY)
-  const nextFraction = startFraction + rectRampSweepFor(fromDims, toDims)
-  const lapPoints = rectFullLapPoints(opts.centerX, opts.centerY, toDims, nextFraction).slice(1)
-
-  return { lines: [...rampPoints.map(toLine), ...lapPoints.map(toLine)], nextFraction }
+  const start = rectPointAtPerimeterFraction(opts.centerX, opts.centerY, fromDims.halfWidth, fromDims.halfHeight, startFraction)
+  const builder = new ToolpathBuilder({ ...start, z: opts.z })
+  const nextFraction = appendRectRing(builder, fromDims, toDims, startFraction, opts.centerX, opts.centerY, opts.z)
+  const lines = toolpathToGcode(builder.build(), { feeds: { cut: opts.feed }, interpolation: 'linear', leadInRapid: false })
+  return { lines, nextFraction }
 }

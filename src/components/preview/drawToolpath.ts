@@ -6,25 +6,9 @@ import { rectCorners, rectToolDimensions } from '../../lib/outlineRectangleGeome
 import { sideRangesFor, type SideTabRange } from '../../lib/outlineRectangleTabs'
 import { surfaceNominalBounds, surfaceStepoverMm, surfaceToolBounds, type SurfaceBounds } from '../../lib/surfaceGeometry'
 import { computeRasterLines, zigzagWaypoints, type RasterLine } from '../../lib/surfaceRaster'
-import {
-  pocketCenter,
-  pocketCircleWallRadius,
-  pocketRectRasterBounds,
-  pocketRectWallHalfDims,
-  pocketStepoverMm,
-} from '../../lib/pocketGeometry'
-import { adaptiveMovePoints, buildAdaptiveToolpath, type AdaptiveToolpath } from '../../lib/pocketAdaptive'
-import {
-  circleRingRampPoints,
-  rampSweepDegFor,
-  pocketCircleRingRadii,
-  pocketRectRingDims,
-  RECT_HELIX_ENTRY_FRACTION,
-  rectFullLapPoints,
-  rectRampSweepFor,
-  rectRingRampPoints,
-  type RectRingDims,
-} from '../../lib/pocketSpiral'
+import { pocketCenter, pocketRectRasterBounds, pocketStepoverMm } from '../../lib/pocketGeometry'
+import { buildPocketToolpath } from '../../lib/pocket'
+import { movePoints, type Toolpath } from '../../lib/toolpath'
 import type { Point2D, PocketMethodType, PocketShape, WizardParams } from '../../types/wizard'
 import type { ThemeId } from '../../types/theme'
 import { type Camera2D, type DataBounds, worldToScreen } from './camera2d'
@@ -261,45 +245,47 @@ type ResolvedPattern =
       // Nominal (un-inset) boundary — what's actually rendered as "stock",
       // same convention as Outline's nominalCorners/Surface's nominalBounds.
       nominal: { shape: 'circle'; radius: number } | { shape: 'rect'; halfWidth: number; halfHeight: number }
-      // Only one of these four is ever non-empty for a given
-      // shape/method combination — see resolvePattern() below.
-      circleRings: number[]
-      rectRings: RectRingDims[]
+      // The engine's own move list (lib/pocket.ts, BL-61), every method.
+      toolpath: Toolpath
+      // Raster only — for the direction arrows drawn over the toolpath.
       rasterLines: RasterLine[]
-      adaptive: AdaptiveToolpath | null
     }
 
-// Pocket Adaptive: the exact move list the engine emits (same
-// buildAdaptiveToolpath() + adaptiveMovePoints() sampling), cutting moves
-// solid in the toolpath color, linking moves dotted in the palette's
-// `linking` color. Consecutive moves of one kind share a single stroke.
+// An engine's own move list (lib/toolpath.ts), projected onto XY — the same
+// moves the G-code is formatted from (BL-61), arcs sampled exactly as the
+// G1 output samples them. Cutting moves solid in the toolpath color,
+// linking moves dotted in the palette's `linking` color, rapids dashed in
+// the rapid color; plunges are vertical, so nothing to draw in XY.
+// Consecutive moves of one kind share a single stroke.
 const LINK_DASH: [number, number] = [1.5, 3]
+const RAPID_DASH: [number, number] = [4, 4]
 
-function drawAdaptiveMoves(
+function drawToolpathMoves(
   ctx: CanvasRenderingContext2D,
   toPx: (x: number, y: number) => [number, number],
-  toolpath: AdaptiveToolpath,
+  toolpath: Toolpath,
   theme: Theme,
 ) {
   let current = toolpath.start
   let i = 0
   const moves = toolpath.moves
-  ctx.lineWidth = 1.5
   while (i < moves.length) {
     const kind = moves[i].kind
     ctx.beginPath()
     const [sx, sy] = toPx(current.x, current.y)
     ctx.moveTo(sx, sy)
     while (i < moves.length && moves[i].kind === kind) {
-      for (const p of adaptiveMovePoints(current, moves[i])) {
+      for (const p of movePoints(current, moves[i])) {
         const [x, y] = toPx(p.x, p.y)
         ctx.lineTo(x, y)
       }
       current = moves[i].to
       i++
     }
-    ctx.strokeStyle = kind === 'cut' ? theme.toolpath : theme.linking
-    ctx.setLineDash(kind === 'cut' ? [] : LINK_DASH)
+    if (kind === 'plunge') continue
+    ctx.lineWidth = kind === 'rapid' ? 1 : 1.5
+    ctx.strokeStyle = kind === 'cut' ? theme.toolpath : kind === 'link' ? theme.linking : theme.rapid
+    ctx.setLineDash(kind === 'cut' ? [] : kind === 'link' ? LINK_DASH : RAPID_DASH)
     ctx.stroke()
   }
   ctx.setLineDash([])
@@ -314,25 +300,13 @@ function resolvePattern(params: WizardParams): ResolvedPattern {
       ? { shape: 'circle', radius: pocket.diameter / 2 }
       : { shape: 'rect', halfWidth: pocket.width / 2, halfHeight: pocket.height / 2 }
 
-    let circleRings: number[] = []
-    let rectRings: RectRingDims[] = []
-    let rasterLines: RasterLine[] = []
-    let adaptive: AdaptiveToolpath | null = null
+    const rasterLines =
+      pocket.method === 'raster'
+        ? computeRasterLines(pocketRectRasterBounds(pocket), pocket.rasterDirection, pocketStepoverMm(pocket))
+        : []
+    const toolpath = buildPocketToolpath(params)
 
-    const stepoverMm = pocketStepoverMm(pocket)
-    if (pocket.method === 'adaptive') {
-      adaptive = buildAdaptiveToolpath(params)
-    } else if (pocket.method === 'raster') {
-      rasterLines = computeRasterLines(pocketRectRasterBounds(pocket), pocket.rasterDirection, stepoverMm)
-    } else if (isCircle) {
-      const startRadius = pocket.zTransitionMode === 'helix' ? pocket.helixRadius : 0
-      circleRings = pocketCircleRingRadii(startRadius, pocketCircleWallRadius(pocket), stepoverMm)
-    } else {
-      const { halfWidth, halfHeight } = pocketRectWallHalfDims(pocket)
-      rectRings = pocketRectRingDims(halfWidth, halfHeight, stepoverMm, pocket.zTransitionMode === 'helix' ? pocket.helixRadius : 0)
-    }
-
-    return { kind: 'pocket', params, center, shape: pocket.shape, method: pocket.method, nominal, circleRings, rectRings, rasterLines, adaptive }
+    return { kind: 'pocket', params, center, shape: pocket.shape, method: pocket.method, nominal, toolpath, rasterLines }
   }
   if (params.operation === 'surface') {
     const { surface } = params
@@ -717,16 +691,9 @@ function drawSurfaceGeometry(
 }
 
 // Pocket: nominal boundary (fill, same convention as Outline/Surface) +
-// toolpath (stroke). Raster draws the exact same continuous zigzag
-// polyline as Surface's Zigzag (Pocket Raster has no Unidirectional-style
-// sub-variant — see CLAUDE.md's Pocket design notes). Spiral draws the
-// real ring-to-ring ramp too — a curved polyline for Circle
-// (circleRingRampPoints(), lib/pocketSpiral.ts) and a straight jog for
-// Rectangle — before each ring's complete, closed circle/rectangle,
-// exactly mirroring what pocket.ts actually cuts (previously this drew
-// only the disconnected rings, leaving the ramp implicit — confusing for
-// visual verification, since it made every ring look like a fully
-// independent pass instead of one continuous spiral).
+// toolpath — the engine's own move list for every method (BL-61), so the
+// Helix entry, ring-to-ring ramps, laps and raster chain are exactly what
+// pocket.ts cuts, never a re-derivation of it.
 function drawPocketGeometry(
   ctx: CanvasRenderingContext2D,
   toPx: (x: number, y: number) => [number, number],
@@ -737,7 +704,7 @@ function drawPocketGeometry(
   showStock: boolean,
   showToolpath: boolean,
 ) {
-  const { center, nominal, circleRings, rectRings, rasterLines, adaptive, params } = pattern
+  const { center, nominal, toolpath, rasterLines, params } = pattern
   const [cx, cy] = toPx(center.x, center.y)
 
   if (showStock) {
@@ -768,81 +735,11 @@ function drawPocketGeometry(
     }
   }
 
-  if (showToolpath && adaptive) {
-    drawAdaptiveMoves(ctx, toPx, adaptive, theme)
-  }
-
   if (showToolpath) {
-    ctx.strokeStyle = theme.toolpath
-    ctx.lineWidth = 1.5
+    drawToolpathMoves(ctx, toPx, toolpath, theme)
 
-    // Ring-to-ring ramp (BL — visual QA fix): circleRings[0]/rectRings[0]
-    // is the Z-entry point, not a real ring to connect FROM anything —
-    // the ramp only exists for transitions between two actual rings
-    // (i = 1..length-1), same convention as pocket.ts/pocketSpiral.ts.
-    let circleAngleDeg = 0
-    circleRings.forEach((radius, i) => {
-      if (i > 0) {
-        const rampPoints = circleRingRampPoints(circleRings[i - 1], radius, circleAngleDeg, center.x, center.y)
-        ctx.beginPath()
-        rampPoints.forEach((p, j) => {
-          const [x, y] = toPx(p.x, p.y)
-          if (j === 0) ctx.moveTo(x, y)
-          else ctx.lineTo(x, y)
-        })
-        ctx.stroke()
-        circleAngleDeg += rampSweepDegFor(circleRings[i - 1], radius)
-      }
-      ctx.beginPath()
-      ctx.arc(cx, cy, Math.max(0, radius) * scale, 0, Math.PI * 2)
-      ctx.stroke()
-    })
-
-    // Same ramp treatment for Rectangle — a gradual ramp (halfWidth/
-    // halfHeight grow WHILE sweeping a perimeter fraction, exactly like
-    // Circle grows radius while sweeping an angle) followed by a full lap
-    // starting wherever the ramp left off (not always the corner — see
-    // rectFullLapPoints()'s doc comment). Both geometry functions come
-    // straight from pocketSpiral.ts, never reimplemented here, so this
-    // preview can't drift from what the engine actually cuts.
-    let rectPrevDims: RectRingDims =
-      params.pocket.zTransitionMode === 'helix'
-        ? { halfWidth: params.pocket.helixRadius, halfHeight: params.pocket.helixRadius }
-        : { halfWidth: 0, halfHeight: 0 }
-    let rectFraction = params.pocket.zTransitionMode === 'helix' ? RECT_HELIX_ENTRY_FRACTION : 0
-    rectRings.forEach((dims) => {
-      const rampPoints = rectRingRampPoints(rectPrevDims, dims, rectFraction, center.x, center.y)
-      ctx.beginPath()
-      rampPoints.forEach((p, j) => {
-        const [x, y] = toPx(p.x, p.y)
-        if (j === 0) ctx.moveTo(x, y)
-        else ctx.lineTo(x, y)
-      })
-      ctx.stroke()
-
-      const nextFraction = rectFraction + rectRampSweepFor(rectPrevDims, dims)
-      const lapPoints = rectFullLapPoints(center.x, center.y, dims, nextFraction)
-      ctx.beginPath()
-      lapPoints.forEach((p, j) => {
-        const [x, y] = toPx(p.x, p.y)
-        if (j === 0) ctx.moveTo(x, y)
-        else ctx.lineTo(x, y)
-      })
-      ctx.stroke()
-
-      rectPrevDims = dims
-      rectFraction = nextFraction
-    })
-
+    // Raster direction arrows, one per line, over the zigzag.
     if (rasterLines.length > 0) {
-      const waypoints = zigzagWaypoints(rasterLines)
-      ctx.beginPath()
-      waypoints.forEach((p, i) => {
-        const [x, y] = toPx(p.x, p.y)
-        if (i === 0) ctx.moveTo(x, y)
-        else ctx.lineTo(x, y)
-      })
-      ctx.stroke()
       rasterLines.forEach((line, i) => {
         const forward = i % 2 === 0
         const from = forward ? line.from : line.to

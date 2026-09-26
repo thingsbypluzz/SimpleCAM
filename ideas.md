@@ -244,7 +244,9 @@ Waga z review w nawiasie kwadratowym.
   duplikują geometrię silnika** — docelowo jedna lista ruchów (jak
   Adaptive) dla G-code i obu podglądów, po jednej operacji na raz
   (zaczynając od Surface). Etapy 1–2 (porządki, rejestry
-  `OPERATION_META`/`OPERATION_RULES`, `TextToggle`) zrobione w 0.20.8.
+  `OPERATION_META`/`OPERATION_RULES`, `TextToggle`) zrobione w 0.20.8;
+  etap 3: Surface (0.20.9) i Pocket (0.20.10) już na `lib/toolpath.ts`,
+  zostają Hole(s) i Outline.
 - **`BL-63`** *(Otwarty)* 🟠 **[Low]** — **Wydajność podglądów** — brak
   debounce, Adaptive przy 1% i cały G-code w jednym `<pre>`, podgląd
   1000 otworów przy literówce, domyślna zakładka 3D, `WebGLRenderer` bez
@@ -327,9 +329,14 @@ wierszy — stan kodu z dnia review (`main` @ `b867d4f`).
 - **Stan:** etapy 1–2 zrobione w 0.20.8 — rejestry `OPERATION_META`
   (`config/operationMeta.ts`) i `OPERATION_RULES` (`lib/validation.ts`)
   zamiast łańcuchów ternary, `TextToggle` zamiast skopiowanych
-  przełączników, usunięty `lib/index.ts`, poprawione komentarze. Zostaje
-  etap 3: lista ruchów, po jednej operacji, każda osobnym commitem z
-  wizualną weryfikacją podglądów.
+  przełączników, usunięty `lib/index.ts`, poprawione komentarze. Etap 3
+  (lista ruchów `lib/toolpath.ts`, po jednej operacji, każda osobnym
+  commitem z wizualną weryfikacją podglądów): Surface w 0.20.9, Pocket w
+  0.20.10. Zostają Hole(s) (Helix/Standard + mostki) i Outline
+  (Circle/Rectangle + mostki) — największe lustra w `buildScene.ts`
+  (`helixPoints3D`, `standardHolePoints3D`, `tabbed*Points3D`,
+  `rect*Points3D`). Przed zmianą warto nagrać wzorzec G-code z
+  `lib/fuzzParams.ts` i porównać po zmianie znak po znaku.
 - **Nakład:** trudny (lista ruchów).
 
 ### `BL-63` — Wydajność podglądów

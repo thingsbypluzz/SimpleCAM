@@ -1,6 +1,5 @@
-import { fmt } from './format'
-import { fullCircleMove } from './circle'
 import { computeDepthPasses } from './depthPasses'
+import { fullTurn, toolpathToGcode, ToolpathBuilder } from './toolpath'
 import type { InterpolationMode, PocketParams, Point2D, ZTransitionMode } from '../types/wizard'
 
 export interface PocketZTransitionOptions {
@@ -43,29 +42,18 @@ export function pocketEntryPoint(centerX: number, centerY: number, mode: ZTransi
 // exit direction — the first ring's ramp (pocketSpiral.ts) picks its own
 // start angle independently, starting wherever this helix ends
 // (centerX + helixRadius, centerY — angle 0).
-export function pocketZTransitionMoves(opts: PocketZTransitionOptions): string[] {
+export function appendPocketZTransition(builder: ToolpathBuilder, opts: PocketZTransitionOptions): void {
   if (opts.mode === 'plunge') {
-    return [`G1 Z${fmt(opts.toZ)} F${fmt(opts.plungeRate)}`]
+    builder.zTo('plunge', opts.toZ)
+    return
   }
 
-  const lines: string[] = []
+  const center = { x: opts.centerX, y: opts.centerY }
+  const exact = { from: { x: opts.centerX + opts.helixRadius, y: opts.centerY }, radius: opts.helixRadius }
   let z = opts.fromZ
   for (const turnDepth of computeDepthPasses(opts.fromZ - opts.toZ, opts.stepdown)) {
-    lines.push(
-      ...fullCircleMove({
-        centerX: opts.centerX,
-        centerY: opts.centerY,
-        radius: opts.helixRadius,
-        startX: opts.centerX + opts.helixRadius,
-        startY: opts.centerY,
-        zStart: z,
-        zEnd: z - turnDepth,
-        feed: opts.feedrateXY,
-        interpolation: opts.interpolation,
-        direction: 'ccw',
-      }),
-    )
     z -= turnDepth
+    builder.arc('cut', center, 'ccw', fullTurn, z, exact)
   }
 
   // Flat finishing pass at full depth — mirrors helix.ts's
@@ -78,20 +66,18 @@ export function pocketZTransitionMoves(opts: PocketZTransitionOptions): string[]
   // line (Rectangle/Raster) — only ever revisits this radius briefly near
   // its own start point, so without this pass most of the helix's own
   // boundary circle is left uncut at the true target depth.
-  lines.push(
-    ...fullCircleMove({
-      centerX: opts.centerX,
-      centerY: opts.centerY,
-      radius: opts.helixRadius,
-      startX: opts.centerX + opts.helixRadius,
-      startY: opts.centerY,
-      zStart: opts.toZ,
-      zEnd: opts.toZ,
-      feed: opts.feedrateXY,
-      interpolation: opts.interpolation,
-      direction: 'ccw',
-    }),
-  )
+  builder.arc('cut', center, 'ccw', fullTurn, opts.toZ, exact)
+}
 
-  return lines
+// G-code for one transition on its own (tests; lib/pocket.ts formats the
+// whole toolpath at once).
+export function pocketZTransitionMoves(opts: PocketZTransitionOptions): string[] {
+  const start = opts.mode === 'helix' ? opts.centerX + opts.helixRadius : opts.centerX
+  const builder = new ToolpathBuilder({ x: start, y: opts.centerY, z: opts.fromZ })
+  appendPocketZTransition(builder, opts)
+  return toolpathToGcode(builder.build(), {
+    feeds: { cut: opts.feedrateXY, plunge: opts.plungeRate },
+    interpolation: opts.interpolation,
+    leadInRapid: false,
+  })
 }
