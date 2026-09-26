@@ -1,6 +1,16 @@
 import { describe, expect, it } from 'vitest'
 import {
+  feedsWarnings,
   isCircleHoleCountValid,
+  isCustomPointsValid,
+  isFeedrateXYValid,
+  isHolesSizeValid,
+  isOutlineSizeValid,
+  isPlungeRateValid,
+  isPocketSizeValid,
+  isSafeZValid,
+  isSurfaceSizeValid,
+  isOutlineTabCountValid,
   isOutlineTabHeightValid,
   isOutlineTabWidthValid,
   isOutlineToolDiameterValid,
@@ -20,7 +30,10 @@ import {
   isSurfaceToolDiameterValid,
   isTabHeightValid,
   isTabWidthValid,
+  isTabCountValid,
   isToolDiameterValid,
+  isValidTabCount,
+  MAX_TAB_COUNT,
   machineFitWarnings,
   outlineFootprint,
   outlineZSpan,
@@ -41,10 +54,10 @@ describe('isToolDiameterValid', () => {
     ).toBe(true)
   })
 
-  it('is valid when tool exactly equals the hole', () => {
+  it('is invalid when tool exactly equals the hole (zero-radius toolpath, BL-49)', () => {
     expect(
       isToolDiameterValid({ ...DEFAULT_WIZARD_PARAMS.geometry, toolDiameter: 8, holeDiameter: 8 }),
-    ).toBe(true)
+    ).toBe(false)
   })
 
   it('is invalid when tool is larger than the hole', () => {
@@ -243,10 +256,10 @@ describe('isOutlineToolDiameterValid', () => {
     ).toBe(false)
   })
 
-  it('circle inside: valid when tool exactly equals the diameter', () => {
+  it('circle inside: invalid when tool exactly equals the diameter (zero-radius toolpath, BL-49)', () => {
     expect(
       isOutlineToolDiameterValid({ ...outline, shape: 'circle', offsetMode: 'inside', diameter: 8, toolDiameter: 8 }),
-    ).toBe(true)
+    ).toBe(false)
   })
 
   it('circle inside: invalid when tool exceeds the diameter', () => {
@@ -533,5 +546,78 @@ describe('machineFitWarnings — Pocket', () => {
     const warnings = machineFitWarnings(params, machine)
     expect(warnings).toHaveLength(1)
     expect(warnings[0]).toContain('X span')
+  })
+})
+
+describe('isValidTabCount / isTabCountValid / isOutlineTabCountValid (BL-45)', () => {
+  it('accepts whole numbers from 1 to MAX_TAB_COUNT', () => {
+    expect(isValidTabCount(1)).toBe(true)
+    expect(isValidTabCount(MAX_TAB_COUNT)).toBe(true)
+  })
+
+  it('rejects zero, fractions, values above the ceiling and NaN', () => {
+    for (const n of [0, 0.4, 2.5, MAX_TAB_COUNT + 1, -3, Number.NaN]) {
+      expect(isValidTabCount(n)).toBe(false)
+    }
+  })
+
+  it('is vacuously valid with tabs disabled, enforced with tabs enabled', () => {
+    const geometry = { ...DEFAULT_WIZARD_PARAMS.geometry, tabCount: 2.5 }
+    expect(isTabCountValid({ ...geometry, tabsEnabled: false })).toBe(true)
+    expect(isTabCountValid({ ...geometry, tabsEnabled: true })).toBe(false)
+    const outline = { ...DEFAULT_WIZARD_PARAMS.outline, tabCount: 0 }
+    expect(isOutlineTabCountValid({ ...outline, tabsEnabled: false })).toBe(true)
+    expect(isOutlineTabCountValid({ ...outline, tabsEnabled: true })).toBe(false)
+    expect(isOutlineTabCountValid({ ...outline, tabsEnabled: true, tabCount: 3 })).toBe(true)
+  })
+})
+
+describe('isCustomPointsValid (BL-48)', () => {
+  const custom = { ...DEFAULT_WIZARD_PARAMS.geometry, positioning: 'custom' as const }
+
+  it('is valid when every non-blank line parses', () => {
+    expect(isCustomPointsValid({ ...custom, customPointsText: '10,10\n\n20;30' })).toBe(true)
+  })
+
+  it('is invalid when any line fails to parse', () => {
+    expect(isCustomPointsValid({ ...custom, customPointsText: '10,10\nabc' })).toBe(false)
+  })
+
+  it('is invalid for an empty list', () => {
+    expect(isCustomPointsValid({ ...custom, customPointsText: '  \n' })).toBe(false)
+  })
+
+  it('is vacuously valid outside custom positioning', () => {
+    expect(
+      isCustomPointsValid({ ...DEFAULT_WIZARD_PARAMS.geometry, positioning: 'single', customPointsText: 'abc' }),
+    ).toBe(true)
+  })
+})
+
+describe('feeds validators (BL-46)', () => {
+  const feeds = DEFAULT_WIZARD_PARAMS.feeds
+
+  it('requires positive Feedrate XY, Plunge Rate and Safe Z', () => {
+    expect(isFeedrateXYValid(feeds) && isPlungeRateValid(feeds) && isSafeZValid(feeds)).toBe(true)
+    expect(isFeedrateXYValid({ ...feeds, feedrateXY: 0 })).toBe(false)
+    expect(isPlungeRateValid({ ...feeds, plungeRate: -300 })).toBe(false)
+    expect(isSafeZValid({ ...feeds, safeZ: 0 })).toBe(false)
+  })
+
+  it('warns (without blocking) about a negative Start Z', () => {
+    expect(feedsWarnings(feeds)).toEqual([])
+    expect(feedsWarnings({ ...feeds, startZ: -3 })).toHaveLength(1)
+  })
+})
+
+describe('size validators (BL-46)', () => {
+  it('require positive depth and shape dimensions', () => {
+    expect(isHolesSizeValid(DEFAULT_WIZARD_PARAMS.geometry)).toBe(true)
+    expect(isHolesSizeValid({ ...DEFAULT_WIZARD_PARAMS.geometry, totalDepth: 0 })).toBe(false)
+    expect(isOutlineSizeValid(DEFAULT_WIZARD_PARAMS.outline)).toBe(true)
+    expect(isOutlineSizeValid({ ...DEFAULT_WIZARD_PARAMS.outline, height: 0 })).toBe(false)
+    expect(isOutlineSizeValid({ ...DEFAULT_WIZARD_PARAMS.outline, shape: 'circle', height: 0 })).toBe(true)
+    expect(isSurfaceSizeValid({ ...DEFAULT_WIZARD_PARAMS.surface, width: -5 })).toBe(false)
+    expect(isPocketSizeValid({ ...DEFAULT_WIZARD_PARAMS.pocket, shape: 'circle', diameter: 0 })).toBe(false)
   })
 })

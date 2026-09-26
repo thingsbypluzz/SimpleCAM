@@ -30,7 +30,7 @@ describe('generateHelix', () => {
 
   it('includes spindle start + dwell when enabled', () => {
     const lines = generate(
-      buildParams({ output: { spindleStart: true, spindleSpeed: 12000, dwellSeconds: 3 } }),
+      buildParams({ output: { spindleStart: true } }),
     )
     expect(lines).toContain('M3 S12000')
     expect(lines).toContain('G4 P3')

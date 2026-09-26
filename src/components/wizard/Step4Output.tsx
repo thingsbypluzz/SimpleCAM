@@ -49,8 +49,16 @@ export function Step4Output({
   // Rectangle Outline is always straight-edge G1, independent of tabs — no
   // arc/circle geometry involved at all. Circle Outline follows the same
   // tabs-force-G1 rule as Hole(s). See CLAUDE.md's Outline design notes.
+  // Surface and Pocket have no tabs at all (BL-51) — reading
+  // geometry.tabsEnabled for them locked the toggle on "G1" while the file
+  // still followed the saved output.interpolation.
   const isRectOutline = params.operation === 'outline' && outline.shape !== 'circle'
-  const tabsForceLinear = params.operation === 'outline' ? outline.tabsEnabled : geometry.tabsEnabled
+  const tabsForceLinear =
+    params.operation === 'outline'
+      ? outline.tabsEnabled
+      : params.operation === 'holes'
+        ? geometry.tabsEnabled
+        : false
   const forcedLinear = isRectOutline || tabsForceLinear
 
   const handleCopy = async () => {
@@ -83,6 +91,7 @@ export function Step4Output({
             className="text-sm text-value"
           />
         ))}
+        <p className="text-xs text-muted">Spindle speed and dwell time are set in Settings → Machine.</p>
 
         <div className="flex items-center gap-2 pt-2 text-sm text-value">
           <span>Circle interpolation:</span>

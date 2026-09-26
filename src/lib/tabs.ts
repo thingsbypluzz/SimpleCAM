@@ -21,14 +21,24 @@ export interface TabRange {
 // tab's start (`step/2 - angularWidth/2`) is always > 0, and the last
 // tab's end (`2π - step/2 + angularWidth/2`) is always < 2π. No
 // angle-wraparound handling is needed anywhere as a result.
+//
+// Validation also requires a whole tabCount (BL-45); the floor and the
+// clamp to [0, 2π] below are only a defensive backstop so an unvalidated
+// value (preview renders before Generate is gated) can never push a range
+// past the pass's own start/end.
 export function computeTabRanges(tabCount: number, tabWidth: number, radius: number): TabRange[] {
-  if (tabCount <= 0 || radius <= 0) return []
+  const count = Math.floor(tabCount)
+  if (count <= 0 || radius <= 0) return []
+  const twoPi = 2 * Math.PI
   const angularWidth = tabWidth / radius
-  const step = (2 * Math.PI) / tabCount
+  const step = twoPi / count
   const ranges: TabRange[] = []
-  for (let k = 0; k < tabCount; k++) {
+  for (let k = 0; k < count; k++) {
     const center = step * (k + 0.5)
-    ranges.push({ startAngle: center - angularWidth / 2, endAngle: center + angularWidth / 2 })
+    ranges.push({
+      startAngle: Math.max(0, center - angularWidth / 2),
+      endAngle: Math.min(twoPi, center + angularWidth / 2),
+    })
   }
   return ranges
 }

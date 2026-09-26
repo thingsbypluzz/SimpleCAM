@@ -1,5 +1,5 @@
-// The only engine-visible difference between controllers today: G4 P's
-// units (seconds on GRBL/Mach3, milliseconds on Marlin) and the
+// Engine-visible differences between controllers: G4 P's units (seconds
+// on GRBL/Mach3, milliseconds on Marlin), the modal preamble line, and the
 // end-of-program code (M30 vs M2) — see lib/program.ts.
 export type Dialect = 'grbl' | 'marlin' | 'mach3'
 
@@ -24,6 +24,12 @@ export interface MachineSettings {
   defaultTabHeight: number
   defaultTabWidth: number
   defaultTabCount: number
+  // BL-53: emitted with the spindle start (`M3 S<spindleSpeed>`, then
+  // `G4 P<dwell>`) when Step 4's "Start spindle" is checked — a property
+  // of the machine (fixed-speed routers ignore S; dwell is spin-up time),
+  // so global rather than per preset. dwellSeconds 0 = no G4 at all.
+  spindleSpeed: number
+  dwellSeconds: number
 }
 
 // Generous enough that, unconfigured, these limits don't bite on typical
@@ -39,4 +45,6 @@ export const DEFAULT_MACHINE_SETTINGS: MachineSettings = {
   defaultTabHeight: 1,
   defaultTabWidth: 3,
   defaultTabCount: 3,
+  spindleSpeed: 12000,
+  dwellSeconds: 3,
 }

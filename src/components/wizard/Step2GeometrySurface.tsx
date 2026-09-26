@@ -1,6 +1,6 @@
 import type { RasterDirection, WizardParams, ZTransitionMode } from '../../types/wizard'
 import type { MachineSettings } from '../../types/machine'
-import { isSurfaceHelixRadiusValid, isSurfaceStepoverValid } from '../../lib/validation'
+import { isSurfaceHelixRadiusValid, isSurfaceSizeValid, isSurfaceStepoverValid } from '../../lib/validation'
 import { surfaceStepoverMm } from '../../lib/surfaceGeometry'
 import { fmt } from '../../lib/format'
 import { resolveToolDiameterSelectOptions } from '../../lib/toolDiameterOptions'
@@ -133,6 +133,8 @@ export function Step2GeometrySurface({ params, onChange, machine, toolDiameters 
           </FieldRow>
         </div>
       </div>
+
+      {!isSurfaceSizeValid(surface) && <p className="text-sm text-status-error">Dimensions and depth must be greater than 0.</p>}
 
       <div className="flex gap-4">
         <div className="flex min-w-0 flex-1 flex-col gap-1">

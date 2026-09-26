@@ -1,8 +1,10 @@
-import { useState } from 'react'
 import type { WizardParams } from '../../types/wizard'
 import type { MachineSettings } from '../../types/machine'
+import { parseCustomPointsText } from '../../lib/customPoints'
 import {
   isCircleHoleCountValid,
+  isHolesSizeValid,
+  isTabCountValid,
   isTabHeightValid,
   isTabWidthValid,
   isToolDiameterValid,
@@ -26,40 +28,21 @@ interface Step2GeometryHolesProps {
   toolDiameters: ToolDiameterOption[]
 }
 
-function parseCustomPoints(text: string) {
-  return text
-    .split('\n')
-    .map((line) => line.trim())
-    .filter(Boolean)
-    .map((line) => {
-      const [x, y] = line.split(',').map((v) => Number(v.trim()))
-      return { x: Number.isFinite(x) ? x : 0, y: Number.isFinite(y) ? y : 0 }
-    })
-}
-
-function formatCustomPoints(points: { x: number; y: number }[]) {
-  return points.map((p) => `${p.x},${p.y}`).join('\n')
-}
-
 export function Step2GeometryHoles({ params, onChange, machine, toolDiameters }: Step2GeometryHolesProps) {
   const { geometry } = params
 
   const updateGeometry = (patch: Partial<WizardParams['geometry']>) =>
     onChange({ geometry: { ...geometry, ...patch } })
 
-  // The textarea keeps its own raw-text state instead of being derived via
-  // formatCustomPoints(parseCustomPoints(text)) on every keystroke — that
-  // round-trip strips blank/trailing lines (parseCustomPoints filters empty
-  // lines), which snapped back and swallowed the Enter key. Lazy-init reads
-  // the current geometry once; the component remounts whenever Step 2
-  // becomes active again, so it stays in sync across visits.
-  const [customPointsText, setCustomPointsText] = useState(() =>
-    formatCustomPoints(geometry.customPoints),
-  )
+  // The textarea is bound to geometry.customPointsText (BL-48) — raw text,
+  // blank/trailing lines included, so Enter isn't swallowed by a
+  // parse/format round-trip. customPoints always follows it with just the
+  // lines that parsed; invalid ones are listed below the field and block
+  // Generate (isCustomPointsValid).
+  const customParse = parseCustomPointsText(geometry.customPointsText)
 
   const handleCustomPointsChange = (text: string) => {
-    setCustomPointsText(text)
-    updateGeometry({ customPoints: parseCustomPoints(text) })
+    updateGeometry({ customPointsText: text, customPoints: parseCustomPointsText(text).points })
   }
 
   const holeDiameterField = useNumberField(geometry.holeDiameter, (v) =>
@@ -121,9 +104,10 @@ export function Step2GeometryHoles({ params, onChange, machine, toolDiameters }:
         </div>
         {!isToolDiameterValid(geometry) && (
           <p className="text-sm text-status-error">
-            Tool diameter can't be larger than the hole diameter.
+            Tool diameter must be smaller than the hole diameter.
           </p>
         )}
+        {!isHolesSizeValid(geometry) && <p className="text-sm text-status-error">Dimensions and depth must be greater than 0.</p>}
       </div>
 
       <div className="flex flex-col gap-1">
@@ -214,13 +198,25 @@ export function Step2GeometryHoles({ params, onChange, machine, toolDiameters }:
       )}
 
       {geometry.positioning === 'custom' && (
-        <FieldRow label="Points (X,Y per line)" hint="e.g. 10,10">
-          <textarea
-            className={`${inputClass} h-28 font-mono`}
-            value={customPointsText}
-            onChange={(e) => handleCustomPointsChange(e.target.value)}
-          />
-        </FieldRow>
+        <div className="flex flex-col gap-4">
+          <FieldRow label="Points (X,Y per line)" hint="e.g. 10,10 — comma, semicolon or space">
+            <textarea
+              className={`${inputClass} h-28 font-mono`}
+              value={geometry.customPointsText}
+              onChange={(e) => handleCustomPointsChange(e.target.value)}
+            />
+          </FieldRow>
+          {customParse.invalidLines.length > 0 ? (
+            <p className="text-sm text-status-error">
+              {customParse.invalidLines.length === 1 ? 'Line' : 'Lines'} {customParse.invalidLines.join(', ')}:
+              expected two numbers, e.g. 10,20.
+            </p>
+          ) : (
+            customParse.points.length === 0 && (
+              <p className="text-sm text-status-error">Add at least one point.</p>
+            )
+          )}
+        </div>
       )}
 
       <div className="border-t border-border pt-4">
@@ -286,6 +282,11 @@ export function Step2GeometryHoles({ params, onChange, machine, toolDiameters }:
             {!isTabWidthValid(geometry) && (
               <p className="text-sm text-status-error">
                 Tab count × width can't reach the toolpath's full circumference.
+              </p>
+            )}
+            {!isTabCountValid(geometry) && (
+              <p className="text-sm text-status-error">
+                Tab count must be a whole number from 1 to {MAX_TAB_COUNT}.
               </p>
             )}
           </div>

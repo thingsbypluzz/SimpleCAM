@@ -5,7 +5,7 @@ import type { AppearanceSettings, Grid3DLabelSize } from '../types/appearance'
 import { THEME_LIST } from '../types/theme'
 import { DEFAULT_TOOL_DIAMETER_OPTIONS, type ToolDiameterOption } from '../types/toolDiameters'
 import { formatToolDiameterLabel } from '../lib/toolDiameterOptions'
-import { isToolDiameterEntryValid, MAX_TOOL_DIAMETER_COUNT } from '../lib/validation'
+import { isToolDiameterEntryValid, isValidTabCount, MAX_TOOL_DIAMETER_COUNT } from '../lib/validation'
 import { Checkbox } from './wizard/Checkbox'
 import { inputClass } from './wizard/FieldRow'
 import { NumberInput } from './wizard/NumberInput'
@@ -24,10 +24,11 @@ interface SettingsModalProps {
 
 type TravelField = 'travelX' | 'travelY' | 'travelZ'
 type TabDefaultField = 'defaultTabHeight' | 'defaultTabWidth' | 'defaultTabCount'
-// Both groups are plain positive numbers, sharing one local-buffer/onBlur
-// mechanism (text/savedField/handleBlur below) — only the field list and
-// per-field step/label differ.
-type NumericField = TravelField | TabDefaultField
+type SpindleField = 'spindleSpeed' | 'dwellSeconds'
+// All groups are plain positive numbers (dwell may also be 0), sharing one
+// local-buffer/onBlur mechanism (text/savedField/handleBlur below) — only
+// the field list and per-field step/label differ.
+type NumericField = TravelField | TabDefaultField | SpindleField
 type CodeField = 'headerText' | 'footerText'
 type SectionId = 'machine' | 'tabs' | 'toolDiameters' | 'appearance' | 'privacy' | 'reset' | 'about'
 
@@ -53,6 +54,13 @@ const TAB_DEFAULT_FIELDS: { key: TabDefaultField; label: string; step: string }[
   { key: 'defaultTabHeight', label: 'Height [mm]', step: '0.1' },
   { key: 'defaultTabWidth', label: 'Width [mm]', step: '0.1' },
   { key: 'defaultTabCount', label: 'Count', step: '1' },
+]
+
+// BL-53: emitted as `M3 S<speed>` + `G4 P<dwell>` when Step 4's "Start
+// spindle" is checked.
+const SPINDLE_FIELDS: { key: SpindleField; label: string; step: string }[] = [
+  { key: 'spindleSpeed', label: 'Spindle Speed [RPM]', step: '100' },
+  { key: 'dwellSeconds', label: 'Spin-up Dwell [s]', step: '0.5' },
 ]
 
 const DIALECT_OPTIONS: { value: Dialect; label: string }[] = [
@@ -88,6 +96,8 @@ export function SettingsModal({
     defaultTabHeight: String(machine.defaultTabHeight),
     defaultTabWidth: String(machine.defaultTabWidth),
     defaultTabCount: String(machine.defaultTabCount),
+    spindleSpeed: String(machine.spindleSpeed),
+    dwellSeconds: String(machine.dwellSeconds),
   })
   const [savedField, setSavedField] = useState<NumericField | null>(null)
   // Same "local buffer, commit on blur" pattern as the numeric travel
@@ -156,7 +166,16 @@ export function SettingsModal({
   // non-positive, revert to the last saved value instead of persisting
   // garbage.
   const commitField = (key: NumericField, next: number) => {
-    if (!Number.isFinite(next) || next <= 0) {
+    // Default Tab Count also has to be a whole number within the wizard's
+    // own Tab Count limit (BL-45) — seeding a fractional default into Step
+    // 2 would just land the user on a validation error.
+    // Dwell 0 is meaningful (no G4 at all), so it's the one field allowed
+    // to reach zero.
+    const invalid =
+      !Number.isFinite(next) ||
+      (key === 'dwellSeconds' ? next < 0 : next <= 0) ||
+      (key === 'defaultTabCount' && !isValidTabCount(next))
+    if (invalid) {
       setText((prev) => ({ ...prev, [key]: String(machine[key]) }))
       return
     }
@@ -346,6 +365,41 @@ export function SettingsModal({
                     ))}
                   </select>
                 </label>
+
+                <div className="flex gap-4">
+                  {SPINDLE_FIELDS.map((field) => (
+                    <div key={field.key} className="min-w-0 flex-1">
+                      <label className="flex flex-col gap-1">
+                        <span className="flex items-center gap-2 text-sm font-medium text-value">
+                          {field.label}
+                          {savedField === field.key && (
+                            <span className="text-xs font-normal text-status-success">
+                              ✓ Saved
+                            </span>
+                          )}
+                        </span>
+                        <NumberInput
+                          type="number"
+                          step={field.step}
+                          min="0"
+                          className={inputClass}
+                          value={text[field.key]}
+                          onChange={(e) =>
+                            setText((prev) => ({ ...prev, [field.key]: e.target.value }))
+                          }
+                          onBlur={() => handleBlur(field.key)}
+                          onAdjust={(delta) => handleAdjust(field.key, delta)}
+                        />
+                      </label>
+                    </div>
+                  ))}
+                </div>
+                <p className="text-sm text-muted">
+                  Used when Step 4's "Start spindle" is checked: <code className="font-mono text-xs">M3 S
+                  {machine.spindleSpeed}</code>, then a dwell while the spindle spins up (0 = none).
+                  {machine.dialect === 'marlin' &&
+                    ' On Marlin, S is often PWM 0–255 or a percentage (depends on CUTTER_POWER_UNIT) — set it to what your firmware expects.'}
+                </p>
 
                 <span className="text-sm font-medium text-value">
                   Start / End G-Code

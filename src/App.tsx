@@ -63,7 +63,13 @@ import { DEFAULT_APPEARANCE_SETTINGS } from './types/appearance'
 import { DEFAULT_MACHINE_SETTINGS } from './types/machine'
 import { DEFAULT_TOOL_DIAMETER_OPTIONS } from './types/toolDiameters'
 import {
+  feedsWarnings,
   isCircleHoleCountValid,
+  isCustomPointsValid,
+  isFeedrateXYValid,
+  isHolesSizeValid,
+  isOutlineSizeValid,
+  isOutlineTabCountValid,
   isOutlineTabHeightValid,
   isOutlineTabWidthValid,
   isOutlineToolDiameterValid,
@@ -71,13 +77,18 @@ import {
   isPocketLinkingFeedValid,
   isPocketOptimalLoadValid,
   isPocketRampAngleValid,
+  isPocketSizeValid,
   isPocketStepoverValid,
   isPocketToolDiameterValid,
+  isPlungeRateValid,
+  isSafeZValid,
   isStartZValid,
   isStepdownValid,
   isSurfaceHelixRadiusValid,
+  isSurfaceSizeValid,
   isSurfaceStepoverValid,
   isSurfaceToolDiameterValid,
+  isTabCountValid,
   isTabHeightValid,
   isTabWidthValid,
   isToolDiameterValid,
@@ -295,35 +306,45 @@ function App() {
           ? params.pocket
           : params.geometry,
   )
+  // Step 3 (feeds/Z) validity is shared by every operation.
+  const areFeedsValid =
+    isStepdownValid(params.feeds) &&
+    isStartZValid(params.feeds) &&
+    isSafeZValid(params.feeds) &&
+    isFeedrateXYValid(params.feeds) &&
+    isPlungeRateValid(params.feeds)
   const isGeometryValid =
-    params.operation === 'outline'
+    areFeedsValid &&
+    (params.operation === 'outline'
       ? isOutlineToolDiameterValid(params.outline) &&
-        isStepdownValid(params.feeds) &&
-        isStartZValid(params.feeds) &&
+        isOutlineSizeValid(params.outline) &&
         isOutlineTabHeightValid(params.outline) &&
-        isOutlineTabWidthValid(params.outline)
+        isOutlineTabWidthValid(params.outline) &&
+        isOutlineTabCountValid(params.outline)
       : params.operation === 'surface'
         ? isSurfaceToolDiameterValid(params.surface) &&
-          isStepdownValid(params.feeds) &&
-          isStartZValid(params.feeds) &&
+          isSurfaceSizeValid(params.surface) &&
           isSurfaceStepoverValid(params.surface) &&
           isSurfaceHelixRadiusValid(params.surface)
         : params.operation === 'pocket'
           ? isPocketToolDiameterValid(params.pocket) &&
-            isStepdownValid(params.feeds) &&
-            isStartZValid(params.feeds) &&
+            isPocketSizeValid(params.pocket) &&
             isPocketStepoverValid(params.pocket) &&
             isPocketHelixRadiusValid(params.pocket) &&
             isPocketOptimalLoadValid(params.pocket) &&
             isPocketRampAngleValid(params.pocket) &&
             isPocketLinkingFeedValid(params.pocket)
           : isToolDiameterValid(params.geometry) &&
-            isStepdownValid(params.feeds) &&
-            isStartZValid(params.feeds) &&
+            isHolesSizeValid(params.geometry) &&
             isCircleHoleCountValid(params.geometry) &&
+            isCustomPointsValid(params.geometry) &&
             isTabHeightValid(params.geometry) &&
-            isTabWidthValid(params.geometry)
+            isTabWidthValid(params.geometry) &&
+            isTabCountValid(params.geometry))
   const fitWarnings = machineFitWarnings(params, machine)
+  // Shown next to the machine-fit warnings in Step 4, but kept out of
+  // step4Badge(), whose color means "doesn't fit the machine" only.
+  const step4Warnings = [...fitWarnings, ...feedsWarnings(params.feeds)]
   const step4BadgeInfo = step4Badge(generatedGCode, fitWarnings)
 
   // BL-25: while a preset slot is armed for edit mode, every param change
@@ -746,7 +767,12 @@ function App() {
                     />
                   )}
                   {step.id === 3 && (
-                    <Step3Feeds params={params} onChange={updateParams} machine={machine} />
+                    <Step3Feeds
+                      params={params}
+                      onChange={updateParams}
+                      machine={machine}
+                      stepdownLabel={activeMethodDisplay.stepdown.fieldLabel}
+                    />
                   )}
                   {step.id === 4 && (
                     <>
@@ -764,7 +790,7 @@ function App() {
                         overlayActive={overlayEnabled}
                         presetSlots={presetSlots}
                         onSaveToPreset={handleSaveToPreset}
-                        warnings={fitWarnings}
+                        warnings={step4Warnings}
                       />
                     </>
                   )}

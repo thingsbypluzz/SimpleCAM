@@ -64,11 +64,15 @@ decyzją projektową).
 ## Kluczowe decyzje projektowe (stan obecny)
 
 - **Jednostki:** tylko mm, bez cali.
-- **Dialekt G-code:** wspólny podzbiór GRBL/Marlin/Mach3, preambuła
-  `G21 G90 G17`. Realny wybór dialektu przez `MachineSettings.dialect`
-  (`'grbl' | 'marlin' | 'mach3'`, domyślnie `'grbl'`, Settings → Machine)
-  rozstrzyga dwie rzeczy w `src/lib/program.ts`: wartość `G4 P` (sekundy
-  dla GRBL/Mach3, ×1000 milisekund dla Marlina) oraz
+- **Dialekt G-code:** wspólny podzbiór GRBL/Marlin/Mach3. Realny wybór
+  dialektu przez `MachineSettings.dialect` (`'grbl' | 'marlin' |
+  'mach3'`, domyślnie `'grbl'`, Settings → Machine) rozstrzyga trzy
+  rzeczy w `src/lib/program.ts`: preambułę (`modalPreamble()` — `G21 G90
+  G17`, a dla GRBL/Mach3 dodatkowo druga linia `G91.1 G94 G40 G49`:
+  przyrostowe I/J łuków, posuw na minutę, bez kompensacji promienia i
+  długości narzędzia — Marlin żadnego z tych kodów nie implementuje, jego
+  I/J są zawsze przyrostowe), wartość `G4 P` (sekundy dla GRBL/Mach3,
+  ×1000 milisekund dla Marlina) oraz
   `endOfProgramCode(dialect)` — `M30` dla GRBL/Mach3, `M2` dla Marlina —
   emitowane bezwarunkowo jako faktycznie ostatnia linia pliku.
 - **Dwie metody Hole(s):** Helix (spiralne rampowanie w dół, ruch X/Y/Z
@@ -84,7 +88,14 @@ decyzją projektową).
   Grid (4 rogi), Rectangular Grid Centered (rogi wyśrodkowane), N-Holes
   on Circle (`circleHoleCount`/`circleDiameter`/`circleStartAngle`,
   0°=+X, rośnie przeciwnie do wskazówek zegara), Custom List (dowolne
-  punkty `X,Y` wpisane ręcznie). Brak importu DXF/SVG (`BL-7` w
+  punkty `X,Y` wpisane ręcznie — surowy tekst textarea to
+  `geometry.customPointsText`, źródło prawdy zapisywane w presetach;
+  `customPoints` to zawsze zapisywana razem z nim lista samych poprawnie
+  sparsowanych linii, czytana przez silnik/podglądy. Linia poprawna =
+  dokładnie dwie skończone liczby rozdzielone `,`/`;`/spacją
+  (`parseCustomPointsText()`, `lib/customPoints.ts`); każda inna linia
+  to błąd z numerem linii i blokada Generate (`isCustomPointsValid()`,
+  też pusta lista) — nigdy cichy otwór w `(0,0)`). Brak importu DXF/SVG (`BL-7` w
   `ideas.md`). Grid i Grid Centered kolapsują do 2 rzeczywistych
   punktów (albo 1, gdy oba wymiary naraz), kiedy `gridX` lub `gridY`
   wynosi dokładnie `0` (`===`, bez epsilon) — zamiast wiercić
@@ -480,7 +491,10 @@ decyzją projektową).
   G2/G3 (`gcodeTestUtils.ts`).
 - **Ruch między otworami:** powrót na `Safe Z` przed `G0` do kolejnego
   punktu XY.
-- **Wrzeciono:** tylko `M3` (bez `M4`).
+- **Wrzeciono:** tylko `M3` (bez `M4`). Obroty (`S`) i czas rozpędzenia
+  (`G4 P`, 0 = bez dwell) to `MachineSettings.spindleSpeed`/
+  `dwellSeconds` (Settings → Machine, globalne, nie per preset) —
+  emitowane tylko, gdy w Kroku 4 zaznaczono start wrzeciona.
 - **Jedno narzędzie na wygenerowany plik** — brak zmiany narzędzia.
 - **Nazwa pliku wyjściowego:** `op-<pattern>-<data>.gcode`
   (`buildFilename()`, `src/lib/download.ts`) — `<pattern>` to
@@ -541,7 +555,9 @@ Artifact aktualizować tylko jeśli realny layout appki zmieni się na tyle,
 
 Settings Modal, Settings Nav item „Machine”. Pola: X/Y/Z travel maszyny
 (auto-save `onBlur`, zapis tylko przy poprawnej wartości `> 0`),
-G-Code Dialect (Drop-down, zapis natychmiastowy), Start G-Code / End
+G-Code Dialect (Drop-down, zapis natychmiastowy), Spindle Speed [RPM] i
+Spin-up Dwell [s] (ten sam wzorzec `onBlur` co travel; dwell może być 0,
+przy Marlinie podpowiedź, że `S` bywa PWM 0–255), Start G-Code / End
 G-Code (dwa `<textarea>` — `headerText`/`footerText`, tekst wolny,
 commit `onBlur`). Trwałe w `localStorage` pod kluczem
 `simplecam.machine` (`src/lib/machineStorage.ts`), osobno od presetów
@@ -1026,8 +1042,13 @@ próbkowania.
 Wymusza interpolację G1 dla całego programu (patrz wyżej).
 Walidacja (`src/lib/validation.ts`): `isTabHeightValid()` — `0 <
 tabHeight < totalDepth`; `isTabWidthValid()` — `tabCount × tabWidth <`
-obwód ścieżki narzędzia. `MAX_TAB_COUNT = 20` (arbitralny sufit
-spinnera). Obie prawdziwe wprost, gdy tabs wyłączone.
+obwód ścieżki narzędzia; `isTabCountValid()`/`isOutlineTabCountValid()`
+(wspólne `isValidTabCount()`) — liczba całkowita od 1 do `MAX_TAB_COUNT
+= 20` (arbitralny sufit). Wszystkie prawdziwe wprost, gdy tabs
+wyłączone. Settings → Tabs → Default Tab Count odrzuca tę samą klasę
+wartości. `computeTabRanges()`/`computeRectTabRanges()` dodatkowo
+defensywnie obcinają ułamek (`Math.floor`) i zaciskają zakresy do
+[0, 2π]/[0, 1] — podglądy renderują się przed bramką Generate.
 
 Podglądy 2D i 3D renderują realne przerwy: `drawGappedCircle()`/
 `drawGappedRectangle()` (`drawToolpath.ts`) rysują przerwaną linię
@@ -1539,6 +1560,13 @@ src/
   lib/                       — czysta logika generowania G-code.
     format.ts                 — formatowanie liczb w G-code (4 miejsca po
                                  przecinku, bez zbędnych zer, bez "-0").
+    customPoints.ts            — `parseCustomPointsText()` (punkty +
+                                 numery błędnych linii) i
+                                 `formatCustomPoints()` dla Custom List —
+                                 wyjęte z komponentu, reużyte przez
+                                 walidację i migrację w `storage.ts`
+                                 (stare zapisy bez `customPointsText`
+                                 dostają tekst odtworzony z punktów).
     positioning.ts             — `resolvePoints(geometry) → Point2D[]`
                                  (single/grid/gridCentered/circle/custom +
                                  kolaps grid do 2/1 punktów + globalny
@@ -1720,12 +1748,30 @@ src/
                                  osobne funkcje poziomu.
                                  `generatePocketAdaptive` omija ten szkielet
                                  (własna struktura poziomów, bez retraktu).
-    validation.ts                — `isToolDiameterValid`, `isStepdownValid`,
+    validation.ts                — `isToolDiameterValid` (ostre `<` —
+                                 frez równy otworowi to ścieżka o zerowym
+                                 promieniu), `isStepdownValid`,
+                                 `isSafeZValid` (> 0)/
+                                 `isFeedrateXYValid`/`isPlungeRateValid`
+                                 (> 0), `isHolesSizeValid`/
+                                 `isOutlineSizeValid`/`isSurfaceSizeValid`/
+                                 `isPocketSizeValid` (głębokość i wymiary
+                                 kształtu > 0), `feedsWarnings()`
+                                 (nieblokujące: Start Z < 0 — rapid
+                                 schodzi poniżej wierzchu materiału;
+                                 pokazywane w Kroku 3 i na liście ostrzeżeń
+                                 Kroku 4, ale nie zmienia koloru Badge'a,
+                                 który oznacza wyłącznie dopasowanie do
+                                 maszyny),
                                  `isCircleHoleCountValid` (limit 100),
-                                 `isTabHeightValid`/`isTabWidthValid`,
-                                 `isOutlineToolDiameterValid`/
+                                 `isCustomPointsValid`,
+                                 `isTabHeightValid`/`isTabWidthValid`/
+                                 `isTabCountValid`,
+                                 `isOutlineToolDiameterValid` (Circle
+                                 Inside też ostre `<`)/
                                  `isOutlineTabHeightValid`/
-                                 `isOutlineTabWidthValid`,
+                                 `isOutlineTabWidthValid`/
+                                 `isOutlineTabCountValid`,
                                  `isSurfaceToolDiameterValid`/
                                  `isSurfaceStepoverValid`/
                                  `isSurfaceHelixRadiusValid`,

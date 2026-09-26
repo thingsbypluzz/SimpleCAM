@@ -15,18 +15,29 @@ export interface SideTabRange {
 // Called once per side with that side's own length — `tabCountPerSide`
 // is per side (not total around the perimeter, unlike circle outline's
 // tabCount), per the Outline design (CLAUDE.md).
+//
+// Validation requires a whole count (BL-45) — a fractional one (2.5) used
+// to put the last tab's center at frac 1.0, so tabbedRectanglePass
+// extrapolated past the corner and plunged to full depth there, cutting
+// into the kept wall. The floor and the clamp to [0, 1] keep every range on
+// its own side even for an unvalidated value (the preview renders before
+// Generate is gated).
 export function computeRectTabRanges(
   tabCountPerSide: number,
   tabWidth: number,
   sideLength: number,
 ): SideTabRange[] {
-  if (tabCountPerSide <= 0 || sideLength <= 0) return []
+  const count = Math.floor(tabCountPerSide)
+  if (count <= 0 || sideLength <= 0) return []
   const widthFrac = tabWidth / sideLength
-  const step = 1 / tabCountPerSide
+  const step = 1 / count
   const ranges: SideTabRange[] = []
-  for (let k = 0; k < tabCountPerSide; k++) {
+  for (let k = 0; k < count; k++) {
     const center = step * (k + 0.5)
-    ranges.push({ startFrac: center - widthFrac / 2, endFrac: center + widthFrac / 2 })
+    ranges.push({
+      startFrac: Math.max(0, center - widthFrac / 2),
+      endFrac: Math.min(1, center + widthFrac / 2),
+    })
   }
   return ranges
 }
