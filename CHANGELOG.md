@@ -7,6 +7,34 @@ zgodne z [SemVer](https://semver.org/). Ten plik pozostaje głównym, czytelnym
 thingsbypluzz/SimpleCAM), ale to infrastruktura pod izolację pracy
 (branch/worktree per zadanie), nie zamiennik tego changeloga.
 
+## [0.20.8] — 2026-09-26
+
+### Zmieniono
+
+- **`BL-61`, etapy 1–2: rejestry operacji zamiast łańcuchów `operation
+  === …`.** Wszystko, co UI robi inaczej per operacja, jest w jednym
+  wpisie na operację: `OPERATION_META` (`config/operationMeta.ts` —
+  etykieta i ikona z Kroku 1, wyświetlana metoda, statystyki i tooltip
+  podsumowania Kroku 2, `generate`, slug nazwy pliku, etykieta presetu) i
+  `OPERATION_RULES` (`lib/validation.ts` — walidacja Generate, głębokość,
+  mostki, rozmiar do ostrzeżeń o maszynie). `App.tsx` nie ma już żadnego
+  rozgałęzienia po operacji; cztery prawie identyczne bloki podsumowania
+  Kroku 2 zastąpiła jedna pętla. Oba rejestry są kluczowane typem
+  operacji — nowa operacja nie przejdzie typecheck, dopóki nie wypełni
+  każdego pola (takie łańcuchy były przyczyną `BL-51`).
+- Sześć skopiowanych tekstowych przełączników (kierunek rastra i
+  Z-Transition w Surface/Pocket, Conv./Climb, interpolacja w Kroku 4)
+  zastąpił jeden komponent `TextToggle`. Wyszarzony przełącznik
+  Z-Transition w Pocket Adaptive ma teraz przezroczystość 50% jak reszta
+  (było 60%).
+- Porządki: usunięty nieużywany `lib/index.ts`, poprawione nieaktualne
+  komentarze o Start Z (`helix.ts`, `standardHole.ts`) i o liczbie
+  komponentów Kroku 2.
+
+Bez zmian w generowanym G-code (nowy test porównuje `generate` z rejestru
+z bezpośrednim wywołaniem silnika). Etap 3 — wspólna lista ruchów dla
+silnika i podglądów — zostaje w `BL-61`.
+
 ## [0.20.7] — 2026-09-26
 
 ### Dodano

@@ -14,8 +14,8 @@ const TAB_BAND_EPSILON = 1e-9
 
 // Layered pocket: plunge straight down by `stepdown`, sweep a full flat
 // 360° circle at that depth, repeat until the target depth is reached.
-// `startZ` raises the top of the cut (material treated as taller by that
-// amount) — passes start there and still end at -totalDepth. When tabs
+// Passes start at `startZ` — the approach margin above the stock top (Z0),
+// not extra material (BL-37) — and still end at -totalDepth. When tabs
 // are enabled (BL-14), passes at or below the tab-band top (the last
 // `tabHeight` mm) skip the tab arcs instead of cutting a full circle —
 // no restructuring needed here, since every pass is already flat at its

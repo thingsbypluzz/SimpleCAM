@@ -13,38 +13,18 @@ const Scene3D = lazy(() =>
   import('./components/preview3d/Scene3D').then((m) => ({ default: m.Scene3D })),
 )
 import {
-  BitIcon,
   CheckIcon,
-  DepthIcon,
-  DiameterIcon,
   EyeIcon,
   FeedIcon,
-  OffsetIcon,
   PencilIcon,
   PlungeIcon,
   StartZIcon,
   StepdownIcon,
-  TabBridgeIcon,
   WarningIcon,
   XIcon,
 } from './components/icons'
-import { METHOD_META } from './config/methodMeta'
-import { positioningIcon, positioningLines, positioningSummary } from './config/positioningMeta'
-import {
-  activeOutlineMethodMeta,
-  offsetModeLabel,
-  OUTLINE_SHAPE_META,
-  outlineShapeIcon,
-  outlineShapeLines,
-  outlineSummary,
-} from './config/outlineMeta'
-import { SURFACE_METHOD_META } from './config/surfaceMethodMeta'
-import { SURFACE_SHAPE_META, surfaceShapeIcon, surfaceShapeLines, surfaceSummary } from './config/surfaceMeta'
-import { POCKET_METHOD_META } from './config/pocketMethodMeta'
-import { POCKET_SHAPE_META, pocketShapeIcon, pocketShapeLines, pocketSummary } from './config/pocketMeta'
-import { fmt } from './lib/format'
+import { OPERATION_META } from './config/operationMeta'
 import { deriveOverlayParams } from './lib/overlayParams'
-import { generateOutline } from './lib/outline'
 import { presetLabel } from './lib/presetLabel'
 import {
   AUTO_SAVE_SLOT,
@@ -90,23 +70,6 @@ const STEPS_WITH_NEXT_BUTTON = new Set([1, 2, 3])
 // hidden entirely at the (0,0) default, not just zeroed out. Structural
 // param type (not GeometryParams) — both geometry and outline carry their
 // own offsetX/offsetY, this reads either.
-function offsetSummary(offset: { offsetX: number; offsetY: number }): string | null {
-  if (offset.offsetX === 0 && offset.offsetY === 0) return null
-  return `(${fmt(offset.offsetX)};${fmt(offset.offsetY)})mm`
-}
-
-function outlineSizeValue(outline: WizardParams['outline']): string {
-  return outline.shape === 'circle' ? `⌀${outline.diameter}` : `${outline.width}×${outline.height}`
-}
-
-function surfaceSizeValue(surface: WizardParams['surface']): string {
-  return `${surface.width}×${surface.height}`
-}
-
-function pocketSizeValue(pocket: WizardParams['pocket']): string {
-  return pocket.shape === 'circle' ? `⌀${pocket.diameter}` : `${pocket.width}×${pocket.height}`
-}
-
 interface Step4Badge {
   Icon: ComponentType<{ className?: string }>
   colorClassName: string
@@ -145,30 +108,12 @@ function step4Badge(generatedGCode: string[] | null, warnings: string[]): Step4B
 
 function collapsedStepTitle(stepId: number, params: WizardParams): string {
   switch (stepId) {
-    case 1:
-      if (params.operation === 'outline') return `Shape — ${outlineSummary(params.outline)}`
-      if (params.operation === 'surface') return `Shape — ${surfaceSummary(params.surface)}`
-      if (params.operation === 'pocket') return `Shape — ${pocketSummary(params.pocket)}`
-      return `Pattern — ${positioningSummary(params.geometry)}`
-    case 2: {
-      if (params.operation === 'outline') {
-        const { outline } = params
-        const offset = offsetSummary(outline)
-        return `Geometry — Tool ⌀${outline.toolDiameter}mm, ${OUTLINE_SHAPE_META[outline.shape].title} ${outlineSizeValue(outline)}mm, Depth ${outline.totalDepth}mm (${offsetModeLabel(outline.offsetMode)})${offset ? ` — Offset ${offset}` : ''} — Method: ${activeOutlineMethodMeta(outline).title}`
-      }
-      if (params.operation === 'surface') {
-        const { surface } = params
-        const offset = offsetSummary(surface)
-        return `Geometry — Tool ⌀${surface.toolDiameter}mm, ${SURFACE_SHAPE_META[surface.shape].title} ${surfaceSizeValue(surface)}mm, Depth ${surface.totalDepth}mm${offset ? ` — Offset ${offset}` : ''} — Method: ${SURFACE_METHOD_META[surface.method].title}`
-      }
-      if (params.operation === 'pocket') {
-        const { pocket } = params
-        const offset = offsetSummary(pocket)
-        return `Geometry — Tool ⌀${pocket.toolDiameter}mm, ${POCKET_SHAPE_META[pocket.shape].title} ${pocketSizeValue(pocket)}mm, Depth ${pocket.totalDepth}mm${offset ? ` — Offset ${offset}` : ''} — Method: ${POCKET_METHOD_META[pocket.method].title}`
-      }
-      const offset = offsetSummary(params.geometry)
-      return `Geometry — Tool ⌀${params.geometry.toolDiameter}mm, Hole ⌀${params.geometry.holeDiameter}mm, Depth ${params.geometry.totalDepth}mm${offset ? ` — Offset ${offset}` : ''} — Method: ${METHOD_META[params.method].title}`
+    case 1: {
+      const meta = OPERATION_META[params.operation]
+      return `${meta.pickKind} — ${meta.pickSummary(params)}`
     }
+    case 2:
+      return `Geometry — ${OPERATION_META[params.operation].geometryTitle(params)}`
     case 3:
       return `Feeds & Speeds — Feed ${params.feeds.feedrateXY} mm/min, Stepdown ${params.feeds.stepdown} mm`
     default:
@@ -269,23 +214,8 @@ function App() {
   // Display-only method info (Icon/shortLabel/title/stepdown), resolved
   // per operation — NOT the same as the generate() dispatch below, since
   // OutlineMethodMeta has no `generate` of its own (see lib/outline.ts).
-  const activeMethodDisplay =
-    params.operation === 'outline'
-      ? activeOutlineMethodMeta(params.outline)
-      : params.operation === 'surface'
-        ? SURFACE_METHOD_META[params.surface.method]
-        : params.operation === 'pocket'
-          ? POCKET_METHOD_META[params.pocket.method]
-          : METHOD_META[params.method]
-  const offset = offsetSummary(
-    params.operation === 'outline'
-      ? params.outline
-      : params.operation === 'surface'
-        ? params.surface
-        : params.operation === 'pocket'
-          ? params.pocket
-          : params.geometry,
-  )
+  const operationMeta = OPERATION_META[params.operation]
+  const activeMethodDisplay = operationMeta.method(params)
   const isGeometryValid = isWizardParamsValid(params)
   const fitWarnings = machineFitWarnings(params, machine)
   // Shown next to the machine-fit warnings in Step 4, but kept out of
@@ -375,14 +305,7 @@ function App() {
   // every keystroke, so a snapshot only survives once the user considered
   // the params worth turning into G-code.
   const handleGenerate = () => {
-    const gcode =
-      params.operation === 'outline'
-        ? generateOutline(params, machine)
-        : params.operation === 'surface'
-          ? SURFACE_METHOD_META[params.surface.method].generate(params, machine)
-          : params.operation === 'pocket'
-            ? POCKET_METHOD_META[params.pocket.method].generate(params, machine)
-            : METHOD_META[params.method].generate(params, machine)
+    const gcode = operationMeta.generate(params, machine)
     setGeneratedGCode(gcode)
     saveSlot(AUTO_SAVE_SLOT, params)
     setShowRestoredBanner(false)
@@ -532,15 +455,7 @@ function App() {
           )}
           {PRESET_SLOT_IDS.map((id) => {
             const preset = presetSlots[id]
-            const PresetIcon = preset
-              ? preset.operation === 'outline'
-                ? outlineShapeIcon(preset.outline.shape)
-                : preset.operation === 'surface'
-                  ? surfaceShapeIcon(preset.surface.shape)
-                  : preset.operation === 'pocket'
-                    ? pocketShapeIcon(preset.pocket.shape)
-                    : positioningIcon(preset.geometry.positioning)
-              : null
+            const PresetIcon = preset ? OPERATION_META[preset.operation].pickIcon(preset) : null
             const isOverlaySelected = overlayEnabled && overlaySlots.has(id)
             const isEditingSlot = editModeEnabled && editingSlot === id
             // BL-25: edit-mode selection uses the checkmark badge below
@@ -771,45 +686,17 @@ function App() {
                 {step.id === 1 && (
                   <div
                     className="flex flex-col items-center gap-1"
-                    title={
-                      params.operation === 'outline'
-                        ? `Shape: ${outlineSummary(params.outline)}`
-                        : params.operation === 'surface'
-                          ? `Shape: ${surfaceSummary(params.surface)}`
-                          : params.operation === 'pocket'
-                            ? `Shape: ${pocketSummary(params.pocket)}`
-                            : `Pattern: ${positioningSummary(params.geometry)}`
-                    }
+                    title={`${operationMeta.pickKind}: ${operationMeta.pickSummary(params)}`}
                   >
                     <span className="text-[10px] font-semibold uppercase text-muted">
-                      {params.operation === 'outline'
-                        ? 'Outline'
-                        : params.operation === 'surface'
-                          ? 'Surface'
-                          : params.operation === 'pocket'
-                            ? 'Pocket'
-                            : 'Hole(s)'}
+                      {operationMeta.label}
                     </span>
                     {(() => {
-                      const Icon =
-                        params.operation === 'outline'
-                          ? outlineShapeIcon(params.outline.shape)
-                          : params.operation === 'surface'
-                            ? surfaceShapeIcon(params.surface.shape)
-                            : params.operation === 'pocket'
-                              ? pocketShapeIcon(params.pocket.shape)
-                              : positioningIcon(params.geometry.positioning)
+                      const Icon = operationMeta.pickIcon(params)
                       return <Icon className="h-8 w-8 text-accent" />
                     })()}
                     <div className="flex flex-col items-center">
-                      {(params.operation === 'outline'
-                        ? outlineShapeLines(params.outline)
-                        : params.operation === 'surface'
-                          ? surfaceShapeLines(params.surface)
-                          : params.operation === 'pocket'
-                            ? pocketShapeLines(params.pocket)
-                            : positioningLines(params.geometry)
-                      ).map((line, i) => (
+                      {operationMeta.pickLines(params).map((line, i) => (
                         <span
                           key={i}
                           className="text-center text-[9px] leading-tight font-semibold whitespace-nowrap text-stat-value"
@@ -821,7 +708,7 @@ function App() {
                   </div>
                 )}
 
-                {step.id === 2 && params.operation === 'outline' && (
+                {step.id === 2 && (
                   <div className="flex flex-col items-center gap-4">
                     <span className="text-[10px] font-semibold uppercase text-muted">
                       {step.title}
@@ -832,189 +719,16 @@ function App() {
                       value={activeMethodDisplay.shortLabel}
                       title={`Method: ${activeMethodDisplay.title}`}
                     />
-                    <MiniStat
-                      icon={(() => {
-                        const ShapeIcon = outlineShapeIcon(params.outline.shape)
-                        return <ShapeIcon className="h-8 w-8" />
-                      })()}
-                      label="SIZE"
-                      value={outlineSizeValue(params.outline)}
-                      unit="mm"
-                      title={`${OUTLINE_SHAPE_META[params.outline.shape].title}: ${outlineSizeValue(params.outline)}mm — ${offsetModeLabel(params.outline.offsetMode)}`}
-                    />
-                    {offset && (
+                    {operationMeta.geometryStats(params).map((stat) => (
                       <MiniStat
-                        icon={<OffsetIcon className="h-8 w-8" />}
-                        label="OFFSET"
-                        value={offset}
-                        title={`Offset: ${offset}`}
+                        key={stat.label}
+                        icon={<stat.Icon className="h-8 w-8" />}
+                        label={stat.label}
+                        value={stat.value}
+                        unit={stat.unit}
+                        title={stat.title}
                       />
-                    )}
-                    <MiniStat
-                      icon={<BitIcon className="h-8 w-8" />}
-                      label="BIT"
-                      value={`${params.outline.toolDiameter}`}
-                      unit="mm"
-                      title={`Tool Diameter: ${params.outline.toolDiameter} mm`}
-                    />
-                    <MiniStat
-                      icon={<DepthIcon className="h-8 w-8" />}
-                      label="DEPTH"
-                      value={`${params.outline.totalDepth}`}
-                      unit="mm"
-                      title={`Cutting Depth: ${params.outline.totalDepth} mm`}
-                    />
-                    {params.outline.tabsEnabled && (
-                      <MiniStat
-                        icon={<TabBridgeIcon className="h-8 w-8" />}
-                        label="TABS"
-                        value="YES"
-                        title="Tabs: enabled"
-                      />
-                    )}
-                  </div>
-                )}
-
-                {step.id === 2 && params.operation === 'surface' && (
-                  <div className="flex flex-col items-center gap-4">
-                    <span className="text-[10px] font-semibold uppercase text-muted">
-                      {step.title}
-                    </span>
-                    <MiniStat
-                      icon={<activeMethodDisplay.Icon className="h-8 w-8" />}
-                      label="METHOD"
-                      value={activeMethodDisplay.shortLabel}
-                      title={`Method: ${activeMethodDisplay.title}`}
-                    />
-                    <MiniStat
-                      icon={(() => {
-                        const ShapeIcon = surfaceShapeIcon(params.surface.shape)
-                        return <ShapeIcon className="h-8 w-8" />
-                      })()}
-                      label="SIZE"
-                      value={surfaceSizeValue(params.surface)}
-                      unit="mm"
-                      title={`${SURFACE_SHAPE_META[params.surface.shape].title}: ${surfaceSizeValue(params.surface)}mm`}
-                    />
-                    {offset && (
-                      <MiniStat
-                        icon={<OffsetIcon className="h-8 w-8" />}
-                        label="OFFSET"
-                        value={offset}
-                        title={`Offset: ${offset}`}
-                      />
-                    )}
-                    <MiniStat
-                      icon={<BitIcon className="h-8 w-8" />}
-                      label="BIT"
-                      value={`${params.surface.toolDiameter}`}
-                      unit="mm"
-                      title={`Tool Diameter: ${params.surface.toolDiameter} mm`}
-                    />
-                    <MiniStat
-                      icon={<DepthIcon className="h-8 w-8" />}
-                      label="DEPTH"
-                      value={`${params.surface.totalDepth}`}
-                      unit="mm"
-                      title={`Depth to Remove: ${params.surface.totalDepth} mm`}
-                    />
-                  </div>
-                )}
-
-                {step.id === 2 && params.operation === 'pocket' && (
-                  <div className="flex flex-col items-center gap-4">
-                    <span className="text-[10px] font-semibold uppercase text-muted">
-                      {step.title}
-                    </span>
-                    <MiniStat
-                      icon={<activeMethodDisplay.Icon className="h-8 w-8" />}
-                      label="METHOD"
-                      value={activeMethodDisplay.shortLabel}
-                      title={`Method: ${activeMethodDisplay.title}`}
-                    />
-                    <MiniStat
-                      icon={(() => {
-                        const ShapeIcon = pocketShapeIcon(params.pocket.shape)
-                        return <ShapeIcon className="h-8 w-8" />
-                      })()}
-                      label="SIZE"
-                      value={pocketSizeValue(params.pocket)}
-                      unit="mm"
-                      title={`${POCKET_SHAPE_META[params.pocket.shape].title}: ${pocketSizeValue(params.pocket)}mm`}
-                    />
-                    {offset && (
-                      <MiniStat
-                        icon={<OffsetIcon className="h-8 w-8" />}
-                        label="OFFSET"
-                        value={offset}
-                        title={`Offset: ${offset}`}
-                      />
-                    )}
-                    <MiniStat
-                      icon={<BitIcon className="h-8 w-8" />}
-                      label="BIT"
-                      value={`${params.pocket.toolDiameter}`}
-                      unit="mm"
-                      title={`Tool Diameter: ${params.pocket.toolDiameter} mm`}
-                    />
-                    <MiniStat
-                      icon={<DepthIcon className="h-8 w-8" />}
-                      label="DEPTH"
-                      value={`${params.pocket.totalDepth}`}
-                      unit="mm"
-                      title={`Total Depth: ${params.pocket.totalDepth} mm`}
-                    />
-                  </div>
-                )}
-
-                {step.id === 2 && params.operation === 'holes' && (
-                  <div className="flex flex-col items-center gap-4">
-                    <span className="text-[10px] font-semibold uppercase text-muted">
-                      {step.title}
-                    </span>
-                    <MiniStat
-                      icon={<activeMethodDisplay.Icon className="h-8 w-8" />}
-                      label="METHOD"
-                      value={activeMethodDisplay.shortLabel}
-                      title={`Method: ${activeMethodDisplay.title}`}
-                    />
-                    {offset && (
-                      <MiniStat
-                        icon={<OffsetIcon className="h-8 w-8" />}
-                        label="OFFSET"
-                        value={offset}
-                        title={`Offset: ${offset}`}
-                      />
-                    )}
-                    <MiniStat
-                      icon={<BitIcon className="h-8 w-8" />}
-                      label="BIT"
-                      value={`${params.geometry.toolDiameter}`}
-                      unit="mm"
-                      title={`Tool Diameter: ${params.geometry.toolDiameter} mm`}
-                    />
-                    <MiniStat
-                      icon={<DiameterIcon className="h-8 w-8" />}
-                      label="HOLE"
-                      value={`${params.geometry.holeDiameter}`}
-                      unit="mm"
-                      title={`Hole Diameter: ${params.geometry.holeDiameter} mm`}
-                    />
-                    <MiniStat
-                      icon={<DepthIcon className="h-8 w-8" />}
-                      label="DEPTH"
-                      value={`${params.geometry.totalDepth}`}
-                      unit="mm"
-                      title={`Total Depth: ${params.geometry.totalDepth} mm`}
-                    />
-                    {params.geometry.tabsEnabled && (
-                      <MiniStat
-                        icon={<TabBridgeIcon className="h-8 w-8" />}
-                        label="TABS"
-                        value="YES"
-                        title="Tabs: enabled"
-                      />
-                    )}
+                    ))}
                   </div>
                 )}
 

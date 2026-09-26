@@ -26,9 +26,10 @@ export interface CircleToolpathOptions {
 
 // Spiral ramping: the tool sweeps a full 360° turn while descending by
 // `stepdown` (the pitch), repeating until the target depth is reached, then
-// one flat full-circle pass at the bottom to clean the bore floor. `startZ`
-// raises the top of the cut (material treated as taller by that amount) —
-// the spiral itself starts there and still ends at -totalDepth.
+// one flat full-circle pass at the bottom to clean the bore floor. The
+// spiral starts at `startZ` — the approach margin above the stock top (Z0),
+// cut at feed in case zeroing is a little off, not extra material (BL-37) —
+// and still ends at -totalDepth.
 //
 // When tabs are enabled (BL-14), the spiral is deliberately shortened to
 // stop exactly at the tab-band top (the last `tabHeight` mm of depth),

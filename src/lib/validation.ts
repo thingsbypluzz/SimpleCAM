@@ -1,5 +1,5 @@
 import type { MachineSettings } from '../types/machine'
-import type { FeedsParams, GeometryParams, OutlineParams, PocketParams, SurfaceParams, WizardParams } from '../types/wizard'
+import type { FeedsParams, GeometryParams, OperationType, OutlineParams, PocketParams, SurfaceParams, WizardParams } from '../types/wizard'
 import type { ToolDiameterOption } from '../types/toolDiameters'
 import { resolvePoints } from './positioning'
 import { parseCustomPointsText } from './customPoints'
@@ -73,16 +73,7 @@ export function feedsWarnings(feeds: FeedsParams): string[] {
 // The active operation's cut depth — Step 3's checks (pass count, descent
 // angle) apply to whichever operation is selected.
 export function activeTotalDepth(params: WizardParams): number {
-  switch (params.operation) {
-    case 'outline':
-      return params.outline.totalDepth
-    case 'surface':
-      return params.surface.totalDepth
-    case 'pocket':
-      return params.pocket.totalDepth
-    case 'holes':
-      return params.geometry.totalDepth
-  }
+  return OPERATION_RULES[params.operation].totalDepth(params)
 }
 
 // Lowest Start Z that still leaves something to cut from above: the cut
@@ -92,7 +83,7 @@ export function activeTotalDepth(params: WizardParams): number {
 // BL-62 invariant test). Holes and Outline are the only operations with tabs.
 export function minStartZ(params: WizardParams): number {
   const floor = -activeTotalDepth(params)
-  const tabs = params.operation === 'holes' ? params.geometry : params.operation === 'outline' ? params.outline : null
+  const tabs = OPERATION_RULES[params.operation].tabs(params)
   return tabs?.tabsEnabled ? floor + tabs.tabHeight : floor
 }
 
@@ -492,14 +483,8 @@ export function zSpan(geometry: GeometryParams, feeds: FeedsParams): number {
 // it's clamped, so this is the only thing worth flagging. One message per
 // axis that actually fails; empty array once everything fits.
 export function machineFitWarnings(params: WizardParams, machine: MachineSettings): string[] {
-  const span =
-    params.operation === 'outline'
-      ? outlineFootprint(params.outline)
-      : params.operation === 'surface'
-        ? surfaceFootprint(params.surface)
-        : params.operation === 'pocket'
-          ? pocketFootprint(params.pocket)
-          : patternSpan(params.geometry)
+  const rules = OPERATION_RULES[params.operation]
+  const span = rules.footprint(params)
   const warnings: string[] = []
   if (span.x > machine.travelX) {
     warnings.push(
@@ -511,14 +496,7 @@ export function machineFitWarnings(params: WizardParams, machine: MachineSetting
       `Y span ${span.y.toFixed(1)}mm exceeds the machine's Y travel (${machine.travelY}mm).`,
     )
   }
-  const totalZ =
-    params.operation === 'outline'
-      ? outlineZSpan(params.outline, params.feeds)
-      : params.operation === 'surface'
-        ? surfaceZSpan(params.surface, params.feeds)
-        : params.operation === 'pocket'
-          ? pocketZSpan(params.pocket, params.feeds)
-          : zSpan(params.geometry, params.feeds)
+  const totalZ = rules.zSpan(params)
   if (totalZ > machine.travelZ) {
     warnings.push(
       `Z span ${totalZ.toFixed(1)}mm exceeds the machine's Z travel (${machine.travelZ}mm).`,
@@ -541,35 +519,77 @@ export function isWizardParamsValid(params: WizardParams): boolean {
     isPlungeRateValid(params.feeds) &&
     isStartZAboveCut(params) &&
     isPassCountWithinLimit(params)
-  return (
-    areFeedsValid &&
-    (params.operation === 'outline'
-      ? isOutlineToolDiameterValid(params.outline) &&
-        isOutlineSizeValid(params.outline) &&
-        isOutlineTabHeightValid(params.outline) &&
-        isOutlineTabWidthValid(params.outline) &&
-        isOutlineTabCountValid(params.outline)
-      : params.operation === 'surface'
-        ? isSurfaceToolDiameterValid(params.surface) &&
-          isSurfaceSizeValid(params.surface) &&
-          isSurfaceStepoverValid(params.surface) &&
-          isSurfaceLineCountWithinLimit(params.surface) &&
-          isSurfaceHelixRadiusValid(params.surface)
-        : params.operation === 'pocket'
-          ? isPocketToolDiameterValid(params.pocket) &&
-            isPocketSizeValid(params.pocket) &&
-            isPocketStepoverValid(params.pocket) &&
-            isPocketHelixRadiusValid(params.pocket) &&
-            isPocketOptimalLoadValid(params.pocket) &&
-            isPocketRampAngleValid(params.pocket) &&
-            isPocketLinkingFeedValid(params.pocket) &&
-            isPocketToolpathWithinLimits(params)
-          : isToolDiameterValid(params.geometry) &&
-            isHolesSizeValid(params.geometry) &&
-            isCircleHoleCountValid(params.geometry) &&
-            isCustomPointsValid(params.geometry) &&
-            isTabHeightValid(params.geometry) &&
-            isTabWidthValid(params.geometry) &&
-            isTabCountValid(params.geometry))
-  )
+  return areFeedsValid && OPERATION_RULES[params.operation].isValid(params)
+}
+
+// Per-operation rules, in one place instead of an `operation === …` chain
+// in every function above (BL-61 — such chains caused BL-51). Keyed by
+// OperationType, so a new operation doesn't type-check until it fills in
+// every entry. UI-side counterparts (labels, icons, generate) live in
+// config/operationMeta.ts; this one stays free of React/config imports.
+interface OperationRules {
+  totalDepth: (params: WizardParams) => number
+  // The operation's tab settings, or null for operations without tabs.
+  tabs: (params: WizardParams) => { tabsEnabled: boolean; tabHeight: number } | null
+  // Everything operation-specific that gates Generate (Step 3's shared
+  // checks are added by isWizardParamsValid()).
+  isValid: (params: WizardParams) => boolean
+  footprint: (params: WizardParams) => { x: number; y: number }
+  zSpan: (params: WizardParams) => number
+}
+
+export const OPERATION_RULES: Record<OperationType, OperationRules> = {
+  holes: {
+    totalDepth: (p) => p.geometry.totalDepth,
+    tabs: (p) => p.geometry,
+    isValid: (p) =>
+      isToolDiameterValid(p.geometry) &&
+      isHolesSizeValid(p.geometry) &&
+      isCircleHoleCountValid(p.geometry) &&
+      isCustomPointsValid(p.geometry) &&
+      isTabHeightValid(p.geometry) &&
+      isTabWidthValid(p.geometry) &&
+      isTabCountValid(p.geometry),
+    footprint: (p) => patternSpan(p.geometry),
+    zSpan: (p) => zSpan(p.geometry, p.feeds),
+  },
+  outline: {
+    totalDepth: (p) => p.outline.totalDepth,
+    tabs: (p) => p.outline,
+    isValid: (p) =>
+      isOutlineToolDiameterValid(p.outline) &&
+      isOutlineSizeValid(p.outline) &&
+      isOutlineTabHeightValid(p.outline) &&
+      isOutlineTabWidthValid(p.outline) &&
+      isOutlineTabCountValid(p.outline),
+    footprint: (p) => outlineFootprint(p.outline),
+    zSpan: (p) => outlineZSpan(p.outline, p.feeds),
+  },
+  surface: {
+    totalDepth: (p) => p.surface.totalDepth,
+    tabs: () => null,
+    isValid: (p) =>
+      isSurfaceToolDiameterValid(p.surface) &&
+      isSurfaceSizeValid(p.surface) &&
+      isSurfaceStepoverValid(p.surface) &&
+      isSurfaceLineCountWithinLimit(p.surface) &&
+      isSurfaceHelixRadiusValid(p.surface),
+    footprint: (p) => surfaceFootprint(p.surface),
+    zSpan: (p) => surfaceZSpan(p.surface, p.feeds),
+  },
+  pocket: {
+    totalDepth: (p) => p.pocket.totalDepth,
+    tabs: () => null,
+    isValid: (p) =>
+      isPocketToolDiameterValid(p.pocket) &&
+      isPocketSizeValid(p.pocket) &&
+      isPocketStepoverValid(p.pocket) &&
+      isPocketHelixRadiusValid(p.pocket) &&
+      isPocketOptimalLoadValid(p.pocket) &&
+      isPocketRampAngleValid(p.pocket) &&
+      isPocketLinkingFeedValid(p.pocket) &&
+      isPocketToolpathWithinLimits(p),
+    footprint: (p) => pocketFootprint(p.pocket),
+    zSpan: (p) => pocketZSpan(p.pocket, p.feeds),
+  },
 }

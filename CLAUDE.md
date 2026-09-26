@@ -1331,6 +1331,14 @@ src/
                               (Rectangle Cornered/Centered/Circle),
                               `pocketShapeLabel()`/`pocketShapeSlug()`/
                               `pocketShapeLines()`/`pocketSummary()`.
+  config/operationMeta.ts   — `OPERATION_META`: wszystko, co UI robi
+                              inaczej per operacja — etykieta, ikona/linie/
+                              opis tego, co wybiera Krok 1 (`pick*`),
+                              wyświetlana metoda, statystyki i tooltip
+                              podsumowania Kroku 2, `generate`, slug nazwy
+                              pliku, etykieta presetu. `Record<OperationType,
+                              …>` — nowa operacja nie przejdzie typecheck,
+                              dopóki nie wypełni każdego pola.
   components/ErrorBoundary.tsx — klasowy error boundary owijający
                               `<App />` (`main.tsx`): zamiast białego ekranu
                               komunikat z "Reload" i "Reset saved state"
@@ -1413,13 +1421,11 @@ src/
                               filtruje listę metod po kształcie
                               (`pocketMethodListForShape()`) zamiast
                               renderować wszystkie na stałe jak
-                              `SurfaceMethodPicker`; toggle Raster
-                              Direction/Z-Transition Mode inline w obu
-                              `Step2GeometrySurface.tsx`/
-                              `Step2GeometryPocket.tsx` (osobne kopie, bez
-                              wspólnego pliku), bez osobnych plików —
-                              dwuopcjowy tekstowy toggle bez rejestru do
-                              współdzielenia). Wszystkie pola liczbowe na
+                              `SurfaceMethodPicker`; tekstowe przełączniki
+                              — Raster Direction, Z-Transition Mode, Cut
+                              Direction, a w Kroku 4 interpolacja — idą
+                              przez jeden `TextToggle.tsx`, z listami opcji
+                              w `toggleOptions.ts`). Wszystkie pola liczbowe na
                               Krokach 2/3 idą przez `useNumberField()`.
   components/wizard/useNumberField.ts — hook `useNumberField(value, onCommit)`
                               — oddziela wyświetlany tekst inputa od
@@ -1852,7 +1858,8 @@ src/
                                  osobne funkcje poziomu.
                                  `generatePocketAdaptive` omija ten szkielet
                                  (własna struktura poziomów, bez retraktu).
-    validation.ts                — `isWizardParamsValid()` — cała reguła
+    validation.ts                — `OPERATION_RULES` (rejestr per operacja,
+                                 patrz „Zasada” niżej). `isWizardParamsValid()` — cała reguła
                                  bramkująca Generate (i live-save Edit
                                  Mode) dla aktywnej operacji, jedno źródło
                                  prawdy dla `App.tsx` i testu
@@ -1982,12 +1989,21 @@ src/
   App.tsx                    — orkiestracja stanu wizarda i nawigacji kroków.
 ```
 
-**Zasada:** wszystko co zależy od wybranego method (Helix vs Standard —
+**Zasada:** wszystko, co zależy od aktywnej **operacji**, idzie przez dwa
+rejestry, nie przez łańcuchy `operation === 'outline' ? … : …` (takie
+łańcuchy były przyczyną `BL-51`): `OPERATION_META`
+(`config/operationMeta.ts` — UI i wywołanie `generate`) oraz
+`OPERATION_RULES` (`lib/validation.ts` — czysta logika: walidacja
+Generate, głębokość, mostki, rozmiar do ostrzeżeń o maszynie). Wyjątki to
+router komponentów Kroku 2 (`Step2Geometry.tsx`), wybór operacji w Kroku 1
+i rysowanie w podglądach 2D/3D. Wszystko co zależy od wybranego method (Helix vs Standard —
 nazwa, ikona, etykiety pól, **oraz funkcja generująca G-code**: `generate`)
 idzie przez `METHOD_META` w `config/methodMeta.ts`, nie przez
-rozproszone `method === 'helix' ? ...` w komponentach. Wywołanie
-`METHOD_META[params.method].generate(params, machine)` to jedyne miejsce,
-które powinno wołać silnik — nie importować `generateHelix`/
+rozproszone `method === 'helix' ? ...` w komponentach. Rejestry metod
+(`METHOD_META`, `SURFACE_METHOD_META`, `POCKET_METHOD_META`, a dla Outline
+`generateOutline()`) wołane są wyłącznie przez
+`OPERATION_META[params.operation].generate(params, machine)` — to jedyne
+miejsce w UI, które uruchamia silnik; nie importować `generateHelix`/
 `generateStandardHole` bezpośrednio w komponentach UI. Analogicznie —
 wszystko co zależy od wybranego patternu idzie przez `POSITIONING_META`/
 pomocnicze funkcje w `config/positioningMeta.ts`, nie przez rozproszone

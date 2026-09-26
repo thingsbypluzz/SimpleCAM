@@ -16,9 +16,10 @@ interface Step2GeometryProps {
 // Thin router on params.operation — each operation's Step 2 fields are
 // different enough (Hole(s): pattern-specific point-placement fields;
 // Outline: shape/offset-mode/method fields; Surface: raster/stepover/
-// Z-transition fields) that a single branchy component would be harder to
-// follow than three focused ones. See Step2GeometryHoles.tsx /
-// Step2GeometryOutline.tsx / Step2GeometrySurface.tsx.
+// Z-transition fields; Pocket: method-specific clearing fields) that a
+// single branchy component would be harder to follow than four focused
+// ones. See Step2GeometryHoles.tsx / Step2GeometryOutline.tsx /
+// Step2GeometrySurface.tsx / Step2GeometryPocket.tsx.
 export function Step2Geometry(props: Step2GeometryProps) {
   if (props.params.operation === 'outline') return <Step2GeometryOutline {...props} />
   if (props.params.operation === 'surface') return <Step2GeometrySurface {...props} />
