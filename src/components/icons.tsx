@@ -389,3 +389,48 @@ export function UnidirectionalIcon({ className }: IconProps) {
     </svg>
   )
 }
+
+// Pocket shapes (BL-67) — the cut boundary (1.0) with a thinner (0.7)
+// inside-out, CCW spiral of 1.75 turns: the material being cleared from
+// inside the shape, unlike Outline's bare perimeter or Surface's zigzag.
+
+// Square spiral, step 2: its segments grow in pairs, so it's taller on one
+// side by half a step — the start sits half a step below center to even it
+// out (2-unit gap to the frame left/right, 3 top/bottom).
+const POCKET_SQUARE_SPIRAL = 'M12 13H14V11H10V15H16V9H8'
+
+// Pocket Rectangle Cornered: origin dot on the bottom-left corner.
+export function PocketRectangleIcon({ className }: IconProps) {
+  return (
+    <svg {...base} className={className}>
+      <path d="M6 18h12M18 18V6M18 6H6M6 6v12" strokeWidth={1} />
+      <path d={POCKET_SQUARE_SPIRAL} strokeWidth={0.7} />
+      <circle cx="6" cy="18" r="1.8" fill="currentColor" stroke="none" />
+    </svg>
+  )
+}
+
+// Pocket Rectangle Centered: same frame and spiral, origin dot in the center.
+export function PocketRectangleCenteredIcon({ className }: IconProps) {
+  return (
+    <svg {...base} className={className}>
+      <path d="M6 18h12M18 18V6M18 6H6M6 6v12" strokeWidth={1} />
+      <path d={POCKET_SQUARE_SPIRAL} strokeWidth={0.7} />
+      <circle cx="12" cy="12" r="1.8" fill="currentColor" stroke="none" />
+    </svg>
+  )
+}
+
+// Pocket Circle: Archimedean spiral (r = 0 → 6 over 1.75 turns, sampled every
+// 10°) inside the r = 8 boundary. No origin dot — a Circle is always centered.
+export function PocketCircleIcon({ className }: IconProps) {
+  return (
+    <svg {...base} className={className}>
+      <circle cx="12" cy="12" r="8" strokeWidth={1} />
+      <path
+        d="M12 12L12.09 11.98L12.18 11.93L12.25 11.86L12.29 11.76L12.31 11.64L12.29 11.51L12.23 11.37L12.13 11.25L12 11.14L11.83 11.06L11.64 11.02L11.43 11.01L11.2 11.05L10.98 11.14L10.76 11.29L10.57 11.48L10.41 11.72L10.29 12L10.22 12.31L10.21 12.65L10.27 13L10.39 13.35L10.59 13.68L10.86 13.98L11.19 14.24L11.57 14.44L12 14.57L12.46 14.63L12.94 14.6L13.43 14.47L13.9 14.26L14.33 13.96L14.72 13.57L15.04 13.11L15.28 12.58L15.43 12L15.47 11.39L15.4 10.76L15.22 10.14L14.92 9.55L14.51 9.01L14 8.54L13.4 8.15L12.73 7.87L12 7.71L11.24 7.69L10.47 7.79L9.71 8.04L9 8.43L8.35 8.94L7.79 9.57L7.35 10.31L7.03 11.12L6.86 12L6.84 12.91L6.99 13.82L7.3 14.71L7.77 15.55L8.39 16.3L9.14 16.95L10.01 17.46L10.97 17.82L12 18"
+        strokeWidth={0.7}
+      />
+    </svg>
+  )
+}

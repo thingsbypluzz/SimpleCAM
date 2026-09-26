@@ -230,14 +230,6 @@ faktycznym.
   (lub polami — np. frez vs średnica otworu, Tab Count × Width), np. prop
   `invalid` w `FieldRow`/`NumberInput`, spójnie w Krokach 2 i 3 oraz w
   Settings.
-- **`BL-67`** *(Otwarty)* 🟢 — **Własna ikonka Pocket (Rectangle).**
-  Pocket Rectangle Cornered/Centered używa dziś dokładnie tych samych
-  ikon co Surface (`RectangleSurfaceIcon`/`RectangleSurfaceCenteredIcon`
-  w `config/pocketMeta.ts`), więc w Kroku 1, w Step 1 Summary i na
-  ikonach presetów w Preset Bar obu operacji nie da się odróżnić. Nowe
-  ikony w `components/icons.tsx` (np. zagłębienie ze ścianami zamiast
-  płaskiej powierzchni) podpięte w `POCKET_SHAPE_META`; Circle
-  (`CircleOutlineIcon`, wspólna z Outline) do rozważenia przy okazji.
 
 **`BL-17` zamknięte — "Interface Anatomy"**, Artifact z umownymi nazwami
 elementów UI, dziś aktywnie używany w `CLAUDE.md`:

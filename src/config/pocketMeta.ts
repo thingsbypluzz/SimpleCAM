@@ -1,5 +1,5 @@
 import type { ComponentType } from 'react'
-import { CircleOutlineIcon, RectangleSurfaceCenteredIcon, RectangleSurfaceIcon } from '../components/icons'
+import { PocketCircleIcon, PocketRectangleCenteredIcon, PocketRectangleIcon } from '../components/icons'
 import { fmt } from '../lib/format'
 import type { PocketParams, PocketShape } from '../types/wizard'
 
@@ -15,19 +15,19 @@ export const POCKET_SHAPE_META: Record<PocketShape, PocketShapeMeta> = {
     value: 'rectCornered',
     title: 'Rectangle Cornered',
     description: 'Rectangular pocket, origin at the bottom-left corner.',
-    Icon: RectangleSurfaceIcon,
+    Icon: PocketRectangleIcon,
   },
   rectCentered: {
     value: 'rectCentered',
     title: 'Rectangle Centered',
     description: 'Rectangular pocket, origin at the center.',
-    Icon: RectangleSurfaceCenteredIcon,
+    Icon: PocketRectangleCenteredIcon,
   },
   circle: {
     value: 'circle',
     title: 'Circle',
-    description: 'Circular pocket, centered at the origin. Spiral method only.',
-    Icon: CircleOutlineIcon,
+    description: 'Circular pocket, centered at the origin. Spiral or Adaptive — Raster needs a rectangle.',
+    Icon: PocketCircleIcon,
   },
 }
 
