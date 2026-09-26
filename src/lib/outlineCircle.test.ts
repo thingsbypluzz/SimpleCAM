@@ -18,7 +18,7 @@ function buildParams(overrides: {
 }
 
 describe('generateCircleOutlineStandard — offset modes', () => {
-  it('inside: radius = (diameter - toolDiameter)/2, direction ccw (G3)', () => {
+  it('inside: radius = (diameter - toolDiameter)/2, direction ccw (G3) — climb under M3', () => {
     const params = buildParams({
       outline: { offsetMode: 'inside', diameter: 40, toolDiameter: 4, totalDepth: 1 },
       feeds: { stepdown: 1 },
@@ -29,7 +29,7 @@ describe('generateCircleOutlineStandard — offset modes', () => {
     expect(arc).toBe('G3 X18 Y0 Z-1 I-18 J0 F800')
   })
 
-  it('outside: radius = (diameter + toolDiameter)/2, direction cw (G2)', () => {
+  it('outside: radius = (diameter + toolDiameter)/2, direction cw (G2) — climb under M3', () => {
     const params = buildParams({
       outline: { offsetMode: 'outside', diameter: 40, toolDiameter: 4, totalDepth: 1 },
       feeds: { stepdown: 1 },

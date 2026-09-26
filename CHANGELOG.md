@@ -7,6 +7,29 @@ zgodne z [SemVer](https://semver.org/). Ten plik pozostaje głównym, czytelnym
 thingsbypluzz/SimpleCAM), ale to infrastruktura pod izolację pracy
 (branch/worktree per zadanie), nie zamiennik tego changeloga.
 
+## [0.20.2] — 2026-09-26
+
+### Naprawiono
+
+- **`BL-44`: "Conventional" było w rzeczywistości climb.** Pod `M3`
+  wrzeciono kręci się zgodnie z ruchem wskazówek zegara patrząc z góry;
+  materiał po prawej stronie kierunku ruchu oznacza frezowanie
+  współbieżne (climb). Wszystkie kontury appki — otwory Hole(s), Outline
+  Inside (CCW) i Outside (CW), pierścienie i wejście Pocket — od zawsze
+  tną więc współbieżnie, choć dokumentacja i komentarze nazywały to
+  frezowaniem przeciwbieżnym. **Ścieżki bez zmian** (świadoma decyzja —
+  tak tnie maszyna od początku i tak było weryfikowane wizualnie);
+  poprawione opisy w `CLAUDE.md` i komentarzach, test przypinający
+  kierunek dla Hole(s) obok istniejących dla Outline/Pocket.
+- **Przełącznik Climb/Conventional w Pocket Adaptive działał
+  odwrotnie** — "Conv." dawał climb (CCW), "Climb" dawał conventional
+  (CW). Mapowanie naprawione, a domyślna wartość zmieniona na Climb, więc
+  domyślny wynik Adaptive jest identyczny jak wcześniej i zgodny z resztą
+  Pocket. **Uwaga:** preset zapisany z jawnie wybranym "Conv." generuje
+  teraz naprawdę przeciwbieżne łuki (CW) — czyli to, co pokazywała
+  etykieta, a nie to, co dotąd trafiało do pliku. Tooltipy przełącznika
+  mówią, który kierunek obrotu oznacza każda opcja.
+
 ## [0.20.1] — 2026-09-26
 
 Trzecia grupa poprawek z code review (2026-09-26): stan UI i trwałość

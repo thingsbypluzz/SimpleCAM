@@ -83,7 +83,7 @@ export function nextConstantEngagementRadius(prevRho: number, toolRadius: number
 // toward the uncut side by exactly that angle. The tilt vanishes when both
 // arcs share a center (phase A rings) and at the apex of an offset arc, but
 // not at its ends — which is why the apex alone isn't a safe bound.
-// The CW (climb) mirror image has the same maximum.
+// The CW (conventional) mirror image has the same maximum.
 export function maxArcEngagement(
   r: number,
   a0: number,

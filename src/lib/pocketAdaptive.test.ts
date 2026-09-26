@@ -25,11 +25,11 @@ const CELL = 0.05
 const WALL_SCALLOP_TOLERANCE = 0.1
 
 const SCENARIOS = [
-  ['Circle ⌀20, 10%, conventional', { shape: 'circle', diameter: 20 }],
-  ['Circle ⌀20, 10%, climb', { shape: 'circle', diameter: 20, cutDirection: 'climb' }],
+  ['Circle ⌀20, 10%, climb (default)', { shape: 'circle', diameter: 20 }],
+  ['Circle ⌀20, 10%, conventional', { shape: 'circle', diameter: 20, cutDirection: 'conventional' }],
   ['square 20×20, 10%', { shape: 'rectCentered', width: 20, height: 20 }],
   ['wide 30×16, 10%', { shape: 'rectCentered', width: 30, height: 16 }],
-  ['tall 14×26 (rotated frame), 10%, climb', { shape: 'rectCornered', width: 14, height: 26, cutDirection: 'climb' }],
+  ['tall 14×26 (rotated frame), 10%, conventional', { shape: 'rectCornered', width: 14, height: 26, cutDirection: 'conventional' }],
   ['wide 26×14, 5%', { shape: 'rectCentered', width: 26, height: 14, optimalLoadPercent: 5 }],
   ['wide 30×16, 20%', { shape: 'rectCentered', width: 30, height: 16, optimalLoadPercent: 20 }],
   ['narrow 40×8, 10%', { shape: 'rectCentered', width: 40, height: 8, helixRadius: 0.5 }],
@@ -200,7 +200,7 @@ describe('Pocket Adaptive — G-code', () => {
   it('every G2/G3 starts on its own circle (Circle and Rectangle, both directions)', () => {
     for (const pocket of [
       { shape: 'circle', diameter: 20 },
-      { shape: 'rectCentered', width: 30, height: 16, cutDirection: 'climb' },
+      { shape: 'rectCentered', width: 30, height: 16, cutDirection: 'conventional' },
       { shape: 'rectCornered', width: 14, height: 26 },
     ] as Partial<PocketParams>[]) {
       const lines = generatePocketAdaptive(params(pocket, { stepdown: 0.5 }, { interpolation: 'arc' }), DEFAULT_MACHINE_SETTINGS)
@@ -209,11 +209,14 @@ describe('Pocket Adaptive — G-code', () => {
     }
   })
 
-  it('conventional cuts CCW (G3), climb cuts CW (G2)', () => {
-    const conv = generatePocketAdaptive(params({ shape: 'circle', diameter: 20 }, {}, { interpolation: 'arc' }), DEFAULT_MACHINE_SETTINGS)
+  // BL-44: under M3 (spindle CW seen from above), CCW inside a pocket puts
+  // the uncut material on the right of travel — climb. The mapping used to
+  // be inverted.
+  it('climb cuts CCW (G3), conventional cuts CW (G2)', () => {
     const climb = generatePocketAdaptive(params({ shape: 'circle', diameter: 20, cutDirection: 'climb' }, {}, { interpolation: 'arc' }), DEFAULT_MACHINE_SETTINGS)
-    expect(conv.some((l) => l.startsWith('G2 '))).toBe(false)
-    expect(climb.some((l) => l.startsWith('G3 '))).toBe(false)
+    const conv = generatePocketAdaptive(params({ shape: 'circle', diameter: 20, cutDirection: 'conventional' }, {}, { interpolation: 'arc' }), DEFAULT_MACHINE_SETTINGS)
+    expect(climb.some((l) => l.startsWith('G2 '))).toBe(false)
+    expect(conv.some((l) => l.startsWith('G3 '))).toBe(false)
   })
 
   it('G1 mode emits no arcs at all', () => {

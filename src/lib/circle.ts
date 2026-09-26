@@ -21,11 +21,11 @@ interface FullCircleMoveParams {
 // One full 360° turn around (centerX, centerY), starting and ending at
 // (startX, startY). zEnd === zStart for a flat pass; zEnd < zStart makes it
 // a single helical turn. Hole(s) (helix.ts/standardHole.ts) always passes
-// 'ccw', matching climb milling convention for boring under M3 (CW spindle
-// rotation) — unchanged from before `direction` existed. Outline cutting
-// (outlineCircle.ts) needs both directions, since conventional-milling
-// winding flips between Inside/Outside cuts (see CLAUDE.md's Outline
-// design notes).
+// 'ccw': under M3 (spindle CW seen from above) a CCW pass inside a bore
+// has the wall on its right — climb milling, the app's convention for
+// every contour. Outline cutting (outlineCircle.ts) needs both directions,
+// since keeping climb flips the winding between Inside and Outside cuts
+// (see CLAUDE.md's Outline design notes).
 export function fullCircleMove(p: FullCircleMoveParams): string[] {
   if (p.interpolation === 'arc') {
     const i = p.centerX - p.startX

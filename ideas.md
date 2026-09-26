@@ -247,12 +247,6 @@ pełny opis (lokalizacja w kodzie, scenariusz błędu, proponowana zmiana)
 w sekcji **"Szczegóły code review (2026-09-26)"** na końcu tego pliku.
 Waga z review w nawiasie kwadratowym.
 
-- **`BL-44`** *(Otwarty)* 🟠 **[High]** — **"Conventional" to w
-  rzeczywistości climb, a przełącznik Adaptive działa odwrotnie do
-  etykiety.** Przy M3 CCW wewnątrz kieszeni = współbieżne (materiał po
-  prawej). Dotyczy dokumentacji Outline/Pocket/Hole(s) i realnego wyboru
-  użytkownika w Adaptive. Zdecydować konwencję, poprawić kierunki albo
-  etykiety, dodać test przypinający kierunek.
 - **`BL-50`** *(Otwarty)* 🟠 **[Medium]** — **Kąt zejścia Helix/Ramp poza
   Adaptive jest nieograniczony** (mały promień / krótki bok → prawie
   pionowe zejście na Feedrate XY). Limit kąta rampy albo ograniczenie
@@ -329,34 +323,6 @@ fuzzowaniem ~2 560 losowych, przechodzących walidację zestawów parametrów
 dla każdej operacji/metody pod kątem: NaN, F ≤ 0, niezgodność promienia
 G2/G3, G0 w XY poniżej Safe Z, osiągnięcie pełnej głębokości. Numery
 wierszy — stan kodu z dnia review (`main` @ `b867d4f`).
-
-### `BL-44` — "Conventional" to climb; przełącznik Adaptive odwrotnie
-- **Lokalizacja:** `src/lib/pocketAdaptive.ts:283-284`,
-  `src/types/wizard.ts:29-31`, `Step2GeometryPocket.tsx:108-109`,
-  `outlineRectangle.ts:35-38`, `outlineCircle.ts:14-18`,
-  `pocketSpiral.ts:95`, `pocketZTransition.ts:40`, `CLAUDE.md` (Outline
-  "Inside → CCW (konwencjonalne)", Pocket "zawsze konwencjonalne (CCW)").
-- **Problem:** przy M3 wrzeciono obraca się CW patrząc z góry. Frez
-  jadący CCW wewnątrz otworu ma materiał po prawej — ząb wchodzi w
-  materiał z pełną grubością wióra, czyli frezowanie **współbieżne
-  (climb)**; przeciwbieżne (conventional) to materiał po lewej (reguła
-  frezarki ręcznej: krawędzie wewnętrzne CW, zewnętrzne CCW). Zewnętrzny
-  obrys CW to również climb. Wszystko, co dokumentacja/komentarze nazywają
-  "conventional" (Outline Inside/Outside, wejście Pocket, Hole(s)), jest
-  climb — `circle.ts:24` zresztą już mówi "climb", sprzecznie z resztą.
-  W Adaptive to widoczne dla użytkownika: `'conventional'` → `sign = 1` →
-  CCW = climb, a "Climb" daje CW = conventional. (Zweryfikowane także
-  niezależnie w sesji głównej.)
-- **Scenariusz:** użytkownik hobbystycznej frezarki z luzami wybiera
-  "Conv." w Adaptive, żeby uniknąć wciągania freza — dostaje climb na
-  każdym łuku.
-- **Proponowana zmiana:** zdecydować zamierzoną konwencję; albo odwrócić
-  kierunki (Inside → CW, Outside → CCW dla prawdziwego conventional pod
-  M3), albo zostawić kierunki i poprawić wszystkie etykiety/komentarze/
-  `CLAUDE.md`. W każdym wariancie zamienić mapowanie `sign` w Adaptive
-  (lub jego etykiety) i dodać test przypinający kierunek względem M3.
-- **Nakład:** łatwy (etykiety) / średni (odwrócenie kierunków + podglądy
-  + testy).
 
 ### `BL-50` — Nieograniczony kąt zejścia Helix/Ramp
 - **Lokalizacja:** `src/lib/helix.ts` (skok = stepdown na 360°);
@@ -441,8 +407,7 @@ wierszy — stan kodu z dnia review (`main` @ `b867d4f`).
   `src/lib/index.ts` to martwy barrel (dwie funkcje, zero importów).
   Nieaktualne komentarze: `helix.ts:30`,
   `standardHole.ts:17` ("startZ = materiał wyższy" — sprzeczne z
-  `BL-37`), `Step2Geometry.tsx:20` ("three focused ones" — są cztery),
-  komentarze "conventional" (`BL-44`).
+  `BL-37`), `Step2Geometry.tsx:20` ("three focused ones" — są cztery).
 - **Proponowana zmiana:** stopniowo przenieść każdy silnik na
   strukturalną listę ruchów (line/arc/rapid/plunge + rodzaj) z jednym
   formaterem G-code i jednym adapterem podglądu; rejestr `OPERATION_META`
