@@ -26,6 +26,12 @@ interface Scene3DProps {
   // the Settings > Appearance checkbox reads/writes — a faster path to
   // the same field, not a separate toggle.
   onToggleGridLabels: () => void
+  // BL-43: true while the Settings Modal is open over a blurred backdrop.
+  // The render loop otherwise redraws every frame, which would make the
+  // browser re-blur the whole page 60 times a second; paused, it only
+  // redraws when the scene or viewport actually changes (e.g. a palette
+  // picked in Settings > Appearance still shows up behind the blur).
+  renderPaused?: boolean
 }
 
 const PRESET_BUTTONS: { name: ViewPresetName; label: string }[] = [
@@ -49,6 +55,7 @@ export function Scene3D({
   onToggleStockVisible,
   onToggleToolpathVisible,
   onToggleGridLabels,
+  renderPaused = false,
 }: Scene3DProps) {
   const containerRef = useRef<HTMLDivElement>(null)
   const sceneRef = useRef<THREE.Scene | null>(null)
@@ -58,6 +65,12 @@ export function Scene3D({
   const contentGroupRef = useRef<THREE.Group | null>(null)
   const boundsRef = useRef<THREE.Box3 | null>(null)
   const labelsRef = useRef<THREE.Sprite[]>([])
+  const renderPausedRef = useRef(renderPaused)
+  const needsRenderRef = useRef(true)
+
+  useEffect(() => {
+    renderPausedRef.current = renderPaused
+  }, [renderPaused])
   const hasFramedRef = useRef(false)
   const prevOverlayParamsRef = useRef(overlayParams)
 
@@ -104,6 +117,9 @@ export function Scene3D({
 
     let frameId: number
     const animate = () => {
+      frameId = requestAnimationFrame(animate)
+      if (renderPausedRef.current && !needsRenderRef.current) return
+      needsRenderRef.current = false
       controls.update()
       // Text labels (origin, axis ends, grid ticks) are sized in world
       // units at build time but need to read as a constant pixel size
@@ -119,7 +135,6 @@ export function Scene3D({
         }
       }
       renderer.render(scene, camera)
-      frameId = requestAnimationFrame(animate)
     }
     animate()
 
@@ -136,6 +151,7 @@ export function Scene3D({
       camera.aspect = w / h
       camera.updateProjectionMatrix()
       renderer.setSize(w, h)
+      needsRenderRef.current = true
     }
     const resizeObserver = new ResizeObserver(handleResize)
     resizeObserver.observe(container)
@@ -195,6 +211,7 @@ export function Scene3D({
     objects.forEach((obj) => contentGroup.add(obj))
     boundsRef.current = bounds
     labelsRef.current = labels
+    needsRenderRef.current = true
 
     // Default view is the fitted front angle (camera centered on -Y,
     // elevated on +Z, looking toward +Y — see VIEW_PRESETS.front) — only

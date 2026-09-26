@@ -213,13 +213,6 @@ faktycznym.
   tym promieniem przed granicą, potem jeden przejazd reużywający Outline
   Rectangle/Circle toolpath na granicy offsetu) dałby czystszą ścianę —
   większy zakres niż `BL-41`, dotyka kilku miejsc silnika na raz.
-- **`BL-43`** *(Otwarty)* 🟢 — **Rozmycie (blur) interfejsu pod Settings
-  Modal.** Przy otwartym Settings Modal cała warstwa appki pod nim
-  (Header, Wizard Section, Preview Section) rozmyta, żeby modal
-  wyraźniej odcinał się od tła. Najpewniej `backdrop-blur` na
-  istniejącym tle-nakładce modala w `SettingsModal.tsx`, spójnie we
-  wszystkich motywach; do sprawdzenia wydajność przy żywym 3D Preview
-  pod spodem.
 - **`BL-66`** *(Otwarty)* 🟠 — **Wyróżnienie pól, które nie przeszły
   walidacji.** Dziś błąd to wyłącznie czerwony tekst pod polem — samo
   pole (`NumberInput`/`<select>`/textarea) wygląda tak samo jak poprawne,

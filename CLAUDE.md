@@ -1335,7 +1335,9 @@ src/
                               `<App />` (`main.tsx`): zamiast białego ekranu
                               komunikat z "Reload" i "Reset saved state"
                               (usuwa klucze `simplecam.*`).
-  components/SettingsModal.tsx — Settings Modal. Siedem Settings Nav
+  components/SettingsModal.tsx — Settings Modal (nakładka `bg-black/50
+                              backdrop-blur-sm` — cała appka pod nim
+                              rozmyta). Siedem Settings Nav
                               Items, w tej kolejności: **Machine** (X/Y/Z
                               travel, dialekt, Start/End G-Code),
                               **Tabs** (Default Tab Sizes), **Tool
@@ -1558,6 +1560,13 @@ src/
                                każdym sprite'cie etykiety (origin/osie/
                                siatka) — patrz "Etykiety siatki w 3D
                                Preview" wyżej.
+                               Prop `renderPaused` (`App.tsx`: `true`, gdy
+                               Settings Modal jest otwarty) — pętla wtedy
+                               przerysowuje scenę tylko po realnej zmianie
+                               (przebudowa sceny, resize), nie co klatkę;
+                               inaczej rozmyte tło modala
+                               (`backdrop-blur-sm`) byłoby przeliczane 60
+                               razy na sekundę.
     cameraPresets.ts             — `VIEW_PRESETS` (kierunek + up-vector dla
                                top/isometric/front/side) + `frameCamera()`
                                — pozycjonuje kamerę wzdłuż kierunku, w

@@ -7,6 +7,19 @@ zgodne z [SemVer](https://semver.org/). Ten plik pozostaje głównym, czytelnym
 thingsbypluzz/SimpleCAM), ale to infrastruktura pod izolację pracy
 (branch/worktree per zadanie), nie zamiennik tego changeloga.
 
+## [0.20.6] — 2026-09-26
+
+### Zmieniono
+
+- **`BL-43`: rozmyte tło pod Settings Modal.** Nakładka modala
+  (`bg-black/50`) dostała `backdrop-blur-sm` — cała appka pod nim jest
+  rozmyta, więc modal wyraźniej odcina się od tła, jednakowo we
+  wszystkich motywach. Podgląd 3D przerysowywał scenę w każdej klatce,
+  co przy rozmytej nakładce oznaczałoby przeliczanie rozmycia całego
+  ekranu 60 razy na sekundę; dopóki Settings jest otwarty, przerysowuje
+  się teraz tylko po realnej zmianie (przebudowa sceny — np. zmiana
+  palety w Appearance — albo zmiana rozmiaru okna).
+
 ## [0.20.5] — 2026-09-26
 
 ### Zmieniono
