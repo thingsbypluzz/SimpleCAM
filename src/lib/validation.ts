@@ -6,9 +6,12 @@ import { parseCustomPointsText } from './customPoints'
 import { rectToolDimensions } from './outlineRectangleGeometry'
 import { circleOutlineRadiusAndDirection } from './outlineCircle'
 import { surfaceStepoverMm, surfaceToolBounds } from './surfaceGeometry'
-import { pocketCircleWallRadius, pocketRectWallHalfDims } from './pocketGeometry'
 import { effectivePocketZTransitionMode } from './pocketZTransition'
 import { MAX_OPTIMAL_LOAD_PERCENT, MIN_OPTIMAL_LOAD_PERCENT } from './pocketAdaptiveMath'
+import { exceedsPassLimit, MAX_PASSES } from './depthPasses'
+import { exceedsLineLimit, rasterExceedsLineLimit } from './surfaceRaster'
+import { pocketCircleWallRadius, pocketRectRasterBounds, pocketRectWallHalfDims, pocketStepoverMm } from './pocketGeometry'
+import { adaptiveExceedsLimits } from './pocketAdaptive'
 
 // Strict (BL-49): a tool exactly as wide as the hole leaves a zero-radius
 // toolpath — `G2/G3 … I0 J0` arcs, or in G1 mode a vertical plunge at
@@ -65,6 +68,99 @@ export function feedsWarnings(feeds: FeedsParams): string[] {
   return isStartZBelowStock(feeds)
     ? [`Start Z is below 0 — the G0 rapid down to Z${feeds.startZ} goes into the stock at rapid speed unless that material is already gone.`]
     : []
+}
+
+// The active operation's cut depth — Step 3's checks (pass count, descent
+// angle) apply to whichever operation is selected.
+export function activeTotalDepth(params: WizardParams): number {
+  switch (params.operation) {
+    case 'outline':
+      return params.outline.totalDepth
+    case 'surface':
+      return params.surface.totalDepth
+    case 'pocket':
+      return params.pocket.totalDepth
+    case 'holes':
+      return params.geometry.totalDepth
+  }
+}
+
+// BL-55: the depth loops stop at MAX_PASSES as a freeze guard; a real job
+// needing more than that would silently stop short of the full depth.
+// Engines descend from Start Z, so a positive Start Z adds to the distance.
+export { MAX_PASSES }
+export function isPassCountWithinLimit(params: WizardParams): boolean {
+  return !exceedsPassLimit(activeTotalDepth(params) + Math.max(0, params.feeds.startZ), params.feeds.stepdown)
+}
+
+// BL-55: raster line / ring / arc sequences stop at the same kind of cap —
+// past it, the last gap swallowed the rest of the area (or the wall ring
+// was never reached). Blocks Generate instead.
+export function isSurfaceLineCountWithinLimit(surface: SurfaceParams): boolean {
+  return !rasterExceedsLineLimit(surfaceToolBounds(surface), surface.rasterDirection, surfaceStepoverMm(surface))
+}
+
+export function isPocketToolpathWithinLimits(params: WizardParams): boolean {
+  const { pocket } = params
+  if (pocket.method === 'adaptive') return !adaptiveExceedsLimits(params)
+  const stepoverMm = pocketStepoverMm(pocket)
+  if (pocket.method === 'raster') {
+    return pocket.shape === 'circle' || !rasterExceedsLineLimit(pocketRectRasterBounds(pocket), pocket.rasterDirection, stepoverMm)
+  }
+  if (pocket.shape === 'circle') {
+    const startRadius = pocket.zTransitionMode === 'helix' ? pocket.helixRadius : 0
+    return !exceedsLineLimit(startRadius, pocketCircleWallRadius(pocket), stepoverMm)
+  }
+  const { halfWidth, halfHeight } = pocketRectWallHalfDims(pocket)
+  return !exceedsLineLimit(0, Math.max(halfWidth, halfHeight), stepoverMm)
+}
+
+// BL-50: every helix/ramp except Pocket Adaptive's (which has its own Ramp
+// Angle) drops a full Stepdown per turn/lap at Feedrate XY, so a small
+// radius or a short ramp edge makes it close to a plunge at cutting feed.
+// Non-blocking by design — only flagged above this angle.
+export const MAX_RECOMMENDED_DESCENT_DEG = 10
+
+// Steepest helix/ramp descent angle of the active operation, in degrees, or
+// null when it has no helix/ramp (Standard methods, Plunge entries,
+// Adaptive).
+export function descentAngleDeg(params: WizardParams): number | null {
+  const pitch = Math.min(params.feeds.stepdown, activeTotalDepth(params) + Math.max(0, params.feeds.startZ))
+  if (!(pitch > 0)) return null
+  const angleFor = (pathLength: number) =>
+    pathLength > 0 ? (Math.atan(pitch / pathLength) * 180) / Math.PI : null
+  const helix = (radius: number) => angleFor(2 * Math.PI * radius)
+
+  switch (params.operation) {
+    case 'holes': {
+      const { geometry } = params
+      return params.method === 'helix' ? helix((geometry.holeDiameter - geometry.toolDiameter) / 2) : null
+    }
+    case 'outline': {
+      const { outline } = params
+      if (outline.shape === 'circle') {
+        return outline.method === 'helix' ? helix(circleOutlineRadiusAndDirection(outline).radius) : null
+      }
+      if (outline.method !== 'ramp') return null
+      // The ramp drops the full step along the longer tool-path edge.
+      const { toolWidth, toolHeight } = rectToolDimensions(outline.width, outline.height, outline.toolDiameter, outline.offsetMode)
+      return angleFor(Math.max(toolWidth, toolHeight))
+    }
+    case 'surface':
+      return params.surface.zTransitionMode === 'helix' ? helix(params.surface.helixRadius) : null
+    case 'pocket':
+      return params.pocket.method !== 'adaptive' && params.pocket.zTransitionMode === 'helix'
+        ? helix(params.pocket.helixRadius)
+        : null
+  }
+}
+
+export function descentWarnings(params: WizardParams): string[] {
+  const angle = descentAngleDeg(params)
+  if (angle === null || angle <= MAX_RECOMMENDED_DESCENT_DEG) return []
+  return [
+    `The helix/ramp descends at about ${Math.round(angle)}° (more than ${MAX_RECOMMENDED_DESCENT_DEG}°) while moving at Feedrate XY — close to plunging at cutting feed. A smaller Stepdown or a larger helix radius / ramp length makes it gentler.`,
+  ]
 }
 
 // BL-46: sizes and depth must be positive — a zero depth still emitted a

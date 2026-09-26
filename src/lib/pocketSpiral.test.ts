@@ -26,6 +26,14 @@ describe('pocketCircleRingRadii', () => {
 })
 
 describe('pocketRectRingDims', () => {
+  it('drops rings that lie entirely inside a Helix entry bore (BL-65)', () => {
+    // Stepover 1: rings at 1, 2, 3, 4 (all square). Helix radius 1.5: the
+    // ring at 1 has its corners at √2 ≈ 1.41 ≤ 1.5, fully inside the bore;
+    // the ring at 2 reaches past it and stays.
+    expect(pocketRectRingDims(4, 4, 1, 1.5).map((d) => d.halfWidth)).toEqual([2, 3, 4])
+    expect(pocketRectRingDims(4, 4, 1).map((d) => d.halfWidth)).toEqual([1, 2, 3, 4])
+  })
+
   it('square pocket: both axes grow together, snapped onto the wall', () => {
     expect(pocketRectRingDims(10, 10, 4)).toEqual([
       { halfWidth: 4, halfHeight: 4 },

@@ -5,7 +5,7 @@ import type { SurfaceBounds } from './surfaceGeometry'
 // recompute this live on every keystroke, including transient states while
 // typing a stepover value, so this guards against a near-zero stepover
 // freezing the tab.
-const MAX_LINES = 5000
+export const MAX_LINES = 5000
 
 // Larger than depthPasses.ts's 1e-9: this loop can run hundreds of
 // iterations of floating-point addition (`pos += spacing`), accumulating
@@ -35,6 +35,21 @@ export function computeLinePositions(min: number, max: number, spacing: number):
     positions[positions.length - 1] = max
   }
   return positions
+}
+
+// BL-55: true when computeLinePositions() would hit MAX_LINES before
+// reaching `max` — it then appends `max` anyway, leaving one huge final
+// gap (half a 1000 mm surface uncut in the review's repro). Used by
+// validation to block Generate instead.
+export function exceedsLineLimit(min: number, max: number, spacing: number): boolean {
+  return max > min && spacing > 0 && Math.ceil((max - min) / spacing - LINE_EPSILON) > MAX_LINES
+}
+
+// Same check for a whole raster: lines step along Y for 'x', along X for 'y'.
+export function rasterExceedsLineLimit(bounds: SurfaceBounds, direction: RasterDirection, stepoverMm: number): boolean {
+  return direction === 'x'
+    ? exceedsLineLimit(bounds.minY, bounds.maxY, stepoverMm)
+    : exceedsLineLimit(bounds.minX, bounds.maxX, stepoverMm)
 }
 
 export interface RasterLine {

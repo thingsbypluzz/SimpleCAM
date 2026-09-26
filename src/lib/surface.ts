@@ -58,6 +58,17 @@ function zigzagSurfaceToolpath(cx: number, cy: number, params: WizardParams): st
 // (NOT the Plunge/Helix toggle — that's reserved for transitions between Z
 // depth levels, not line-to-line re-entry at the same depth) back down,
 // mirroring standardHole.ts's explicit per-pass plunge line.
+// BL-59: clearance kept above the previous level's floor (the highest
+// material the next line's start can be sitting over) when rapiding back
+// down between Unidirectional lines — the rapid used to stop exactly on
+// that floor, and on the first level exactly on the stock top, so any Z
+// error or lost step meant contact at rapid speed. Capped at Safe Z.
+export const UNIDIRECTIONAL_REENTRY_CLEARANCE = 0.5
+
+export function unidirectionalReentryZ(toZ: number, stepdown: number, safeZ: number): number {
+  return Math.min(safeZ, toZ + stepdown + UNIDIRECTIONAL_REENTRY_CLEARANCE)
+}
+
 function unidirectionalSurfaceToolpath(cx: number, cy: number, params: WizardParams): string[] {
   const { surface, feeds, output } = params
   const bounds = surfaceToolBounds(surface)
@@ -94,15 +105,13 @@ function unidirectionalSurfaceToolpath(cx: number, cy: number, params: WizardPar
       if (i < rasterLines.length - 1) {
         lines.push(`G0 Z${fmt(feeds.safeZ)}`)
         lines.push(`G0 X${fmt(rasterLines[i + 1].from.x)} Y${fmt(rasterLines[i + 1].from.y)}`)
-        // Rapid down to one stepdown above the target level first (BL-35)
-        // — the old single G1 plunged at Plunge Rate through the entire
-        // empty distance from Safe Z, not just through material. Same
-        // "rapid to just above, then plunge only the final stepdown"
-        // shape as buildLevelDescents()/zTransitionMoves() use for the
-        // first entry into each level. Relative to toZ (not a fixed
-        // Start Z-based height) so it stays correct on every level, not
-        // just the first.
-        lines.push(`G0 Z${fmt(toZ + feeds.stepdown)}`)
+        // Rapid down to just above the previous level's floor first
+        // (BL-35) — the old single G1 plunged at Plunge Rate through the
+        // entire empty distance from Safe Z, not just through material.
+        // Relative to toZ (not a fixed Start Z-based height) so it stays
+        // correct on every level, not just the first. See
+        // unidirectionalReentryZ() for the clearance (BL-59).
+        lines.push(`G0 Z${fmt(unidirectionalReentryZ(toZ, feeds.stepdown, feeds.safeZ))}`)
         lines.push(`G1 Z${fmt(toZ)} F${fmt(feeds.plungeRate)}`)
       }
     })

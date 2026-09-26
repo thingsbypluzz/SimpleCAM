@@ -15,6 +15,7 @@ import { outlineDirectionForOffsetMode } from '../../lib/outlineRectangle'
 import { surfaceNominalBounds, surfaceStartCorner, surfaceStepoverMm, surfaceToolBounds, type SurfaceBounds } from '../../lib/surfaceGeometry'
 import { computeRasterLines, zigzagWaypoints } from '../../lib/surfaceRaster'
 import { buildLevelDescents, helixCenterFor, helixDirectionFor } from '../../lib/surfaceZTransition'
+import { unidirectionalReentryZ } from '../../lib/surface'
 import {
   pocketCenter,
   pocketCircleWallRadius,
@@ -565,7 +566,7 @@ function buildSurfaceToolpathPoints3D(surface: WizardParams['surface'], feeds: W
           builder.add('dashed', [
             toThree(line.to.x, line.to.y, feeds.safeZ),
             toThree(rasterLines[i + 1].from.x, rasterLines[i + 1].from.y, feeds.safeZ),
-            toThree(rasterLines[i + 1].from.x, rasterLines[i + 1].from.y, toZ + feeds.stepdown),
+            toThree(rasterLines[i + 1].from.x, rasterLines[i + 1].from.y, unidirectionalReentryZ(toZ, feeds.stepdown, feeds.safeZ)),
           ])
           builder.add('dotted', [toThree(rasterLines[i + 1].from.x, rasterLines[i + 1].from.y, toZ)])
         }
@@ -740,7 +741,7 @@ function buildPocketToolpathObjects3D(
   } else {
     const { halfWidth, halfHeight } = pocketRectWallHalfDims(pocket)
     const stepoverMm = pocketStepoverMm(pocket)
-    const rings = pocketRectRingDims(halfWidth, halfHeight, stepoverMm)
+    const rings = pocketRectRingDims(halfWidth, halfHeight, stepoverMm, pocket.zTransitionMode === 'helix' ? pocket.helixRadius : 0)
     descents.forEach(({ toZ }, idx) => {
       if (idx > 0) addLevelRetract()
       pushZTransition(toZ)

@@ -1,7 +1,12 @@
 import { describe, expect, it } from 'vitest'
 import {
+  descentAngleDeg,
+  descentWarnings,
   feedsWarnings,
   isCircleHoleCountValid,
+  isPassCountWithinLimit,
+  isPocketToolpathWithinLimits,
+  isSurfaceLineCountWithinLimit,
   isCustomPointsValid,
   isFeedrateXYValid,
   isHolesSizeValid,
@@ -619,5 +624,78 @@ describe('size validators (BL-46)', () => {
     expect(isOutlineSizeValid({ ...DEFAULT_WIZARD_PARAMS.outline, shape: 'circle', height: 0 })).toBe(true)
     expect(isSurfaceSizeValid({ ...DEFAULT_WIZARD_PARAMS.surface, width: -5 })).toBe(false)
     expect(isPocketSizeValid({ ...DEFAULT_WIZARD_PARAMS.pocket, shape: 'circle', diameter: 0 })).toBe(false)
+  })
+})
+
+describe('safety-limit validators (BL-55)', () => {
+  it('flags a stepdown so small the depth needs more than MAX_PASSES passes', () => {
+    const params = { ...DEFAULT_WIZARD_PARAMS, feeds: { ...DEFAULT_WIZARD_PARAMS.feeds, stepdown: 0.0005 } }
+    expect(isPassCountWithinLimit(DEFAULT_WIZARD_PARAMS)).toBe(true)
+    expect(isPassCountWithinLimit(params)).toBe(false)
+  })
+
+  it('flags a Surface raster that would need more than MAX_LINES lines (review repro)', () => {
+    const surface = { ...DEFAULT_WIZARD_PARAMS.surface, width: 1000, height: 1000, toolDiameter: 1, stepoverPercent: 10 }
+    expect(isSurfaceLineCountWithinLimit(DEFAULT_WIZARD_PARAMS.surface)).toBe(true)
+    expect(isSurfaceLineCountWithinLimit(surface)).toBe(false)
+  })
+
+  it('flags an Adaptive helix needing more than MAX_PASSES turns per level (review repro)', () => {
+    const params = {
+      ...DEFAULT_WIZARD_PARAMS,
+      operation: 'pocket' as const,
+      pocket: { ...DEFAULT_WIZARD_PARAMS.pocket, method: 'adaptive' as const, toolDiameter: 6, helixRadius: 0.05, rampAngleDeg: 0.5, totalDepth: 20 },
+      feeds: { ...DEFAULT_WIZARD_PARAMS.feeds, stepdown: 20 },
+    }
+    expect(isPocketToolpathWithinLimits({ ...params, pocket: { ...params.pocket, helixRadius: 1.5, rampAngleDeg: 2 } })).toBe(true)
+    expect(isPocketToolpathWithinLimits(params)).toBe(false)
+  })
+
+  it('accepts the defaults of every operation and Pocket method', () => {
+    for (const operation of ['holes', 'outline', 'surface', 'pocket'] as const) {
+      expect(isPassCountWithinLimit({ ...DEFAULT_WIZARD_PARAMS, operation })).toBe(true)
+    }
+    for (const method of ['raster', 'spiral', 'adaptive'] as const) {
+      const pocket = { ...DEFAULT_WIZARD_PARAMS.pocket, method }
+      expect(isPocketToolpathWithinLimits({ ...DEFAULT_WIZARD_PARAMS, operation: 'pocket', pocket })).toBe(true)
+    }
+  })
+})
+
+describe('descent-angle warning (BL-50)', () => {
+  it('computes the Hole(s) helix angle (review repro: hole 3.5, tool 3.175, stepdown 1 -> ~44°)', () => {
+    const params = {
+      ...DEFAULT_WIZARD_PARAMS,
+      method: 'helix' as const,
+      geometry: { ...DEFAULT_WIZARD_PARAMS.geometry, holeDiameter: 3.5, toolDiameter: 3.175 },
+    }
+    expect(descentAngleDeg(params)).toBeCloseTo(44.4, 0)
+    expect(descentWarnings(params)).toHaveLength(1)
+  })
+
+  it('stays quiet for the defaults, including a switched-on Helix entry', () => {
+    expect(descentWarnings(DEFAULT_WIZARD_PARAMS)).toEqual([])
+    const surfaceHelix = {
+      ...DEFAULT_WIZARD_PARAMS,
+      operation: 'surface' as const,
+      surface: { ...DEFAULT_WIZARD_PARAMS.surface, zTransitionMode: 'helix' as const },
+    }
+    expect(descentWarnings(surfaceHelix)).toEqual([])
+  })
+
+  it('is null for methods without a helix/ramp', () => {
+    expect(descentAngleDeg({ ...DEFAULT_WIZARD_PARAMS, method: 'standard' })).toBeNull()
+    expect(descentAngleDeg({ ...DEFAULT_WIZARD_PARAMS, operation: 'pocket' })).toBeNull()
+  })
+
+  it('uses the longer tool-path edge for an Outline Rectangle ramp', () => {
+    const params = {
+      ...DEFAULT_WIZARD_PARAMS,
+      operation: 'outline' as const,
+      outline: { ...DEFAULT_WIZARD_PARAMS.outline, method: 'ramp' as const, width: 6, height: 4, toolDiameter: 3, offsetMode: 'inside' as const },
+      feeds: { ...DEFAULT_WIZARD_PARAMS.feeds, stepdown: 3 },
+    }
+    // Inside: tool-path 3 x 1, ramp along the 3 mm edge -> atan(3/3) = 45°.
+    expect(descentAngleDeg(params)).toBeCloseTo(45, 5)
   })
 })

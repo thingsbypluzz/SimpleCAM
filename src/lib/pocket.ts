@@ -53,7 +53,12 @@ function spiralRectLevel(cx: number, cy: number, toZ: number, params: WizardPara
   const { pocket, feeds } = params
   const { halfWidth, halfHeight } = pocketRectWallHalfDims(pocket)
   const stepoverMm = pocketStepoverMm(pocket)
-  const rings = pocketRectRingDims(halfWidth, halfHeight, stepoverMm)
+  const rings = pocketRectRingDims(
+    halfWidth,
+    halfHeight,
+    stepoverMm,
+    pocket.zTransitionMode === 'helix' ? pocket.helixRadius : 0,
+  )
 
   // Bootstrap ring 1 exactly like every later ring — Plunge enters at the
   // degenerate (0,0) "ring" (collapses to the pocket center regardless of

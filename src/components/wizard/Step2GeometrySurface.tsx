@@ -1,6 +1,12 @@
 import type { RasterDirection, WizardParams, ZTransitionMode } from '../../types/wizard'
 import type { MachineSettings } from '../../types/machine'
-import { isSurfaceHelixRadiusValid, isSurfaceSizeValid, isSurfaceStepoverValid } from '../../lib/validation'
+import {
+  isSurfaceHelixRadiusValid,
+  isSurfaceLineCountWithinLimit,
+  isSurfaceSizeValid,
+  isSurfaceStepoverValid,
+} from '../../lib/validation'
+import { MAX_LINES } from '../../lib/surfaceRaster'
 import { surfaceStepoverMm } from '../../lib/surfaceGeometry'
 import { fmt } from '../../lib/format'
 import { resolveToolDiameterSelectOptions } from '../../lib/toolDiameterOptions'
@@ -162,6 +168,12 @@ export function Step2GeometrySurface({ params, onChange, machine, toolDiameters 
         </div>
         {!isSurfaceStepoverValid(surface) && (
           <p className="text-sm text-status-error">Stepover must be between 1% and 100% of the tool diameter.</p>
+        )}
+        {isSurfaceStepoverValid(surface) && !isSurfaceLineCountWithinLimit(surface) && (
+          <p className="text-sm text-status-error">
+            Stepover is too small for this area — more than {MAX_LINES} raster lines, part of the surface would be left
+            uncut.
+          </p>
         )}
       </div>
 
