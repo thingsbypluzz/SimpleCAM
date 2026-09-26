@@ -1,6 +1,5 @@
-import { fmt } from './format'
-import { fullCircleMove } from './circle'
 import { computeDepthPasses } from './depthPasses'
+import { fullTurn, toolpathToGcode, ToolpathBuilder } from './toolpath'
 import type { InterpolationMode, RasterDirection, ZTransitionMode } from '../types/wizard'
 
 export interface ZTransitionOptions {
@@ -63,40 +62,38 @@ export function helixCenterFor(
   return rasterDirection === 'x' ? { x: cornerX, y: cornerY - radius } : { x: cornerX - radius, y: cornerY }
 }
 
-// Plunge: one straight vertical G1 line for the whole descend distance — no
-// chunking needed, unlike the multi-turn helix below.
+// Plunge: one straight vertical G1 (`G1 Z… F<plunge>`) for the whole
+// descend distance — no chunking needed, unlike the multi-turn helix below.
 //
-// Helix: reuses fullCircleMove exactly like helix.ts's no-tabs loop — one
-// computeDepthPasses() increment per 360° turn. Rotation sense and center
-// both depend on rasterDirection (helixDirectionFor/helixCenterFor above) —
-// together they keep the exit tangent smooth AND the loop off the material.
-export function zTransitionMoves(opts: ZTransitionOptions): string[] {
+// Helix: one full turn per computeDepthPasses() increment, like helix.ts's
+// no-tabs loop. Rotation sense and center both depend on rasterDirection
+// (helixDirectionFor/helixCenterFor above) — together they keep the exit
+// tangent smooth AND the loop off the material. Appends to `builder`, whose
+// current point must be the corner at `fromZ`.
+export function appendZTransition(builder: ToolpathBuilder, opts: ZTransitionOptions): void {
   if (opts.mode === 'plunge') {
-    return [`G1 Z${fmt(opts.toZ)} F${fmt(opts.plungeRate)}`]
+    builder.zTo('plunge', opts.toZ)
+    return
   }
-
-  const { x: centerX, y: centerY } = helixCenterFor(opts.cornerX, opts.cornerY, opts.helixRadius, opts.rasterDirection)
+  const center = helixCenterFor(opts.cornerX, opts.cornerY, opts.helixRadius, opts.rasterDirection)
   const direction = helixDirectionFor(opts.rasterDirection)
-  const lines: string[] = []
   let z = opts.fromZ
   for (const turnDepth of computeDepthPasses(opts.fromZ - opts.toZ, opts.stepdown)) {
-    lines.push(
-      ...fullCircleMove({
-        centerX,
-        centerY,
-        radius: opts.helixRadius,
-        startX: opts.cornerX,
-        startY: opts.cornerY,
-        zStart: z,
-        zEnd: z - turnDepth,
-        feed: opts.feedrateXY,
-        interpolation: opts.interpolation,
-        direction,
-      }),
-    )
     z -= turnDepth
+    builder.arc('cut', center, direction, fullTurn, z)
   }
-  return lines
+}
+
+// G-code for one transition on its own (tests; lib/surface.ts formats the
+// whole toolpath at once).
+export function zTransitionMoves(opts: ZTransitionOptions): string[] {
+  const builder = new ToolpathBuilder({ x: opts.cornerX, y: opts.cornerY, z: opts.fromZ })
+  appendZTransition(builder, opts)
+  return toolpathToGcode(builder.build(), {
+    feeds: { cut: opts.feedrateXY, plunge: opts.plungeRate },
+    interpolation: opts.interpolation,
+    leadInRapid: false,
+  })
 }
 
 export interface LevelDescent {

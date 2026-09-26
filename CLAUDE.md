@@ -212,7 +212,9 @@ decyzją projektową).
   reużyta zamiast nowej stałej/ustawienia, bo jej domyślna wartość, 5mm,
   już wygląda sensownie jako umowna "reszta materiału pod spodem", o
   której appka nic nie wie). Niezależne od liczby przejść stepdown. Plus
-  ciągła `THREE.Line` po trasie rastra (`buildSurfaceToolpathPoints3D()`);
+  cała trasa narzędzia narysowana wprost z listy ruchów silnika
+  (`buildSurfaceToolpath()`, `lib/surface.ts` — patrz "Wspólna lista
+  ruchów" niżej);
   brak osobnego stock-cap-z-otworem (`buildStockCapObject()` zwraca
   `null` dla Surface — blok "pozostałego materiału" już jest tą
   wizualizacją).
@@ -491,8 +493,8 @@ decyzją projektową).
   wykończeniowego — drobne ząbki między punktami styczności łuków zostają
   (`BL-42`).
 
-  **Jedna lista ruchów** (`buildAdaptiveToolpath()` → `AdaptiveMove[]`:
-  linia/łuk × `'cut' | 'link'`) — konsumowana przez silnik
+  **Jedna lista ruchów** (`buildAdaptiveToolpath()` → lista ruchów
+  `lib/toolpath.ts`: linia/łuk × `'cut' | 'link'`) — konsumowana przez silnik
   (`adaptiveMovesToGcode()`, `generatePocketAdaptive()` w `lib/pocket.ts`,
   z pominięciem wspólnego `pocketToolpath()`) i oba podglądy
   (`adaptiveMovePoints()`), więc nie ma ręcznego "mirrorowania" geometrii
@@ -897,14 +899,17 @@ w jednym obiekcie. `createSegmentBuilder3D()` akumuluje kolejne odcinki
 wizualnej), `buildToolpathLines3D()` zamienia je na rzeczywiste
 `THREE.Line` (pomijając zdegenerowane odcinki < 2 punktów).
 `helixPoints3D()`/`standardHolePoints3D()`/`rectRampPoints3D()`/
-`rectStandardPoints3D()`/`buildSurfaceToolpathPoints3D()` zwracają dziś
-`ToolpathSegment3D[]`, nie płaski `Vector3[]` jak wcześniej.
+`rectStandardPoints3D()` zwracają `ToolpathSegment3D[]`. Operacje, które
+już budują wspólną listę ruchów (Surface, Pocket Adaptive), rysuje
+`toolpathLines3D()` — styl wynika wprost z rodzaju ruchu (`MOVE_STYLE`:
+`cut` → `solid`, `rapid` → `dashed`, `plunge` → `dotted`, `link` →
+`linking`), a kolejne ruchy tego samego stylu dzielą jeden `THREE.Line`.
 
 Przed tą zmianą: rapidy miały osobny kolor (`theme.rapid`) i były już
 kreskowane, ale nieskrawający ruch G1 (krok Standard Hole, Plunge
 Surface) był po prostu wtopiony w tę samą pełną linię co realne
 skrawanie — nierozróżnialny wzrokowo. Surface był najgorszym
-przypadkiem: `buildSurfaceToolpathPoints3D()` świadomie sklejała nawet
+przypadkiem: jego ówczesne lustro silnika w podglądzie świadomie sklejało nawet
 retrakt/reposition (prawdziwe G0) w jedną ciągłą linię razem z
 cięciem — dosłownie żadnego wskazania, że tam jest ruch szybki, nie
 skrawanie.
@@ -1606,8 +1611,9 @@ src/
                                ale `Vector3` zamiast stringów G-code —
                                dzielenie głębokości na przejścia idzie
                                przez wspólne `computeDepthPasses()`;
-                               `buildSurfaceToolpathPoints3D()` mirror'uje
-                               `lib/surface.ts` dokładnie), bryła
+                               Surface i Pocket Adaptive rysowane wprost z
+                               listy ruchów silnika przez
+                               `toolpathLines3D()`), bryła
                                finalnego kształtu, `buildStockCapObject()`
                                (patrz "Otwarta/zamknięta geometria..."
                                wyżej — zwraca `null` dla Surface, blok
@@ -1751,7 +1757,13 @@ src/
                                  Unidirectional: pełny retrakt na Safe Z +
                                  prosty plunge (NIE toggle Plunge/Helix)
                                  między liniami, wzorzec z
-                                 `standardHole.ts`.
+                                 `standardHole.ts`. Obie metody budują
+                                 jedną listę ruchów
+                                 (`buildSurfaceToolpath()`, `toolpath.ts`),
+                                 z której powstaje G-code i podgląd 3D.
+                                 `appendZTransition()` w
+                                 `surfaceZTransition.ts` dopisuje do niej
+                                 Plunge/Helix.
     pocketGeometry.ts              — `pocketCenter()` (origin-convention
                                  jak `rectCorners()`), `pocketRectWallHalfDims()`/
                                  `pocketCircleWallRadius()` (ściana =
@@ -1800,16 +1812,34 @@ src/
                                  `largestStepWithin()` (bisekcja kroku).
     pocketAdaptive.ts               — ścieżka Adaptive: `buildAdaptiveToolpath()`
                                  (fazy A/B/C, patrz "Kluczowe decyzje
-                                 projektowe") → `AdaptiveMove[]`,
-                                 `adaptiveMovePoints()` (próbkowanie wspólne
-                                 dla G1 i obu podglądów),
-                                 `adaptiveMovesToGcode()`,
+                                 projektowe") → lista ruchów `toolpath.ts`
+                                 (`AdaptiveMove`/`adaptiveMovePoints()`/
+                                 `adaptiveMovesToGcode()` to nazwy-aliasy
+                                 wspólnego modułu),
                                  `adaptiveExceedsLimits()` (czy któraś
                                  pętla — obroty helixa, pierścienie fazy
                                  A, stacje B, promienie C — zatrzymałaby
                                  się na limicie przed ścianą/pełną
                                  głębokością; liczy tylko sekwencje, nie
                                  listę ruchów).
+    toolpath.ts                     — wspólna lista ruchów (`BL-61`, etap 3):
+                                 `Move` (linia/łuk × `rapid`/`cut`/
+                                 `plunge`/`link`), `ToolpathBuilder`,
+                                 `movePoints()` (próbkowanie łuków — te same
+                                 wyrażenia co `fullCircleMove()`, więc G1 i
+                                 podglądy dają identyczne punkty) i
+                                 `toolpathToGcode()` (jedyny formatter: `G0`
+                                 tylko zmienianych osi albo jawnie `xy`/`z`,
+                                 `G1 Z… F<plunge>`, `G1 X Y Z F`, `G2/G3 … I
+                                 J F`). Silnik buduje listę raz, G-code i
+                                 podgląd 3D ją konsumują — podgląd nie może
+                                 rozjechać się z plikiem. Dziś: Surface
+                                 (`buildSurfaceToolpath()`) i Pocket
+                                 Adaptive; pozostałe operacje czekają na
+                                 kolejne kroki etapu 3.
+    fuzzParams.ts                   — tylko testy: deterministyczny PRNG +
+                                 losowe `WizardParams` per operacja (test
+                                 niezmienników, porównania przy refaktorze).
     pocketAdaptiveSim.ts            — tylko testy: symulacja materiału na
                                  siatce (pokrycie kieszeni, wyjazd za ścianę,
                                  kontakt przejazdów łączących). Nie

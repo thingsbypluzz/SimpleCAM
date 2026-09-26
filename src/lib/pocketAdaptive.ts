@@ -1,10 +1,10 @@
 import { computeDepthPasses, exceedsPassLimit } from './depthPasses'
-import { fmt } from './format'
 import { pocketCenter, pocketCircleWallRadius, pocketRectWallHalfDims } from './pocketGeometry'
 import { engagementAngleFor, largestStepWithin, maxArcEngagement, nextConstantEngagementRadius } from './pocketAdaptiveMath'
 import { pocketEntryPoint } from './pocketZTransition'
 import { buildLevelDescents } from './surfaceZTransition'
 import type { InterpolationMode, Point2D, WizardParams } from '../types/wizard'
+import { movePoints, toolpathToGcode, ToolpathBuilder, type ArcDirection, type Move, type MoveKind, type Point3D, type Toolpath } from './toolpath'
 
 // Pocket Adaptive — engagement-controlled clearing for Circle and
 // Rectangle, pure closed-form geometry (no material simulation). Produces
@@ -12,31 +12,19 @@ import type { InterpolationMode, Point2D, WizardParams } from '../types/wizard'
 // previews consume, so what is drawn can never drift from what is cut.
 // See CLAUDE.md's Pocket Adaptive notes for the phase structure.
 
-export type AdaptiveMoveKind = 'cut' | 'link'
-export type ArcDirection = 'cw' | 'ccw'
-
-export interface Point3D {
-  x: number
-  y: number
-  z: number
-}
-
-export type AdaptiveMove =
-  | { type: 'line'; kind: AdaptiveMoveKind; to: Point3D }
-  | { type: 'arc'; kind: AdaptiveMoveKind; to: Point3D; center: Point2D; direction: ArcDirection; sweep: number }
-
-export interface AdaptiveToolpath {
-  start: Point3D
-  moves: AdaptiveMove[]
-}
+// The move list itself is the shared lib/toolpath.ts model; these names are
+// kept for the existing call sites (pocket.ts, both previews, tests).
+export type { ArcDirection, Point3D }
+export type AdaptiveMove = Move
+export type AdaptiveMoveKind = MoveKind
+export type AdaptiveToolpath = Toolpath
+export const adaptiveMovePoints = movePoints
 
 // Share of the target engagement reserved for the outward tilt of the
 // ring-to-ring ramp in phase A: rings are spaced for (1 − f)·θ*, and the
 // ramp is made just long enough that its tilt adds at most f·θ* — the
 // engagement along the ramp (ring engagement + tilt) never exceeds θ*.
 const RAMP_TILT_FRACTION = 0.2
-// Same 5° sampling density used for every G1-approximated curve in the app.
-const SEGMENT_RAD = (5 * Math.PI) / 180
 // Phase-A ramps are always G1 polygons (a changing radius has no G2/G3
 // form). Each chord leaves its end point tilted outward by half its own
 // angle, which adds straight onto engagement — 2° segments keep that ≤ 1°.
@@ -50,57 +38,9 @@ const MIN_PEEL_RADIUS_FRACTION = 0.01
 const MAX_STEPS = 5000
 const EPS = 1e-6
 
-function arcEndPoint(from: Point3D, center: Point2D, direction: ArcDirection, sweep: number, z: number): Point3D {
-  const r = Math.hypot(from.x - center.x, from.y - center.y)
-  const a = Math.atan2(from.y - center.y, from.x - center.x) + (direction === 'ccw' ? sweep : -sweep)
-  return { x: center.x + r * Math.cos(a), y: center.y + r * Math.sin(a), z }
-}
-
-// Points along one move, excluding its start (the previous move's end).
-// Arcs are sampled at SEGMENT_RAD, Z interpolated linearly (helix turns),
-// last point snapped exactly onto `to`. Shared by the G1 G-code output and
-// both previews.
-export function adaptiveMovePoints(from: Point3D, move: AdaptiveMove): Point3D[] {
-  if (move.type === 'line') return [move.to]
-  const segments = Math.max(1, Math.round(move.sweep / SEGMENT_RAD))
-  const r = Math.hypot(from.x - move.center.x, from.y - move.center.y)
-  const a0 = Math.atan2(from.y - move.center.y, from.x - move.center.x)
-  const sign = move.direction === 'ccw' ? 1 : -1
-  const points: Point3D[] = []
-  for (let i = 1; i < segments; i++) {
-    const t = i / segments
-    const a = a0 + sign * move.sweep * t
-    points.push({ x: move.center.x + r * Math.cos(a), y: move.center.y + r * Math.sin(a), z: from.z + (move.to.z - from.z) * t })
-  }
-  points.push(move.to)
-  return points
-}
-
-class MoveBuilder {
-  readonly moves: AdaptiveMove[] = []
-  current: Point3D
-
-  constructor(start: Point3D) {
-    this.current = start
-  }
-
-  lineTo(kind: AdaptiveMoveKind, x: number, y: number, z = this.current.z) {
-    const c = this.current
-    if (Math.abs(x - c.x) < EPS && Math.abs(y - c.y) < EPS && Math.abs(z - c.z) < EPS) return
-    const to = { x, y, z }
-    this.moves.push({ type: 'line', kind, to })
-    this.current = to
-  }
-
-  arc(kind: AdaptiveMoveKind, center: Point2D, direction: ArcDirection, sweep: number, z = this.current.z) {
-    const to = arcEndPoint(this.current, center, direction, sweep, z)
-    this.moves.push({ type: 'arc', kind, to, center, direction, sweep })
-    this.current = to
-  }
-}
 
 interface LevelContext {
-  b: MoveBuilder
+  b: ToolpathBuilder
   cx: number
   cy: number
   toolRadius: number
@@ -334,7 +274,7 @@ export function buildAdaptiveToolpath(params: Pick<WizardParams, 'pocket' | 'fee
   const helixRadius = pocket.helixRadius
   const entry = pocketEntryPoint(center.x, center.y, 'helix', helixRadius)
   const start: Point3D = { x: entry.x, y: entry.y, z: feeds.startZ }
-  const b = new MoveBuilder(start)
+  const b = new ToolpathBuilder(start, true)
 
   const theta = engagementAngleFor(pocket.optimalLoadPercent)
   if (!(toolRadius > 0) || !(helixRadius > 0) || !(theta > 0)) return { start, moves: [] }
@@ -394,21 +334,9 @@ export function adaptiveMovesToGcode(
   toolpath: AdaptiveToolpath,
   opts: { cutFeed: number; linkFeed: number; interpolation: InterpolationMode },
 ): string[] {
-  const lines: string[] = []
-  let current = toolpath.start
-  for (const move of toolpath.moves) {
-    const feed = move.kind === 'cut' ? opts.cutFeed : opts.linkFeed
-    if (move.type === 'arc' && opts.interpolation === 'arc') {
-      const code = move.direction === 'cw' ? 'G2' : 'G3'
-      const i = move.center.x - current.x
-      const j = move.center.y - current.y
-      lines.push(`${code} X${fmt(move.to.x)} Y${fmt(move.to.y)} Z${fmt(move.to.z)} I${fmt(i)} J${fmt(j)} F${fmt(feed)}`)
-    } else {
-      for (const p of adaptiveMovePoints(current, move)) {
-        lines.push(`G1 X${fmt(p.x)} Y${fmt(p.y)} Z${fmt(p.z)} F${fmt(feed)}`)
-      }
-    }
-    current = move.to
-  }
-  return lines
+  return toolpathToGcode(toolpath, {
+    feeds: { cut: opts.cutFeed, link: opts.linkFeed },
+    interpolation: opts.interpolation,
+    leadInRapid: false,
+  })
 }
