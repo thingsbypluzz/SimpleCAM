@@ -8,6 +8,7 @@ import {
   isPocketSizeValid,
   isPocketStepoverValid,
   isPocketToolDiameterValid,
+  isPocketToolpathWithinLimits,
   MAX_RAMP_ANGLE_DEG,
   pocketMaxHelixRadius,
   MIN_RAMP_ANGLE_DEG,
@@ -436,6 +437,13 @@ export function Step2GeometryPocket({ params, onChange, machine, toolDiameters }
           <p className="text-sm text-muted">
             A small helix means many helix turns at this ramp angle and very dense first passes — a radius around a
             quarter to half of the tool diameter enters faster.
+          </p>
+        )}
+        {!isPocketToolpathWithinLimits(params) && (
+          <p className="text-sm text-status-error">
+            {isAdaptive
+              ? 'This pocket needs too many helix turns or passes — the toolpath would be cut short by its safety limit. Raise the Ramp Angle, Helix Radius or Optimal Load, or lower Stepdown.'
+              : 'Stepover is too small for this pocket — too many passes, the toolpath would be cut short by its safety limit.'}
           </p>
         )}
       </div>

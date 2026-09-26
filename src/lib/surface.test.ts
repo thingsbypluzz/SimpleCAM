@@ -104,12 +104,14 @@ describe('generateSurfaceUnidirectional', () => {
     // assembleProgram's trailing retract after the (single synthetic) point
     // — never a 4th, which would mean a retract after the last line too.
     expect(lines.filter((l) => l === 'G0 Z5')).toHaveLength(3)
-    // BL-35: the re-entry rapids down to one stepdown above the target
-    // level (toZ=-1, stepdown=1 -> Z0) before the final plunge, instead of
-    // plunging at Plunge Rate through the whole empty Safe-Z-to-toZ gap.
-    // 'G0 Z0' appears twice: the toolpath's own initial rapidToTop(startZ)
-    // (startZ=0) at the very start, plus this one re-entry.
-    expect(lines.filter((l) => l === 'G0 Z0')).toHaveLength(2)
+    // BL-35/BL-59: the re-entry rapids down to just above the previous
+    // floor (toZ=-1, stepdown=1 -> Z0, plus 0.5 mm clearance -> Z0.5)
+    // before the final plunge, instead of plunging at Plunge Rate through
+    // the whole empty Safe-Z-to-toZ gap — and without stopping right on the
+    // stock top.
+    expect(lines.filter((l) => l === 'G0 Z0.5')).toHaveLength(1)
+    // 'G0 Z0' is now only the toolpath's own initial rapidToTop(startZ).
+    expect(lines.filter((l) => l === 'G0 Z0')).toHaveLength(1)
     // The re-entry plunge after that retract, plus the initial Helix-mode
     // Z-transition into the first level (single stepdown-sized turn ->
     // G2/G3, not this straight line) are the only vertical moves besides it.

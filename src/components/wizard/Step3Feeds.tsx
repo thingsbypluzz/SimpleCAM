@@ -1,7 +1,9 @@
 import type { WizardParams } from '../../types/wizard'
 import type { MachineSettings } from '../../types/machine'
 import {
+  descentWarnings,
   isAdaptiveStepdownShallow,
+  isPassCountWithinLimit,
   isFeedrateXYValid,
   isPlungeRateValid,
   isPocketLinkingFeedValid,
@@ -9,6 +11,7 @@ import {
   isStartZBelowStock,
   isStartZValid,
   isStepdownValid,
+  MAX_PASSES,
   suggestedAdaptiveStepdown,
 } from '../../lib/validation'
 import { isFeedChipThinningCompensated } from '../../lib/pocketAdaptiveMath'
@@ -87,6 +90,20 @@ export function Step3Feeds({ params, onChange, machine, stepdownLabel }: Step3Fe
           Stepdown must be greater than 0.
         </p>
       )}
+      {isStepdownValid(feeds) && !isPassCountWithinLimit(params) && (
+        <p className="text-sm text-status-error">
+          Stepdown is too small for this depth — more than {MAX_PASSES} passes, the toolpath would stop short of the
+          full depth.
+        </p>
+      )}
+      {descentWarnings(params).map((warning) => (
+        <p
+          key={warning}
+          className="rounded-md border border-status-warn-border bg-status-warn-bg px-3 py-2 text-xs text-status-warn-fg"
+        >
+          {warning}
+        </p>
+      ))}
       {params.operation === 'pocket' && isAdaptiveStepdownShallow(pocket, feeds.stepdown) && (
         <div className="flex items-start gap-3">
           <p className="min-w-0 flex-1 text-sm text-muted">

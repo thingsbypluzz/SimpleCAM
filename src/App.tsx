@@ -63,6 +63,7 @@ import { DEFAULT_APPEARANCE_SETTINGS } from './types/appearance'
 import { DEFAULT_MACHINE_SETTINGS } from './types/machine'
 import { DEFAULT_TOOL_DIAMETER_OPTIONS } from './types/toolDiameters'
 import {
+  descentWarnings,
   feedsWarnings,
   isCircleHoleCountValid,
   isCustomPointsValid,
@@ -80,11 +81,14 @@ import {
   isPocketSizeValid,
   isPocketStepoverValid,
   isPocketToolDiameterValid,
+  isPocketToolpathWithinLimits,
+  isPassCountWithinLimit,
   isPlungeRateValid,
   isSafeZValid,
   isStartZValid,
   isStepdownValid,
   isSurfaceHelixRadiusValid,
+  isSurfaceLineCountWithinLimit,
   isSurfaceSizeValid,
   isSurfaceStepoverValid,
   isSurfaceToolDiameterValid,
@@ -318,7 +322,8 @@ function App() {
     isStartZValid(params.feeds) &&
     isSafeZValid(params.feeds) &&
     isFeedrateXYValid(params.feeds) &&
-    isPlungeRateValid(params.feeds)
+    isPlungeRateValid(params.feeds) &&
+    isPassCountWithinLimit(params)
   const isGeometryValid =
     areFeedsValid &&
     (params.operation === 'outline'
@@ -331,6 +336,7 @@ function App() {
         ? isSurfaceToolDiameterValid(params.surface) &&
           isSurfaceSizeValid(params.surface) &&
           isSurfaceStepoverValid(params.surface) &&
+          isSurfaceLineCountWithinLimit(params.surface) &&
           isSurfaceHelixRadiusValid(params.surface)
         : params.operation === 'pocket'
           ? isPocketToolDiameterValid(params.pocket) &&
@@ -339,7 +345,8 @@ function App() {
             isPocketHelixRadiusValid(params.pocket) &&
             isPocketOptimalLoadValid(params.pocket) &&
             isPocketRampAngleValid(params.pocket) &&
-            isPocketLinkingFeedValid(params.pocket)
+            isPocketLinkingFeedValid(params.pocket) &&
+            isPocketToolpathWithinLimits(params)
           : isToolDiameterValid(params.geometry) &&
             isHolesSizeValid(params.geometry) &&
             isCircleHoleCountValid(params.geometry) &&
@@ -350,7 +357,7 @@ function App() {
   const fitWarnings = machineFitWarnings(params, machine)
   // Shown next to the machine-fit warnings in Step 4, but kept out of
   // step4Badge(), whose color means "doesn't fit the machine" only.
-  const step4Warnings = [...fitWarnings, ...feedsWarnings(params.feeds)]
+  const step4Warnings = [...fitWarnings, ...feedsWarnings(params.feeds), ...descentWarnings(params)]
   const step4BadgeInfo = step4Badge(generatedGCode, fitWarnings)
 
   // BL-25: while a preset slot is armed for edit mode, every param change

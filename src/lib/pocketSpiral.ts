@@ -155,11 +155,24 @@ export interface RectRingDims {
 // leading (0,0) entry (always present — computeLinePositions(0, max, ...)
 // always starts at 0) is dropped: it isn't a real ring to cut, just the
 // pocket's own center point.
-export function pocketRectRingDims(wallHalfWidth: number, wallHalfHeight: number, stepoverMm: number): RectRingDims[] {
+//
+// `entryRadius` (the Helix entry's radius, 0 for Plunge — BL-65): rings
+// whose every tool-center position, corners included, lies within it sit
+// entirely inside the bore the helix already cut (the tool disc stays
+// inside the cleared disc of radius entryRadius + toolRadius), so they're
+// dropped instead of being cut in the air. Circle gets the same effect by
+// starting pocketCircleRingRadii() at the helix radius.
+export function pocketRectRingDims(
+  wallHalfWidth: number,
+  wallHalfHeight: number,
+  stepoverMm: number,
+  entryRadius = 0,
+): RectRingDims[] {
   const maxWallHalf = Math.max(wallHalfWidth, wallHalfHeight)
   const rings = computeLinePositions(0, maxWallHalf, stepoverMm)
     .filter((p) => p > 0)
     .map((p) => ({ halfWidth: Math.min(p, wallHalfWidth), halfHeight: Math.min(p, wallHalfHeight) }))
+    .filter((dims) => Math.hypot(dims.halfWidth, dims.halfHeight) > entryRadius + 1e-9)
   return rings.length > 0 ? rings : [{ halfWidth: wallHalfWidth, halfHeight: wallHalfHeight }]
 }
 

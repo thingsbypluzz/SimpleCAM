@@ -130,7 +130,10 @@ decyzją projektową).
   ścieżka na poziom Z) i **Unidirectional** (zawsze ten sam kierunek,
   pełny retrakt na Safe Z + reentry prostym plunge między liniami —
   wzorzec identyczny z `standardHole.ts`'s explicit plunge przed każdym
-  passem). Płaski rejestr `config/surfaceMethodMeta.ts` (jak
+  passem; rapid w dół zatrzymuje się `UNIDIRECTIONAL_REENTRY_CLEARANCE`
+  = 0.5 mm nad dnem poprzedniego poziomu, nie na nim, i nigdy powyżej
+  Safe Z — `unidirectionalReentryZ()`, `lib/surface.ts`, reużyte przez
+  podgląd 3D). Płaski rejestr `config/surfaceMethodMeta.ts` (jak
   `METHOD_META`), **nie** bespoke-switch jak `lib/outline.ts` — metody
   Surface nie są ograniczone per-kształt jak Ramp/Helix w Outline.
   **Kierunek rastra** (`RasterDirection`): toggle X/Y w Step 2, bez
@@ -353,7 +356,12 @@ decyzją projektową).
   czyszczący Helixa (ten sam punkt, kąt 0, co circle'owy odpowiednik).
   Dzięki temu `rectRingMoves()` obsługuje pierwszy pierścień dokładnie
   tak samo jak każdy kolejny — brak osobnej gałęzi bootstrap w
-  `pocket.ts` ani w żadnym z podglądów.
+  `pocket.ts` ani w żadnym z podglądów. Przy wejściu Helix
+  `pocketRectRingDims(…, helixRadius)` pomija pierścienie, których
+  wszystkie pozycje środka freza (także narożniki, `hypot(halfWidth,
+  halfHeight)`) mieszczą się w promieniu helixa — leżą w całości w
+  otworze, który helix już wyciął (odpowiednik startu
+  `pocketCircleRingRadii()` od `helixRadius` w Circle).
 
   Dla `width ≠ height` pierścienie rosną **per-oś**, ze wspólnego kroku
   (`computeLinePositions()` reużyty wprost z `surfaceRaster.ts`, liczony
@@ -1615,9 +1623,14 @@ src/
                                  → number[]` (lista przejść/obrotów).
                                  Jedyne miejsce dzielące głębokość przez
                                  stepdown — używane przez silnik ORAZ
-                                 podgląd 3D. Twardy limit 5000 przejść,
-                                 fallback na pojedyncze pełne przejście
-                                 gdy `stepdown <= 0`.
+                                 podgląd 3D. Twardy limit `MAX_PASSES` =
+                                 5000 przejść (ochrona przed zamrożeniem
+                                 podglądu przy wartościach w trakcie
+                                 wpisywania), fallback na pojedyncze pełne
+                                 przejście gdy `stepdown <= 0`.
+                                 `exceedsPassLimit()` — walidacja blokuje
+                                 Generate, zanim limit obciąłby realne
+                                 zadanie.
     program.ts                  — `buildHeader`/`buildFooter`/
                                  `assembleProgram` — wspólny szkielet
                                  programu, przyjmuje `Dialect` i
@@ -1675,6 +1688,10 @@ src/
                                  podziale), `computeRasterLines()`
                                  (kierunek X/Y), `zigzagWaypoints()`
                                  (jedna ciągła ścieżka naprzemienna).
+                                 Limit `MAX_LINES` = 5000 z tym samym
+                                 podziałem ról co `MAX_PASSES`:
+                                 `exceedsLineLimit()`/
+                                 `rasterExceedsLineLimit()` dla walidacji.
     surfaceZTransition.ts         — `zTransitionMoves()` (Plunge = prosty
                                  `G1 Z`; Helix = pętla
                                  `computeDepthPasses()` + `fullCircleMove()`
@@ -1746,7 +1763,13 @@ src/
                                  projektowe") → `AdaptiveMove[]`,
                                  `adaptiveMovePoints()` (próbkowanie wspólne
                                  dla G1 i obu podglądów),
-                                 `adaptiveMovesToGcode()`.
+                                 `adaptiveMovesToGcode()`,
+                                 `adaptiveExceedsLimits()` (czy któraś
+                                 pętla — obroty helixa, pierścienie fazy
+                                 A, stacje B, promienie C — zatrzymałaby
+                                 się na limicie przed ścianą/pełną
+                                 głębokością; liczy tylko sekwencje, nie
+                                 listę ruchów).
     pocketAdaptiveSim.ts            — tylko testy: symulacja materiału na
                                  siatce (pokrycie kieszeni, wyjazd za ścianę,
                                  kontakt przejazdów łączących). Nie
@@ -1790,7 +1813,19 @@ src/
                                  pokazywane w Kroku 3 i na liście ostrzeżeń
                                  Kroku 4, ale nie zmienia koloru Badge'a,
                                  który oznacza wyłącznie dopasowanie do
-                                 maszyny),
+                                 maszyny), `descentAngleDeg()`/
+                                 `descentWarnings()` (nieblokujące, ta sama
+                                 ścieżka wyświetlania: helix/ramp poza
+                                 Adaptive schodzi o cały Stepdown na
+                                 obrót/okrążenie na Feedrate XY —
+                                 ostrzeżenie powyżej
+                                 `MAX_RECOMMENDED_DESCENT_DEG` = 10°),
+                                 `isPassCountWithinLimit`/
+                                 `isSurfaceLineCountWithinLimit`/
+                                 `isPocketToolpathWithinLimits` (blokujące:
+                                 ścieżka nie może trafić w limity
+                                 bezpieczeństwa pętli, bo wtedy byłaby
+                                 obcięta),
                                  `isCircleHoleCountValid` (limit 100),
                                  `isCustomPointsValid`,
                                  `isTabHeightValid`/`isTabWidthValid`/

@@ -7,6 +7,47 @@ zgodne z [SemVer](https://semver.org/). Ten plik pozostaje głównym, czytelnym
 thingsbypluzz/SimpleCAM), ale to infrastruktura pod izolację pracy
 (branch/worktree per zadanie), nie zamiennik tego changeloga.
 
+## [0.20.3] — 2026-09-26
+
+Piąta grupa poprawek z code review (2026-09-26): bezpieczeństwo ruchu w
+silniku.
+
+### Naprawiono
+
+- **`BL-55`: limity bezpieczeństwa pętli po cichu obcinały poprawne
+  zadania.** Pętle (przejścia w głąb, linie rastra, pierścienie, kroki
+  Adaptive) kończą się na 5000 iteracjach, żeby podgląd nie zamarzł przy
+  wartościach w trakcie wpisywania — ale realne zadanie, które
+  potrzebowało więcej, było generowane dalej jak kompletne. Surface
+  1000×1000 frezem 1 przy stepover 10% zostawiał ostatnią "przerwę" 501 mm
+  (pół powierzchni nieobrobione); Adaptive z helixem 0.05 mm i rampą 0.5°
+  po 5000 obrotach zjeżdżał resztę głębokości (6.3 mm) w jednym obrocie.
+  Teraz walidacja przewiduje, czy któraś pętla trafi w limit, i blokuje
+  Generate z komunikatem przy odpowiednim polu (Stepdown w Kroku 3,
+  Stepover/Optimal Load w Kroku 2). Wygenerowane ścieżki bez zmian.
+- **`BL-59`: Surface Unidirectional — powrót między liniami bez zapasu.**
+  Rapid w dół przed kolejną linią zatrzymywał się dokładnie na dnie
+  poprzedniego poziomu (na pierwszym — na wierzchu materiału); teraz 0.5
+  mm nad nim (nie wyżej niż Safe Z), resztę pokonuje plunge na Plunge
+  Rate.
+- **`BL-65`: Pocket Rectangle Spiral z wejściem Helix** jechał pierwsze
+  pierścienie w powietrzu wewnątrz już wywierconego otworu helixa (Circle
+  zaczynał od promienia helixa, Rectangle zawsze od środka). Pomijane są
+  teraz pierścienie leżące w całości w otworze — w silniku i obu
+  podglądach.
+
+### Dodano
+
+- **`BL-50`: ostrzeżenie o stromym zejściu helixa/rampy.** Helix Hole(s)
+  i Outline Circle, Ramp Outline Rectangle oraz wejście Helix w
+  Surface/Pocket schodzą o cały Stepdown na jeden obrót/okrążenie, na
+  Feedrate XY — przy małym promieniu albo krótkim boku to niemal
+  wiercenie z posuwem roboczym (np. 44° dla otworu 3.5 frezem 3.175).
+  Powyżej 10° Krok 3 i lista ostrzeżeń Kroku 4 pokazują nieblokujące
+  ostrzeżenie z kątem. Ścieżki bez zmian (świadomy wybór: tylko
+  ostrzeżenie); Pocket Adaptive ma własne pole Ramp Angle i nie jest
+  objęty.
+
 ## [0.20.2] — 2026-09-26
 
 ### Naprawiono

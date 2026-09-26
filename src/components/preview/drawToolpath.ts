@@ -329,7 +329,7 @@ function resolvePattern(params: WizardParams): ResolvedPattern {
       circleRings = pocketCircleRingRadii(startRadius, pocketCircleWallRadius(pocket), stepoverMm)
     } else {
       const { halfWidth, halfHeight } = pocketRectWallHalfDims(pocket)
-      rectRings = pocketRectRingDims(halfWidth, halfHeight, stepoverMm)
+      rectRings = pocketRectRingDims(halfWidth, halfHeight, stepoverMm, pocket.zTransitionMode === 'helix' ? pocket.helixRadius : 0)
     }
 
     return { kind: 'pocket', params, center, shape: pocket.shape, method: pocket.method, nominal, circleRings, rectRings, rasterLines, adaptive }

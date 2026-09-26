@@ -4,7 +4,15 @@
 // keystroke — including transient states while typing (e.g. clearing the
 // field, or "0" on the way to "0.1") — so this is the actual safety net
 // against an infinite loop freezing the tab, not just a nice-to-have.
-const MAX_PASSES = 5000
+export const MAX_PASSES = 5000
+
+// BL-55: hitting MAX_PASSES used to silently stop short of the full depth
+// (the rest was simply never cut, or a later flat pass took it all in one
+// turn). The loop cap stays as the freeze guard for transient preview
+// values; validation uses this to block Generate before that can happen.
+export function exceedsPassLimit(totalDepth: number, stepdown: number): boolean {
+  return totalDepth > 0 && stepdown > 0 && Math.ceil(totalDepth / stepdown - 1e-9) > MAX_PASSES
+}
 
 // Splits `totalDepth` into a sequence of positive per-pass depth
 // increments of at most `stepdown` each (the last one may be smaller).

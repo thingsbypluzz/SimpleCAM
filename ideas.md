@@ -230,6 +230,14 @@ faktycznym.
   (lub polami — np. frez vs średnica otworu, Tab Count × Width), np. prop
   `invalid` w `FieldRow`/`NumberInput`, spójnie w Krokach 2 i 3 oraz w
   Settings.
+- **`BL-67`** *(Otwarty)* 🟢 — **Własna ikonka Pocket (Rectangle).**
+  Pocket Rectangle Cornered/Centered używa dziś dokładnie tych samych
+  ikon co Surface (`RectangleSurfaceIcon`/`RectangleSurfaceCenteredIcon`
+  w `config/pocketMeta.ts`), więc w Kroku 1, w Step 1 Summary i na
+  ikonach presetów w Preset Bar obu operacji nie da się odróżnić. Nowe
+  ikony w `components/icons.tsx` (np. zagłębienie ze ścianami zamiast
+  płaskiej powierzchni) podpięte w `POCKET_SHAPE_META`; Circle
+  (`CircleOutlineIcon`, wspólna z Outline) do rozważenia przy okazji.
 
 **`BL-17` zamknięte — "Interface Anatomy"**, Artifact z umownymi nazwami
 elementów UI, dziś aktywnie używany w `CLAUDE.md`:
@@ -247,19 +255,9 @@ pełny opis (lokalizacja w kodzie, scenariusz błędu, proponowana zmiana)
 w sekcji **"Szczegóły code review (2026-09-26)"** na końcu tego pliku.
 Waga z review w nawiasie kwadratowym.
 
-- **`BL-50`** *(Otwarty)* 🟠 **[Medium]** — **Kąt zejścia Helix/Ramp poza
-  Adaptive jest nieograniczony** (mały promień / krótki bok → prawie
-  pionowe zejście na Feedrate XY). Limit kąta rampy albo ograniczenie
-  pionowej składowej do Plunge Rate.
-- **`BL-55`** *(Otwarty)* 🟠 **[Medium–Low]** — **Limity bezpieczeństwa
-  pętli (5000) po cichu obcinają poprawne zadania** — niewycięty
-  materiał lub końcowe głębokie zejście. Zgłaszać obcięcie jako błąd
-  walidacji.
 - **`BL-58`** *(Otwarty)* 🟢 **[Low]** — **Skrypt deploy: strona jest
   zepsuta w trakcie wysyłki (i po nieudanej); podpowiedź wyłączenia
   weryfikacji certyfikatu; roczny cache dla `favicon.svg`.**
-- **`BL-59`** *(Otwarty)* 🟢 **[Low]** — **Surface Unidirectional: G0 przy
-  powrocie schodzi dokładnie do dna poprzedniego poziomu, bez zapasu.**
 - **`BL-61`** *(Otwarty)* 🔴 **[Low, kosztowne w czasie]** — **Podglądy
   duplikują geometrię silnika; łańcuchy ternary po `operation`** —
   docelowo jedna lista ruchów (jak Adaptive) i rejestr `OPERATION_META`;
@@ -273,9 +271,6 @@ Waga z review w nawiasie kwadratowym.
   `forceContextLoss()`.
 - **`BL-64`** *(Otwarty)* 🟢 **[Low]** — **Dostępność: stan przełączników
   tylko kolorem** — brak `aria-pressed`/`radiogroup`.
-- **`BL-65`** *(Otwarty)* 🟢 **[Low]** — **Rectangle Spiral z wejściem
-  Helix ignoruje `helixRadius` przy budowaniu pierścieni** — pierwsze
-  pierścienie jadą w powietrzu wewnątrz otworu helixa.
 
 ## Przyszłe operacje (`OP-#`)
 
@@ -324,44 +319,6 @@ dla każdej operacji/metody pod kątem: NaN, F ≤ 0, niezgodność promienia
 G2/G3, G0 w XY poniżej Safe Z, osiągnięcie pełnej głębokości. Numery
 wierszy — stan kodu z dnia review (`main` @ `b867d4f`).
 
-### `BL-50` — Nieograniczony kąt zejścia Helix/Ramp
-- **Lokalizacja:** `src/lib/helix.ts` (skok = stepdown na 360°);
-  `outlineRectangle.ts:52-60` (cały stepdown na jednym boku);
-  `surfaceZTransition.ts:73+`; `pocketZTransition.ts:46+`.
-- **Problem:** skok spirali/rampy zawsze = `stepdown`, na `feedrateXY`;
-  tylko Pocket Adaptive ma limit kąta rampy. Kąt = atan(stepdown / 2πr)
-  lub atan(stepdown / długość boku).
-- **Scenariusze:** otwór 3.5 frezem 3.175 (r = 0.1625), stepdown 1 → 44°
-  (zweryfikowane): Z schodzi ~0.7 × 800 = 560 mm/min przy Plunge Rate
-  300. Wejście Helix Pocket/Surface z helixRadius 0.1, stepdown 1 → ~58°.
-  Outline Rectangle Ramp, bok 2 mm, stepdown 3 → 56°.
-- **Proponowana zmiana:** ograniczyć skok do 2πr·tan(maxRampAngle) (więcej
-  obrotów na stepdown) — pomysł `rampAngleDeg` z Adaptive jako globalne
-  ustawienie — albo skalować posuw tak, żeby składowa pionowa nie
-  przekraczała `plungeRate`. Minimum: nieblokujące ostrzeżenie.
-- **Nakład:** średni.
-
-### `BL-55` — Limity pętli obcinają poprawne zadania
-- **Lokalizacja:** `surfaceRaster.ts:8, 27-33`; `depthPasses.ts:7,19`;
-  `pocketAdaptive.ts:123, 287, 306-312`.
-- **Problem:** po osiągnięciu limitu (5000 linii/przejść/kroków) kod
-  działa dalej, jakby wszystko było pokryte. `computeLinePositions`
-  kończy na 5000 i dokleja `max` — ostatni "stepover" może mieć setki
-  mm. Adaptive: skok helixa z kąta rampy × helixRadius — powyżej 5000
-  obrotów "płaski" przejazd końcowy zabiera całą resztę głębokości w
-  jednym obrocie. `phaseA` kończy na 5000 pierścieniach, zostawiając
-  niewycięty pierścień przy ścianie.
-- **Scenariusze (zweryfikowane):** Surface 1000×1000, frez 1, stepover
-  10%, Zigzag → maksymalna przerwa między liniami 501 mm (połowa
-  powierzchni nieobrobiona). Adaptive: helixRadius 0.05, rampa 0.5°,
-  stepdown 20, głębokość 20, frez 6 (wszystko poprawne) → 5072 obroty,
-  potem zejście o 6.29 mm w jednym obrocie o obwodzie 0.3 mm na posuwie
-  roboczym.
-- **Proponowana zmiana:** helpery zgłaszają obcięcie (np. flaga w
-  wyniku), wyświetlane jako blokujący błąd walidacji; limity tylko jako
-  ochrona przed zamrożeniem UI, nie jako część semantyki wyniku.
-- **Nakład:** średni.
-
 ### `BL-58` — Skrypt deploy
 - **Lokalizacja:** `scripts/deploy.mjs:55-59`; `.env.example`
   (`FTP_REJECT_UNAUTHORIZED`); `public/.htaccess`.
@@ -376,16 +333,6 @@ wierszy — stan kodu z dnia review (`main` @ `b867d4f`).
   końcu usunięcie starych plików spoza nowego buildu; zamiast wyłączania
   weryfikacji — przypięcie CA/certyfikatu hosta; niezmienny cache tylko
   dla `assets/`.
-- **Nakład:** łatwy.
-
-### `BL-59` — Surface Unidirectional: powrót bez zapasu
-- **Lokalizacja:** `src/lib/surface.ts:105`.
-- **Problem:** `G0 Z(toZ + stepdown)` zjeżdża szybkim ruchem dokładnie na
-  dno poprzedniego poziomu nad startem następnej linii; na poziomie 0 z
-  startZ = 0 to dokładnie wierzch materiału. Każdy błąd Z albo zgubione
-  kroki = kontakt na rapidzie. Pewność review: średnia.
-- **Proponowana zmiana:** rapid do `min(safeZ, toZ + stepdown +
-  zapas)` albo `max(startZ, …)` + mały margines, potem plunge.
 - **Nakład:** łatwy.
 
 ### `BL-61` — Duplikacja geometrii w podglądach, ternary po operacji
@@ -451,18 +398,6 @@ wierszy — stan kodu z dnia review (`main` @ `b867d4f`).
 - **Proponowana zmiana:** `aria-pressed` na przyciskach-przełącznikach,
   albo `role="radiogroup"`/`radio` z `aria-checked` dla grup wzajemnie
   wykluczających się.
-- **Nakład:** łatwy.
-
-### `BL-65` — Rectangle Spiral + Helix ignoruje helixRadius
-- **Lokalizacja:** `src/lib/pocket.ts:56-65` vs `:33-34`.
-- **Problem:** Circle zaczyna pierścienie od `helixRadius`, Rectangle
-  zawsze od jednego stepoveru od środka. Gdy `helixRadius > stepover`,
-  pierwsze pierścienie leżą wewnątrz już wywierconego otworu helixa —
-  rampy idą do środka, część pierścieni tnie powietrze. Bezpieczne, tylko
-  strata ruchu i niespójność z Circle.
-- **Proponowana zmiana:** pominąć pierścienie z `max(halfWidth,
-  halfHeight) <= helixRadius` albo zasiać `pocketRectRingDims` od
-  `helixRadius`.
 - **Nakład:** łatwy.
 
 ### Sprawdzone i bez uwag (zakres review)

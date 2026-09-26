@@ -1,4 +1,4 @@
-import { computeDepthPasses } from './depthPasses'
+import { computeDepthPasses, exceedsPassLimit } from './depthPasses'
 import { fmt } from './format'
 import { pocketCenter, pocketCircleWallRadius, pocketRectWallHalfDims } from './pocketGeometry'
 import { engagementAngleFor, largestStepWithin, maxArcEngagement, nextConstantEngagementRadius } from './pocketAdaptiveMath'
@@ -114,16 +114,31 @@ interface LevelContext {
 // engages (1 − RAMP_TILT_FRACTION)·θ*, joined by a spiral ramp just long
 // enough that its outward tilt tops engagement up to θ* at most. The last
 // ring is snapped onto `toRho`. Returns the angle the last lap ends at.
-function phaseA(ctx: LevelContext, fromRho: number, toRho: number, startAngle: number): number {
-  const { b, cx, cy, toolRadius, theta, sign, direction } = ctx
+// Ring radii for phase A, `fromRho` first — the same on every Z level, so
+// computed once per toolpath. `complete` is false when the loop stopped
+// before reaching `toRho` (MAX_STEPS or no progress), i.e. a ring of
+// material next to the wall would be left uncut (BL-55).
+function phaseARadii(toolRadius: number, theta: number, fromRho: number, toRho: number): { radii: number[]; complete: boolean } {
   const ringTheta = theta * (1 - RAMP_TILT_FRACTION)
-  const tanTilt = Math.tan(theta * RAMP_TILT_FRACTION)
+  const radii = [fromRho]
   let rho = fromRho
-  let angle = startAngle
   for (let step = 0; step < MAX_STEPS && rho < toRho - EPS; step++) {
     let next = nextConstantEngagementRadius(rho, toolRadius, ringTheta)
     if (!(next > rho + EPS) && rho > EPS) break
     if (next > toRho - EPS || !(next > rho + EPS)) next = toRho
+    radii.push(next)
+    rho = next
+  }
+  return { radii, complete: !(rho < toRho - EPS) }
+}
+
+function phaseA(ctx: LevelContext, radii: number[], startAngle: number): number {
+  const { b, cx, cy, theta, sign, direction } = ctx
+  const tanTilt = Math.tan(theta * RAMP_TILT_FRACTION)
+  let angle = startAngle
+  for (let i = 1; i < radii.length; i++) {
+    const rho = radii[i - 1]
+    const next = radii[i]
     const dr = next - rho
     const sweep = dr / tanTilt / ((rho + next) / 2)
     const segments = Math.max(1, Math.ceil(sweep / RAMP_SEGMENT_RAD))
@@ -135,7 +150,6 @@ function phaseA(ctx: LevelContext, fromRho: number, toRho: number, startAngle: n
     }
     angle += sign * sweep
     b.arc('cut', { x: cx, y: cy }, direction, 2 * Math.PI)
-    rho = next
   }
   return angle
 }
@@ -157,8 +171,19 @@ function localMapper(cx: number, cy: number, longAxisIsX: boolean) {
 // Station positions (arc-center offsets along u) for phase B — the same on
 // every Z level, so computed once per toolpath.
 function phaseBStations(toolRadius: number, theta: number, hu: number, h: number): number[] {
+  return phaseBStationsWithStatus(toolRadius, theta, hu, h).stations
+}
+
+// `complete` is false when MAX_STEPS stopped the stations short of the
+// short wall (BL-55).
+function phaseBStationsWithStatus(
+  toolRadius: number,
+  theta: number,
+  hu: number,
+  h: number,
+): { stations: number[]; complete: boolean } {
   const lMax = hu - h
-  if (lMax <= EPS) return []
+  if (lMax <= EPS) return { stations: [], complete: true }
   // Arc of radius h around (L, 0), previous one around (L − p, 0): its
   // apex engages like a phase-A ring, its ends add an outward tilt.
   const p = largestStepWithin(
@@ -166,16 +191,16 @@ function phaseBStations(toolRadius: number, theta: number, hu: number, h: number
     theta,
     Math.max(h, toolRadius),
   )
-  if (!(p > EPS)) return []
+  if (!(p > EPS)) return { stations: [], complete: false }
   const stations: number[] = []
   for (let l = p; stations.length < MAX_STEPS; l += p) {
     if (l >= lMax - EPS) {
       stations.push(lMax)
-      break
+      return { stations, complete: true }
     }
     stations.push(l)
   }
-  return stations
+  return { stations, complete: false }
 }
 
 function phaseB(ctx: LevelContext, map: (u: number, v: number) => Point2D, h: number, stations: number[]) {
@@ -268,6 +293,40 @@ function phaseC(ctx: LevelContext, map: (u: number, v: number) => Point2D, hu: n
   }
 }
 
+// BL-55: true when the toolpath would be cut short by a MAX_STEPS/
+// MAX_PASSES safety cap instead of reaching the walls and full depth —
+// validation blocks Generate on it. Only the per-toolpath sequences are
+// computed here (cheap), not the move list itself.
+export function adaptiveExceedsLimits(params: Pick<WizardParams, 'pocket' | 'feeds'>): boolean {
+  const { pocket, feeds } = params
+  const toolRadius = pocket.toolDiameter / 2
+  const theta = engagementAngleFor(pocket.optimalLoadPercent)
+  const helixRadius = pocket.helixRadius
+  if (!(toolRadius > 0) || !(helixRadius > 0) || !(theta > 0)) return false
+
+  const pitch = 2 * Math.PI * helixRadius * Math.tan((pocket.rampAngleDeg * Math.PI) / 180)
+  let fromZ = feeds.startZ
+  for (const { toZ } of buildLevelDescents(feeds.startZ, pocket.totalDepth, feeds.stepdown)) {
+    if (exceedsPassLimit(fromZ - toZ, pitch)) return true
+    fromZ = toZ
+  }
+
+  if (pocket.shape === 'circle') {
+    const wallRadius = pocketCircleWallRadius(pocket)
+    return wallRadius > 0 && !phaseARadii(toolRadius, theta, helixRadius, wallRadius).complete
+  }
+  const { halfWidth, halfHeight } = pocketRectWallHalfDims(pocket)
+  const hu = Math.max(halfWidth, halfHeight)
+  const hv = Math.min(halfWidth, halfHeight)
+  if (!(hv > 0)) return false
+  const peel = phaseCRadii(toolRadius, theta, hv)
+  return (
+    !phaseARadii(toolRadius, theta, helixRadius, hv).complete ||
+    !phaseBStationsWithStatus(toolRadius, theta, hu, hv).complete ||
+    peel[peel.length - 1] !== 0
+  )
+}
+
 export function buildAdaptiveToolpath(params: Pick<WizardParams, 'pocket' | 'feeds'>): AdaptiveToolpath {
   const { pocket, feeds } = params
   const center = pocketCenter(pocket)
@@ -297,6 +356,7 @@ export function buildAdaptiveToolpath(params: Pick<WizardParams, 'pocket' | 'fee
   const hv = Math.min(halfWidth, halfHeight)
   if (isCircle ? !(wallRadius > 0) : !(hv > 0)) return { start, moves: [] }
   const map = localMapper(center.x, center.y, longAxisIsX)
+  const ringRadii = phaseARadii(toolRadius, theta, helixRadius, isCircle ? wallRadius : hv).radii
   const stations = isCircle ? [] : phaseBStations(toolRadius, theta, hu, hv)
   const peelRadii = isCircle ? [] : phaseCRadii(toolRadius, theta, hv)
 
@@ -314,7 +374,7 @@ export function buildAdaptiveToolpath(params: Pick<WizardParams, 'pocket' | 'fee
     // pocketZTransitionMoves()'s finishing pass.
     b.arc('cut', center, direction, 2 * Math.PI, toZ)
 
-    phaseA(ctx, helixRadius, isCircle ? wallRadius : hv, 0)
+    phaseA(ctx, ringRadii, 0)
     if (!isCircle) {
       phaseB(ctx, map, hv, stations)
       phaseC(ctx, map, hu, hv, peelRadii)
