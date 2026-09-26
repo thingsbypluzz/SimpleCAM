@@ -7,6 +7,28 @@ zgodne z [SemVer](https://semver.org/). Ten plik pozostaje głównym, czytelnym
 thingsbypluzz/SimpleCAM), ale to infrastruktura pod izolację pracy
 (branch/worktree per zadanie), nie zamiennik tego changeloga.
 
+## [0.20.9] — 2026-09-26
+
+### Zmieniono
+
+- **`BL-61`, etap 3 — Surface na wspólnej liście ruchów.** Nowy moduł
+  `lib/toolpath.ts` (uogólniony z Pocket Adaptive): lista ruchów (linia/łuk
+  × szybki/cięcie/zagłębianie/przejazd łączący), builder i jeden formatter
+  G-code. Silnik Surface buduje ją raz (`buildSurfaceToolpath()`), a
+  G-code i podgląd 3D ją konsumują — podgląd przestał odtwarzać pętle
+  silnika na własną rękę, więc nie może się z nim rozjechać. Pocket
+  Adaptive korzysta z tego samego modułu.
+- G-code Surface identyczny co do znaku (porównane na ~300 losowych
+  programach). Pocket Adaptive: w rzadkich liniach ostatnia cyfra (0.0001
+  mm) inna — próbkowanie łuków w trybie G1 używa teraz tej samej kolejności
+  działań co pozostałe silniki.
+
+### Naprawiono
+
+- Podgląd 3D Surface rysował końcowy wyjazd na Safe Z w narożniku
+  startowym, a nie tam, gdzie narzędzie faktycznie kończy (koniec
+  ostatniej linii rastra).
+
 ## [0.20.8] — 2026-09-26
 
 ### Zmieniono

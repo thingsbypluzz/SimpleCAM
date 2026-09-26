@@ -12,10 +12,11 @@ import {
 } from '../../lib/outlineRectangleGeometry'
 import { sideRangesFor, type SideTabRange } from '../../lib/outlineRectangleTabs'
 import { outlineDirectionForOffsetMode } from '../../lib/outlineRectangle'
-import { surfaceNominalBounds, surfaceStartCorner, surfaceStepoverMm, surfaceToolBounds, type SurfaceBounds } from '../../lib/surfaceGeometry'
+import { surfaceNominalBounds, surfaceToolBounds, type SurfaceBounds } from '../../lib/surfaceGeometry'
 import { computeRasterLines, zigzagWaypoints } from '../../lib/surfaceRaster'
-import { buildLevelDescents, helixCenterFor, helixDirectionFor } from '../../lib/surfaceZTransition'
-import { unidirectionalReentryZ } from '../../lib/surface'
+import { buildLevelDescents } from '../../lib/surfaceZTransition'
+import { buildSurfaceToolpath } from '../../lib/surface'
+import { movePoints, type MoveKind, type Toolpath } from '../../lib/toolpath'
 import {
   pocketCenter,
   pocketCircleWallRadius,
@@ -24,7 +25,7 @@ import {
   pocketStepoverMm,
 } from '../../lib/pocketGeometry'
 import { effectivePocketZTransitionMode, pocketEntryPoint } from '../../lib/pocketZTransition'
-import { adaptiveMovePoints, buildAdaptiveToolpath, type AdaptiveMoveKind } from '../../lib/pocketAdaptive'
+import { buildAdaptiveToolpath } from '../../lib/pocketAdaptive'
 import {
   circleRingRampPoints,
   rampSweepDegFor,
@@ -37,7 +38,7 @@ import {
   type RectRingDims,
 } from '../../lib/pocketSpiral'
 import { niceStep } from '../preview/drawToolpath'
-import type { Point2D, PocketShape, RasterDirection, WizardParams } from '../../types/wizard'
+import type { Point2D, PocketShape, WizardParams } from '../../types/wizard'
 import type { ThemeId } from '../../types/theme'
 import type { Grid3DLabelSize } from '../../types/appearance'
 
@@ -447,138 +448,6 @@ function rectRampPoints3D(
   return builder.segments
 }
 
-// Mirrors lib/surfaceZTransition.ts's zTransitionMoves Helix branch, but
-// emits Vector3 samples instead of G-code lines — same reasoning as
-// helixPoints3D above. Always renders as a segmented polygon regardless of
-// the output.interpolation toggle (matching helixPoints3D's own precedent,
-// which doesn't thread interpolation through either — only the real G-code
-// engine needs to care about G2/G3 vs G1).
-//
-// Unlike helixPoints3D (Hole(s)), which can hardcode "start angle = 0"
-// because its center is always offset -X of the start point by construction,
-// this one can't: helixCenterFor() puts the center on a DIFFERENT axis
-// depending on rasterDirection (see its own comment), so the start point
-// sits at a different angle relative to the center each time (0° for
-// direction 'y', -90° for 'x'). startAngle must be computed from the actual
-// center, exactly like fullCircleMove's own linear-interpolation branch
-// does — hardcoding 0 here silently drew the circle starting from the wrong
-// point on the direction-'x' path (visible as a circle floating away from
-// the corner, joined to the raster by a long diagonal jump instead of
-// closing back onto it).
-//
-// The sweep SIGN must also track helixDirectionFor() — direction 'x' turns
-// CW (decreasing angle), matching fullCircleMove's own `sign` for its
-// linear-interpolation branch (lib/circle.ts). Getting this wrong wouldn't
-// break the loop's start/end point (still closes by symmetry either way),
-// but would draw it going the wrong way around, and CW is specifically what
-// keeps the loop outside the material for direction 'x' (see
-// surfaceZTransition.ts's helixDirectionFor/helixCenterFor comments).
-function surfaceHelixPoints3D(
-  cx: number,
-  cy: number,
-  radius: number,
-  fromZ: number,
-  toZ: number,
-  stepdown: number,
-  rasterDirection: RasterDirection,
-): THREE.Vector3[] {
-  const { x: centerX, y: centerY } = helixCenterFor(cx, cy, radius, rasterDirection)
-  const startAngle = Math.atan2(cy - centerY, cx - centerX)
-  const sign = helixDirectionFor(rasterDirection) === 'cw' ? -1 : 1
-  const points: THREE.Vector3[] = []
-  let z = fromZ
-  for (const turnDepth of computeDepthPasses(fromZ - toZ, stepdown)) {
-    for (let i = 1; i <= SEGMENTS_PER_TURN; i++) {
-      const a = startAngle + (sign * 2 * Math.PI * i) / SEGMENTS_PER_TURN
-      const x = centerX + radius * Math.cos(a)
-      const y = centerY + radius * Math.sin(a)
-      const zz = z - (turnDepth * i) / SEGMENTS_PER_TURN
-      points.push(toThree(x, y, zz))
-    }
-    z -= turnDepth
-  }
-  return points
-}
-
-// Mirrors lib/surface.ts's zigzagSurfaceToolpath/unidirectionalSurfaceToolpath
-// exactly, but emits styled segments instead of G-code lines: the
-// between-level retract+reposition and (for Unidirectional) the
-// between-line Safe-Z retract are 'dashed' (real G0 rapids — previously
-// merged into the same solid line as actual cutting, indistinguishable
-// from it), the Plunge-mode Z-transition is 'dotted' (non-cutting vertical
-// G1, same category as Standard Hole/Outline's between-pass step), the
-// Helix-mode Z-transition and every raster cutting line stay 'solid'.
-function buildSurfaceToolpathPoints3D(surface: WizardParams['surface'], feeds: WizardParams['feeds']): ToolpathSegment3D[] {
-  const bounds = surfaceToolBounds(surface)
-  const corner = surfaceStartCorner(surface)
-  const stepoverMm = surfaceStepoverMm(surface)
-  const descents = buildLevelDescents(feeds.startZ, surface.totalDepth, feeds.stepdown)
-  const builder = createSegmentBuilder3D(toThree(corner.x, corner.y, feeds.startZ))
-  let currentX = corner.x
-  let currentY = corner.y
-
-  const pushZTransition = (toZ: number) => {
-    if (surface.zTransitionMode === 'plunge') {
-      builder.add('dotted', [toThree(currentX, currentY, toZ)])
-      return
-    }
-    builder.add(
-      'solid',
-      surfaceHelixPoints3D(currentX, currentY, surface.helixRadius, feeds.startZ, toZ, feeds.stepdown, surface.rasterDirection),
-    )
-  }
-
-  const addLevelRetract = () => {
-    builder.add('dashed', [
-      toThree(currentX, currentY, feeds.safeZ),
-      toThree(corner.x, corner.y, feeds.safeZ),
-      toThree(corner.x, corner.y, feeds.startZ),
-    ])
-    currentX = corner.x
-    currentY = corner.y
-  }
-
-  if (surface.method === 'zigzag') {
-    const waypoints = zigzagWaypoints(computeRasterLines(bounds, surface.rasterDirection, stepoverMm))
-    descents.forEach(({ toZ }, idx) => {
-      if (idx > 0) addLevelRetract()
-      pushZTransition(toZ)
-      const rasterPoints: THREE.Vector3[] = []
-      for (let i = 1; i < waypoints.length; i++) {
-        rasterPoints.push(toThree(waypoints[i].x, waypoints[i].y, toZ))
-      }
-      builder.add('solid', rasterPoints)
-      currentX = waypoints[waypoints.length - 1].x
-      currentY = waypoints[waypoints.length - 1].y
-    })
-  } else {
-    const rasterLines = computeRasterLines(bounds, surface.rasterDirection, stepoverMm)
-    descents.forEach(({ toZ }, idx) => {
-      if (idx > 0) addLevelRetract()
-      pushZTransition(toZ)
-      rasterLines.forEach((line, i) => {
-        builder.add('solid', [toThree(line.to.x, line.to.y, toZ)])
-        if (i < rasterLines.length - 1) {
-          // BL-35: retract + reposition + rapid down to one stepdown above
-          // the next line's target (all real G0, dashed), then plunge only
-          // that last stepdown (G1, dotted) — mirrors lib/surface.ts's
-          // fixed unidirectionalSurfaceToolpath() sequence exactly.
-          builder.add('dashed', [
-            toThree(line.to.x, line.to.y, feeds.safeZ),
-            toThree(rasterLines[i + 1].from.x, rasterLines[i + 1].from.y, feeds.safeZ),
-            toThree(rasterLines[i + 1].from.x, rasterLines[i + 1].from.y, unidirectionalReentryZ(toZ, feeds.stepdown, feeds.safeZ)),
-          ])
-          builder.add('dotted', [toThree(rasterLines[i + 1].from.x, rasterLines[i + 1].from.y, toZ)])
-        }
-      })
-      currentX = rasterLines[rasterLines.length - 1].to.x
-      currentY = rasterLines[rasterLines.length - 1].to.y
-    })
-  }
-
-  return builder.segments
-}
-
 // Pocket ring loops — mirrors pocketSpiral.ts's ring generation
 // (pocketCircleRingRadii/pocketRectRingDims). Each loop is one complete,
 // closed ring at a fixed radius/size (the "flat pass" of circleRingMoves/
@@ -632,36 +501,53 @@ function pocketHelixEntryPoints3D(
   return points
 }
 
+// Line style per move kind — see "Styl linii ruchu narzędzia w 3D Preview"
+// in CLAUDE.md.
+const MOVE_STYLE: Record<MoveKind, ToolpathLineStyle> = {
+  cut: 'solid',
+  rapid: 'dashed',
+  plunge: 'dotted',
+  link: 'linking',
+}
+
+// Draws an engine's own move list (lib/toolpath.ts, BL-61) — the same
+// moves toolpathToGcode() formats, so the preview can't drift from the
+// G-code. Arcs are sampled exactly as the G1 output samples them
+// (movePoints()). Consecutive moves of one style share a THREE.Line — an
+// engine emits hundreds of short moves per level. `retractToZ` adds the
+// final Safe Z retract assembleProgram() appends after the toolpath.
+function toolpathLines3D(toolpath: Toolpath, theme: Theme, span: number, retractToZ?: number): THREE.Line[] {
+  const builder = createSegmentBuilder3D(toThree(toolpath.start.x, toolpath.start.y, toolpath.start.z))
+  let current = toolpath.start
+  let pending: THREE.Vector3[] = []
+  let pendingStyle: ToolpathLineStyle | null = null
+  const flush = () => {
+    if (pendingStyle) builder.add(pendingStyle, pending)
+    pending = []
+  }
+  for (const move of toolpath.moves) {
+    const style = MOVE_STYLE[move.kind]
+    if (style !== pendingStyle) {
+      flush()
+      pendingStyle = style
+    }
+    for (const p of movePoints(current, move)) pending.push(toThree(p.x, p.y, p.z))
+    current = move.to
+  }
+  flush()
+  if (retractToZ !== undefined) builder.add('dashed', [toThree(current.x, current.y, retractToZ)])
+  return buildToolpathLines3D(builder.segments, theme, span)
+}
+
 // Pocket Adaptive: the exact move list the engine emits
-// (buildAdaptiveToolpath() + adaptiveMovePoints(), true helix Z included),
-// cutting moves 'solid', linking moves 'linking'. Consecutive moves of one
-// kind are merged into a single segment — Adaptive emits hundreds of short
-// arcs/lines per level, one THREE.Line each would be wasteful.
+// (buildAdaptiveToolpath(), true helix Z included).
 function buildPocketAdaptiveObjects3D(
   pocket: WizardParams['pocket'],
   feeds: WizardParams['feeds'],
   theme: Theme,
   span: number,
 ): THREE.Object3D[] {
-  const toolpath = buildAdaptiveToolpath({ pocket, feeds })
-  const builder = createSegmentBuilder3D(toThree(toolpath.start.x, toolpath.start.y, toolpath.start.z))
-  let current = toolpath.start
-  let pending: THREE.Vector3[] = []
-  let pendingKind: AdaptiveMoveKind | null = null
-  const flush = () => {
-    if (pendingKind) builder.add(pendingKind === 'cut' ? 'solid' : 'linking', pending)
-    pending = []
-  }
-  for (const move of toolpath.moves) {
-    if (move.kind !== pendingKind) {
-      flush()
-      pendingKind = move.kind
-    }
-    for (const p of adaptiveMovePoints(current, move)) pending.push(toThree(p.x, p.y, p.z))
-    current = move.to
-  }
-  flush()
-  return buildToolpathLines3D(builder.segments, theme, span)
+  return toolpathLines3D(buildAdaptiveToolpath({ pocket, feeds }), theme, span)
 }
 
 // Builds Pocket's full toolpath: the Z-transition/retract chain (styled
@@ -1628,11 +1514,6 @@ function buildSurfacePatternObjects(
 
   objects.push(...buildOffsetVectorObjects(surface.offsetX, surface.offsetY, theme, arrowSize))
 
-  if (showToolpath) {
-    const corner = surfaceStartCorner(surface)
-    objects.push(...rapidZLineObjects(corner.x, corner.y, feeds.safeZ, feeds.startZ, -surface.totalDepth, theme, span))
-  }
-
   if (showStock) {
     const boreHeight = feeds.safeZ
     const boreCenterZ = -surface.totalDepth - feeds.safeZ / 2
@@ -1646,10 +1527,9 @@ function buildSurfacePatternObjects(
     objects.push(buildRectWallMesh(corners, boreHeight, boreCenterZ, true, theme))
   }
 
-  if (showToolpath) {
-    const pathSegments = buildSurfaceToolpathPoints3D(surface, feeds)
-    objects.push(...buildToolpathLines3D(pathSegments, theme, span))
-  }
+  // The whole path — entry rapid, Z transitions, raster, final retract —
+  // straight from the engine's move list (lib/surface.ts).
+  if (showToolpath) objects.push(...toolpathLines3D(buildSurfaceToolpath(params), theme, span, feeds.safeZ))
 
   return objects
 }

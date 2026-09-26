@@ -6,9 +6,9 @@
 // GCODE_FUZZ_SCALE=10 (runs 10x as many samples per suite) and change the
 // base with GCODE_FUZZ_SEED.
 import { describe, expect, it } from 'vitest'
-import { DEFAULT_MACHINE_SETTINGS, type Dialect, type MachineSettings } from '../types/machine'
-import { DEFAULT_WIZARD_PARAMS, type Point2D, type WizardParams } from '../types/wizard'
-import { formatCustomPoints } from './customPoints'
+import type { MachineSettings } from '../types/machine'
+import type { WizardParams } from '../types/wizard'
+import { makeRng, randomHoles, randomMachine, randomOutline, randomPocket, randomSurface, type Rng } from './fuzzParams'
 import { arcRadiusMismatches } from './gcodeTestUtils'
 import { generateHelix } from './helix'
 import { forcedLinearReason } from './interpolation'
@@ -19,7 +19,7 @@ import { endOfProgramCode } from './program'
 import { generateStandardHole } from './standardHole'
 import { generateSurfaceUnidirectional, generateSurfaceZigzag } from './surface'
 import { surfaceToolBounds } from './surfaceGeometry'
-import { activeTotalDepth, isWizardParamsValid, pocketMaxHelixRadius } from './validation'
+import { activeTotalDepth, isWizardParamsValid } from './validation'
 
 // The app's tsconfig has no Node types; vitest runs under Node regardless.
 const env = (globalThis as { process?: { env: Record<string, string | undefined> } }).process?.env ?? {}
@@ -28,190 +28,6 @@ const BASE_SEED = Number(env.GCODE_FUZZ_SEED ?? '20260926')
 // Output is formatted to 4 decimals (format.ts), so every comparison
 // against a computed value allows for that rounding.
 const EPS = 1e-3
-
-// ---------- deterministic random source ----------
-
-function mulberry32(seed: number) {
-  let a = seed >>> 0
-  return () => {
-    a = (a + 0x6d2b79f5) >>> 0
-    let t = a
-    t = Math.imul(t ^ (t >>> 15), t | 1)
-    t ^= t + Math.imul(t ^ (t >>> 7), t | 61)
-    return ((t ^ (t >>> 14)) >>> 0) / 4294967296
-  }
-}
-
-type Rng = ReturnType<typeof makeRng>
-
-function makeRng(seed: number) {
-  const next = mulberry32(seed)
-  const round = (v: number, digits: number) => Number(v.toFixed(digits))
-  return {
-    range: (min: number, max: number, digits = 2) => round(min + (max - min) * next(), digits),
-    int: (min: number, max: number) => min + Math.floor(next() * (max - min + 1)),
-    pick: <T>(values: readonly T[]): T => values[Math.floor(next() * values.length)],
-    chance: (p: number) => next() < p,
-  }
-}
-
-const TOOLS = [1, 2, 3.175, 4, 6, 6.35, 8] as const
-const DIALECTS: readonly Dialect[] = ['grbl', 'marlin', 'mach3']
-
-function randomCommon(rng: Rng, totalDepthMax: number): Pick<WizardParams, 'feeds' | 'output'> {
-  const safeZ = rng.range(1, 10, 1)
-  const startZ = rng.chance(0.6) ? 0 : rng.chance(0.7) ? rng.range(0, Math.min(2, safeZ), 1) : rng.range(-0.5, 0, 1)
-  return {
-    feeds: {
-      stepdown: rng.range(0.2, Math.max(0.3, totalDepthMax), 2),
-      feedrateXY: rng.int(100, 2000),
-      plungeRate: rng.int(50, 800),
-      safeZ,
-      startZ,
-    },
-    output: {
-      interpolation: rng.pick(['arc', 'linear'] as const),
-      spindleStart: rng.chance(0.8),
-      spindleStopEnd: rng.chance(0.8),
-      returnOriginEnd: rng.chance(0.5),
-    },
-  }
-}
-
-function randomMachine(rng: Rng): MachineSettings {
-  return {
-    ...DEFAULT_MACHINE_SETTINGS,
-    dialect: rng.pick(DIALECTS),
-    spindleSpeed: rng.int(1000, 24000),
-    dwellSeconds: rng.pick([0, 1, 3]),
-  }
-}
-
-function randomTabs(rng: Rng, totalDepth: number) {
-  if (!rng.chance(0.3)) return { tabsEnabled: false }
-  return {
-    tabsEnabled: true,
-    tabHeight: rng.range(0.1, Math.max(0.2, totalDepth * 0.8), 2),
-    tabWidth: rng.range(0.5, 5, 1),
-    tabCount: rng.int(1, 6),
-  }
-}
-
-function randomHoles(rng: Rng, method: 'helix' | 'standard'): WizardParams {
-  const toolDiameter = rng.pick(TOOLS)
-  const totalDepth = rng.range(0.5, 15, 1)
-  const positioning = rng.pick(['single', 'grid', 'gridCentered', 'circle', 'custom'] as const)
-  const customPoints: Point2D[] = Array.from({ length: rng.int(1, 5) }, () => ({
-    x: rng.range(-50, 50, 1),
-    y: rng.range(-50, 50, 1),
-  }))
-  return {
-    ...DEFAULT_WIZARD_PARAMS,
-    ...randomCommon(rng, totalDepth),
-    operation: 'holes',
-    method,
-    geometry: {
-      ...DEFAULT_WIZARD_PARAMS.geometry,
-      toolDiameter,
-      holeDiameter: Number((toolDiameter + rng.range(0.2, 20, 2)).toFixed(3)),
-      totalDepth,
-      positioning,
-      gridX: rng.chance(0.2) ? 0 : rng.range(5, 60, 1),
-      gridY: rng.chance(0.2) ? 0 : rng.range(5, 60, 1),
-      circleHoleCount: rng.int(1, 12),
-      circleDiameter: rng.range(10, 80, 1),
-      circleStartAngle: rng.int(0, 359),
-      customPoints,
-      customPointsText: formatCustomPoints(customPoints),
-      offsetX: rng.range(-20, 20, 1),
-      offsetY: rng.range(-20, 20, 1),
-      ...randomTabs(rng, totalDepth),
-    },
-  }
-}
-
-function randomOutline(rng: Rng): WizardParams {
-  const totalDepth = rng.range(0.5, 12, 1)
-  const shape = rng.pick(['rectCornered', 'rectCentered', 'circle'] as const)
-  const method = shape === 'circle' ? rng.pick(['helix', 'standard'] as const) : rng.pick(['ramp', 'standard'] as const)
-  return {
-    ...DEFAULT_WIZARD_PARAMS,
-    ...randomCommon(rng, totalDepth),
-    operation: 'outline',
-    outline: {
-      ...DEFAULT_WIZARD_PARAMS.outline,
-      shape,
-      method,
-      offsetMode: rng.pick(['inside', 'outside', 'onLine'] as const),
-      toolDiameter: rng.pick(TOOLS),
-      totalDepth,
-      width: rng.range(5, 80, 1),
-      height: rng.range(5, 80, 1),
-      diameter: rng.range(5, 80, 1),
-      offsetX: rng.range(-20, 20, 1),
-      offsetY: rng.range(-20, 20, 1),
-      ...randomTabs(rng, totalDepth),
-    },
-  }
-}
-
-function randomSurface(rng: Rng, method: 'zigzag' | 'unidirectional'): WizardParams {
-  const totalDepth = rng.range(0.2, 5, 1)
-  const toolDiameter = rng.pick(TOOLS)
-  const stepoverPercent = rng.int(10, 100)
-  return {
-    ...DEFAULT_WIZARD_PARAMS,
-    ...randomCommon(rng, totalDepth),
-    operation: 'surface',
-    surface: {
-      ...DEFAULT_WIZARD_PARAMS.surface,
-      shape: rng.pick(['rectCornered', 'rectCentered'] as const),
-      method,
-      toolDiameter,
-      totalDepth,
-      width: rng.range(5, 120, 1),
-      height: rng.range(5, 120, 1),
-      offsetX: rng.range(-20, 20, 1),
-      offsetY: rng.range(-20, 20, 1),
-      rasterDirection: rng.pick(['x', 'y'] as const),
-      stepoverPercent,
-      zTransitionMode: rng.pick(['plunge', 'helix'] as const),
-      helixRadius: rng.range(0.05, (toolDiameter * stepoverPercent) / 100, 2),
-    },
-  }
-}
-
-function randomPocket(rng: Rng, method: 'raster' | 'spiral' | 'adaptive'): WizardParams {
-  const totalDepth = rng.range(0.5, 12, 1)
-  const shape = method === 'raster' ? rng.pick(['rectCornered', 'rectCentered'] as const) : rng.pick(['rectCornered', 'rectCentered', 'circle'] as const)
-  const pocket = {
-    ...DEFAULT_WIZARD_PARAMS.pocket,
-    shape,
-    method,
-    toolDiameter: rng.pick(TOOLS),
-    totalDepth,
-    width: rng.range(8, 80, 1),
-    height: rng.range(8, 80, 1),
-    diameter: rng.range(8, 80, 1),
-    offsetX: rng.range(-20, 20, 1),
-    offsetY: rng.range(-20, 20, 1),
-    stepoverPercent: rng.int(20, 90),
-    rasterDirection: rng.pick(['x', 'y'] as const),
-    zTransitionMode: rng.pick(['plunge', 'helix'] as const),
-    optimalLoadPercent: rng.int(5, 30),
-    rampAngleDeg: rng.range(1, 10, 1),
-    cutDirection: rng.pick(['climb', 'conventional'] as const),
-    linkingFeed: rng.int(500, 3000),
-  }
-  // Helix radius as a fraction of its own ceiling, so most samples are valid.
-  const helixRadius = Number((pocketMaxHelixRadius(pocket) * rng.range(0.2, 1, 2)).toFixed(3))
-  return {
-    ...DEFAULT_WIZARD_PARAMS,
-    ...randomCommon(rng, totalDepth),
-    operation: 'pocket',
-    pocket: { ...pocket, helixRadius },
-  }
-}
 
 // ---------- G-code tracing ----------
 
