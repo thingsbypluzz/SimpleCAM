@@ -12,6 +12,7 @@ const base: GeometryParams = {
   circleHoleCount: 5,
   circleDiameter: 45,
   circleStartAngle: 0,
+  customPointsText: '',
   customPoints: [],
   offsetX: 0,
   offsetY: 0,

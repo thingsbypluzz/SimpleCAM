@@ -1,9 +1,12 @@
 import type { WizardParams } from '../../types/wizard'
 import type { MachineSettings } from '../../types/machine'
-import { METHOD_META } from '../../config/methodMeta'
 import {
   isAdaptiveStepdownShallow,
+  isFeedrateXYValid,
+  isPlungeRateValid,
   isPocketLinkingFeedValid,
+  isSafeZValid,
+  isStartZBelowStock,
   isStartZValid,
   isStepdownValid,
   suggestedAdaptiveStepdown,
@@ -17,10 +20,14 @@ interface Step3FeedsProps {
   params: WizardParams
   onChange: (patch: Partial<WizardParams>) => void
   machine: MachineSettings
+  // BL-60: the active operation's method label (App.tsx's
+  // activeMethodDisplay) — not METHOD_META[params.method], which is always
+  // the Hole(s) method regardless of operation.
+  stepdownLabel: string
 }
 
-export function Step3Feeds({ params, onChange, machine }: Step3FeedsProps) {
-  const { feeds, method, pocket } = params
+export function Step3Feeds({ params, onChange, machine, stepdownLabel }: Step3FeedsProps) {
+  const { feeds, pocket } = params
   const isPocketAdaptive = params.operation === 'pocket' && pocket.method === 'adaptive'
 
   const updateFeeds = (patch: Partial<WizardParams['feeds']>) =>
@@ -56,6 +63,7 @@ export function Step3Feeds({ params, onChange, machine }: Step3FeedsProps) {
       >
         <NumberInput type="number" step="1" className={inputClass} {...feedrateXYField} />
       </FieldRow>
+      {!isFeedrateXYValid(feeds) && <p className="text-sm text-status-error">Feedrate XY must be greater than 0.</p>}
       {isPocketAdaptive && (
         <FieldRow
           label="Linking Feed [mm/min]"
@@ -70,7 +78,8 @@ export function Step3Feeds({ params, onChange, machine }: Step3FeedsProps) {
       <FieldRow label="Plunge Rate [mm/min]">
         <NumberInput type="number" step="1" className={inputClass} {...plungeRateField} />
       </FieldRow>
-      <FieldRow label={METHOD_META[method].stepdown.fieldLabel}>
+      {!isPlungeRateValid(feeds) && <p className="text-sm text-status-error">Plunge Rate must be greater than 0.</p>}
+      <FieldRow label={stepdownLabel}>
         <NumberInput type="number" step="0.05" className={inputClass} {...stepdownField} />
       </FieldRow>
       {!isStepdownValid(feeds) && (
@@ -102,6 +111,11 @@ export function Step3Feeds({ params, onChange, machine }: Step3FeedsProps) {
           Start Z must not exceed Safe Z.
         </p>
       )}
+      {isStartZBelowStock(feeds) && (
+        <p className="rounded-md border border-status-warn-border bg-status-warn-bg px-3 py-2 text-xs text-status-warn-fg">
+          Start Z is below 0 — the rapid down to it goes into the stock unless that material is already cut away.
+        </p>
+      )}
       <FieldRow label="Safe Z [mm]">
         <NumberInput
           type="number"
@@ -112,6 +126,9 @@ export function Step3Feeds({ params, onChange, machine }: Step3FeedsProps) {
           {...safeZField}
         />
       </FieldRow>
+      {!isSafeZValid(feeds) && (
+        <p className="text-sm text-status-error">Safe Z must be above the stock top (greater than 0).</p>
+      )}
     </div>
   )
 }

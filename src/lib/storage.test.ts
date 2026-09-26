@@ -125,6 +125,32 @@ describe('schema migration', () => {
     const restored = loadSlot(AUTO_SAVE_SLOT)
     expect(restored?.method).toBe(DEFAULT_WIZARD_PARAMS.method)
   })
+
+  it('rebuilds customPointsText from customPoints for a snapshot saved before it existed (BL-48)', () => {
+    localStorage.setItem(
+      STORAGE_KEY,
+      JSON.stringify({
+        version: 1,
+        slots: {
+          [AUTO_SAVE_SLOT]: {
+            version: 1,
+            params: {
+              geometry: {
+                positioning: 'custom',
+                customPoints: [
+                  { x: 5, y: 7 },
+                  { x: 20, y: -3 },
+                ],
+              },
+            },
+          },
+        },
+      }),
+    )
+
+    const restored = loadSlot(AUTO_SAVE_SLOT)
+    expect(restored?.geometry.customPointsText).toBe('5,7\n20,-3')
+  })
 })
 
 describe('error handling', () => {

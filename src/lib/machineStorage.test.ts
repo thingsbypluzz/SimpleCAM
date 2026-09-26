@@ -79,4 +79,14 @@ describe('loadMachineSettings / saveMachineSettings', () => {
     localStorage.setItem('simplecam.machine', JSON.stringify({ travelX: 300 }))
     expect(loadMachineSettings()).toEqual({ ...DEFAULT_MACHINE_SETTINGS, travelX: 300 })
   })
+
+  it('round-trips spindle speed/dwell and falls back on invalid saved values (BL-53)', () => {
+    saveMachineSettings({ ...DEFAULT_MACHINE_SETTINGS, spindleSpeed: 18000, dwellSeconds: 0 })
+    expect(loadMachineSettings()).toMatchObject({ spindleSpeed: 18000, dwellSeconds: 0 })
+    localStorage.setItem('simplecam.machine', JSON.stringify({ spindleSpeed: 0, dwellSeconds: -1 }))
+    expect(loadMachineSettings()).toMatchObject({
+      spindleSpeed: DEFAULT_MACHINE_SETTINGS.spindleSpeed,
+      dwellSeconds: DEFAULT_MACHINE_SETTINGS.dwellSeconds,
+    })
+  })
 })

@@ -5,6 +5,7 @@ import {
   isPocketHelixRadiusValid,
   isPocketOptimalLoadValid,
   isPocketRampAngleValid,
+  isPocketSizeValid,
   isPocketStepoverValid,
   isPocketToolDiameterValid,
   MAX_RAMP_ANGLE_DEG,
@@ -275,6 +276,7 @@ export function Step2GeometryPocket({ params, onChange, machine, toolDiameters }
           />
         </FieldRow>
       )}
+      {!isPocketSizeValid(pocket) && <p className="text-sm text-status-error">Dimensions and depth must be greater than 0.</p>}
 
       {isAdaptive ? (
         <div className="flex flex-col gap-4">

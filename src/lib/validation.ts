@@ -2,6 +2,7 @@ import type { MachineSettings } from '../types/machine'
 import type { FeedsParams, GeometryParams, OutlineParams, PocketParams, SurfaceParams, WizardParams } from '../types/wizard'
 import type { ToolDiameterOption } from '../types/toolDiameters'
 import { resolvePoints } from './positioning'
+import { parseCustomPointsText } from './customPoints'
 import { rectToolDimensions } from './outlineRectangleGeometry'
 import { circleOutlineRadiusAndDirection } from './outlineCircle'
 import { surfaceStepoverMm, surfaceToolBounds } from './surfaceGeometry'
@@ -9,8 +10,11 @@ import { pocketCircleWallRadius, pocketRectWallHalfDims } from './pocketGeometry
 import { effectivePocketZTransitionMode } from './pocketZTransition'
 import { MAX_OPTIMAL_LOAD_PERCENT, MIN_OPTIMAL_LOAD_PERCENT } from './pocketAdaptiveMath'
 
+// Strict (BL-49): a tool exactly as wide as the hole leaves a zero-radius
+// toolpath — `G2/G3 … I0 J0` arcs, or in G1 mode a vertical plunge at
+// Feedrate XY instead of Plunge Rate.
 export function isToolDiameterValid(geometry: GeometryParams): boolean {
-  return geometry.toolDiameter <= geometry.holeDiameter
+  return geometry.toolDiameter < geometry.holeDiameter
 }
 
 // Purely arbitrary sanity ceiling (BL-19), same category as
@@ -34,6 +38,57 @@ export function isStartZValid(feeds: FeedsParams): boolean {
   return feeds.startZ <= feeds.safeZ
 }
 
+// BL-46: every XY move happens at Safe Z, so at or below the stock top
+// (Z0) each rapid between points would drag the tool across the surface.
+export function isSafeZValid(feeds: FeedsParams): boolean {
+  return feeds.safeZ > 0
+}
+
+// BL-46: a cleared field commits 0 (Number('') === 0), which emitted `F0` —
+// GRBL error 22 with the spindle already running. Negative is error 4.
+export function isFeedrateXYValid(feeds: FeedsParams): boolean {
+  return feeds.feedrateXY > 0
+}
+
+export function isPlungeRateValid(feeds: FeedsParams): boolean {
+  return feeds.plungeRate > 0
+}
+
+// BL-46: non-blocking by design — a negative Start Z is a legitimate way
+// to resume a partially cut job, but rapidToTop() then rapids straight
+// below Z0 (into material, unless it's already been removed there).
+export function isStartZBelowStock(feeds: FeedsParams): boolean {
+  return feeds.startZ < 0
+}
+
+export function feedsWarnings(feeds: FeedsParams): string[] {
+  return isStartZBelowStock(feeds)
+    ? [`Start Z is below 0 — the G0 rapid down to Z${feeds.startZ} goes into the stock at rapid speed unless that material is already gone.`]
+    : []
+}
+
+// BL-46: sizes and depth must be positive — a zero depth still emitted a
+// full "cutting" pass at Start Z, and a zero/negative shape made the
+// footprint collapse or flip. Pairs with the (stricter) tool-diameter
+// checks below, which already imply some of these for Inside/Pocket cuts.
+export function isHolesSizeValid(geometry: GeometryParams): boolean {
+  return geometry.holeDiameter > 0 && geometry.totalDepth > 0
+}
+
+export function isOutlineSizeValid(outline: OutlineParams): boolean {
+  if (!(outline.totalDepth > 0)) return false
+  return outline.shape === 'circle' ? outline.diameter > 0 : outline.width > 0 && outline.height > 0
+}
+
+export function isSurfaceSizeValid(surface: SurfaceParams): boolean {
+  return surface.totalDepth > 0 && surface.width > 0 && surface.height > 0
+}
+
+export function isPocketSizeValid(pocket: PocketParams): boolean {
+  if (!(pocket.totalDepth > 0)) return false
+  return pocket.shape === 'circle' ? pocket.diameter > 0 : pocket.width > 0 && pocket.height > 0
+}
+
 // Purely arbitrary sanity ceiling (BL-1) — unlike the machine-fit checks
 // below, there's no physical quantity to derive this from, so it's a flat
 // constant. Vacuously valid outside 'circle' positioning: circleHoleCount
@@ -46,10 +101,31 @@ export function isCircleHoleCountValid(geometry: GeometryParams): boolean {
   return geometry.positioning !== 'circle' || geometry.circleHoleCount <= MAX_CIRCLE_HOLE_COUNT
 }
 
+// BL-48: every non-blank line must parse, and the list can't be empty (an
+// empty list would generate a program with no holes at all). Vacuously
+// valid outside 'custom', same reasoning as isCircleHoleCountValid.
+export function isCustomPointsValid(geometry: GeometryParams): boolean {
+  if (geometry.positioning !== 'custom') return true
+  const { points, invalidLines } = parseCustomPointsText(geometry.customPointsText)
+  return invalidLines.length === 0 && points.length > 0
+}
+
 // Purely arbitrary sanity ceiling (BL-14), same category as
 // MAX_CIRCLE_HOLE_COUNT above — a spinner/typing bound, not derived from
 // anything physical.
 export const MAX_TAB_COUNT = 20
+
+// BL-45: a whole number in 1..MAX_TAB_COUNT. A fractional count made the
+// Outline Rectangle generator place a tab past the corner (cutting into the
+// kept wall at full depth), and 0 silently meant "no tabs" with Enable Tabs
+// still checked. Shared with Settings -> Tabs -> Default Tab Count.
+export function isValidTabCount(count: number): boolean {
+  return Number.isInteger(count) && count >= 1 && count <= MAX_TAB_COUNT
+}
+
+export function isTabCountValid(geometry: GeometryParams): boolean {
+  return !geometry.tabsEnabled || isValidTabCount(geometry.tabCount)
+}
 
 // BL-14: tabHeight carves out the bottom of the cut, so it must leave
 // something above it — 0 or negative is meaningless, and >= totalDepth
@@ -84,13 +160,19 @@ function outlineCircleRadius(outline: OutlineParams): number {
 // On-line uses nominal dimensions untouched), so they're always valid.
 export function isOutlineToolDiameterValid(outline: OutlineParams): boolean {
   if (outline.offsetMode !== 'inside') return true
-  if (outline.shape === 'circle') return outline.toolDiameter <= outline.diameter
+  // Strict for the same zero-radius reason as isToolDiameterValid (BL-49).
+  if (outline.shape === 'circle') return outline.toolDiameter < outline.diameter
   return outline.toolDiameter < Math.min(outline.width, outline.height)
 }
 
 // Same rule as isTabHeightValid above, reading outline.* fields.
 export function isOutlineTabHeightValid(outline: OutlineParams): boolean {
   return !outline.tabsEnabled || (outline.tabHeight > 0 && outline.tabHeight < outline.totalDepth)
+}
+
+// Same rule as isTabCountValid above (per side for Rectangle, total for Circle).
+export function isOutlineTabCountValid(outline: OutlineParams): boolean {
+  return !outline.tabsEnabled || isValidTabCount(outline.tabCount)
 }
 
 // Circle: same formula as isTabWidthValid (tabCount * tabWidth against the

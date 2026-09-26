@@ -49,6 +49,10 @@ export interface GeometryParams {
   circleHoleCount: number
   circleDiameter: number
   circleStartAngle: number
+  // BL-48: the Custom List textarea's raw text is the source of truth
+  // (validated per line, see lib/customPoints.ts); customPoints is always
+  // written alongside it and holds only the lines that parsed.
+  customPointsText: string
   customPoints: Point2D[]
   offsetX: number
   offsetY: number
@@ -126,8 +130,6 @@ export interface FeedsParams {
 export interface OutputOptions {
   interpolation: InterpolationMode
   spindleStart: boolean
-  spindleSpeed: number
-  dwellSeconds: number
   spindleStopEnd: boolean
   returnOriginEnd: boolean
 }
@@ -156,6 +158,7 @@ export const DEFAULT_WIZARD_PARAMS: WizardParams = {
     circleHoleCount: 5,
     circleDiameter: 45,
     circleStartAngle: 0,
+    customPointsText: '10,10',
     customPoints: [{ x: 10, y: 10 }],
     offsetX: 0,
     offsetY: 0,
@@ -224,8 +227,6 @@ export const DEFAULT_WIZARD_PARAMS: WizardParams = {
   output: {
     interpolation: 'linear',
     spindleStart: true,
-    spindleSpeed: 12000,
-    dwellSeconds: 3,
     spindleStopEnd: true,
     returnOriginEnd: true,
   },

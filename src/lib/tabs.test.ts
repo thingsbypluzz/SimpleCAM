@@ -14,6 +14,13 @@ describe('computeTabRanges', () => {
     })
   })
 
+  it('floors a fractional count and clamps ranges to [0, 2π] (BL-45)', () => {
+    expect(computeTabRanges(2.5, 0.2, 1)).toHaveLength(2)
+    const wide = computeTabRanges(1, 10, 1) // angularWidth 10 rad > 2π
+    expect(wide[0].startAngle).toBe(0)
+    expect(wide[0].endAngle).toBe(2 * Math.PI)
+  })
+
   it('keeps every range strictly within [0, 2π] — no wraparound needed', () => {
     // tabWidth close to the validation boundary (tabCount*tabWidth just
     // under the circumference, i.e. angularWidth just under `step`).

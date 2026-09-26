@@ -1,6 +1,8 @@
 import type { WizardParams } from '../../types/wizard'
 import type { MachineSettings } from '../../types/machine'
 import {
+  isOutlineSizeValid,
+  isOutlineTabCountValid,
   isOutlineTabHeightValid,
   isOutlineTabWidthValid,
   isOutlineToolDiameterValid,
@@ -77,7 +79,7 @@ export function Step2GeometryOutline({ params, onChange, machine, toolDiameters 
           <p className="text-sm text-status-error">
             {isRect
               ? "Tool diameter must be smaller than the shorter side for an Inside cut."
-              : "Tool diameter can't exceed the shape diameter for an Inside cut."}
+              : "Tool diameter must be smaller than the shape diameter for an Inside cut."}
           </p>
         )}
       </div>
@@ -131,6 +133,7 @@ export function Step2GeometryOutline({ params, onChange, machine, toolDiameters 
           />
         </FieldRow>
       )}
+      {!isOutlineSizeValid(outline) && <p className="text-sm text-status-error">Dimensions and depth must be greater than 0.</p>}
 
       <div className="border-t border-border pt-4">
         <Checkbox
@@ -194,6 +197,11 @@ export function Step2GeometryOutline({ params, onChange, machine, toolDiameters 
                 {isRect
                   ? "Tab count × width can't reach the shortest side's length."
                   : "Tab count × width can't reach the toolpath's full circumference."}
+              </p>
+            )}
+            {!isOutlineTabCountValid(outline) && (
+              <p className="text-sm text-status-error">
+                Tab count must be a whole number from 1 to {MAX_TAB_COUNT}.
               </p>
             )}
           </div>

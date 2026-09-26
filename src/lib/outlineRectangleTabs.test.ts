@@ -23,6 +23,15 @@ describe('computeRectTabRanges', () => {
     expect(ranges[ranges.length - 1].endFrac).toBeLessThan(1)
   })
 
+  it('floors a fractional count and clamps ranges to [0, 1] (BL-45)', () => {
+    const ranges = computeRectTabRanges(2.5, 3, 20)
+    expect(ranges).toHaveLength(2)
+    // A wide tab that would spill past the corner is clamped to the side.
+    const wide = computeRectTabRanges(1, 30, 20)
+    expect(wide[0].startFrac).toBe(0)
+    expect(wide[0].endFrac).toBe(1)
+  })
+
   it('returns an empty array for tabCountPerSide <= 0 or sideLength <= 0', () => {
     expect(computeRectTabRanges(0, 1, 20)).toEqual([])
     expect(computeRectTabRanges(3, 1, 0)).toEqual([])

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { assembleProgram, buildHeader, endOfProgramCode } from './program'
+import { assembleProgram, buildHeader, endOfProgramCode, modalPreamble } from './program'
 import { DEFAULT_MACHINE_SETTINGS } from '../types/machine'
 import { DEFAULT_WIZARD_PARAMS, type WizardParams } from '../types/wizard'
 
@@ -40,20 +40,35 @@ describe('endOfProgramCode', () => {
 })
 
 describe('buildHeader', () => {
+  const params = buildParams({ output: { spindleStart: true } })
+  const machine = (overrides: Partial<typeof DEFAULT_MACHINE_SETTINGS>) => ({ ...DEFAULT_MACHINE_SETTINGS, ...overrides })
+
   it('emits G4 P in seconds for grbl/mach3', () => {
-    const params = buildParams({ output: { spindleStart: true, dwellSeconds: 3 } })
-    expect(buildHeader(params, 'grbl')).toContain('G4 P3')
-    expect(buildHeader(params, 'mach3')).toContain('G4 P3')
+    expect(buildHeader(params, machine({ dialect: 'grbl', dwellSeconds: 3 }))).toContain('G4 P3')
+    expect(buildHeader(params, machine({ dialect: 'mach3', dwellSeconds: 3 }))).toContain('G4 P3')
   })
 
   it('converts G4 P to milliseconds for marlin', () => {
-    const params = buildParams({ output: { spindleStart: true, dwellSeconds: 3 } })
-    expect(buildHeader(params, 'marlin')).toContain('G4 P3000')
+    expect(buildHeader(params, machine({ dialect: 'marlin', dwellSeconds: 3 }))).toContain('G4 P3000')
   })
 
   it('omits G4 P entirely when dwellSeconds is 0, regardless of dialect', () => {
-    const params = buildParams({ output: { spindleStart: true, dwellSeconds: 0 } })
-    expect(buildHeader(params, 'marlin').some((l) => l.startsWith('G4'))).toBe(false)
+    expect(buildHeader(params, machine({ dialect: 'marlin', dwellSeconds: 0 })).some((l) => l.startsWith('G4'))).toBe(false)
+  })
+
+  it('takes spindle speed from machine settings (BL-53)', () => {
+    expect(buildHeader(params, machine({ spindleSpeed: 18000 }))).toContain('M3 S18000')
+  })
+})
+
+describe('modalPreamble (BL-54)', () => {
+  it('pins incremental I/J, feed-per-minute and clears compensation on grbl and mach3', () => {
+    expect(modalPreamble('grbl')).toEqual(['G21 G90 G17', 'G91.1 G94 G40 G49'])
+    expect(modalPreamble('mach3')).toEqual(['G21 G90 G17', 'G91.1 G94 G40 G49'])
+  })
+
+  it('keeps only the shared line on marlin, which implements none of those codes', () => {
+    expect(modalPreamble('marlin')).toEqual(['G21 G90 G17'])
   })
 })
 

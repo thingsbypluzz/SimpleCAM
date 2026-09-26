@@ -7,6 +7,77 @@ zgodne z [SemVer](https://semver.org/). Ten plik pozostaje głównym, czytelnym
 thingsbypluzz/SimpleCAM), ale to infrastruktura pod izolację pracy
 (branch/worktree per zadanie), nie zamiennik tego changeloga.
 
+## [0.20.0] — 2026-09-26
+
+Druga grupa poprawek z code review (2026-09-26): Krok 3/4 i preambuła
+programu.
+
+### Dodano
+
+- **`BL-53`: obroty wrzeciona i dwell w Settings → Machine.** Dotąd każdy
+  plik miał na sztywno `M3 S12000` i `G4 P3` (`P3000` na Marlinie), bez
+  żadnego pola w UI. Teraz Spindle Speed [RPM] i Spin-up Dwell [s] to
+  ustawienia maszyny (`MachineSettings.spindleSpeed`/`dwellSeconds`) —
+  globalne, nie per preset: czas rozpędzenia to cecha wrzeciona, a
+  frezarki z ręcznym pokrętłem obrotów i tak ignorują `S`. Dwell 0 =
+  brak `G4`. Przy dialekcie Marlin podpowiedź, że `S` bywa tam PWM 0–255.
+  Pola zniknęły z `WizardParams.output` (nigdy nie były edytowalne, więc
+  stare presety nic nie tracą). Krok 4 wskazuje, gdzie je ustawić.
+
+### Naprawiono
+
+- **`BL-46`: brak dolnych limitów.** Wyczyszczony Feedrate XY albo
+  Plunge Rate dawał `F0` (GRBL error 22 przy już pracującym wrzecionie),
+  Safe Z ≤ 0 prowadził każdy przejazd XY po materiale, zerowa głębokość
+  albo wymiar kształtu przechodziły walidację. Teraz Feedrate XY, Plunge
+  Rate i Safe Z muszą być > 0, a głębokość i wymiary kształtu (każda
+  operacja) > 0 — błąd inline + blokada Generate. Ujemny Start Z
+  świadomie **nie** blokuje (sensowny przy dokończeniu częściowo
+  wyciętego zadania), tylko ostrzega w Kroku 3 i na liście ostrzeżeń
+  Kroku 4, że rapid zejdzie poniżej wierzchu materiału.
+- **`BL-54`: preambuła bez trybu I/J i posuwu.** Dla GRBL/Mach3 druga
+  linia `G91.1 G94 G40 G49` — Mach3 z przestawionym "IJ Mode" na
+  absolutny prowadził każdy łuk wokół złego środka, a stan modalny
+  (inverse time, kompensacja) z poprzedniego zadania mógł przetrwać.
+  Marlin bez zmian (nie implementuje tych kodów).
+- **`BL-51`: przełącznik interpolacji w Kroku 4 dla Surface/Pocket**
+  czytał flagę mostków Hole(s) — potrafił pokazać zablokowane "G1",
+  podczas gdy plik zawierał G2/G3.
+- **`BL-60`: etykieta Stepdown w Kroku 3** pochodzi teraz z metody
+  aktywnej operacji — wcześniej zawsze z Hole(s) ("Pitch per 360° turn"
+  także dla Pocket/Surface/Outline).
+
+## [0.19.1] — 2026-09-26
+
+### Naprawiono
+
+Pierwsza grupa poprawek z globalnego code review (2026-09-26) — trzy luki
+walidacji Kroku 2, przez które przechodziły parametry dające niebezpieczny
+albo bezsensowny G-code.
+
+- **`BL-45`: ułamkowy/zerowy Tab Count.** Liczba mostków musi być teraz
+  liczbą całkowitą od 1 do 20 (`isTabCountValid()`/
+  `isOutlineTabCountValid()`, inline error + blokada Generate, także
+  Settings → Tabs → Default Tab Count). Wcześniej 2.5 mostka na bok w
+  Outline Rectangle stawiało ostatni mostek na narożniku, a generator
+  ekstrapolował za narożnik i schodził tam na pełną głębokość — 1.5 mm w
+  zachowywaną ścianę; 0 mostków przechodziło walidację mimo zaznaczonego
+  "Enable Tabs". Generatory mostków (`computeTabRanges()`/
+  `computeRectTabRanges()`) dodatkowo obcinają ułamek i zaciskają zakresy
+  do swojego boku/obrotu, bo podglądy renderują się przed bramką Generate.
+- **`BL-48`: błędne linie Custom List.** Wcześniej każdy nieparsujący się
+  token stawał się zerem — `25 40` (spacja), `abc` czy `10` dawały po
+  cichu otwór w (0,0)/(10,0). Teraz linia musi zawierać dokładnie dwie
+  liczby (separator: przecinek, średnik albo spacja); błędne linie są
+  wypisywane z numerami, pusta lista też blokuje Generate. Surowy tekst
+  listy trafił do parametrów (`geometry.customPointsText`, zapisywany w
+  presetach) — stare zapisy dostają tekst odtworzony z punktów przy
+  wczytaniu. Parser przeniesiony do `lib/customPoints.ts` z testami.
+- **`BL-49`: frez równy otworowi.** Hole(s) i Outline Circle Inside
+  wymagają teraz frezu ostro mniejszego od otworu. Przy równych średnicach
+  ścieżka miała zerowy promień: `G3 … I0 J0` w trybie łuków, a w trybie
+  G1 pionowe wiercenie na Feedrate XY zamiast Plunge Rate.
+
 ## [0.19.0] — 2026-09-26
 
 ### Dodano

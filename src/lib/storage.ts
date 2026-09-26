@@ -1,4 +1,11 @@
-import { DEFAULT_WIZARD_PARAMS, type MethodType, type OperationType, type WizardParams } from '../types/wizard'
+import {
+  DEFAULT_WIZARD_PARAMS,
+  type GeometryParams,
+  type MethodType,
+  type OperationType,
+  type WizardParams,
+} from '../types/wizard'
+import { formatCustomPoints } from './customPoints'
 
 // `operation` and `method` are the two top-level scalar fields
 // mergeWithDefaults() below can't fix with a plain `??` fallback: a preset
@@ -63,6 +70,17 @@ function writeStorage(storage: StorageShape): void {
   }
 }
 
+// Snapshots saved before customPointsText existed (BL-48) carry only the
+// parsed points — rebuild their text from those instead of letting the
+// default '10,10' shadow the preset's real list.
+function mergeGeometry(saved: Partial<GeometryParams> | undefined): GeometryParams {
+  const merged = { ...DEFAULT_WIZARD_PARAMS.geometry, ...saved }
+  if (saved?.customPointsText === undefined && Array.isArray(saved?.customPoints)) {
+    merged.customPointsText = formatCustomPoints(saved.customPoints)
+  }
+  return merged
+}
+
 // Shallow, per-section merge with defaults — a snapshot saved by an older
 // version of the app that's missing newly-added fields still loads cleanly,
 // picking up defaults for whatever it doesn't have.
@@ -70,7 +88,7 @@ function mergeWithDefaults(saved: Partial<WizardParams> | undefined): WizardPara
   return {
     operation: isOperationType(saved?.operation) ? saved.operation : DEFAULT_WIZARD_PARAMS.operation,
     method: isMethodType(saved?.method) ? saved.method : DEFAULT_WIZARD_PARAMS.method,
-    geometry: { ...DEFAULT_WIZARD_PARAMS.geometry, ...saved?.geometry },
+    geometry: mergeGeometry(saved?.geometry),
     outline: { ...DEFAULT_WIZARD_PARAMS.outline, ...saved?.outline },
     surface: { ...DEFAULT_WIZARD_PARAMS.surface, ...saved?.surface },
     pocket: { ...DEFAULT_WIZARD_PARAMS.pocket, ...saved?.pocket },

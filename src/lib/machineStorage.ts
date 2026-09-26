@@ -13,6 +13,10 @@ function isDialect(value: unknown): value is Dialect {
   return typeof value === 'string' && (VALID_DIALECTS as string[]).includes(value)
 }
 
+function isFiniteAtLeast(value: unknown, min: number, inclusive: boolean): value is number {
+  return typeof value === 'number' && Number.isFinite(value) && (inclusive ? value >= min : value > min)
+}
+
 export function loadMachineSettings(): MachineSettings {
   try {
     const raw = localStorage.getItem(MACHINE_STORAGE_KEY)
@@ -25,6 +29,13 @@ export function loadMachineSettings(): MachineSettings {
       ...DEFAULT_MACHINE_SETTINGS,
       ...parsed,
       dialect: isDialect(parsed.dialect) ? parsed.dialect : DEFAULT_MACHINE_SETTINGS.dialect,
+      // Same acceptance rule as SettingsModal's commitField.
+      spindleSpeed: isFiniteAtLeast(parsed.spindleSpeed, 0, false)
+        ? parsed.spindleSpeed
+        : DEFAULT_MACHINE_SETTINGS.spindleSpeed,
+      dwellSeconds: isFiniteAtLeast(parsed.dwellSeconds, 0, true)
+        ? parsed.dwellSeconds
+        : DEFAULT_MACHINE_SETTINGS.dwellSeconds,
     }
   } catch (err) {
     console.warn('OnlyPaths: could not read machine settings from localStorage', err)

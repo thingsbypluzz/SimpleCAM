@@ -195,3 +195,38 @@ describe('generateRectOutlineRamp — tabs', () => {
     expect(liftLines.length).toBeGreaterThan(0)
   })
 })
+
+describe('generateRectOutlineStandard — fractional tab count (BL-45)', () => {
+  it('never leaves the tool-center rectangle, even with an unvalidated 2.5 tabs per side', () => {
+    // Review scenario: 50x30 Inside, tool 3.175 -> tool-center range
+    // X 1.5875..48.4125, Y 1.5875..28.4125. Before the fix a fractional
+    // count extrapolated the last tab past each corner at full depth.
+    const params = buildParams('rectCornered', {
+      outline: {
+        offsetMode: 'inside',
+        width: 50,
+        height: 30,
+        toolDiameter: 3.175,
+        totalDepth: 4,
+        tabsEnabled: true,
+        tabCount: 2.5,
+        tabWidth: 3,
+        tabHeight: 1,
+      },
+    })
+    const eps = 1e-6
+    for (const line of generateRectOutlineStandard(params, DEFAULT_MACHINE_SETTINGS)) {
+      if (!line.startsWith('G1')) continue
+      const x = /X(-?[\d.]+)/.exec(line)
+      const y = /Y(-?[\d.]+)/.exec(line)
+      if (x) {
+        expect(Number(x[1])).toBeGreaterThanOrEqual(1.5875 - eps)
+        expect(Number(x[1])).toBeLessThanOrEqual(48.4125 + eps)
+      }
+      if (y) {
+        expect(Number(y[1])).toBeGreaterThanOrEqual(1.5875 - eps)
+        expect(Number(y[1])).toBeLessThanOrEqual(28.4125 + eps)
+      }
+    }
+  })
+})

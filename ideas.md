@@ -220,6 +220,16 @@ faktycznym.
   istniejącym tle-nakładce modala w `SettingsModal.tsx`, spójnie we
   wszystkich motywach; do sprawdzenia wydajność przy żywym 3D Preview
   pod spodem.
+- **`BL-66`** *(Otwarty)* 🟠 — **Wyróżnienie pól, które nie przeszły
+  walidacji.** Dziś błąd to wyłącznie czerwony tekst pod polem — samo
+  pole (`NumberInput`/`<select>`/textarea) wygląda tak samo jak poprawne,
+  więc przy kilku błędach naraz trudno wskazać, które pole je powoduje.
+  Ramka (i ewentualnie poświata w Arcade) w kolorze błędu pasującym do
+  motywu — nowy token albo reużycie `status-error` we wszystkich czterech
+  motywach, light i dark. Wymaga powiązania każdego walidatora z polem
+  (lub polami — np. frez vs średnica otworu, Tab Count × Width), np. prop
+  `invalid` w `FieldRow`/`NumberInput`, spójnie w Krokach 2 i 3 oraz w
+  Settings.
 
 **`BL-17` zamknięte — "Interface Anatomy"**, Artifact z umownymi nazwami
 elementów UI, dziś aktywnie używany w `CLAUDE.md`:
@@ -243,39 +253,17 @@ Waga z review w nawiasie kwadratowym.
   prawej). Dotyczy dokumentacji Outline/Pocket/Hole(s) i realnego wyboru
   użytkownika w Adaptive. Zdecydować konwencję, poprawić kierunki albo
   etykiety, dodać test przypinający kierunek.
-- **`BL-45`** *(Otwarty)* 🟢 **[High]** — **Ułamkowy Tab Count wyrzuca
-  Outline Rectangle poza narożniki na pełnej głębokości; 0 mostków
-  przechodzi walidację.** Wymusić liczbę całkowitą ≥ 1 (pola, Settings,
-  walidacja) i zaciskać ułamki w generatorach mostków.
-- **`BL-46`** *(Otwarty)* 🟢 **[High]** — **Brak dolnych limitów Start Z,
-  Safe Z, posuwów i wymiarów.** Ujemny Start Z = G0 w materiał, pusty
-  Feedrate = `F0` (GRBL error 22). Dodać walidatory > 0 / ≥ 0.
 - **`BL-47`** *(Otwarty)* 🟢 **[High]** — **Wczytanie presetu przy
-  otwartym Kroku 2/3 zostawia stare wartości w polach; lista Custom
-  potrafi nadpisać wczytane punkty** (także live-save w Edit Mode).
+  otwartym Kroku 2/3 zostawia stare wartości w polach numerycznych**
+  (textarea Custom List naprawiona w 0.19.1 — tekst żyje w params).
   Przemontować krok (klucz) przy wczytaniu presetu/resecie.
-- **`BL-48`** *(Otwarty)* 🟢 **[Medium]** — **Błędne linie Custom List
-  (`10 20`, `abc`, `10`) po cichu stają się otworami w (0,0)/(x,0).**
-  Walidacja per linia z numerem linii, blokada Generate.
-- **`BL-49`** *(Otwarty)* 🟢 **[Medium]** — **Frez równy otworowi przechodzi
-  walidację → łuki o zerowym promieniu / wiercenie na Feedrate XY.**
-  Zaostrzyć `<=` do `<` (Hole(s), Outline Circle Inside).
 - **`BL-50`** *(Otwarty)* 🟠 **[Medium]** — **Kąt zejścia Helix/Ramp poza
   Adaptive jest nieograniczony** (mały promień / krótki bok → prawie
   pionowe zejście na Feedrate XY). Limit kąta rampy albo ograniczenie
   pionowej składowej do Plunge Rate.
-- **`BL-51`** *(Otwarty)* 🟢 **[Medium]** — **Przełącznik interpolacji w
-  Kroku 4 czyta mostki Hole(s) dla Surface/Pocket** — UI pokazuje
-  zablokowane G1, a plik zawiera G2/G3.
 - **`BL-52`** *(Otwarty)* 🟢 **[Medium]** — **W Edit Mode każda zmiana
   parametru resetuje kamerę 2D/3D i dwukrotnie przebudowuje scenę 3D**
   (nowa referencja `overlayParams`).
-- **`BL-53`** *(Otwarty)* 🟢 **[Medium]** — **Obroty wrzeciona i dwell są
-  na sztywno** (`M3 S12000`, `G4 P3`) — brak pól w UI; na Marlinie S bywa
-  PWM 0–255.
-- **`BL-54`** *(Otwarty)* 🟢 **[Medium]** — **Preambuła nie ustala trybu
-  I/J ani posuwu** (`G91.1`, `G94`, `G40`, `G49`) — Mach3 w trybie
-  absolutnym I/J poprowadzi łuki wokół złego środka.
 - **`BL-55`** *(Otwarty)* 🟠 **[Medium–Low]** — **Limity bezpieczeństwa
   pętli (5000) po cichu obcinają poprawne zadania** — niewycięty
   materiał lub końcowe głębokie zejście. Zgłaszać obcięcie jako błąd
@@ -291,16 +279,13 @@ Waga z review w nawiasie kwadratowym.
   weryfikacji certyfikatu; roczny cache dla `favicon.svg`.**
 - **`BL-59`** *(Otwarty)* 🟢 **[Low]** — **Surface Unidirectional: G0 przy
   powrocie schodzi dokładnie do dna poprzedniego poziomu, bez zapasu.**
-- **`BL-60`** *(Otwarty)* 🟢 **[Low]** — **Etykieta Stepdown w Kroku 3
-  zawsze z metody Hole(s)** ("Pitch per 360° turn" także dla
-  Pocket/Surface/Outline).
 - **`BL-61`** *(Otwarty)* 🔴 **[Low, kosztowne w czasie]** — **Podglądy
   duplikują geometrię silnika; łańcuchy ternary po `operation`** —
   docelowo jedna lista ruchów (jak Adaptive) i rejestr `OPERATION_META`;
   przy okazji martwy `lib/index.ts` i nieaktualne komentarze.
 - **`BL-62`** *(Otwarty)* 🟠 **[Low]** — **Luki w testach** — brak testów
   przekrojowych (G0 na Safe Z, F > 0, osiągnięcie −totalDepth, łuki G2/G3
-  we wszystkich operacjach), parsowania Custom List, logiki Kroku 4.
+  we wszystkich operacjach), logiki Kroku 4.
 - **`BL-63`** *(Otwarty)* 🟠 **[Low]** — **Wydajność podglądów** — brak
   debounce, Adaptive przy 1% i cały G-code w jednym `<pre>`, podgląd
   1000 otworów przy literówce, domyślna zakładka 3D, `WebGLRenderer` bez
@@ -386,106 +371,24 @@ wierszy — stan kodu z dnia review (`main` @ `b867d4f`).
 - **Nakład:** łatwy (etykiety) / średni (odwrócenie kierunków + podglądy
   + testy).
 
-### `BL-45` — Ułamkowy / zerowy Tab Count
-- **Lokalizacja:** `src/lib/outlineRectangleTabs.ts:27`
-  (`k < tabCountPerSide`) i `:91` (`x = p0.x + (p1.x-p0.x)*frac` bez
-  zaciśnięcia); `src/lib/tabs.ts:29`; `src/lib/validation.ts:59-71,
-  103-116`; `Step2GeometryOutline.tsx:46`; `Step2GeometryHoles.tsx:85`;
-  `SettingsModal.tsx:158-167` (`defaultTabCount` przyjmuje wszystko > 0).
-- **Problem:** `tabCount` nigdy nie jest zaokrąglany ani sprawdzany jako
-  dodatnia liczba całkowita (`MAX_TAB_COUNT` to tylko atrybut `max`).
-  Przy 2.5 na bok pętla robi k = 0, 1, 2 z krokiem 0.4 — trzeci mostek
-  ma środek na frac 1.0, `endFrac` > 1 — `tabbedRectanglePass`
-  ekstrapoluje za narożnik wzdłuż kierunku boku, podnosi się tam na górę
-  mostka, a "wychodząc z mostka" schodzi na pełne `cutZ` w
-  ekstrapolowanym punkcie. `tabCount = 0` (wyczyszczone pole) albo 0.4 =
-  brak mostków mimo zaznaczonego "Enable Tabs" i przechodzącej walidacji
-  (`0 * w < L`). Settings → Tabs → Default Tab Count też przyjmie 2.5.
-- **Scenariusz (zweryfikowany):** domyślny Outline (Rectangle Cornered
-  50×30, Inside, frez 3.175), tabs włączone, Count 2.5, Width 3, Height 1.
-  Oczekiwany zakres środka freza X 1.5875–48.4125, Y 1.5875–28.4125;
-  wynik zawiera `X49.9125 Y1.5875 Z-4`, `X48.4125 Y29.9125 Z-4`, `X0.0875 …`
-  — 1.5 mm za każdym narożnikiem na pełnej głębokości (wcina się w
-  zachowywaną ścianę). Przy 0 mostków detal przy przecinaniu na wylot
-  odpada.
-- **Proponowana zmiana:** wymagać `Number.isInteger(tabCount) && 1 ≤
-  tabCount ≤ MAX_TAB_COUNT` w walidacji (Hole(s), Outline), zaokrąglać
-  przy commit w trzech polach i w Settings, defensywnie zaciskać `frac`
-  do [0,1] i kąty do [0,2π] w generatorach przejść.
-- **Nakład:** łatwy.
-
-### `BL-46` — Brak dolnych limitów Start Z / Safe Z / posuwów / wymiarów
-- **Lokalizacja:** `src/lib/validation.ts:29-35` (tylko `stepdown > 0` i
-  `startZ <= safeZ`); `src/App.tsx:298-325`; `Step3Feeds.tsx:98,108`
-  (`min="0"` nieegzekwowane, zgodnie z komentarzem w `NumberInput.tsx`);
-  `src/lib/program.ts:14-16`.
-- **Problem:** Start Z może być ujemny, a `rapidToTop()` emituje wtedy
-  `G0 Z<startZ>` prosto w materiał (komentarz `program.ts:6-13` "powyżej
-  +startZ jest powietrze, więc rapid jest bezpieczny" prawdziwy tylko dla
-  startZ ≥ 0). Safe Z ≤ 0 = każdy przejazd XY po lub pod powierzchnią.
-  `feedrateXY` i `plungeRate` nigdy nie są walidowane (`linkingFeed` jest)
-  — wyczyszczenie pola commituje 0 (`Number('') === 0`, skończone).
-  `totalDepth`, `holeDiameter`, `width`, `height`, `diameter` bez
-  sprawdzenia > 0 (np. totalDepth 0 w Helix = jedno "płaskie" koło na
-  Z = startZ).
-- **Scenariusze (zweryfikowane):** Start Z −3 przechodzi walidację →
-  `G0 X2.4125 Y0` / `G0 Z-3` — rapid 3 mm w materiał. Feedrate XY 0 →
-  `G1 … F0` (GRBL error 22); ujemny Plunge Rate → GRBL error 4 — oba
-  zatrzymują zadanie przy już pracującym wrzecionie.
-- **Proponowana zmiana:** walidatory `startZ >= 0` (albo przynajmniej
-  `> −totalDepth` z ostrzeżeniem), `safeZ > 0 && safeZ > startZ`,
-  `feedrateXY > 0`, `plungeRate > 0`, `totalDepth > 0`, wymiary > 0 —
-  podpięte pod `isGeometryValid` z komunikatami inline.
-- **Nakład:** łatwy.
-
 ### `BL-47` — Wczytanie presetu przy otwartym Kroku 2/3
 - **Lokalizacja:** `src/App.tsx:441-471` (od `BL-39` wczytanie nie
   zmienia `activeStep`); `useNumberField.ts:30-37` (tekst resynchronizuje
-  się tylko z `syncWhenBlurred`); `Step2GeometryHoles.tsx:56-63` (leniwy
-  `useState` textarea Custom); `Step3Feeds.tsx:42-45`.
+  się tylko z `syncWhenBlurred`); `Step3Feeds.tsx:42-45`. (Część
+  dotycząca textarea Custom List rozwiązana w 0.19.1 przy `BL-48` —
+  tekst listy to dziś `geometry.customPointsText`, nie lokalny stan.)
 - **Problem:** po `BL-39` wczytanie/uzbrojenie presetu (Edit Mode) nie
   odmontowuje aktywnego kroku. Każde pole `useNumberField` bez
   `syncWhenBlurred` (wszystkie w Kroku 2, Plunge Rate, Start Z, Safe Z,
-  Linking Feed) i textarea Custom pokazują tekst poprzedniego presetu
-  (wyjątek: zmiana operacji — router Kroku 2 montuje inny komponent).
-  Pisanie w textarea parsuje stary tekst i zastępuje świeżo wczytane
-  `customPoints`; w Edit Mode dodatkowo live-save do uzbrojonego slotu.
+  Linking Feed) pokazuje tekst poprzedniego presetu (wyjątek: zmiana
+  operacji — router Kroku 2 montuje inny komponent); w Edit Mode
+  dodatkowo live-save do uzbrojonego slotu.
 - **Scenariusz:** otwarty Krok 3, preset [1] ma Safe Z 5, [2] ma 1 — po
   kliknięciu [2] pole dalej pokazuje "5", a podgląd i G-code używają 1.
-  Otwarty Krok 2 z Custom List: wczytanie presetu, dopisanie jednego
-  punktu → punkty presetu zastąpione starą listą + nowy punkt.
 - **Proponowana zmiana:** licznik `paramsLoadGeneration` inkrementowany w
   `handleLoadPreset`/`handlePresetSlotClick`/Reset, użyty jako `key` na
   zawartości Active Step Panel (remount kroków); alternatywnie
   `syncWhenBlurred` jako zachowanie domyślne.
-- **Nakład:** łatwy.
-
-### `BL-48` — Błędne linie Custom List → otwory w (0,0)
-- **Lokalizacja:** `Step2GeometryHoles.tsx:29-38`.
-- **Problem:** każdy nieparsujący się token zamieniany na 0, bez
-  komunikatu. `"10;20"`, `"10 20"`, `"abc"` → (0,0); `"10"` → (10,0);
-  europejskie `"10,5, 20,5"` dzielone po przecinkach → x = 10, y = 5.
-- **Scenariusz:** użytkownik wpisuje `25 40` (spacja) → wiercenie w
-  origin (+ offset), gdzie może stać docisk albo róg materiału.
-- **Proponowana zmiana:** oznaczać każdą linię, która nie jest dokładnie
-  dwiema skończonymi liczbami, jako błędną — komunikat z numerem linii i
-  blokada Generate (`isCustomPointsValid`); opcjonalnie jawnie akceptować
-  `;`/spację jako separator. Parser przenieść do `lib/` (patrz `BL-62`).
-- **Nakład:** łatwy.
-
-### `BL-49` — Frez równy otworowi → łuki o zerowym promieniu
-- **Lokalizacja:** `src/lib/validation.ts:12-14` (`<=`) i `:87` (Outline
-  Circle Inside `<=`); `src/lib/circle.ts:29-40`.
-- **Problem:** promień ścieżki = 0. W G2/G3 każdy obrót to
-  `G3 X0 Y0 Z-0.3 I0 J0 F800` (znalezione fuzzowaniem) — kod łuków GRBL
-  dzieli przez wyrażenie, które dla r = 0 daje NaN, Mach3 może zgłosić
-  błąd promienia. W G1 — 72 odcinki o zerowym XY, czyli pionowe wiercenie
-  na `feedrateXY` zamiast `plungeRate`. Pocket już używa ostrego `<`.
-- **Scenariusz:** frez 6.35, otwór 6.35, Helix, łuki, stepdown 1 →
-  powtarzane `G3 X0 Y0 Z-0.5 I0 J0 F800` — frez wierci pionowo z 800
-  mm/min.
-- **Proponowana zmiana:** oba sprawdzenia ostre (`<`), albo specjalny
-  przypadek promienia < ε: dziobanie/plunge na `plungeRate` bez łuków.
 - **Nakład:** łatwy.
 
 ### `BL-50` — Nieograniczony kąt zejścia Helix/Ramp
@@ -505,21 +408,6 @@ wierszy — stan kodu z dnia review (`main` @ `b867d4f`).
   przekraczała `plungeRate`. Minimum: nieblokujące ostrzeżenie.
 - **Nakład:** średni.
 
-### `BL-51` — Krok 4: przełącznik interpolacji czyta mostki Hole(s)
-- **Lokalizacja:** `Step4Output.tsx:52-54`.
-- **Problem:** `tabsForceLinear = operation === 'outline' ?
-  outline.tabsEnabled : geometry.tabsEnabled` — dla Surface i Pocket
-  czyta flagę mostków Hole(s): przełącznik wyszarzony, pokazuje "G1" i
-  "Tabs (Step 2) require G1", a silniki Surface/Pocket używają zapisanego
-  `output.interpolation` (może być `'arc'`).
-- **Scenariusz:** mostki włączone w Hole(s) z łukami, przejście na
-  Pocket — Krok 4 pokazuje zablokowane "G1 (segments)", plik zawiera
-  G2/G3, użytkownik nie może tego zmienić.
-- **Proponowana zmiana:** `tabsForceLinear = false` dla Surface/Pocket;
-  lepiej wyprowadzać `forcedLinear` z rejestru per operacja (patrz
-  `BL-61`).
-- **Nakład:** łatwy.
-
 ### `BL-52` — Edit Mode resetuje kamerę i dubluje przebudowę 3D
 - **Lokalizacja:** `App.tsx:337-350`; `lib/overlayParams.ts:9-16`;
   `Scene3D.tsx:204-221`; `ToolpathCanvas.tsx:135-140`.
@@ -537,35 +425,6 @@ wierszy — stan kodu z dnia review (`main` @ `b867d4f`).
 - **Proponowana zmiana:** współdzielona zamrożona pusta tablica gdy
   `overlaySlots.size === 0`; lepiej: zależność tylko od wpisów samych
   nałożonych slotów albo porównanie zawartości zamiast referencji.
-- **Nakład:** łatwy.
-
-### `BL-53` — Obroty wrzeciona i dwell na sztywno
-- **Lokalizacja:** `types/wizard.ts:227-228` (`spindleSpeed: 12000`,
-  `dwellSeconds: 3`); `program.ts:23-31`; żaden `.tsx` ich nie używa.
-- **Problem:** każdy plik ma `M3 S12000` i `G4 P3` (`P3000` na Marlinie).
-  Krok 3 nazywa się "Feeds & Speeds", a pola obrotów nie ma. Na
-  Marlinie `S` to często PWM 0–255 albo procent (zależnie od
-  `CUTTER_POWER_UNIT`) — 12000 nie ma tam sensu.
-- **Scenariusz:** wrzeciono z falownikiem 6000–24000 obr/min, aluminium
-  na 18000 — zawsze dostaje 12000.
-- **Proponowana zmiana:** pola Spindle Speed i Dwell (Krok 3 lub 4) z
-  walidacją > 0.
-- **Nakład:** łatwy.
-
-### `BL-54` — Preambuła bez trybu I/J i posuwu
-- **Lokalizacja:** `src/lib/program.ts:20`.
-- **Problem:** jedyna linia preambuły to `G21 G90 G17`; wszystkie łuki
-  używają przyrostowych I/J. Mach3 ma konfigurowalny "IJ Mode"
-  (absolutny/przyrostowy) — w trybie absolutnym każdy G2/G3 idzie wokół
-  złego środka. Brak też `G94`, `G40`, `G49` — pozostałe z poprzedniego
-  zadania G93 (inverse time) albo kompensacja promienia zmienią
-  zachowanie.
-- **Scenariusz:** Mach3 w absolutnym IJ: `G3 X10 Y0 I-2.4 J0` ma środek w
-  absolutnym (−2.4, 0) — ogromny zły łuk albo błąd promienia.
-- **Proponowana zmiana:** per dialekt — `G91.1 G94 G40 G49` (albo
-  obsługiwany podzbiór) dla Mach3, `G94` dla GRBL (GRBL 1.1 akceptuje
-  `G91.1` jako no-op); sprawdzić z dokumentacją każdego kontrolera.
-  Pewność review: średnia.
 - **Nakład:** łatwy.
 
 ### `BL-55` — Limity pętli obcinają poprawne zadania
@@ -649,16 +508,6 @@ wierszy — stan kodu z dnia review (`main` @ `b867d4f`).
   zapas)` albo `max(startZ, …)` + mały margines, potem plunge.
 - **Nakład:** łatwy.
 
-### `BL-60` — Etykieta Stepdown w Kroku 3 z metody Hole(s)
-- **Lokalizacja:** `Step3Feeds.tsx:73`.
-- **Problem:** `METHOD_META[method]` to zawsze metoda Hole(s), niezależnie
-  od aktywnej operacji. Przy zapisanym Hole(s) Helix — Pocket, Surface i
-  Outline pokazują "Stepdown / Pitch [mm per 360° turn]"; dla Pocket
-  Adaptive szczególnie mylące (tam skok helixa jest z kąta rampy).
-- **Proponowana zmiana:** użyć metadanych metody aktywnej operacji
-  (`activeMethodDisplay.stepdown`).
-- **Nakład:** łatwy.
-
 ### `BL-61` — Duplikacja geometrii w podglądach, ternary po operacji
 - **Lokalizacja:** `preview3d/buildScene.ts:135-579` (`helixPoints3D`,
   `standardHolePoints3D`, `tabbedCirclePoints3D`,
@@ -673,10 +522,10 @@ wierszy — stan kodu z dnia review (`main` @ `b867d4f`).
   podgląd/silnik złapanych dopiero wizualnie (np. cięciwa pierścienia w
   3D, kąt startowy helixa Surface). Adaptive pokazuje lepszy wzorzec:
   jedna lista ruchów dla G-code i podglądów. Łańcuchy ternary to
-  przyczyna `BL-51`. Drobniejsze: `RasterDirectionToggle`/
+  przyczyna `BL-51` (naprawionego w 0.20.0). Drobniejsze: `RasterDirectionToggle`/
   `ZTransitionModeToggle` skopiowane między Step 2 Surface i Pocket;
   `src/lib/index.ts` to martwy barrel (dwie funkcje, zero importów).
-  Nieaktualne komentarze: `program.ts:6-13`, `helix.ts:30`,
+  Nieaktualne komentarze: `helix.ts:30`,
   `standardHole.ts:17` ("startZ = materiał wyższy" — sprzeczne z
   `BL-37`), `Step2Geometry.tsx:20` ("three focused ones" — są cztery),
   komentarze "conventional" (`BL-44`).
@@ -691,12 +540,11 @@ wierszy — stan kodu z dnia review (`main` @ `b867d4f`).
 - **Problem:** `arcRadiusMismatches` (`gcodeTestUtils.ts`) używany tylko w
   testach Pocket. Brak testu przekrojowego po wszystkich operacjach:
   G0 w XY tylko na Safe Z, F > 0, program osiąga −totalDepth. Bez testów:
-  mostki z ułamkową/zerową liczbą, parsowanie Custom List (siedzi w
-  komponencie), logika `forcedLinear` w Kroku 4, synchronizacja pól po
+  logika `forcedLinear` w Kroku 4, synchronizacja pól po
   wczytaniu presetu, reguła "przechodząca walidacja ⇒ poprawny G-code".
 - **Proponowana zmiana:** test właściwościowy z ziarnem (jak fuzzowanie
   użyte w review): losowe poprawne parametry → niezmienniki per operacja.
-  `parseCustomPoints` przenieść do `lib/` i przetestować.
+  (Testy mostków z ułamkową liczbą i parsera Custom List — dodane w 0.19.1.)
 - **Nakład:** średni.
 
 ### `BL-63` — Wydajność podglądów

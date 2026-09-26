@@ -3,11 +3,11 @@ import type { Point2D, WizardParams } from '../types/wizard'
 import { fmt } from './format'
 import { resolvePoints } from './positioning'
 
-// `startZ` treats the material as taller than nominal Z0 by that amount —
-// the actual top of stock sits at +startZ, cutting still ends at the usual
-// -totalDepth. Above +startZ is open air, so a rapid straight there is
-// always safe (and at the default startZ=0 this is exactly the original
-// `G0 Z0`, i.e. no behavior change at all). Shared by every toolpath
+// `startZ` is the approach margin above the stock top (Z0): the rapid stops
+// there and the rest of the way down runs at feed, in case Z zeroing is a
+// little off. It's only guaranteed to be air for startZ >= 0 — a negative
+// Start Z is allowed (resuming a partly cut job) but flagged as a warning
+// in Steps 3/4 (feedsWarnings(), validation.ts). Shared by every toolpath
 // generator (helix.ts/standardHole.ts for Hole(s), outlineCircle.ts/
 // outlineRectangle.ts for Outline), which would otherwise each duplicate
 // this as a hardcoded format string.
@@ -15,18 +15,31 @@ export function rapidToTop(startZ: number): string {
   return `G0 Z${fmt(startZ)}`
 }
 
-export function buildHeader(params: WizardParams, dialect: Dialect): string[] {
+// BL-54: every arc uses incremental I/J, so the arc-center mode must be
+// pinned — Mach3's "IJ Mode" is configurable and in absolute mode would
+// swing every G2/G3 around the wrong center. G94 (units/min feed), G40 (no
+// cutter compensation) and G49 (no tool length offset) clear modal state a
+// previous job may have left. GRBL 1.1 and Mach3 accept all four; Marlin
+// implements none of them (its I/J are always incremental), so it keeps
+// only the shared line.
+export function modalPreamble(dialect: Dialect): string[] {
+  const base = 'G21 G90 G17'
+  return dialect === 'marlin' ? [base] : [base, 'G91.1 G94 G40 G49']
+}
+
+export function buildHeader(params: WizardParams, machine: MachineSettings): string[] {
   const { feeds, output } = params
-  const lines = ['G21 G90 G17']
+  const { dialect, spindleSpeed, dwellSeconds } = machine
+  const lines = modalPreamble(dialect)
 
   if (output.spindleStart) {
-    lines.push(`M3 S${fmt(output.spindleSpeed)}`)
-    if (output.dwellSeconds > 0) {
+    lines.push(`M3 S${fmt(spindleSpeed)}`)
+    if (dwellSeconds > 0) {
       // GRBL/Mach3 read G4 P as seconds; Marlin reads P as milliseconds
       // (its S word means seconds but isn't supported by GRBL/Mach3), so no
       // single P value is correct on all three — convert to keep the real
       // dwell time correct regardless of dialect.
-      const dwellValue = dialect === 'marlin' ? output.dwellSeconds * 1000 : output.dwellSeconds
+      const dwellValue = dialect === 'marlin' ? dwellSeconds * 1000 : dwellSeconds
       lines.push(`G4 P${fmt(dwellValue)}`)
     }
   }
@@ -99,7 +112,7 @@ export function assembleProgram(
     lines.push('; --- Application code ---')
   }
 
-  lines.push(...buildHeader(params, machine.dialect))
+  lines.push(...buildHeader(params, machine))
 
   for (const point of points) {
     // Not `lines.push(...toolpath)`: spreading a very long program (Pocket
