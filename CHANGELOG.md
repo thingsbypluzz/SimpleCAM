@@ -7,6 +7,37 @@ zgodne z [SemVer](https://semver.org/). Ten plik pozostaje głównym, czytelnym
 thingsbypluzz/SimpleCAM), ale to infrastruktura pod izolację pracy
 (branch/worktree per zadanie), nie zamiennik tego changeloga.
 
+## [0.20.7] — 2026-09-26
+
+### Dodano
+
+- **`BL-62`: test właściwościowy niezmienników G-code**
+  (`lib/gcodeInvariants.test.ts`) — to samo fuzzowanie, którym code
+  review znalazł większość błędów, na stałe w repo. Dla każdej operacji i
+  metody deterministyczny generator losuje zestawy parametrów; każdy, który
+  przechodzi walidację Generate, musi dać G-code, w którym: G0 w XY jest
+  tylko na Safe Z, każde F > 0, nie ma NaN, najniższe Z to dokładnie
+  −Total Depth, łuki G2/G3 są spójne, nie ma łuków, gdy Krok 4 pokazuje
+  G1, plik kończy się M30/M2, a środek freza nie wychodzi poza obszar
+  Surface ani za ścianę Pocket. Domyślnie ~390 zestawów w ~7 s;
+  `GCODE_FUZZ_SCALE=10` dla większego przebiegu. Sprawdzony celowo
+  wprowadzonymi błędami (oba złapane).
+- Walidacja Generate przeniesiona z `App.tsx` do jednej funkcji
+  `isWizardParamsValid()`, a logika blokady interpolacji w Kroku 4 do
+  `forcedLinearReason()` — test i UI korzystają z dokładnie tych samych
+  reguł.
+
+### Naprawiono
+
+- **Start Z na lub poniżej dna cięcia** (znalezione przez nowy test). Przy
+  dopuszczalnym ujemnym Start Z dojazd szybki mógł zejść poniżej dna
+  cięcia (np. Start Z −0.3 przy głębokości 0.2); w Hole(s)/Outline z
+  mostkami Start Z w paśmie mostków sprawiał, że przejścia z mostkami
+  schodziły od Start Z zamiast od górnej granicy pasma — program kończył
+  się 0.12 mm poniżej zadanej głębokości. Start Z musi teraz leżeć powyżej
+  dna cięcia (z mostkami: powyżej pasma mostków) — błąd w Kroku 3 i
+  blokada Generate; ujemny Start Z powyżej tej granicy dalej tylko ostrzega.
+
 ## [0.20.6] — 2026-09-26
 
 ### Zmieniono

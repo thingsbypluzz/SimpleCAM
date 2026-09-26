@@ -85,6 +85,24 @@ export function activeTotalDepth(params: WizardParams): number {
   }
 }
 
+// Lowest Start Z that still leaves something to cut from above: the cut
+// floor, or — with tabs on — the top of the tab band, since the tabbed
+// passes step down from there (a Start Z already inside the band made them
+// step down from Start Z instead and overshoot the floor, found by the
+// BL-62 invariant test). Holes and Outline are the only operations with tabs.
+export function minStartZ(params: WizardParams): number {
+  const floor = -activeTotalDepth(params)
+  const tabs = params.operation === 'holes' ? params.geometry : params.operation === 'outline' ? params.outline : null
+  return tabs?.tabsEnabled ? floor + tabs.tabHeight : floor
+}
+
+// A negative Start Z is allowed (resuming a partly cut job — see
+// feedsWarnings()), but not at or below minStartZ(): the rapid down to Start
+// Z would then already be deeper than what's left to cut.
+export function isStartZAboveCut(params: WizardParams): boolean {
+  return params.feeds.startZ > minStartZ(params)
+}
+
 // BL-55: the depth loops stop at MAX_PASSES as a freeze guard; a real job
 // needing more than that would silently stop short of the full depth.
 // Engines descend from Start Z, so a positive Start Z adds to the distance.
@@ -507,4 +525,51 @@ export function machineFitWarnings(params: WizardParams, machine: MachineSetting
     )
   }
   return warnings
+}
+
+// Everything that gates Generate (and Edit Mode's live-save) for the active
+// operation, in one place — App.tsx and the cross-operation invariant test
+// (gcodeInvariants.test.ts) must apply exactly the same rule, since that
+// test's promise is "anything that passes validation produces sane G-code".
+export function isWizardParamsValid(params: WizardParams): boolean {
+  // Step 3 (feeds/Z) validity is shared by every operation.
+  const areFeedsValid =
+    isStepdownValid(params.feeds) &&
+    isStartZValid(params.feeds) &&
+    isSafeZValid(params.feeds) &&
+    isFeedrateXYValid(params.feeds) &&
+    isPlungeRateValid(params.feeds) &&
+    isStartZAboveCut(params) &&
+    isPassCountWithinLimit(params)
+  return (
+    areFeedsValid &&
+    (params.operation === 'outline'
+      ? isOutlineToolDiameterValid(params.outline) &&
+        isOutlineSizeValid(params.outline) &&
+        isOutlineTabHeightValid(params.outline) &&
+        isOutlineTabWidthValid(params.outline) &&
+        isOutlineTabCountValid(params.outline)
+      : params.operation === 'surface'
+        ? isSurfaceToolDiameterValid(params.surface) &&
+          isSurfaceSizeValid(params.surface) &&
+          isSurfaceStepoverValid(params.surface) &&
+          isSurfaceLineCountWithinLimit(params.surface) &&
+          isSurfaceHelixRadiusValid(params.surface)
+        : params.operation === 'pocket'
+          ? isPocketToolDiameterValid(params.pocket) &&
+            isPocketSizeValid(params.pocket) &&
+            isPocketStepoverValid(params.pocket) &&
+            isPocketHelixRadiusValid(params.pocket) &&
+            isPocketOptimalLoadValid(params.pocket) &&
+            isPocketRampAngleValid(params.pocket) &&
+            isPocketLinkingFeedValid(params.pocket) &&
+            isPocketToolpathWithinLimits(params)
+          : isToolDiameterValid(params.geometry) &&
+            isHolesSizeValid(params.geometry) &&
+            isCircleHoleCountValid(params.geometry) &&
+            isCustomPointsValid(params.geometry) &&
+            isTabHeightValid(params.geometry) &&
+            isTabWidthValid(params.geometry) &&
+            isTabCountValid(params.geometry))
+  )
 }

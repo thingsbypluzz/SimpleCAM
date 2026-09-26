@@ -1,0 +1,17 @@
+import type { WizardParams } from '../types/wizard'
+
+// Why Step 4's G2/G3 vs G1 toggle is locked on G1 for the active operation,
+// or null when the user's choice (output.interpolation) applies. Rectangle
+// Outline is always straight-edge G1, independent of tabs — no arc geometry
+// at all. Tabs force G1 for the whole program (Hole(s), Circle Outline).
+// Surface and Pocket have no tabs (BL-51: they used to read Hole(s)' tab
+// flag, locking the toggle on "G1" while the file still had arcs). Pure so
+// the invariant test can check the engines agree with what the UI shows.
+export function forcedLinearReason(params: WizardParams): 'rectOutline' | 'tabs' | null {
+  if (params.operation === 'outline') {
+    if (params.outline.shape !== 'circle') return 'rectOutline'
+    return params.outline.tabsEnabled ? 'tabs' : null
+  }
+  if (params.operation === 'holes') return params.geometry.tabsEnabled ? 'tabs' : null
+  return null
+}

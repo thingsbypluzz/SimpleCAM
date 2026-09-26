@@ -244,9 +244,6 @@ Waga z review w nawiasie kwadratowym.
   duplikują geometrię silnika; łańcuchy ternary po `operation`** —
   docelowo jedna lista ruchów (jak Adaptive) i rejestr `OPERATION_META`;
   przy okazji martwy `lib/index.ts` i nieaktualne komentarze.
-- **`BL-62`** *(Otwarty)* 🟠 **[Low]** — **Luki w testach** — brak testów
-  przekrojowych (G0 na Safe Z, F > 0, osiągnięcie −totalDepth, łuki G2/G3
-  we wszystkich operacjach), logiki Kroku 4.
 - **`BL-63`** *(Otwarty)* 🟠 **[Low]** — **Wydajność podglądów** — brak
   debounce, Adaptive przy 1% i cały G-code w jednym `<pre>`, podgląd
   1000 otworów przy literówce, domyślna zakładka 3D, `WebGLRenderer` bez
@@ -327,17 +324,6 @@ wierszy — stan kodu z dnia review (`main` @ `b867d4f`).
   (walidacja/generate/footprint/slug/forcedLinear). Usunąć `lib/index.ts`,
   poprawić nieaktualne komentarze.
 - **Nakład:** trudny (lista ruchów) / łatwy (porządki).
-
-### `BL-62` — Luki w testach
-- **Problem:** `arcRadiusMismatches` (`gcodeTestUtils.ts`) używany tylko w
-  testach Pocket. Brak testu przekrojowego po wszystkich operacjach:
-  G0 w XY tylko na Safe Z, F > 0, program osiąga −totalDepth. Bez testów:
-  logika `forcedLinear` w Kroku 4, synchronizacja pól po
-  wczytaniu presetu, reguła "przechodząca walidacja ⇒ poprawny G-code".
-- **Proponowana zmiana:** test właściwościowy z ziarnem (jak fuzzowanie
-  użyte w review): losowe poprawne parametry → niezmienniki per operacja.
-  (Testy mostków z ułamkową liczbą i parsera Custom List — dodane w 0.19.1.)
-- **Nakład:** średni.
 
 ### `BL-63` — Wydajność podglądów
 - **Problem:** każde naciśnięcie klawisza przebudowuje całą scenę 3D i
