@@ -1,12 +1,13 @@
 {
   "name": "simplecam",
   "private": true,
-  "version": "0.20.3",
+  "version": "0.20.4",
   "type": "module",
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
     "deploy": "npm run build && node --env-file=.env scripts/deploy.mjs",
+    "deploy:check": "node --env-file=.env scripts/deploy.mjs --check",
     "lint": "oxlint",
     "preview": "vite preview",
     "test": "vitest"

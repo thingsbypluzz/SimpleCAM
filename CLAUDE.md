@@ -1190,21 +1190,38 @@ Aplikacja jest wdrażana ręcznie (nie CI/CD) na
 2.4.68, SSL aktywny). `npm run deploy` buduje (`vite build`) i wysyła
 `dist/` przez FTP (`scripts/deploy.mjs`, biblioteka `basic-ftp`) —
 domyślnie explicit FTPS (`AUTH TLS`, port 21, `secure: true`);
-`FTP_SECURE=false` w `.env` jako awaryjny fallback do plain FTP. Każdy
-deploy usuwa tylko zdalny `assets/` (zahashowane nazwy plików inaczej
-kumulowałyby się bezterminowo) i nadpisuje własne pliki po nazwie
-(`index.html`, `.htaccess`, `robots.txt`, `favicon.svg`) —
-**świadomie NIE** pełny `clearWorkingDir()`: root subdomeny zawiera też
-pliki zarządzane przez cPanel (`cgi-bin/`, `php.ini`), których pełne
-wymiatanie by skasowało. Konto FTP (`claude@onlypaths.pluzz.pl`) ma
+`FTP_SECURE=false` w `.env` jako awaryjny fallback do plain FTP.
+Certyfikat FTPS jest **zawsze weryfikowany** (brak opcji wyłączenia —
+wyłączona weryfikacja wystawiała hasło FTP na przechwycenie, a
+podstawiony serwer mógłby podmienić JS dla użytkowników). Dwa warunki,
+żeby weryfikacja przechodziła na tym hostingu: `FTP_HOST=v101.vh.net.pl`
+(certyfikat serwera jest wystawiony na `*.v101.vh.net.pl`; nazwa z
+cPanelu `ftp.vh11566.vh.net.pl` to ten sam serwer, ale jej nie ma w
+certyfikacie) oraz dołożony łańcuch Let's Encrypt — serwer wysyła tylko
+certyfikat końcowy, więc pośredni YR1 i cross-sign ISRG Root YR ↔ X1
+leżą w repo (`scripts/certs/lets-encrypt-yr1-chain.pem`, ważne do
+2028/2032) i są ufane obok wbudowanych rootów Node; `FTP_CA_FILE`
+nadpisuje ten plik, gdy wystawca się zmieni (przy błędzie weryfikacji
+skrypt podpowiada oba warunki). `npm run deploy:check` — łączy się,
+weryfikuje certyfikat, loguje i listuje katalog zdalny, niczego nie
+wysyła. Kolejność wysyłki: najpierw nowe pliki do `assets/` (obok
+starych), potem pozostałe pliki roota (`.htaccess`, `robots.txt`,
+`favicon.svg`), **`index.html` na końcu**, a dopiero potem usunięcie z
+`assets/` plików, których nowy build już nie zawiera — przerwany albo
+nieudany upload zostawia poprzednią wersję w pełni działającą (żywy
+`index.html` nigdy nie wskazuje na brakujące paczki). Dotyka wyłącznie
+plików z `dist/` — **świadomie NIE** pełny `clearWorkingDir()`: root
+subdomeny zawiera też pliki zarządzane przez cPanel (`cgi-bin/`,
+`php.ini`), których pełne wymiatanie by skasowało. Konto FTP (`claude@onlypaths.pluzz.pl`) ma
 domyślnie katalog domowy ustawiony na podfolder `claude/` wewnątrz
 docroota — trzeba to poprawić w cPanelu, inaczej appka wychodzi pod
 `onlypaths.pluzz.pl/claude/` zamiast pod rootem. Dane logowania w
 lokalnym `.env` (gitignored, szablon w `.env.example`) — czytane przez
 natywne `node --env-file=.env` (Node ≥20.6, brak potrzeby paczki
 `dotenv`). `public/robots.txt` (`Disallow: /`) blokuje indeksowanie na
-czas testów; `public/.htaccess` ustawia długi cache dla zahashowanych
-assetów i `no-cache` dla `index.html`. Brak GitHub Actions/CI mimo że
+czas testów; `public/.htaccess` ustawia roczny, niezmienny cache wyłącznie
+dla `/assets/` (zahashowane nazwy), dobę dla `favicon.svg` (stała nazwa)
+i `no-cache` dla `index.html`. Brak GitHub Actions/CI mimo że
 repo jest na GitHubie — `BL-4` w `ideas.md`, świadomie poza zakresem do
 wyjścia z fazy testów. Slash command `/deploy`
 (`.claude/commands/deploy.md`) odpala `npm run deploy` bez dodatkowej

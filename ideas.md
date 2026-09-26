@@ -255,9 +255,6 @@ pełny opis (lokalizacja w kodzie, scenariusz błędu, proponowana zmiana)
 w sekcji **"Szczegóły code review (2026-09-26)"** na końcu tego pliku.
 Waga z review w nawiasie kwadratowym.
 
-- **`BL-58`** *(Otwarty)* 🟢 **[Low]** — **Skrypt deploy: strona jest
-  zepsuta w trakcie wysyłki (i po nieudanej); podpowiedź wyłączenia
-  weryfikacji certyfikatu; roczny cache dla `favicon.svg`.**
 - **`BL-61`** *(Otwarty)* 🔴 **[Low, kosztowne w czasie]** — **Podglądy
   duplikują geometrię silnika; łańcuchy ternary po `operation`** —
   docelowo jedna lista ruchów (jak Adaptive) i rejestr `OPERATION_META`;
@@ -318,22 +315,6 @@ fuzzowaniem ~2 560 losowych, przechodzących walidację zestawów parametrów
 dla każdej operacji/metody pod kątem: NaN, F ≤ 0, niezgodność promienia
 G2/G3, G0 w XY poniżej Safe Z, osiągnięcie pełnej głębokości. Numery
 wierszy — stan kodu z dnia review (`main` @ `b867d4f`).
-
-### `BL-58` — Skrypt deploy
-- **Lokalizacja:** `scripts/deploy.mjs:55-59`; `.env.example`
-  (`FTP_REJECT_UNAUTHORIZED`); `public/.htaccess`.
-- **Problem:** `assets/` usuwane przed wysłaniem nowego buildu — w trakcie
-  (i na stałe przy nieudanym uploadzie) żywy `index.html` wskazuje na
-  usunięte paczki. `.env.example` podpowiada
-  `FTP_REJECT_UNAUTHORIZED=false` na błędy certyfikatu — hasło FTP
-  wystawione na przechwycenie, a podstawiony serwer mógłby wstrzyknąć JS
-  użytkownikom. Reguła `\.(js|css|svg…)` w `.htaccess` daje
-  niezahashowanemu `favicon.svg` roczny, niezmienny cache.
-- **Proponowana zmiana:** najpierw nowe assety, potem `index.html`, na
-  końcu usunięcie starych plików spoza nowego buildu; zamiast wyłączania
-  weryfikacji — przypięcie CA/certyfikatu hosta; niezmienny cache tylko
-  dla `assets/`.
-- **Nakład:** łatwy.
 
 ### `BL-61` — Duplikacja geometrii w podglądach, ternary po operacji
 - **Lokalizacja:** `preview3d/buildScene.ts:135-579` (`helixPoints3D`,

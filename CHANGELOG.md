@@ -7,6 +7,34 @@ zgodne z [SemVer](https://semver.org/). Ten plik pozostaje głównym, czytelnym
 thingsbypluzz/SimpleCAM), ale to infrastruktura pod izolację pracy
 (branch/worktree per zadanie), nie zamiennik tego changeloga.
 
+## [0.20.4] — 2026-09-26
+
+Szósta grupa poprawek z code review (2026-09-26): skrypt deploy. Sama
+appka bez zmian.
+
+### Naprawiono
+
+- **`BL-58`: strona była zepsuta w trakcie wysyłki (i na stałe po
+  nieudanej).** Skrypt usuwał zdalny `assets/` przed wysłaniem nowego
+  buildu, więc żywy `index.html` wskazywał na nieistniejące paczki.
+  Teraz: nowe assety obok starych, pozostałe pliki, `index.html` na
+  końcu, dopiero potem usunięcie assetów, których nowy build nie zawiera
+  — sprawdzone na lokalnym serwerze FTP (pliki cPanelu nietknięte).
+- **Weryfikacja certyfikatu FTPS zawsze włączona.** `.env.example`
+  podpowiadał `FTP_REJECT_UNAUTHORIZED=false` przy błędzie certyfikatu —
+  hasło FTP do przechwycenia, a podstawiony serwer mógłby wstrzyknąć JS
+  użytkownikom. Przyczyną błędu były dwie rzeczy: certyfikat serwera jest
+  wystawiony na `*.v101.vh.net.pl` (nie na `ftp.vh11566.vh.net.pl`, choć
+  to ten sam serwer), a serwer nie wysyła certyfikatu pośredniego Let's
+  Encrypt. Rozwiązanie: `FTP_HOST=v101.vh.net.pl` i brakujący łańcuch w
+  repo (`scripts/certs/lets-encrypt-yr1-chain.pem`); opcja
+  `FTP_REJECT_UNAUTHORIZED` jest ignorowana z ostrzeżeniem, nowa
+  `FTP_CA_FILE` na wypadek zmiany wystawcy. Nowe `npm run deploy:check`
+  (połączenie + logowanie + listing, bez wysyłki).
+- **`favicon.svg` nie dostaje już rocznego, niezmiennego cache'u** —
+  `.htaccess` ustawia go tylko dla `/assets/` (zahashowane nazwy),
+  favicon dostaje dobę.
+
 ## [0.20.3] — 2026-09-26
 
 Piąta grupa poprawek z code review (2026-09-26): bezpieczeństwo ruchu w
