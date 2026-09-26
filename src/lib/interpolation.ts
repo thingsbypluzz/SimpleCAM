@@ -1,4 +1,5 @@
 import type { WizardParams } from '../types/wizard'
+import { OPERATION_RULES } from './validation'
 
 // Why Step 4's G2/G3 vs G1 toggle is locked on G1 for the active operation,
 // or null when the user's choice (output.interpolation) applies. Rectangle
@@ -8,10 +9,6 @@ import type { WizardParams } from '../types/wizard'
 // flag, locking the toggle on "G1" while the file still had arcs). Pure so
 // the invariant test can check the engines agree with what the UI shows.
 export function forcedLinearReason(params: WizardParams): 'rectOutline' | 'tabs' | null {
-  if (params.operation === 'outline') {
-    if (params.outline.shape !== 'circle') return 'rectOutline'
-    return params.outline.tabsEnabled ? 'tabs' : null
-  }
-  if (params.operation === 'holes') return params.geometry.tabsEnabled ? 'tabs' : null
-  return null
+  if (params.operation === 'outline' && params.outline.shape !== 'circle') return 'rectOutline'
+  return OPERATION_RULES[params.operation].tabs(params)?.tabsEnabled ? 'tabs' : null
 }

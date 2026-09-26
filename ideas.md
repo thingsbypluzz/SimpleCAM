@@ -240,10 +240,11 @@ pełny opis (lokalizacja w kodzie, scenariusz błędu, proponowana zmiana)
 w sekcji **"Szczegóły code review (2026-09-26)"** na końcu tego pliku.
 Waga z review w nawiasie kwadratowym.
 
-- **`BL-61`** *(Otwarty)* 🔴 **[Low, kosztowne w czasie]** — **Podglądy
-  duplikują geometrię silnika; łańcuchy ternary po `operation`** —
-  docelowo jedna lista ruchów (jak Adaptive) i rejestr `OPERATION_META`;
-  przy okazji martwy `lib/index.ts` i nieaktualne komentarze.
+- **`BL-61`** *(W trakcie)* 🔴 **[Low, kosztowne w czasie]** — **Podglądy
+  duplikują geometrię silnika** — docelowo jedna lista ruchów (jak
+  Adaptive) dla G-code i obu podglądów, po jednej operacji na raz
+  (zaczynając od Surface). Etapy 1–2 (porządki, rejestry
+  `OPERATION_META`/`OPERATION_RULES`, `TextToggle`) zrobione w 0.20.8.
 - **`BL-63`** *(Otwarty)* 🟠 **[Low]** — **Wydajność podglądów** — brak
   debounce, Adaptive przy 1% i cały G-code w jednym `<pre>`, podgląd
   1000 otworów przy literówce, domyślna zakładka 3D, `WebGLRenderer` bez
@@ -323,7 +324,13 @@ wierszy — stan kodu z dnia review (`main` @ `b867d4f`).
   formaterem G-code i jednym adapterem podglądu; rejestr `OPERATION_META`
   (walidacja/generate/footprint/slug/forcedLinear). Usunąć `lib/index.ts`,
   poprawić nieaktualne komentarze.
-- **Nakład:** trudny (lista ruchów) / łatwy (porządki).
+- **Stan:** etapy 1–2 zrobione w 0.20.8 — rejestry `OPERATION_META`
+  (`config/operationMeta.ts`) i `OPERATION_RULES` (`lib/validation.ts`)
+  zamiast łańcuchów ternary, `TextToggle` zamiast skopiowanych
+  przełączników, usunięty `lib/index.ts`, poprawione komentarze. Zostaje
+  etap 3: lista ruchów, po jednej operacji, każda osobnym commitem z
+  wizualną weryfikacją podglądów.
+- **Nakład:** trudny (lista ruchów).
 
 ### `BL-63` — Wydajność podglądów
 - **Problem:** każde naciśnięcie klawisza przebudowuje całą scenę 3D i

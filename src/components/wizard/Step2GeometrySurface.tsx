@@ -1,4 +1,4 @@
-import type { RasterDirection, WizardParams, ZTransitionMode } from '../../types/wizard'
+import type { WizardParams } from '../../types/wizard'
 import type { MachineSettings } from '../../types/machine'
 import {
   isSurfaceHelixRadiusValid,
@@ -14,6 +14,8 @@ import type { ToolDiameterOption } from '../../types/toolDiameters'
 import { FieldRow, inputClass } from './FieldRow'
 import { NumberInput } from './NumberInput'
 import { SurfaceMethodPicker } from './SurfaceMethodPicker'
+import { TextToggle } from './TextToggle'
+import { RASTER_DIRECTION_OPTIONS, Z_TRANSITION_MODE_OPTIONS } from './toggleOptions'
 import { useNumberField } from './useNumberField'
 
 interface Step2GeometrySurfaceProps {
@@ -21,62 +23,6 @@ interface Step2GeometrySurfaceProps {
   onChange: (patch: Partial<WizardParams>) => void
   machine: MachineSettings
   toolDiameters: ToolDiameterOption[]
-}
-
-// Same compact toggle style as OffsetModePicker.tsx/MethodPicker.tsx — kept
-// inline (not their own files) since each is a plain 2-option text toggle
-// with no icons or shared list to register (unlike SurfaceMethodPicker,
-// which reads from the SURFACE_METHOD_LIST registry).
-function RasterDirectionToggle({ value, onChange }: { value: RasterDirection; onChange: (v: RasterDirection) => void }) {
-  const options: { value: RasterDirection; label: string }[] = [
-    { value: 'x', label: 'X' },
-    { value: 'y', label: 'Y' },
-  ]
-  return (
-    <div className="flex gap-2">
-      {options.map((opt) => (
-        <button
-          key={opt.value}
-          type="button"
-          onClick={() => onChange(opt.value)}
-          className={[
-            'rounded-md border px-2.5 py-1 text-xs font-medium transition',
-            value === opt.value
-              ? 'border-selected-border bg-selected-bg text-selected-fg shadow-[var(--glow-selected)]'
-              : 'border-border text-muted hover:border-field-border',
-          ].join(' ')}
-        >
-          {opt.label}
-        </button>
-      ))}
-    </div>
-  )
-}
-
-function ZTransitionModeToggle({ value, onChange }: { value: ZTransitionMode; onChange: (v: ZTransitionMode) => void }) {
-  const options: { value: ZTransitionMode; label: string }[] = [
-    { value: 'plunge', label: 'Plunge' },
-    { value: 'helix', label: 'Helix' },
-  ]
-  return (
-    <div className="flex gap-2">
-      {options.map((opt) => (
-        <button
-          key={opt.value}
-          type="button"
-          onClick={() => onChange(opt.value)}
-          className={[
-            'rounded-md border px-2.5 py-1 text-xs font-medium transition',
-            value === opt.value
-              ? 'border-selected-border bg-selected-bg text-selected-fg shadow-[var(--glow-selected)]'
-              : 'border-border text-muted hover:border-field-border',
-          ].join(' ')}
-        >
-          {opt.label}
-        </button>
-      ))}
-    </div>
-  )
 }
 
 // Field order: Tool Diameter -> Depth to Remove -> Width/Height -> Method ->
@@ -149,7 +95,7 @@ export function Step2GeometrySurface({ params, onChange, machine, toolDiameters 
         </div>
         <div className="flex min-w-0 flex-1 flex-col gap-1">
           <span className="text-sm font-medium text-value">Raster Direction</span>
-          <RasterDirectionToggle value={surface.rasterDirection} onChange={(v) => updateSurface({ rasterDirection: v })} />
+          <TextToggle options={RASTER_DIRECTION_OPTIONS} value={surface.rasterDirection} onChange={(v) => updateSurface({ rasterDirection: v })} />
         </div>
       </div>
 
@@ -181,7 +127,7 @@ export function Step2GeometrySurface({ params, onChange, machine, toolDiameters 
         <div className="flex gap-4">
           <div className="flex min-w-0 flex-1 flex-col gap-1">
             <span className="text-sm font-medium text-value">Z-Transition Mode</span>
-            <ZTransitionModeToggle value={surface.zTransitionMode} onChange={(v) => updateSurface({ zTransitionMode: v })} />
+            <TextToggle options={Z_TRANSITION_MODE_OPTIONS} value={surface.zTransitionMode} onChange={(v) => updateSurface({ zTransitionMode: v })} />
           </div>
           {surface.zTransitionMode === 'helix' && (
             <div className="min-w-0 flex-1">

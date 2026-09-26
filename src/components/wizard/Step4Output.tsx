@@ -5,6 +5,8 @@ import { forcedLinearReason } from '../../lib/interpolation'
 import { presetLabel } from '../../lib/presetLabel'
 import { PRESET_SLOT_IDS, type PresetSlotId } from '../../lib/storage'
 import { Checkbox } from './Checkbox'
+import { TextToggle } from './TextToggle'
+import { INTERPOLATION_OPTIONS } from './toggleOptions'
 
 interface Step4OutputProps {
   params: WizardParams
@@ -84,27 +86,12 @@ export function Step4Output({
 
         <div className="flex items-center gap-2 pt-2 text-sm text-value">
           <span>Circle interpolation:</span>
-          <div className="flex gap-2">
-            {(['arc', 'linear'] as const).map((mode) => {
-              const isSelected = forcedLinear ? mode === 'linear' : output.interpolation === mode
-              return (
-                <button
-                  key={mode}
-                  type="button"
-                  disabled={forcedLinear}
-                  onClick={() => updateOutput({ interpolation: mode })}
-                  className={[
-                    'rounded-md border px-2.5 py-1 text-xs font-medium transition disabled:cursor-not-allowed disabled:opacity-50',
-                    isSelected
-                      ? 'border-selected-border bg-selected-bg text-selected-fg shadow-[var(--glow-selected)]'
-                      : 'border-border text-muted hover:border-field-border',
-                  ].join(' ')}
-                >
-                  {mode === 'arc' ? 'G2/G3 (arcs)' : 'G1 (segments)'}
-                </button>
-              )
-            })}
-          </div>
+          <TextToggle
+            options={INTERPOLATION_OPTIONS}
+            value={forcedLinear ? 'linear' : output.interpolation}
+            disabled={forcedLinear}
+            onChange={(mode) => updateOutput({ interpolation: mode })}
+          />
         </div>
         {forcedLinear && (
           <p className="text-xs text-muted">

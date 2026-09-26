@@ -1,4 +1,4 @@
-import type { CutDirection, RasterDirection, WizardParams, ZTransitionMode } from '../../types/wizard'
+import type { WizardParams } from '../../types/wizard'
 import type { MachineSettings } from '../../types/machine'
 import {
   isPocketHelixRadiusSmall,
@@ -31,6 +31,8 @@ import type { ToolDiameterOption } from '../../types/toolDiameters'
 import { FieldRow, inputClass } from './FieldRow'
 import { NumberInput } from './NumberInput'
 import { PocketMethodPicker } from './PocketMethodPicker'
+import { TextToggle } from './TextToggle'
+import { CUT_DIRECTION_OPTIONS, RASTER_DIRECTION_OPTIONS, Z_TRANSITION_MODE_OPTIONS } from './toggleOptions'
 import { useNumberField } from './useNumberField'
 
 interface Step2GeometryPocketProps {
@@ -38,98 +40,6 @@ interface Step2GeometryPocketProps {
   onChange: (patch: Partial<WizardParams>) => void
   machine: MachineSettings
   toolDiameters: ToolDiameterOption[]
-}
-
-// Same compact toggle style as Step2GeometrySurface.tsx's own copies — kept
-// inline there too, no shared file to import from.
-function RasterDirectionToggle({ value, onChange }: { value: RasterDirection; onChange: (v: RasterDirection) => void }) {
-  const options: { value: RasterDirection; label: string }[] = [
-    { value: 'x', label: 'X' },
-    { value: 'y', label: 'Y' },
-  ]
-  return (
-    <div className="flex gap-2">
-      {options.map((opt) => (
-        <button
-          key={opt.value}
-          type="button"
-          onClick={() => onChange(opt.value)}
-          className={[
-            'rounded-md border px-2.5 py-1 text-xs font-medium transition',
-            value === opt.value
-              ? 'border-selected-border bg-selected-bg text-selected-fg shadow-[var(--glow-selected)]'
-              : 'border-border text-muted hover:border-field-border',
-          ].join(' ')}
-        >
-          {opt.label}
-        </button>
-      ))}
-    </div>
-  )
-}
-
-function ZTransitionModeToggle({
-  value,
-  onChange,
-  disabled = false,
-}: {
-  value: ZTransitionMode
-  onChange: (v: ZTransitionMode) => void
-  disabled?: boolean
-}) {
-  const options: { value: ZTransitionMode; label: string }[] = [
-    { value: 'plunge', label: 'Plunge' },
-    { value: 'helix', label: 'Helix' },
-  ]
-  return (
-    <div className="flex gap-2">
-      {options.map((opt) => (
-        <button
-          key={opt.value}
-          type="button"
-          disabled={disabled}
-          onClick={() => onChange(opt.value)}
-          className={[
-            'rounded-md border px-2.5 py-1 text-xs font-medium transition disabled:cursor-not-allowed disabled:opacity-60',
-            value === opt.value
-              ? 'border-selected-border bg-selected-bg text-selected-fg shadow-[var(--glow-selected)]'
-              : 'border-border text-muted hover:border-field-border',
-          ].join(' ')}
-        >
-          {opt.label}
-        </button>
-      ))}
-    </div>
-  )
-}
-
-function CutDirectionToggle({ value, onChange }: { value: CutDirection; onChange: (v: CutDirection) => void }) {
-  // "Conv." keeps Method + Direction on one line next to three method
-  // buttons; the full word is in the tooltip.
-  const options: { value: CutDirection; label: string; title: string }[] = [
-    { value: 'conventional', label: 'Conv.', title: 'Conventional milling (clockwise inside the pocket under M3)' },
-    { value: 'climb', label: 'Climb', title: 'Climb milling (counter-clockwise inside the pocket under M3)' },
-  ]
-  return (
-    <div className="flex gap-2">
-      {options.map((opt) => (
-        <button
-          key={opt.value}
-          type="button"
-          title={opt.title}
-          onClick={() => onChange(opt.value)}
-          className={[
-            'rounded-md border px-2.5 py-1 text-xs font-medium transition',
-            value === opt.value
-              ? 'border-selected-border bg-selected-bg text-selected-fg shadow-[var(--glow-selected)]'
-              : 'border-border text-muted hover:border-field-border',
-          ].join(' ')}
-        >
-          {opt.label}
-        </button>
-      ))}
-    </div>
-  )
 }
 
 const round2 = (n: number) => Math.round(n * 100) / 100
@@ -227,13 +137,13 @@ export function Step2GeometryPocket({ params, onChange, machine, toolDiameters }
         {pocket.method === 'raster' && (
           <div className="flex min-w-0 flex-col gap-1">
             <span className="text-sm font-medium text-value">Raster Direction</span>
-            <RasterDirectionToggle value={pocket.rasterDirection} onChange={(v) => updatePocket({ rasterDirection: v })} />
+            <TextToggle options={RASTER_DIRECTION_OPTIONS} value={pocket.rasterDirection} onChange={(v) => updatePocket({ rasterDirection: v })} />
           </div>
         )}
         {isAdaptive && (
           <div className="flex min-w-0 flex-col gap-1">
             <span className="text-sm font-medium text-value">Direction</span>
-            <CutDirectionToggle value={pocket.cutDirection} onChange={(v) => updatePocket({ cutDirection: v })} />
+            <TextToggle options={CUT_DIRECTION_OPTIONS} value={pocket.cutDirection} onChange={(v) => updatePocket({ cutDirection: v })} />
           </div>
         )}
       </div>
@@ -382,7 +292,8 @@ export function Step2GeometryPocket({ params, onChange, machine, toolDiameters }
         <div className="flex gap-4">
           <div className="flex min-w-0 flex-1 flex-col gap-1">
             <span className="text-sm font-medium text-value">Z-Transition Mode</span>
-            <ZTransitionModeToggle
+            <TextToggle
+              options={Z_TRANSITION_MODE_OPTIONS}
               value={zMode}
               disabled={isAdaptive}
               onChange={(v) => updatePocket({ zTransitionMode: v })}
