@@ -1,9 +1,25 @@
 import {
   DEFAULT_WIZARD_PARAMS,
+  type CutDirection,
   type GeometryParams,
+  type InterpolationMode,
   type MethodType,
+  type OffsetMode,
   type OperationType,
+  type OutlineMethod,
+  type OutlineParams,
+  type OutlineShape,
+  type OutputOptions,
+  type PocketMethodType,
+  type PocketParams,
+  type PocketShape,
+  type PositioningMode,
+  type RasterDirection,
+  type SurfaceMethodType,
+  type SurfaceParams,
+  type SurfaceShape,
   type WizardParams,
+  type ZTransitionMode,
 } from '../types/wizard'
 import { formatCustomPoints } from './customPoints'
 
@@ -54,8 +70,9 @@ function readStorage(): StorageShape {
   try {
     const raw = localStorage.getItem(STORAGE_KEY)
     if (!raw) return { version: SCHEMA_VERSION, slots: {} }
-    const parsed = JSON.parse(raw) as Partial<StorageShape>
-    return { version: SCHEMA_VERSION, slots: parsed.slots ?? {} }
+    const parsed = JSON.parse(raw) as Partial<StorageShape> | null
+    const slots = parsed?.slots
+    return { version: SCHEMA_VERSION, slots: typeof slots === 'object' && slots !== null ? slots : {} }
   } catch (err) {
     console.warn('OnlyPaths: could not read saved state from localStorage', err)
     return { version: SCHEMA_VERSION, slots: {} }
@@ -70,30 +87,125 @@ function writeStorage(storage: StorageShape): void {
   }
 }
 
-// Snapshots saved before customPointsText existed (BL-48) carry only the
-// parsed points — rebuild their text from those instead of letting the
-// default '10,10' shadow the preset's real list.
-function mergeGeometry(saved: Partial<GeometryParams> | undefined): GeometryParams {
-  const merged = { ...DEFAULT_WIZARD_PARAMS.geometry, ...saved }
-  if (saved?.customPointsText === undefined && Array.isArray(saved?.customPoints)) {
-    merged.customPointsText = formatCustomPoints(saved.customPoints)
+// BL-57: every field of a stored snapshot is checked, not just
+// `operation`/`method` — a renamed enum value or a hand-edited/corrupted
+// save used to flow straight into the engine and render code (e.g.
+// resolvePoints() returning undefined for an unknown positioning mode), and
+// since slot "0" is restored on every startup, one bad value meant a blank
+// screen on every reload. A field whose stored value has the wrong type or
+// isn't a known enum value falls back to its default; unknown extra keys
+// are dropped.
+type FieldGuard = (value: unknown) => boolean
+
+const oneOf =
+  <T extends string>(values: readonly T[]): FieldGuard =>
+  (value) =>
+    typeof value === 'string' && (values as readonly string[]).includes(value)
+
+const isFiniteNumber: FieldGuard = (value) => typeof value === 'number' && Number.isFinite(value)
+
+function isPointList(value: unknown): boolean {
+  return (
+    Array.isArray(value) &&
+    value.every((p) => typeof p === 'object' && p !== null && isFiniteNumber(p.x) && isFiniteNumber(p.y))
+  )
+}
+
+// Fields without an explicit guard must match their default's kind:
+// finite number, boolean or string.
+function defaultGuard(defaultValue: unknown): FieldGuard {
+  if (typeof defaultValue === 'number') return isFiniteNumber
+  return (value) => typeof value === typeof defaultValue
+}
+
+function mergeSection<T extends object>(
+  defaults: T,
+  saved: unknown,
+  guards: Partial<Record<keyof T, FieldGuard>> = {},
+): T {
+  const merged = { ...defaults }
+  if (typeof saved !== 'object' || saved === null) return merged
+  const source = saved as Record<string, unknown>
+  for (const key of Object.keys(defaults) as (keyof T & string)[]) {
+    if (!(key in source)) continue
+    const guard = guards[key] ?? defaultGuard(defaults[key])
+    if (guard(source[key])) merged[key] = source[key] as T[typeof key]
   }
   return merged
 }
 
-// Shallow, per-section merge with defaults — a snapshot saved by an older
+const GEOMETRY_GUARDS: Partial<Record<keyof GeometryParams, FieldGuard>> = {
+  positioning: oneOf<PositioningMode>(['single', 'grid', 'gridCentered', 'circle', 'custom']),
+  customPoints: isPointList,
+}
+
+const OUTLINE_GUARDS: Partial<Record<keyof OutlineParams, FieldGuard>> = {
+  shape: oneOf<OutlineShape>(['rectCornered', 'rectCentered', 'circle']),
+  offsetMode: oneOf<OffsetMode>(['inside', 'outside', 'onLine']),
+  // Shape/method mismatches (e.g. ramp on a circle) are already handled by
+  // the Standard fallback in activeOutlineMethodMeta()/generateOutline().
+  method: oneOf<OutlineMethod>(['ramp', 'standard', 'helix']),
+}
+
+const RASTER_DIRECTIONS = oneOf<RasterDirection>(['x', 'y'])
+const Z_TRANSITION_MODES = oneOf<ZTransitionMode>(['plunge', 'helix'])
+
+const SURFACE_GUARDS: Partial<Record<keyof SurfaceParams, FieldGuard>> = {
+  shape: oneOf<SurfaceShape>(['rectCornered', 'rectCentered']),
+  method: oneOf<SurfaceMethodType>(['zigzag', 'unidirectional']),
+  rasterDirection: RASTER_DIRECTIONS,
+  zTransitionMode: Z_TRANSITION_MODES,
+}
+
+const POCKET_GUARDS: Partial<Record<keyof PocketParams, FieldGuard>> = {
+  shape: oneOf<PocketShape>(['rectCornered', 'rectCentered', 'circle']),
+  method: oneOf<PocketMethodType>(['raster', 'spiral', 'adaptive']),
+  rasterDirection: RASTER_DIRECTIONS,
+  zTransitionMode: Z_TRANSITION_MODES,
+  cutDirection: oneOf<CutDirection>(['conventional', 'climb']),
+  chipThinningBaseFeed: (value) => value === null || isFiniteNumber(value),
+}
+
+const OUTPUT_GUARDS: Partial<Record<keyof OutputOptions, FieldGuard>> = {
+  interpolation: oneOf<InterpolationMode>(['arc', 'linear']),
+}
+
+// Snapshots saved before customPointsText existed (BL-48) carry only the
+// parsed points — rebuild their text from those instead of letting the
+// default '10,10' shadow the preset's real list.
+function mergeGeometry(saved: unknown): GeometryParams {
+  const merged = mergeSection(DEFAULT_WIZARD_PARAMS.geometry, saved, GEOMETRY_GUARDS)
+  const source = (typeof saved === 'object' && saved !== null ? saved : {}) as Partial<GeometryParams>
+  if (source.customPointsText === undefined && isPointList(source.customPoints)) {
+    merged.customPointsText = formatCustomPoints(merged.customPoints)
+  }
+  return merged
+}
+
+// Raster has no circle-clipping math (pocketMethodAllowed()), so a stored
+// circle + raster pair — only reachable through a corrupted/hand-edited
+// save — gets the same fallback Step 1 applies when switching to Circle.
+function mergePocket(saved: unknown): PocketParams {
+  const merged = mergeSection(DEFAULT_WIZARD_PARAMS.pocket, saved, POCKET_GUARDS)
+  if (merged.shape === 'circle' && merged.method === 'raster') merged.method = 'spiral'
+  return merged
+}
+
+// Per-section, per-field merge with defaults — a snapshot saved by an older
 // version of the app that's missing newly-added fields still loads cleanly,
-// picking up defaults for whatever it doesn't have.
-function mergeWithDefaults(saved: Partial<WizardParams> | undefined): WizardParams {
+// picking up defaults for whatever it doesn't have (or has in a shape this
+// version doesn't recognise).
+function mergeWithDefaults(saved: unknown): WizardParams {
+  const source = (typeof saved === 'object' && saved !== null ? saved : {}) as Record<string, unknown>
   return {
-    operation: isOperationType(saved?.operation) ? saved.operation : DEFAULT_WIZARD_PARAMS.operation,
-    method: isMethodType(saved?.method) ? saved.method : DEFAULT_WIZARD_PARAMS.method,
-    geometry: mergeGeometry(saved?.geometry),
-    outline: { ...DEFAULT_WIZARD_PARAMS.outline, ...saved?.outline },
-    surface: { ...DEFAULT_WIZARD_PARAMS.surface, ...saved?.surface },
-    pocket: { ...DEFAULT_WIZARD_PARAMS.pocket, ...saved?.pocket },
-    feeds: { ...DEFAULT_WIZARD_PARAMS.feeds, ...saved?.feeds },
-    output: { ...DEFAULT_WIZARD_PARAMS.output, ...saved?.output },
+    operation: isOperationType(source.operation) ? source.operation : DEFAULT_WIZARD_PARAMS.operation,
+    method: isMethodType(source.method) ? source.method : DEFAULT_WIZARD_PARAMS.method,
+    geometry: mergeGeometry(source.geometry),
+    outline: mergeSection(DEFAULT_WIZARD_PARAMS.outline, source.outline, OUTLINE_GUARDS),
+    surface: mergeSection(DEFAULT_WIZARD_PARAMS.surface, source.surface, SURFACE_GUARDS),
+    pocket: mergePocket(source.pocket),
+    feeds: mergeSection(DEFAULT_WIZARD_PARAMS.feeds, source.feeds),
+    output: mergeSection(DEFAULT_WIZARD_PARAMS.output, source.output, OUTPUT_GUARDS),
   }
 }
 

@@ -173,3 +173,66 @@ describe('error handling', () => {
     warn.mockRestore()
   })
 })
+
+describe('field validation on load (BL-57)', () => {
+  function storeAutoSave(params: unknown) {
+    localStorage.setItem(
+      STORAGE_KEY,
+      JSON.stringify({ version: 1, slots: { [AUTO_SAVE_SLOT]: { version: 1, params } } }),
+    )
+  }
+
+  it('replaces unknown enum values with defaults, keeping valid neighbours', () => {
+    storeAutoSave({
+      geometry: { positioning: 'spiralGrid', holeDiameter: 12 },
+      outline: { shape: 'hexagon', offsetMode: 'inside' },
+      pocket: { method: 'trochoidal', cutDirection: 'sideways', shape: 'circle' },
+      output: { interpolation: 'nurbs' },
+    })
+    const restored = loadSlot(AUTO_SAVE_SLOT)!
+    expect(restored.geometry.positioning).toBe(DEFAULT_WIZARD_PARAMS.geometry.positioning)
+    expect(restored.geometry.holeDiameter).toBe(12)
+    expect(restored.outline.shape).toBe(DEFAULT_WIZARD_PARAMS.outline.shape)
+    expect(restored.outline.offsetMode).toBe('inside')
+    expect(restored.pocket.method).toBe(DEFAULT_WIZARD_PARAMS.pocket.method)
+    expect(restored.pocket.cutDirection).toBe(DEFAULT_WIZARD_PARAMS.pocket.cutDirection)
+    expect(restored.output.interpolation).toBe(DEFAULT_WIZARD_PARAMS.output.interpolation)
+  })
+
+  it('replaces wrong-typed fields and malformed point lists with defaults', () => {
+    storeAutoSave({
+      geometry: { totalDepth: '4', customPoints: [{ x: 1 }], tabsEnabled: 'yes' },
+      feeds: { safeZ: null, feedrateXY: 1200 },
+    })
+    const restored = loadSlot(AUTO_SAVE_SLOT)!
+    expect(restored.geometry.totalDepth).toBe(DEFAULT_WIZARD_PARAMS.geometry.totalDepth)
+    expect(restored.geometry.customPoints).toEqual(DEFAULT_WIZARD_PARAMS.geometry.customPoints)
+    expect(restored.geometry.tabsEnabled).toBe(DEFAULT_WIZARD_PARAMS.geometry.tabsEnabled)
+    expect(restored.feeds.safeZ).toBe(DEFAULT_WIZARD_PARAMS.feeds.safeZ)
+    expect(restored.feeds.feedrateXY).toBe(1200)
+  })
+
+  it('drops keys the current schema no longer has', () => {
+    storeAutoSave({ output: { spindleSpeed: 18000 } })
+    expect(loadSlot(AUTO_SAVE_SLOT)!.output).toEqual(DEFAULT_WIZARD_PARAMS.output)
+  })
+
+  it('moves a stored circle + raster Pocket to Spiral', () => {
+    storeAutoSave({ pocket: { shape: 'circle', method: 'raster' } })
+    expect(loadSlot(AUTO_SAVE_SLOT)!.pocket.method).toBe('spiral')
+  })
+
+  it('keeps chipThinningBaseFeed null or numeric', () => {
+    storeAutoSave({ pocket: { chipThinningBaseFeed: 700 } })
+    expect(loadSlot(AUTO_SAVE_SLOT)!.pocket.chipThinningBaseFeed).toBe(700)
+    storeAutoSave({ pocket: { chipThinningBaseFeed: 'x' } })
+    expect(loadSlot(AUTO_SAVE_SLOT)!.pocket.chipThinningBaseFeed).toBeNull()
+  })
+
+  it('survives a snapshot whose params or slots are not objects', () => {
+    storeAutoSave('garbage')
+    expect(loadSlot(AUTO_SAVE_SLOT)).toEqual(DEFAULT_WIZARD_PARAMS)
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({ version: 1, slots: 42 }))
+    expect(loadSlot(AUTO_SAVE_SLOT)).toBeNull()
+  })
+})

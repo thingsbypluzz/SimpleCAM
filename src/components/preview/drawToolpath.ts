@@ -450,7 +450,7 @@ function computeCombinedBounds(patterns: ResolvedPattern[]): DataBounds {
 // duplicating the overlay/active-pattern resolution logic below.
 export function computeToolpathDataBounds(
   params: WizardParams,
-  overlayParams: WizardParams[] = [],
+  overlayParams: readonly WizardParams[] = [],
   showActivePattern = true,
 ): DataBounds {
   const allPatterns = [
@@ -920,7 +920,7 @@ export function drawToolpath(
   paletteId: PaletteId,
   themeId: ThemeId,
   camera: Camera2D,
-  overlayParams: WizardParams[] = [],
+  overlayParams: readonly WizardParams[] = [],
   showActivePattern = true,
   showStock = true,
   showToolpath = true,

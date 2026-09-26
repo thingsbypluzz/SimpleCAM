@@ -7,6 +7,37 @@ zgodne z [SemVer](https://semver.org/). Ten plik pozostaje głównym, czytelnym
 thingsbypluzz/SimpleCAM), ale to infrastruktura pod izolację pracy
 (branch/worktree per zadanie), nie zamiennik tego changeloga.
 
+## [0.20.1] — 2026-09-26
+
+Trzecia grupa poprawek z code review (2026-09-26): stan UI i trwałość
+zapisanych danych.
+
+### Naprawiono
+
+- **`BL-47`: wczytanie presetu przy otwartym Kroku 2/3.** Pola liczbowe
+  trzymają własny tekst i synchronizują się z parametrami dopiero po
+  blur, więc po kliknięciu presetu otwarty krok dalej pokazywał wartości
+  poprzedniego (np. Safe Z 5, choć podgląd i G-code używały już 1).
+  Wczytanie presetu (zwykłe i w Edit Mode) przemontowuje teraz Krok 2 i 3.
+- **`BL-52`: Edit Mode resetował kamerę przy każdej edycji.** Live-save
+  podmieniał listę presetów, a przez to referencję parametrów overlaya —
+  oba podglądy brały to za zmianę selekcji overlaya: 2D wracał do pełnego
+  dopasowania (gubiąc zoom/pan), 3D re-frame'ował kamerę i przebudowywał
+  scenę drugi raz. Bez zaznaczonych nakładek `deriveOverlayParams()`
+  zwraca teraz zawsze tę samą pustą tablicę.
+- **`BL-56`: Settings Modal po "Reset All Settings"** pokazywał stare
+  wartości sekcji Machine, a blur pola Start/End G-Code zapisywał stary
+  tekst z powrotem. Bufory pól odświeżają się teraz, gdy ustawienia
+  maszyny zostaną podmienione z zewnątrz.
+- **`BL-57`: uszkodzony zapis = biały ekran przy każdym starcie.**
+  Wczytywanie presetów i auto-save sprawdza teraz każde pole (typ, znane
+  wartości enumów, poprawna lista punktów), a nie tylko `operation`/
+  `method` — zła wartość wraca do domyślnej, nieznane klucze są
+  odrzucane, Circle + Raster w Pocket przechodzi na Spiral. Ustawienia
+  maszyny tak samo (np. nie-tekstowy Start G-Code). Do tego
+  `ErrorBoundary` na najwyższym poziomie: zamiast białego ekranu
+  komunikat z przyciskami "Reload" i "Reset saved state".
+
 ## [0.20.0] — 2026-09-26
 
 Druga grupa poprawek z code review (2026-09-26): Krok 3/4 i preambuła

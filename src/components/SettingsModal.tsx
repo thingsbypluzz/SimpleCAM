@@ -74,6 +74,23 @@ const CODE_FIELDS: { key: CodeField; label: string; placeholder: string }[] = [
   { key: 'footerText', label: 'End G-Code', placeholder: '; e.g. coolant off…' },
 ]
 
+function numericTextFrom(machine: MachineSettings): Record<NumericField, string> {
+  return {
+    travelX: String(machine.travelX),
+    travelY: String(machine.travelY),
+    travelZ: String(machine.travelZ),
+    defaultTabHeight: String(machine.defaultTabHeight),
+    defaultTabWidth: String(machine.defaultTabWidth),
+    defaultTabCount: String(machine.defaultTabCount),
+    spindleSpeed: String(machine.spindleSpeed),
+    dwellSeconds: String(machine.dwellSeconds),
+  }
+}
+
+function codeTextFrom(machine: MachineSettings): Record<CodeField, string> {
+  return { headerText: machine.headerText, footerText: machine.footerText }
+}
+
 export function SettingsModal({
   machine,
   onSave,
@@ -89,24 +106,26 @@ export function SettingsModal({
   // digit at a time) never round-trips through a half-valid number — only
   // committed to machine settings (and localStorage) on blur. Shared by
   // travel and default-tab-size fields alike (both plain positive numbers).
-  const [text, setText] = useState<Record<NumericField, string>>({
-    travelX: String(machine.travelX),
-    travelY: String(machine.travelY),
-    travelZ: String(machine.travelZ),
-    defaultTabHeight: String(machine.defaultTabHeight),
-    defaultTabWidth: String(machine.defaultTabWidth),
-    defaultTabCount: String(machine.defaultTabCount),
-    spindleSpeed: String(machine.spindleSpeed),
-    dwellSeconds: String(machine.dwellSeconds),
-  })
+  const [text, setText] = useState(() => numericTextFrom(machine))
   const [savedField, setSavedField] = useState<NumericField | null>(null)
   // Same "local buffer, commit on blur" pattern as the numeric travel
   // fields — here purely to avoid a localStorage write per keystroke, not
   // for validation (any string is a valid header/footer).
-  const [codeText, setCodeText] = useState<Record<CodeField, string>>({
-    headerText: machine.headerText,
-    footerText: machine.footerText,
-  })
+  const [codeText, setCodeText] = useState(() => codeTextFrom(machine))
+  // BL-56: the buffers above are seeded once, so after "Reset All Settings"
+  // (which replaces `machine` while the modal stays open) they kept showing
+  // the old values — and blurring a Start/End G-Code field wrote the old
+  // text straight back. Re-seed them whenever `machine` is replaced from
+  // outside; React's "adjust state while rendering" pattern, so there's no
+  // extra render with stale buffers. Every commit path in this modal
+  // writes the buffer's own value, so re-seeding after a normal save is a
+  // no-op for the field just saved.
+  const [bufferedMachine, setBufferedMachine] = useState(machine)
+  if (machine !== bufferedMachine) {
+    setBufferedMachine(machine)
+    setText(numericTextFrom(machine))
+    setCodeText(codeTextFrom(machine))
+  }
   const [savedCodeField, setSavedCodeField] = useState<CodeField | null>(null)
   // Transient "type a value, click Add" field — not one of the persisted
   // settings above, so it doesn't need the buffer/onBlur machinery those

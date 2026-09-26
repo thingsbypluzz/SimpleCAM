@@ -274,6 +274,12 @@ function App() {
   // the first pick, or after re-clicking the armed slot to deselect it).
   // Session-only, never persisted — always starts unarmed on reload.
   const [editingSlot, setEditingSlot] = useState<PresetSlotId | null>(null)
+  // BL-47: bumped whenever params are replaced wholesale by a preset load,
+  // and used as the key of the Step 2/3 panels. Their number fields keep
+  // their own display text (useNumberField) and only resync from params on
+  // blur, so without a remount an open step kept showing the previous
+  // preset's values while Preview/G-code already used the new ones.
+  const [paramsLoadGeneration, setParamsLoadGeneration] = useState(0)
 
   // Any parameter change invalidates the last generated snapshot — Copy/
   // Download must not act on G-code that no longer matches the current
@@ -463,6 +469,7 @@ function App() {
     const preset = presetSlots[id]
     if (!preset) return
     setParams(preset)
+    setParamsLoadGeneration((n) => n + 1)
     setGeneratedGCode(null)
     setShowRestoredBanner(false)
     // Brief flash on the loaded preset's icon — confirms "this is what just
@@ -486,6 +493,7 @@ function App() {
       return
     }
     setParams(preset)
+    setParamsLoadGeneration((n) => n + 1)
     setGeneratedGCode(null)
     setShowRestoredBanner(false)
     setEditingSlot(id)
@@ -760,6 +768,7 @@ function App() {
                   )}
                   {step.id === 2 && (
                     <Step2Geometry
+                      key={paramsLoadGeneration}
                       params={params}
                       onChange={updateParams}
                       machine={machine}
@@ -768,6 +777,7 @@ function App() {
                   )}
                   {step.id === 3 && (
                     <Step3Feeds
+                      key={paramsLoadGeneration}
                       params={params}
                       onChange={updateParams}
                       machine={machine}

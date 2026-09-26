@@ -13,7 +13,7 @@ interface Scene3DProps {
   isDark: boolean
   paletteId: PaletteId
   themeId: ThemeId
-  overlayParams: WizardParams[]
+  overlayParams: readonly WizardParams[]
   showActivePattern: boolean
   gridLabelsEnabled: boolean
   gridLabelSize: Grid3DLabelSize
