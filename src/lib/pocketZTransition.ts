@@ -36,8 +36,8 @@ export function pocketEntryPoint(centerX: number, centerY: number, mode: ZTransi
 // positioned XY at the pocket's own center before calling this (same
 // convention as Surface's zTransitionMoves: `G1 Z...` with no X/Y).
 // Helix: reuses fullCircleMove exactly like Surface's zTransitionMoves,
-// but centered directly on the pocket's own center (always CCW —
-// conventional milling for an internal cut) instead of offset from a
+// but centered directly on the pocket's own center (always CCW — climb
+// milling for an internal cut under M3) instead of offset from a
 // corner. No tangent-continuity derivation needed (unlike Surface's
 // helixCenterFor/helixDirectionFor): a centered circle has no preferred
 // exit direction — the first ring's ramp (pocketSpiral.ts) picks its own

@@ -280,7 +280,10 @@ export function buildAdaptiveToolpath(params: Pick<WizardParams, 'pocket' | 'fee
   const theta = engagementAngleFor(pocket.optimalLoadPercent)
   if (!(toolRadius > 0) || !(helixRadius > 0) || !(theta > 0)) return { start, moves: [] }
 
-  const sign: 1 | -1 = pocket.cutDirection === 'climb' ? -1 : 1
+  // Under M3 (spindle CW seen from above) an internal cut travelling CCW has
+  // the uncut material on its right — climb milling; CW is conventional
+  // (BL-44: this mapping used to be inverted).
+  const sign: 1 | -1 = pocket.cutDirection === 'climb' ? 1 : -1
   const direction: ArcDirection = sign > 0 ? 'ccw' : 'cw'
   const ctx: LevelContext = { b, cx: center.x, cy: center.y, toolRadius, theta, sign, direction }
   const rampRad = (pocket.rampAngleDeg * Math.PI) / 180

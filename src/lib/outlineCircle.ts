@@ -11,9 +11,9 @@ import { standardCircleToolpath } from './standardHole'
 // design notes for the offset-mode → radius/direction table below.
 //
 // Inside = cut a round hole/pocket, keep the surrounding material — same
-// math as Hole(s) today (tool center inset by toolRadius, CCW/conventional
-// for an internal cut). Outside = cut out a round disc/plug, discard the
-// surroundings — tool center offset out by toolRadius, CW/conventional for
+// math as Hole(s) today (tool center inset by toolRadius, CCW = climb for
+// an internal cut under M3). Outside = cut out a round disc/plug, discard
+// the surroundings — tool center offset out by toolRadius, CW = climb for
 // an external cut. On-line = nominal diameter, no radius correction; CW is
 // arbitrary here since climb/conventional isn't physically meaningful at
 // zero offset.

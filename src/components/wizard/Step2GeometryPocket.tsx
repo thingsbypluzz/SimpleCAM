@@ -106,8 +106,8 @@ function CutDirectionToggle({ value, onChange }: { value: CutDirection; onChange
   // "Conv." keeps Method + Direction on one line next to three method
   // buttons; the full word is in the tooltip.
   const options: { value: CutDirection; label: string; title: string }[] = [
-    { value: 'conventional', label: 'Conv.', title: 'Conventional milling' },
-    { value: 'climb', label: 'Climb', title: 'Climb milling' },
+    { value: 'conventional', label: 'Conv.', title: 'Conventional milling (clockwise inside the pocket under M3)' },
+    { value: 'climb', label: 'Climb', title: 'Climb milling (counter-clockwise inside the pocket under M3)' },
   ]
   return (
     <div className="flex gap-2">

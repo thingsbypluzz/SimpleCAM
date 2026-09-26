@@ -26,8 +26,10 @@ export type PocketShape = 'rectCornered' | 'rectCentered' | 'circle'
 // notes.
 export type PocketMethodType = 'raster' | 'spiral' | 'adaptive'
 
-// Pocket Adaptive only. Conventional = CCW for an internal cut under M3,
-// the convention every other Pocket method is fixed to.
+// Pocket Adaptive only. Under M3 (spindle CW seen from above), climb = CCW
+// for an internal cut (uncut material on the right of travel), conventional
+// = CW. Every other Pocket method is fixed to CCW, i.e. climb — so the
+// default matches them.
 export type CutDirection = 'conventional' | 'climb'
 
 // 'ramp' only valid for rectCornered/rectCentered; 'helix' only for circle;
@@ -213,7 +215,7 @@ export const DEFAULT_WIZARD_PARAMS: WizardParams = {
     helixRadius: 1,
     optimalLoadPercent: 10,
     rampAngleDeg: 2,
-    cutDirection: 'conventional',
+    cutDirection: 'climb',
     linkingFeed: 800,
     chipThinningBaseFeed: null,
   },

@@ -36,6 +36,15 @@ describe('generateHelix', () => {
     expect(lines).toContain('G4 P3')
   })
 
+  // BL-44: under M3 (spindle CW seen from above) a CCW pass inside a bore
+  // has the wall on its right — climb milling, the app's convention for
+  // every contour (Outline/Pocket tests pin the same thing).
+  it('bores CCW (G3) in arc mode — climb under M3', () => {
+    const lines = generate(buildParams({ output: { interpolation: 'arc' } }))
+    expect(lines.some((l) => l.startsWith('G3 '))).toBe(true)
+    expect(lines.some((l) => l.startsWith('G2 '))).toBe(false)
+  })
+
   it('omits spindle lines when spindleStart is disabled', () => {
     const lines = generate(buildParams({ output: { spindleStart: false } }))
     // 'M3 ' (with the trailing space), not just 'M3' — the trailing M30

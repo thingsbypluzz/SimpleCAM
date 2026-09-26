@@ -110,8 +110,10 @@ decyzją projektową).
   lewym dolnym rogu), Rectangle Centered (origin w środku), Circle
   (tylko wyśrodkowany) — bez dowolnego konturu. Każdy z trybem **Inside
   / Outside / On-line**. Kierunek ruchu wyprowadzony z trybu cięcia pod
-  stałe `M3` (CW): Outside → CW, Inside → CCW (konwencjonalne
-  frezowanie), On-line → CW (arbitralnie, brak znaczenia fizycznego przy
+  stałe `M3` (CW): Outside → CW, Inside → CCW — w obu przypadkach
+  zachowywany materiał jest po prawej stronie kierunku ruchu, czyli
+  frezowanie współbieżne (climb), ta sama konwencja co każdy inny kontur
+  w appce (Hole(s) i Pocket też tną CCW wewnątrz); On-line → CW (arbitralnie, brak znaczenia fizycznego przy
   zerowym offsecie). Circle reużywa wprost silnika Helix/Standard
   Hole(s) (`helixCircleToolpath`/`standardCircleToolpath`,
   `lib/outlineCircle.ts`). Rectangle ma własną parę metod **Ramp /
@@ -229,7 +231,9 @@ decyzją projektową).
   tylko wtedy, gdy wybrany był Raster.
 
   **Kierunek czyszczenia:** zawsze inside-out (środek → ściana), zawsze
-  konwencjonalne frezowanie (CCW) — Pocket nie ma pojęcia offset mode
+  CCW, czyli pod `M3` frezowanie współbieżne (climb — nieobrobiony
+  materiał po prawej stronie ruchu; Raster, jak zigzag w Surface, tnie
+  naprzemiennie w obu kierunkach) — Pocket nie ma pojęcia offset mode
   jak Outline, to zawsze cięcie od wewnątrz. **Wejście** zawsze w
   **centrum kieszeni** (`pocketCenter()`, ten sam origin-convention co
   `rectCorners()` — Cornered: origin w lewym dolnym rogu, Centered:
@@ -464,8 +468,9 @@ decyzją projektową).
   łuków dodaje do ½ kąta odcinka.
 
   **Kierunek:** toggle Climb/Conventional (`cutDirection`, domyślnie
-  Conventional = CCW jak reszta Pocket), jednolity we wszystkich fazach i
-  w helixie. **Przejazdy łączące** (powroty po łukach, między końcami i
+  Climb = CCW jak reszta Pocket; Conventional = CW — pod `M3` wewnątrz
+  kieszeni CCW ma nieobrobiony materiał po prawej, czyli współbieżne),
+  jednolity we wszystkich fazach i w helixie. **Przejazdy łączące** (powroty po łukach, między końcami i
   narożnikami, do środka przed kolejnym poziomem) — zawsze G1 z polem
   **Linking Feed** (`linkingFeed`, Krok 3 obok Feedrate XY, widoczne tylko
   dla Pocket + Adaptive), nigdy G0 poniżej Safe Z. **Głębokość:** globalny

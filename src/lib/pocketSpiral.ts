@@ -92,8 +92,8 @@ export function circleRingRampPoints(
 // (radiusFrom, startAngleDeg) to (radiusTo, startAngleDeg + sweep, see
 // rampSweepDegFor()), then a full flat 360° turn at radiusTo
 // (fullCircleMove, unchanged — DOES respect the G2/G3 vs G1 toggle, same
-// as every other full circle in the engine). Always CCW (conventional
-// milling for an internal cut, same convention as Hole(s) Helix / Outline
+// as every other full circle in the engine). Always CCW (climb milling
+// for an internal cut under M3, same convention as Hole(s) Helix / Outline
 // Inside). Returns the angle the NEXT ring's ramp should start from —
 // this ring's flat pass returns to its own start point, so it's simply
 // startAngleDeg + sweep; the angle keeps advancing (never wraps/resets)

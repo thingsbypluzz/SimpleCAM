@@ -32,9 +32,10 @@ export interface RectToolpathOptions {
 }
 
 // Same offset-mode → direction table as Circle Outline (outlineCircle.ts):
-// Inside is an internal cut (conventional milling → ccw), Outside is an
-// external cut (→ cw), On-line is arbitrary (→ cw, no physical meaning at
-// zero offset). Shape-independent, so shared between both engines.
+// climb milling under M3 means the kept material is on the right of
+// travel — Inside (wall outside the path) → ccw, Outside (part inside the
+// path) → cw. On-line is arbitrary (→ cw, no physical meaning at zero
+// offset). Shape-independent, so shared between both engines.
 export function outlineDirectionForOffsetMode(offsetMode: OffsetMode): 'cw' | 'ccw' {
   return offsetMode === 'inside' ? 'ccw' : 'cw'
 }
