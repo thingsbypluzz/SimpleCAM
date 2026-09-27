@@ -3,6 +3,9 @@ import { AdaptiveIcon, HelixIcon, ZigzagIcon } from '../components/icons'
 import { generatePocketAdaptive, generatePocketRaster, generatePocketSpiral } from '../lib/pocket'
 import type { MachineSettings } from '../types/machine'
 import type { PocketMethodType, PocketShape, WizardParams } from '../types/wizard'
+import { pocketMethodAllowed } from '../lib/pocketMethods'
+
+export { pocketMethodAllowed }
 
 export interface PocketMethodMeta {
   value: PocketMethodType
@@ -56,11 +59,8 @@ export const POCKET_METHOD_META: Record<PocketMethodType, PocketMethodMeta> = {
 
 export const POCKET_METHOD_LIST: PocketMethodMeta[] = [POCKET_METHOD_META.raster, POCKET_METHOD_META.spiral, POCKET_METHOD_META.adaptive]
 
-export function pocketMethodAllowed(shape: PocketShape, method: PocketMethodType): boolean {
-  return method !== 'raster' || shape !== 'circle'
-}
-
-// Methods available for the given shape — Circle offers Spiral and Adaptive, never Raster.
+// Methods offered for the given shape (Step 2, Feedrate Calculator) —
+// Spiral and Adaptive; Raster is hidden (BL-73) and never fits a Circle.
 export function pocketMethodListForShape(shape: PocketShape): PocketMethodMeta[] {
   return POCKET_METHOD_LIST.filter((m) => pocketMethodAllowed(shape, m.value))
 }

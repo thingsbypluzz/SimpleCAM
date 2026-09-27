@@ -41,9 +41,9 @@ Appka obsługuje dziś cztery operacje (`WizardParams.operation`):
   Unidirectional), kierunek rastra X/Y, stepover jako % średnicy
   narzędzia.
 - **Pocket** — kieszeniowanie (usuwanie materiału wewnątrz zamkniętego
-  konturu). Rectangle Cornered/Centered i Circle. Trzy metody
-  (`PocketMethodType`: Raster / Spiral / Adaptive), Raster tylko dla
-  Rectangle.
+  konturu). Rectangle Cornered/Centered i Circle. Dostępne metody:
+  Spiral i Adaptive; trzecia, Raster (tylko Rectangle), jest ukryta
+  (`BL-73`) — silnik zostaje, UI i migracja zapisów jej nie oferują.
 
 Pełne uzasadnienie i historia każdej decyzji — łącznie z tym, jak
 appka doszła do dzisiejszego stanu, wersja po wersji — żyje wyłącznie w
@@ -229,7 +229,14 @@ decyzją projektową).
   `/grill-me` (2026-09-21). **Trzy metody** (`PocketMethodType`:
   `'raster' | 'spiral' | 'adaptive'`, płaski rejestr
   `config/pocketMethodMeta.ts` jak `SURFACE_METHOD_META`; Adaptive —
-  osobny punkt niżej): **Raster** — tylko Rectangle
+  osobny punkt niżej). **Raster jest dziś ukryty** (`BL-73`,
+  `lib/pocketMethods.ts::pocketMethodAllowed()` zwraca `false` dla niego
+  przy każdym kształcie): po wejściu Helix jechał po przekątnej pełną
+  szerokością freza do narożnika pierwszej linii, a pierwsza linia każdego
+  rastra i tak jest szczeliną. Znika z Kroku 2 i z Feedrate Calculator,
+  zapisane presety z Raster wczytują się jako Spiral (`mergePocket()`,
+  `lib/storage.ts`); silnik `generatePocketRaster` i jego testy zostają do
+  decyzji w `BL-73`. Opis Raster poniżej dotyczy tego ukrytego silnika: **Raster** — tylko Rectangle
   (Cornered/Centered), dosłowne reużycie silnika rastra Surface'a
   (`computeRasterLines`/`zigzagWaypoints`), ale granica to prostokąt
   **zainsetowany** o promień narzędzia (`pocketRectRasterBounds()`,
