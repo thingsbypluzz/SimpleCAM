@@ -28,6 +28,7 @@ import { pocketStepoverMm } from '../../lib/pocketGeometry'
 import { fmt } from '../../lib/format'
 import { resolveToolDiameterSelectOptions } from '../../lib/toolDiameterOptions'
 import type { ToolDiameterOption } from '../../types/toolDiameters'
+import { ToolChipLoad } from './ToolChipLoad'
 import { FieldRow, inputClass } from './FieldRow'
 import { NumberInput } from './NumberInput'
 import { PocketMethodPicker } from './PocketMethodPicker'
@@ -40,6 +41,7 @@ interface Step2GeometryPocketProps {
   onChange: (patch: Partial<WizardParams>) => void
   machine: MachineSettings
   toolDiameters: ToolDiameterOption[]
+  flutes: number
 }
 
 const round2 = (n: number) => Math.round(n * 100) / 100
@@ -55,7 +57,7 @@ const round4 = (n: number) => Math.round(n * 10000) / 10000
 // as Surface: Pocket doesn't cut through, nothing to bridge. No Offset
 // Mode picker either (unlike Outline) — Pocket is always an inside
 // cut, there's no other physically meaningful mode.
-export function Step2GeometryPocket({ params, onChange, machine, toolDiameters }: Step2GeometryPocketProps) {
+export function Step2GeometryPocket({ params, onChange, machine, toolDiameters, flutes }: Step2GeometryPocketProps) {
   const { pocket } = params
 
   const updatePocket = (patch: Partial<WizardParams['pocket']>) => onChange({ pocket: { ...pocket, ...patch } })
@@ -94,19 +96,24 @@ export function Step2GeometryPocket({ params, onChange, machine, toolDiameters }
   return (
     <div className="flex flex-col gap-6">
       <div className="flex flex-col gap-4">
-        <FieldRow label="Tool Diameter [mm]">
-          <select
-            className={inputClass}
-            value={pocket.toolDiameter}
-            onChange={(e) => updatePocket({ toolDiameter: Number(e.target.value) })}
-          >
-            {resolveToolDiameterSelectOptions(toolDiameters, pocket.toolDiameter).map((opt) => (
-              <option key={opt.value} value={opt.value}>
-                {opt.label}
-              </option>
-            ))}
-          </select>
-        </FieldRow>
+        <div className="flex gap-4">
+          <div className="min-w-0 flex-1">
+            <FieldRow label="Tool Diameter [mm]">
+              <select
+                className={inputClass}
+                value={pocket.toolDiameter}
+                onChange={(e) => updatePocket({ toolDiameter: Number(e.target.value) })}
+              >
+                {resolveToolDiameterSelectOptions(toolDiameters, pocket.toolDiameter).map((opt) => (
+                  <option key={opt.value} value={opt.value}>
+                    {opt.label}
+                  </option>
+                ))}
+              </select>
+            </FieldRow>
+          </div>
+          <ToolChipLoad params={params} machine={machine} flutes={flutes} />
+        </div>
         <FieldRow label="Total Depth [mm]">
           <NumberInput
             type="number"

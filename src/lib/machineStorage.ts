@@ -1,5 +1,6 @@
-import { DEFAULT_MACHINE_SETTINGS, type Dialect, type MachineSettings } from '../types/machine'
+import { DEFAULT_MACHINE_SETTINGS, type Dialect, type MachineSettings, type Rigidity } from '../types/machine'
 import { isValidTabCount } from './validation'
+import { isRouterId } from '../config/routers'
 
 // Separate localStorage key from simplecam.storage (the WizardParams preset
 // slots) — machine settings are a single global object describing the
@@ -12,6 +13,12 @@ const VALID_DIALECTS: Dialect[] = ['grbl', 'marlin', 'mach3']
 
 function isDialect(value: unknown): value is Dialect {
   return typeof value === 'string' && (VALID_DIALECTS as string[]).includes(value)
+}
+
+const VALID_RIGIDITIES: Rigidity[] = ['light', 'medium', 'rigid']
+
+function isRigidity(value: unknown): value is Rigidity {
+  return typeof value === 'string' && (VALID_RIGIDITIES as string[]).includes(value)
 }
 
 function isPositive(value: unknown): value is number {
@@ -31,8 +38,15 @@ export function loadMachineSettings(): MachineSettings {
     // dialect from an older/corrupted save falls back the same way rather
     // than reaching an unhandled branch in lib/program.ts. Numeric rules
     // match SettingsModal's commitField (all > 0, dwell may be 0).
-    const positive = (key: 'travelX' | 'travelY' | 'travelZ' | 'defaultTabHeight' | 'defaultTabWidth' | 'spindleSpeed') =>
-      isPositive(parsed[key]) ? parsed[key] : d[key]
+    const positive = (
+      key: 'travelX' | 'travelY' | 'travelZ' | 'defaultTabHeight' | 'defaultTabWidth' | 'spindleSpeed' | 'spindleMaxRpm' | 'maxFeed',
+    ) => (isPositive(parsed[key]) ? parsed[key] : d[key])
+    const nonNegative = (key: 'dwellSeconds' | 'spindleMinRpm') => {
+      const value = parsed[key]
+      return typeof value === 'number' && Number.isFinite(value) && value >= 0 ? value : d[key]
+    }
+    const spindleMaxRpm = positive('spindleMaxRpm')
+    const spindleMinRpm = nonNegative('spindleMinRpm')
     const text = (key: 'headerText' | 'footerText') =>
       typeof parsed[key] === 'string' ? parsed[key] : d[key]
     return {
@@ -49,10 +63,13 @@ export function loadMachineSettings(): MachineSettings {
           ? parsed.defaultTabCount
           : d.defaultTabCount,
       spindleSpeed: positive('spindleSpeed'),
-      dwellSeconds:
-        typeof parsed.dwellSeconds === 'number' && Number.isFinite(parsed.dwellSeconds) && parsed.dwellSeconds >= 0
-          ? parsed.dwellSeconds
-          : d.dwellSeconds,
+      dwellSeconds: nonNegative('dwellSeconds'),
+      // An inverted range can't be clamped to — fall back to no lower limit.
+      spindleMinRpm: spindleMinRpm < spindleMaxRpm ? spindleMinRpm : 0,
+      spindleMaxRpm,
+      maxFeed: positive('maxFeed'),
+      rigidity: isRigidity(parsed.rigidity) ? parsed.rigidity : d.rigidity,
+      router: isRouterId(parsed.router) ? parsed.router : d.router,
     }
   } catch (err) {
     console.warn('OnlyPaths: could not read machine settings from localStorage', err)

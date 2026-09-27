@@ -3,22 +3,24 @@ import { BitIcon, DepthIcon, DiameterIcon, OffsetIcon, TabBridgeIcon } from '../
 import { fmt } from '../lib/format'
 import { generateOutline } from '../lib/outline'
 import type { MachineSettings } from '../types/machine'
-import type { OperationType, WizardParams } from '../types/wizard'
-import { METHOD_META } from './methodMeta'
+import type { MethodType, OperationType, OutlineMethod, PocketMethodType, SurfaceMethodType, WizardParams } from '../types/wizard'
+import { METHOD_LIST, METHOD_META } from './methodMeta'
 import {
   activeOutlineMethodMeta,
   offsetModeLabel,
+  OUTLINE_METHOD_LIST,
   OUTLINE_SHAPE_META,
+  outlineMethodFamily,
   outlineShapeIcon,
   outlineShapeLabel,
   outlineShapeLines,
   outlineShapeSlug,
   outlineSummary,
 } from './outlineMeta'
-import { POCKET_METHOD_META } from './pocketMethodMeta'
+import { POCKET_METHOD_META, pocketMethodListForShape } from './pocketMethodMeta'
 import { POCKET_SHAPE_META, pocketShapeIcon, pocketShapeLabel, pocketShapeLines, pocketShapeSlug, pocketSummary } from './pocketMeta'
 import { patternLabel, patternSlug, positioningIcon, positioningLines, positioningSummary } from './positioningMeta'
-import { SURFACE_METHOD_META } from './surfaceMethodMeta'
+import { SURFACE_METHOD_LIST, SURFACE_METHOD_META } from './surfaceMethodMeta'
 import { SURFACE_SHAPE_META, surfaceShapeIcon, surfaceShapeLabel, surfaceShapeLines, surfaceShapeSlug, surfaceSummary } from './surfaceMeta'
 
 type IconComponent = ComponentType<{ className?: string }>
@@ -39,6 +41,23 @@ export interface SummaryStat {
   value: string
   unit?: string
   title: string
+}
+
+export interface CalcMethodOption {
+  value: string
+  label: string
+}
+
+// What the Feedrate Calculator writes back into the operation's own
+// section (BL-68): the method and tool it computed for, always, plus the
+// width (stepover / optimal load) and Adaptive's linking feed and
+// chip-thinning base when those results were selected.
+export interface CalcPatch {
+  method: string
+  toolDiameter: number
+  widthPercent?: number
+  linkingFeed?: number
+  chipThinningBaseFeed?: number
 }
 
 // Everything the UI does differently per operation, in one entry per
@@ -63,7 +82,17 @@ export interface OperationMeta {
   // Saved-preset tooltip: pattern/shape first (the preset's identity), then
   // method.
   presetLabel: (params: WizardParams) => string
+  // Feedrate Calculator (BL-68): the operation's tool, its selected method
+  // and the methods it can switch to (same list as Step 2 for the current
+  // shape), and how a calculator result lands in params.
+  toolDiameter: (params: WizardParams) => number
+  methodValue: (params: WizardParams) => string
+  calcMethods: (params: WizardParams) => CalcMethodOption[]
+  withCalc: (params: WizardParams, patch: CalcPatch) => Partial<WizardParams>
 }
+
+const methodOptions = (list: { value: string; title: string }[]): CalcMethodOption[] =>
+  list.map((m) => ({ value: m.value, label: m.title }))
 
 function offsetSummary(offset: { offsetX: number; offsetY: number }): string | null {
   if (offset.offsetX === 0 && offset.offsetY === 0) return null
@@ -136,6 +165,10 @@ export const OPERATION_META: Record<OperationType, OperationMeta> = {
     generate: (p, machine) => METHOD_META[p.method].generate(p, machine),
     filenameSlug: (p) => patternSlug(p.geometry),
     presetLabel: (p) => `${patternLabel(p.geometry)} • ${METHOD_META[p.method].shortLabel} • ⌀${p.geometry.holeDiameter}mm`,
+    toolDiameter: (p) => p.geometry.toolDiameter,
+    methodValue: (p) => p.method,
+    calcMethods: () => methodOptions(METHOD_LIST),
+    withCalc: (p, c) => ({ method: c.method as MethodType, geometry: { ...p.geometry, toolDiameter: c.toolDiameter } }),
   },
   outline: {
     label: 'Outline',
@@ -162,6 +195,12 @@ export const OPERATION_META: Record<OperationType, OperationMeta> = {
     generate: generateOutline,
     filenameSlug: (p) => outlineShapeSlug(p.outline),
     presetLabel: (p) => `${outlineShapeLabel(p.outline)} • ${activeOutlineMethodMeta(p.outline).shortLabel}`,
+    toolDiameter: (p) => p.outline.toolDiameter,
+    methodValue: (p) => activeOutlineMethodMeta(p.outline).value,
+    calcMethods: (p) => methodOptions(OUTLINE_METHOD_LIST[outlineMethodFamily(p.outline.shape)]),
+    withCalc: (p, c) => ({
+      outline: { ...p.outline, method: c.method as OutlineMethod, toolDiameter: c.toolDiameter },
+    }),
   },
   surface: {
     label: 'Surface',
@@ -185,6 +224,17 @@ export const OPERATION_META: Record<OperationType, OperationMeta> = {
     generate: (p, machine) => SURFACE_METHOD_META[p.surface.method].generate(p, machine),
     filenameSlug: (p) => surfaceShapeSlug(p.surface),
     presetLabel: (p) => `${surfaceShapeLabel(p.surface)} • ${SURFACE_METHOD_META[p.surface.method].shortLabel}`,
+    toolDiameter: (p) => p.surface.toolDiameter,
+    methodValue: (p) => p.surface.method,
+    calcMethods: () => methodOptions(SURFACE_METHOD_LIST),
+    withCalc: (p, c) => ({
+      surface: {
+        ...p.surface,
+        method: c.method as SurfaceMethodType,
+        toolDiameter: c.toolDiameter,
+        stepoverPercent: c.widthPercent ?? p.surface.stepoverPercent,
+      },
+    }),
   },
   pocket: {
     label: 'Pocket',
@@ -208,5 +258,20 @@ export const OPERATION_META: Record<OperationType, OperationMeta> = {
     generate: (p, machine) => POCKET_METHOD_META[p.pocket.method].generate(p, machine),
     filenameSlug: (p) => pocketShapeSlug(p.pocket),
     presetLabel: (p) => `${pocketShapeLabel(p.pocket)} • ${POCKET_METHOD_META[p.pocket.method].shortLabel}`,
+    toolDiameter: (p) => p.pocket.toolDiameter,
+    methodValue: (p) => p.pocket.method,
+    calcMethods: (p) => methodOptions(pocketMethodListForShape(p.pocket.shape)),
+    withCalc: (p, c) => {
+      const method = c.method as PocketMethodType
+      const pocket = { ...p.pocket, method, toolDiameter: c.toolDiameter }
+      if (method === 'adaptive') {
+        if (c.widthPercent !== undefined) pocket.optimalLoadPercent = c.widthPercent
+        if (c.linkingFeed !== undefined) pocket.linkingFeed = c.linkingFeed
+        if (c.chipThinningBaseFeed !== undefined) pocket.chipThinningBaseFeed = c.chipThinningBaseFeed
+      } else if (c.widthPercent !== undefined) {
+        pocket.stepoverPercent = c.widthPercent
+      }
+      return { pocket }
+    },
   },
 }

@@ -6,6 +6,13 @@ import { Step4Output } from './components/wizard/Step4Output'
 import { MiniStat } from './components/wizard/MiniStat'
 import { ToolpathCanvas } from './components/preview/ToolpathCanvas'
 import { SettingsModal } from './components/SettingsModal'
+import { FeedCalculatorModal } from './components/FeedCalculatorModal'
+import {
+  DEFAULT_FEED_CALC_SETTINGS,
+  loadFeedCalcSettings,
+  saveFeedCalcSettings,
+  type FeedCalcSettings,
+} from './lib/feedCalcStorage'
 
 // Three.js is a large dependency (~600KB) — only pull it into a chunk when
 // the user actually opens the 3D tab, not on initial page load.
@@ -175,6 +182,10 @@ function App() {
   const [machine, setMachine] = useState(loadMachineSettings)
   const [toolDiameters, setToolDiameters] = useState(loadToolDiameterOptions)
   const [isSettingsOpen, setIsSettingsOpen] = useState(false)
+  // BL-68: Feedrate Calculator modal (opened from Step 3) and its own
+  // remembered inputs (material, flutes, tool material).
+  const [isFeedCalcOpen, setIsFeedCalcOpen] = useState(false)
+  const [feedCalc, setFeedCalc] = useState(loadFeedCalcSettings)
   const [overlayEnabled, setOverlayEnabled] = useState(false)
   const [overlaySlots, setOverlaySlots] = useState<Set<PresetSlotId>>(new Set())
   // BL-36: independent of overlayEnabled/canGenerate — pure view toggles,
@@ -255,10 +266,28 @@ function App() {
     const affectsGCode =
       next.dialect !== machine.dialect ||
       next.headerText !== machine.headerText ||
-      next.footerText !== machine.footerText
+      next.footerText !== machine.footerText ||
+      next.spindleSpeed !== machine.spindleSpeed ||
+      next.dwellSeconds !== machine.dwellSeconds
     saveMachineSettings(next)
     setMachine(next)
     if (affectsGCode) setGeneratedGCode(null)
+  }
+
+  const handleSaveFeedCalc = (next: FeedCalcSettings) => {
+    saveFeedCalcSettings(next)
+    setFeedCalc(next)
+  }
+
+  // BL-68: the calculator's result lands in params (and, when its RPM was
+  // selected, in Settings → Machine). Remounts Steps 2/3 like a preset load
+  // — their number fields only resync from params on blur, and the open
+  // Step 3 would keep showing the old Plunge Rate/Stepdown text.
+  const handleApplyFeedCalc = (patch: Partial<WizardParams>, spindleSpeed: number | null) => {
+    updateParams(patch)
+    if (spindleSpeed !== null && spindleSpeed !== machine.spindleSpeed) handleSaveMachine({ ...machine, spindleSpeed })
+    setParamsLoadGeneration((n) => n + 1)
+    setIsFeedCalcOpen(false)
   }
 
   const handleSaveAppearance = (next: AppearanceSettings) => {
@@ -275,9 +304,10 @@ function App() {
   }
 
   // BL-40: "Reset All Settings" — wipes every localStorage key the app
-  // owns and syncs in-memory state to match, all four independent stores
-  // at once (Appearance/Tool Diameters/Machine each their own key, plus
-  // every preset slot including the hidden auto-save session slot "0").
+  // owns and syncs in-memory state to match, all five independent stores
+  // at once (Appearance/Tool Diameters/Machine/Feedrate Calculator each
+  // their own key, plus every preset slot including the hidden auto-save
+  // session slot "0").
   // Leaves the live, currently-open wizard params untouched — this clears
   // what's saved, not what's on screen. generatedGCode is invalidated
   // since Machine's dialect/header/footer may have just changed underneath
@@ -293,6 +323,8 @@ function App() {
     setToolDiameters(DEFAULT_TOOL_DIAMETER_OPTIONS)
     saveMachineSettings(DEFAULT_MACHINE_SETTINGS)
     setMachine(DEFAULT_MACHINE_SETTINGS)
+    saveFeedCalcSettings(DEFAULT_FEED_CALC_SETTINGS)
+    setFeedCalc(DEFAULT_FEED_CALC_SETTINGS)
     setGeneratedGCode(null)
     setEditModeEnabled(false)
     setEditingSlot(null)
@@ -628,6 +660,7 @@ function App() {
                       onChange={updateParams}
                       machine={machine}
                       toolDiameters={toolDiameters}
+                      flutes={feedCalc.flutes}
                     />
                   )}
                   {step.id === 3 && (
@@ -637,6 +670,7 @@ function App() {
                       onChange={updateParams}
                       machine={machine}
                       stepdownLabel={activeMethodDisplay.stepdown.fieldLabel}
+                      onOpenCalculator={() => setIsFeedCalcOpen(true)}
                     />
                   )}
                   {step.id === 4 && (
@@ -855,7 +889,7 @@ function App() {
                   gridLabelSize={appearance.grid3DLabelSize}
                   stockVisible={stockVisible}
                   toolpathVisible={toolpathVisible}
-                  renderPaused={isSettingsOpen}
+                  renderPaused={isSettingsOpen || isFeedCalcOpen}
                   onToggleStockVisible={() => setStockVisible((v) => !v)}
                   onToggleToolpathVisible={() => setToolpathVisible((v) => !v)}
                   onToggleGridLabels={() =>
@@ -881,6 +915,17 @@ function App() {
           </div>
         </div>
       </div>
+
+      {isFeedCalcOpen && (
+        <FeedCalculatorModal
+          params={params}
+          machine={machine}
+          settings={feedCalc}
+          onSaveSettings={handleSaveFeedCalc}
+          onApply={handleApplyFeedCalc}
+          onClose={() => setIsFeedCalcOpen(false)}
+        />
+      )}
 
       {isSettingsOpen && (
         <SettingsModal

@@ -263,6 +263,23 @@ export function PencilIcon({ className }: IconProps) {
   )
 }
 
+// Feedrate Calculator button (Step 3, BL-68) — a pocket calculator: body,
+// display strip, 3×2 keys.
+export function CalculatorIcon({ className }: IconProps) {
+  return (
+    <svg {...base} className={className}>
+      <rect x="5" y="3" width="14" height="18" rx="2" />
+      <path d="M8 7h8" />
+      <circle cx="9" cy="12" r="0.9" fill="currentColor" stroke="none" />
+      <circle cx="12" cy="12" r="0.9" fill="currentColor" stroke="none" />
+      <circle cx="15" cy="12" r="0.9" fill="currentColor" stroke="none" />
+      <circle cx="9" cy="16" r="0.9" fill="currentColor" stroke="none" />
+      <circle cx="12" cy="16" r="0.9" fill="currentColor" stroke="none" />
+      <circle cx="15" cy="16" r="0.9" fill="currentColor" stroke="none" />
+    </svg>
+  )
+}
+
 export function WarningIcon({ className }: IconProps) {
   return (
     <svg {...base} className={className}>

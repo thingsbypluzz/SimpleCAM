@@ -19,6 +19,7 @@ import {
 } from '../../lib/validation'
 import { isFeedChipThinningCompensated } from '../../lib/pocketAdaptiveMath'
 import { fmt } from '../../lib/format'
+import { CalculatorIcon } from '../icons'
 import { FieldRow, inputClass } from './FieldRow'
 import { NumberInput } from './NumberInput'
 import { useNumberField } from './useNumberField'
@@ -31,9 +32,11 @@ interface Step3FeedsProps {
   // activeMethodDisplay) — not METHOD_META[params.method], which is always
   // the Hole(s) method regardless of operation.
   stepdownLabel: string
+  // BL-68: opens the Feedrate Calculator modal (App.tsx).
+  onOpenCalculator: () => void
 }
 
-export function Step3Feeds({ params, onChange, machine, stepdownLabel }: Step3FeedsProps) {
+export function Step3Feeds({ params, onChange, machine, stepdownLabel, onOpenCalculator }: Step3FeedsProps) {
   const { feeds, pocket } = params
   const isPocketAdaptive = params.operation === 'pocket' && pocket.method === 'adaptive'
 
@@ -68,7 +71,20 @@ export function Step3Feeds({ params, onChange, machine, stepdownLabel }: Step3Fe
           ) : undefined
         }
       >
-        <NumberInput type="number" step="1" className={inputClass} {...feedrateXYField} />
+        <div className="flex items-center gap-2">
+          <div className="min-w-0 flex-1">
+            <NumberInput type="number" step="1" className={inputClass} {...feedrateXYField} />
+          </div>
+          <button
+            type="button"
+            onClick={onOpenCalculator}
+            aria-label="Feedrate Calculator"
+            title="Feedrate Calculator"
+            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md border border-border text-value hover:bg-border/40"
+          >
+            <CalculatorIcon className="h-4 w-4" />
+          </button>
+        </div>
       </FieldRow>
       {!isFeedrateXYValid(feeds) && <p className="text-sm text-status-error">Feedrate XY must be greater than 0.</p>}
       {isPocketAdaptive && (
