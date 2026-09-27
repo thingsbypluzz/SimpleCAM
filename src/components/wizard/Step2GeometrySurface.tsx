@@ -18,6 +18,7 @@ import type { ToolDiameterOption } from '../../types/toolDiameters'
 import { ToolChipLoad } from './ToolChipLoad'
 import { FieldRow, inputClass } from './FieldRow'
 import { NumberInput } from './NumberInput'
+import { PickHeader } from './PickHeader'
 import { SurfaceMethodPicker } from './SurfaceMethodPicker'
 import { TextToggle } from './TextToggle'
 import { RASTER_DIRECTION_OPTIONS, Z_TRANSITION_MODE_OPTIONS } from './toggleOptions'
@@ -32,9 +33,10 @@ interface Step2GeometrySurfaceProps {
   onFlutesChange: (flutes: number) => void
 }
 
-// Field order: Tool Diameter -> Depth to Remove -> Width/Height -> Method ->
-// Raster Direction -> Stepover (% + read-only mm) -> Z-Transition Mode ->
-// Helix Radius (Helix only) -> Offset X/Y — see CLAUDE.md's Surface design
+// Field order (BL-72): Width/Height -> Depth to Remove -> Tool Diameter ->
+// Method + Raster Direction -> Stepover (% + read-only mm) -> Z-Transition
+// Mode -> Helix Radius + Ramp Angle (Helix only) -> Offset X/Y — see
+// CLAUDE.md's Surface design
 // notes. Mirrors Step2GeometryOutline.tsx's conventions throughout
 // (FieldRow/useNumberField, flex-row pairs, border-t section dividers). No
 // Tabs section — tabs don't apply to Surface at all (it never isolates or
@@ -55,6 +57,34 @@ export function Step2GeometrySurface({ params, onChange, machine, toolDiameters,
 
   return (
     <div className="flex flex-col gap-6">
+      <PickHeader params={params} />
+
+      <div className="flex flex-col gap-4">
+        <div className="flex gap-4">
+          <div className="min-w-0 flex-1">
+            <FieldRow label="Width [mm]">
+              <NumberInput type="number" step="0.1" min="0" max={machine.travelX} className={inputClass} {...widthField} />
+            </FieldRow>
+          </div>
+          <div className="min-w-0 flex-1">
+            <FieldRow label="Height [mm]">
+              <NumberInput type="number" step="0.1" min="0" max={machine.travelY} className={inputClass} {...heightField} />
+            </FieldRow>
+          </div>
+        </div>
+        <FieldRow label="Depth to Remove [mm]">
+          <NumberInput
+            type="number"
+            step="0.1"
+            min="0"
+            max={machine.travelZ}
+            className={inputClass}
+            {...totalDepthField}
+          />
+        </FieldRow>
+        {!isSurfaceSizeValid(surface) && <p className="text-sm text-status-error">Dimensions and depth must be greater than 0.</p>}
+      </div>
+
       <div className="flex flex-col gap-4">
         <ToolChipLoad params={params} machine={machine} flutes={flutes} onFlutesChange={onFlutesChange}>
           <FieldRow label="Tool Diameter [mm]">
@@ -71,32 +101,7 @@ export function Step2GeometrySurface({ params, onChange, machine, toolDiameters,
             </select>
           </FieldRow>
         </ToolChipLoad>
-        <FieldRow label="Depth to Remove [mm]">
-          <NumberInput
-            type="number"
-            step="0.1"
-            min="0"
-            max={machine.travelZ}
-            className={inputClass}
-            {...totalDepthField}
-          />
-        </FieldRow>
       </div>
-
-      <div className="flex gap-4">
-        <div className="min-w-0 flex-1">
-          <FieldRow label="Width [mm]">
-            <NumberInput type="number" step="0.1" min="0" max={machine.travelX} className={inputClass} {...widthField} />
-          </FieldRow>
-        </div>
-        <div className="min-w-0 flex-1">
-          <FieldRow label="Height [mm]">
-            <NumberInput type="number" step="0.1" min="0" max={machine.travelY} className={inputClass} {...heightField} />
-          </FieldRow>
-        </div>
-      </div>
-
-      {!isSurfaceSizeValid(surface) && <p className="text-sm text-status-error">Dimensions and depth must be greater than 0.</p>}
 
       <div className="flex gap-4">
         <div className="flex min-w-0 flex-1 flex-col gap-1">

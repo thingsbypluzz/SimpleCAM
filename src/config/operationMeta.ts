@@ -19,7 +19,7 @@ import {
 } from './outlineMeta'
 import { POCKET_METHOD_LIST, POCKET_METHOD_META } from './pocketMethodMeta'
 import { POCKET_SHAPE_META, pocketShapeIcon, pocketShapeLabel, pocketShapeLines, pocketShapeSlug, pocketSummary } from './pocketMeta'
-import { patternLabel, patternSlug, positioningIcon, positioningLines, positioningSummary } from './positioningMeta'
+import { patternLabel, patternSlug, POSITIONING_META, positioningIcon, positioningLines, positioningSummary } from './positioningMeta'
 import { SURFACE_METHOD_LIST, SURFACE_METHOD_META } from './surfaceMethodMeta'
 import { SURFACE_SHAPE_META, surfaceShapeIcon, surfaceShapeLabel, surfaceShapeLines, surfaceShapeSlug, surfaceSummary } from './surfaceMeta'
 
@@ -73,6 +73,9 @@ export interface OperationMeta {
   pickIcon: (params: WizardParams) => IconComponent
   pickLines: (params: WizardParams) => string[]
   pickSummary: (params: WizardParams) => string
+  // The picked pattern/shape's own name and one-line description — Step 2's
+  // header row ("Pattern: Rectangular Grid" + hint).
+  pick: (params: WizardParams) => { title: string; description: string }
   method: (params: WizardParams) => MethodDisplay
   // Step 2 Summary stats shown after METHOD, and Step 2's collapsed tooltip.
   geometryStats: (params: WizardParams) => SummaryStat[]
@@ -146,6 +149,7 @@ export const OPERATION_META: Record<OperationType, OperationMeta> = {
     pickIcon: (p) => positioningIcon(p.geometry.positioning),
     pickLines: (p) => positioningLines(p.geometry),
     pickSummary: (p) => positioningSummary(p.geometry),
+    pick: (p) => POSITIONING_META[p.geometry.positioning],
     method: (p) => METHOD_META[p.method],
     geometryStats: (p) => [
       ...offsetStat(p.geometry),
@@ -176,6 +180,7 @@ export const OPERATION_META: Record<OperationType, OperationMeta> = {
     pickIcon: (p) => outlineShapeIcon(p.outline.shape),
     pickLines: (p) => outlineShapeLines(p.outline),
     pickSummary: (p) => outlineSummary(p.outline),
+    pick: (p) => OUTLINE_SHAPE_META[p.outline.shape],
     method: (p) => activeOutlineMethodMeta(p.outline),
     geometryStats: (p) => [
       sizeStat(
@@ -208,6 +213,7 @@ export const OPERATION_META: Record<OperationType, OperationMeta> = {
     pickIcon: (p) => surfaceShapeIcon(p.surface.shape),
     pickLines: (p) => surfaceShapeLines(p.surface),
     pickSummary: (p) => surfaceSummary(p.surface),
+    pick: (p) => SURFACE_SHAPE_META[p.surface.shape],
     method: (p) => SURFACE_METHOD_META[p.surface.method],
     geometryStats: (p) => [
       sizeStat(
@@ -242,6 +248,7 @@ export const OPERATION_META: Record<OperationType, OperationMeta> = {
     pickIcon: (p) => pocketShapeIcon(p.pocket.shape),
     pickLines: (p) => pocketShapeLines(p.pocket),
     pickSummary: (p) => pocketSummary(p.pocket),
+    pick: (p) => POCKET_SHAPE_META[p.pocket.shape],
     method: (p) => POCKET_METHOD_META[p.pocket.method],
     geometryStats: (p) => [
       sizeStat(

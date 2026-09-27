@@ -7,6 +7,26 @@ zgodne z [SemVer](https://semver.org/). Ten plik pozostaje głównym, czytelnym
 thingsbypluzz/SimpleCAM), ale to infrastruktura pod izolację pracy
 (branch/worktree per zadanie), nie zamiennik tego changeloga.
 
+## [0.22.8] — 2026-09-28
+
+### Zmieniono
+
+- **Kolejność pól w Kroku 2** (`BL-72`) — jedna zasada dla wszystkich
+  operacji: najpierw gdzie i jak duże, potem narzędzie, potem jak ciąć.
+  Wymiary kształtu (w Hole(s) — wzorzec i jego pola, potem średnica otworu)
+  i głębokość są teraz na górze, pod nimi Tool Diameter z Flutes/fz, dalej
+  metoda i jej opcje, przejście w Z, mostki i Offset na końcu. W Outline
+  Offset Mode stoi między Cutting Depth a Tool Diameter. Komunikaty błędów
+  przeniesione pod pola, których dotyczą.
+- **Wiersz „Pattern/Shape” na górze Kroku 2 we wszystkich operacjach** —
+  „Pattern: Rectangular Grid”, „Shape: Circle” itd. w jednej linii, opis
+  wzorca/kształtu pod Hint Button po prawej (wcześniej tylko Hole(s), z
+  opisem w osobnych liniach).
+- Outline Circle i Pocket Circle: Diameter i głębokość w jednym wierszu,
+  jak w Hole(s).
+- Hint Button przy fz w Kroku 2 — czym jest chip load i skąd bierze się
+  pokazywana wartość.
+
 ## [0.22.7] — 2026-09-28
 
 ### Zmieniono

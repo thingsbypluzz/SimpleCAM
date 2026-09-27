@@ -15,6 +15,7 @@ import { ToolChipLoad } from './ToolChipLoad'
 import { FieldRow, inputClass } from './FieldRow'
 import { HintPopover } from './HintPopover'
 import { NumberInput } from './NumberInput'
+import { PickHeader } from './PickHeader'
 import { OffsetModePicker } from './OffsetModePicker'
 import { OutlineMethodPicker } from './OutlineMethodPicker'
 import { useNumberField } from './useNumberField'
@@ -28,8 +29,8 @@ interface Step2GeometryOutlineProps {
   onFlutesChange: (flutes: number) => void
 }
 
-// Field order: Tool Diameter -> Cutting Depth -> Offset Mode -> Method ->
-// shape size fields -> Tabs -> Offset X/Y — see CLAUDE.md's Outline design
+// Field order (BL-72): shape size fields -> Cutting Depth -> Offset Mode ->
+// Tool Diameter -> Method -> Tabs -> Offset X/Y — see CLAUDE.md's Outline design
 // notes. Mirrors Step2GeometryHoles.tsx's conventions throughout
 // (FieldRow/useNumberField/HintPopover, flex-row pairs for X/Y-like
 // fields, border-t section dividers).
@@ -54,6 +55,85 @@ export function Step2GeometryOutline({ params, onChange, machine, toolDiameters,
 
   return (
     <div className="flex flex-col gap-6">
+      <PickHeader params={params} />
+
+      <div className="flex flex-col gap-4">
+        {isRect ? (
+          <>
+            <div className="flex gap-4">
+              <div className="min-w-0 flex-1">
+                <FieldRow label="Width [mm]">
+                  <NumberInput
+                    type="number"
+                    step="0.1"
+                    min="0"
+                    max={machine.travelX}
+                    className={inputClass}
+                    {...widthField}
+                  />
+                </FieldRow>
+              </div>
+              <div className="min-w-0 flex-1">
+                <FieldRow label="Height [mm]">
+                  <NumberInput
+                    type="number"
+                    step="0.1"
+                    min="0"
+                    max={machine.travelY}
+                    className={inputClass}
+                    {...heightField}
+                  />
+                </FieldRow>
+              </div>
+            </div>
+            <FieldRow label="Cutting Depth [mm]">
+              <NumberInput
+                type="number"
+                step="0.1"
+                min="0"
+                max={machine.travelZ}
+                className={inputClass}
+                {...totalDepthField}
+              />
+            </FieldRow>
+          </>
+        ) : (
+          // Circle: Diameter + Cutting Depth on one row, like Hole(s).
+          <div className="flex gap-4">
+            <div className="min-w-0 flex-1">
+              <FieldRow label="Diameter [mm]">
+                <NumberInput
+                  type="number"
+                  step="0.1"
+                  min="0"
+                  max={Math.min(machine.travelX, machine.travelY)}
+                  className={inputClass}
+                  {...diameterField}
+                />
+              </FieldRow>
+            </div>
+            <div className="min-w-0 flex-1">
+              <FieldRow label="Cutting Depth [mm]">
+                <NumberInput
+                  type="number"
+                  step="0.1"
+                  min="0"
+                  max={machine.travelZ}
+                  className={inputClass}
+                  {...totalDepthField}
+                />
+              </FieldRow>
+            </div>
+          </div>
+        )}
+        {!isOutlineSizeValid(outline) && <p className="text-sm text-status-error">Dimensions and depth must be greater than 0.</p>}
+      </div>
+
+      <div className="flex flex-col gap-1">
+        <span className="text-sm font-medium text-value">Offset Mode</span>
+        <OffsetModePicker params={params} onChange={onChange} />
+      </div>
+
       <div className="flex flex-col gap-4">
         <ToolChipLoad params={params} machine={machine} flutes={flutes} onFlutesChange={onFlutesChange}>
           <FieldRow label="Tool Diameter [mm]">
@@ -70,16 +150,6 @@ export function Step2GeometryOutline({ params, onChange, machine, toolDiameters,
             </select>
           </FieldRow>
         </ToolChipLoad>
-        <FieldRow label="Cutting Depth [mm]">
-          <NumberInput
-            type="number"
-            step="0.1"
-            min="0"
-            max={machine.travelZ}
-            className={inputClass}
-            {...totalDepthField}
-          />
-        </FieldRow>
         {!isOutlineToolDiameterValid(outline) && (
           <p className="text-sm text-status-error">
             {isRect
@@ -90,55 +160,9 @@ export function Step2GeometryOutline({ params, onChange, machine, toolDiameters,
       </div>
 
       <div className="flex flex-col gap-1">
-        <span className="text-sm font-medium text-value">Offset Mode</span>
-        <OffsetModePicker params={params} onChange={onChange} />
-      </div>
-
-      <div className="flex flex-col gap-1">
         <span className="text-sm font-medium text-value">Method</span>
         <OutlineMethodPicker params={params} onChange={onChange} />
       </div>
-
-      {isRect ? (
-        <div className="flex gap-4">
-          <div className="min-w-0 flex-1">
-            <FieldRow label="Width [mm]">
-              <NumberInput
-                type="number"
-                step="0.1"
-                min="0"
-                max={machine.travelX}
-                className={inputClass}
-                {...widthField}
-              />
-            </FieldRow>
-          </div>
-          <div className="min-w-0 flex-1">
-            <FieldRow label="Height [mm]">
-              <NumberInput
-                type="number"
-                step="0.1"
-                min="0"
-                max={machine.travelY}
-                className={inputClass}
-                {...heightField}
-              />
-            </FieldRow>
-          </div>
-        </div>
-      ) : (
-        <FieldRow label="Diameter [mm]">
-          <NumberInput
-            type="number"
-            step="0.1"
-            min="0"
-            max={Math.min(machine.travelX, machine.travelY)}
-            className={inputClass}
-            {...diameterField}
-          />
-        </FieldRow>
-      )}
-      {!isOutlineSizeValid(outline) && <p className="text-sm text-status-error">Dimensions and depth must be greater than 0.</p>}
 
       <div className="border-t border-border pt-4">
         <Checkbox

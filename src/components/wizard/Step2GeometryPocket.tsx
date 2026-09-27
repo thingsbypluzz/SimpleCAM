@@ -31,6 +31,7 @@ import type { ToolDiameterOption } from '../../types/toolDiameters'
 import { ToolChipLoad } from './ToolChipLoad'
 import { FieldRow, inputClass } from './FieldRow'
 import { NumberInput } from './NumberInput'
+import { PickHeader } from './PickHeader'
 import { PocketMethodPicker } from './PocketMethodPicker'
 import { TextToggle } from './TextToggle'
 import { CUT_DIRECTION_OPTIONS, Z_TRANSITION_MODE_OPTIONS } from './toggleOptions'
@@ -48,8 +49,9 @@ interface Step2GeometryPocketProps {
 const round2 = (n: number) => Math.round(n * 100) / 100
 const round4 = (n: number) => Math.round(n * 10000) / 10000
 
-// Field order: Tool Diameter -> Total Depth -> Method -> shape size fields -> Stepover (% + read-only mm) ->
-// Z-Transition Mode -> Helix Radius (Helix only) -> Offset X/Y — mirrors
+// Field order (BL-72): shape size fields -> Total Depth -> Tool Diameter ->
+// Method (+ Direction) -> Stepover (% + read-only mm) -> Z-Transition Mode
+// -> Helix Radius + Ramp Angle (Helix only) -> Offset X/Y — mirrors
 // Step2GeometrySurface.tsx's conventions throughout. Adaptive swaps
 // Stepover for Optimal Load (% ↔ mm, both editable, % stored; engagement
 // angle read-only), adds Direction next to Method and Ramp Angle under the
@@ -95,6 +97,80 @@ export function Step2GeometryPocket({ params, onChange, machine, toolDiameters, 
 
   return (
     <div className="flex flex-col gap-6">
+      <PickHeader params={params} />
+
+      <div className="flex flex-col gap-4">
+        {isRect ? (
+          <>
+            <div className="flex gap-4">
+              <div className="min-w-0 flex-1">
+                <FieldRow label="Width [mm]">
+                  <NumberInput
+                    type="number"
+                    step="0.1"
+                    min="0"
+                    max={machine.travelX}
+                    className={inputClass}
+                    {...widthField}
+                  />
+                </FieldRow>
+              </div>
+              <div className="min-w-0 flex-1">
+                <FieldRow label="Height [mm]">
+                  <NumberInput
+                    type="number"
+                    step="0.1"
+                    min="0"
+                    max={machine.travelY}
+                    className={inputClass}
+                    {...heightField}
+                  />
+                </FieldRow>
+              </div>
+            </div>
+            <FieldRow label="Total Depth [mm]">
+              <NumberInput
+                type="number"
+                step="0.1"
+                min="0"
+                max={machine.travelZ}
+                className={inputClass}
+                {...totalDepthField}
+              />
+            </FieldRow>
+          </>
+        ) : (
+          // Circle: Diameter + Total Depth on one row, like Hole(s).
+          <div className="flex gap-4">
+            <div className="min-w-0 flex-1">
+              <FieldRow label="Diameter [mm]">
+                <NumberInput
+                  type="number"
+                  step="0.1"
+                  min="0"
+                  max={Math.min(machine.travelX, machine.travelY)}
+                  className={inputClass}
+                  {...diameterField}
+                />
+              </FieldRow>
+            </div>
+            <div className="min-w-0 flex-1">
+              <FieldRow label="Total Depth [mm]">
+                <NumberInput
+                  type="number"
+                  step="0.1"
+                  min="0"
+                  max={machine.travelZ}
+                  className={inputClass}
+                  {...totalDepthField}
+                />
+              </FieldRow>
+            </div>
+          </div>
+        )}
+        {!isPocketSizeValid(pocket) && <p className="text-sm text-status-error">Dimensions and depth must be greater than 0.</p>}
+      </div>
+
       <div className="flex flex-col gap-4">
         <ToolChipLoad params={params} machine={machine} flutes={flutes} onFlutesChange={onFlutesChange}>
           <FieldRow label="Tool Diameter [mm]">
@@ -111,16 +187,6 @@ export function Step2GeometryPocket({ params, onChange, machine, toolDiameters, 
             </select>
           </FieldRow>
         </ToolChipLoad>
-        <FieldRow label="Total Depth [mm]">
-          <NumberInput
-            type="number"
-            step="0.1"
-            min="0"
-            max={machine.travelZ}
-            className={inputClass}
-            {...totalDepthField}
-          />
-        </FieldRow>
         {!isPocketToolDiameterValid(pocket) && (
           <p className="text-sm text-status-error">
             {isRect
@@ -130,9 +196,8 @@ export function Step2GeometryPocket({ params, onChange, machine, toolDiameters, 
         )}
       </div>
 
-      {/* Method sizes to its own buttons (three of them no longer fit half
-          the panel) and the companion toggle starts a clear gap after it,
-          on the same line. */}
+      {/* Method sizes to its own buttons and the companion toggle starts a
+          clear gap after it, on the same line. */}
       <div className="flex gap-7">
         <div className="flex shrink-0 flex-col gap-1">
           <span className="text-sm font-medium text-value">Method</span>
@@ -145,47 +210,6 @@ export function Step2GeometryPocket({ params, onChange, machine, toolDiameters, 
           </div>
         )}
       </div>
-
-      {isRect ? (
-        <div className="flex gap-4">
-          <div className="min-w-0 flex-1">
-            <FieldRow label="Width [mm]">
-              <NumberInput
-                type="number"
-                step="0.1"
-                min="0"
-                max={machine.travelX}
-                className={inputClass}
-                {...widthField}
-              />
-            </FieldRow>
-          </div>
-          <div className="min-w-0 flex-1">
-            <FieldRow label="Height [mm]">
-              <NumberInput
-                type="number"
-                step="0.1"
-                min="0"
-                max={machine.travelY}
-                className={inputClass}
-                {...heightField}
-              />
-            </FieldRow>
-          </div>
-        </div>
-      ) : (
-        <FieldRow label="Diameter [mm]">
-          <NumberInput
-            type="number"
-            step="0.1"
-            min="0"
-            max={Math.min(machine.travelX, machine.travelY)}
-            className={inputClass}
-            {...diameterField}
-          />
-        </FieldRow>
-      )}
-      {!isPocketSizeValid(pocket) && <p className="text-sm text-status-error">Dimensions and depth must be greater than 0.</p>}
 
       {isAdaptive ? (
         <div className="flex flex-col gap-4">

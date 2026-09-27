@@ -547,7 +547,8 @@ Artifact aktualizować tylko jeśli realny layout appki zmieni się na tyle,
   każdym elemencie — `min-w-0` konieczne, bo `<input>` bez jawnej
   szerokości ma domyślną min-content podłogę, której flex-shrink nie
   może ominąć) — Grid X/Y, Offset X/Y, Hole Diameter+Total Depth,
-  Circle Count/Diameter/Start Angle, Tabs Height/Width/Count, Surface
+  Circle Count/Diameter/Start Angle, Outline Circle Diameter+Cutting Depth, Pocket Circle Diameter+Total Depth,
+  Tabs Height/Width/Count, Surface
   Method+Raster Direction, Pocket Method+Direction (Adaptive; tu
   Method ma szerokość własnych przycisków, `shrink-0`, a drugi toggle
   zaczyna się po wyraźnym odstępie w tej samej linii; Direction jako "Conv."/"Climb", pełne
@@ -556,6 +557,21 @@ Artifact aktualizować tylko jeśli realny layout appki zmieni się na tyle,
   pole puste, gdy tryb ≠ Helix — para zostaje w jednym wierszu, żeby
   uniknąć scrollowania). Pola o niepowiązanym znaczeniu zostają w
   kolumnie.
+- **Kolejność pól w Kroku 2** — ta sama zasada dla każdej operacji:
+  najpierw gdzie i jak duże, potem narzędzie, potem jak ciąć. Pierwszy
+  wiersz każdego panelu to `PickHeader` (`components/wizard/`): to, co
+  wybrano w Kroku 1 — „Pattern: Rectangular Grid” / „Shape: Circle”
+  (`OPERATION_META[op].pickKind` + `pick()`), opis pod Hint Button przy
+  prawej krawędzi. Hole(s): Pattern (+ pola Grid/Circle/Custom) → Hole Diameter + Total Depth → Tool
+  Diameter (+ Flutes/fz) → Method → Tabs → Offset. Outline: wymiary →
+  Cutting Depth → Offset Mode → Tool Diameter → Method → Tabs → Offset.
+  Surface: Width/Height → Depth to Remove → Tool Diameter → Method + Raster
+  Direction → Stepover → Z-Transition Mode → Helix Radius/Ramp Angle →
+  Offset. Pocket: wymiary → Total Depth → Tool Diameter → Method
+  (+ Direction) → Optimal Load albo Stepover → Z-Transition Mode → Helix
+  Radius/Ramp Angle → Offset. Komunikat błędu stoi pod polem, którego
+  dotyczy (średnica freza pod Tool Diameter, wymiary i głębokość pod
+  Total Depth).
 - Preview Tabs: 2D Preview / 3D Preview (domyślna) / G-Code. G-Code
   pokazuje ostatnio wygenerowany program, najwyżej `GCODE_PREVIEW_LINES`
   = 5000 linii (`App.tsx`) z informacją, ile pominięto — pełny program
@@ -680,7 +696,8 @@ preset; wpisane fz nie jest pamiętane i zeruje się przy zmianie materiału.
 edytowalne pole Flutes — ta sama wartość z tej pamięci co w modalu, zmiana
 w jednym miejscu zmienia oba; zapisywana tylko liczba całkowita 1–6, inna
 wartość pokazuje błąd pod wierszem (nie blokuje Generate) — oraz
-rzeczywiste fz tylko do odczytu, liczone na żywo (`effectiveChipLoad()`: Feed XY ÷ (Spindle Speed × z), ÷ chip thinning
+rzeczywiste fz tylko do odczytu (z Hint Button wyjaśniającym, czym jest
+fz), liczone na żywo (`effectiveChipLoad()`: Feed XY ÷ (Spindle Speed × z), ÷ chip thinning
 dla szerokości < 50% D).
 
 ### Overlay presetów w 2D/3D Preview

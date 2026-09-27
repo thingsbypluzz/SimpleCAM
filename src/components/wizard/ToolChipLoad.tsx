@@ -45,15 +45,17 @@ export function ToolChipLoad({ params, machine, flutes, onFlutesChange, children
             <NumberInput type="number" step="1" min="1" max={MAX_FLUTES} className={inputClass} {...flutesField} />
           </FieldRow>
         </div>
-        <div className="w-24 shrink-0">
-          <FieldRow label="fz [mm]">
+        <div className="w-28 shrink-0">
+          <FieldRow
+            label="fz [mm]"
+            hint="Chip load — how thick a chip each flute cuts per revolution (mm per tooth). Here it's worked out from Feedrate XY ÷ (Spindle Speed × Flutes), corrected for chip thinning when the cut is narrower than half the tool. Too low rubs and heats the tool, too high risks breaking it — the Feedrate Calculator suggests a value for your material."
+          >
             <input
               type="text"
               readOnly
               disabled
               value={fz === null ? '—' : String(Math.round(fz * 1000) / 1000)}
               className={`${inputClass} cursor-not-allowed opacity-70`}
-              title="Chip load per tooth from Feed XY, Spindle Speed and flutes (with chip thinning for narrow cuts)"
             />
           </FieldRow>
         </div>

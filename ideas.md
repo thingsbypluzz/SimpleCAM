@@ -239,14 +239,16 @@ faktycznym.
   Tool Diameters (`resolveToolDiameterSelectOptions()`), bez możliwości
   wybrania rozmiaru, którego na liście nie ma. Pełny opis: `CHANGELOG.md`,
   `[0.22.5]`.
-- **`BL-72`** *(Otwarty)* 🟠 — **Kolejność pól w Kroku 2.** Po dodaniu
+- **`BL-72`** *(Zrealizowany, 2026-09-28)* 🟠 — **Kolejność pól w Kroku 2.** Po dodaniu
   kolejnych pól kolejność przestała być logiczna. Proponowana (dla każdej
   operacji analogicznie, z jej własnymi polami): Width × Height (albo
   średnica / pozycjonowanie), Total Depth, Tool Diameter (+ Flutes/fz),
   Method, opcje metody (Optimal Load, Direction, Stepover…), Z-Transition
   Mode, Ramp Angle (jeśli występuje), Offset. Dotyczy wszystkich czterech
   `Step2Geometry*.tsx`; komentarze „Field order” na górze plików do
-  aktualizacji.
+  aktualizacji. Wdrożone z dwiema korektami: w Hole(s) wzorzec przed
+  średnicą otworu, w Outline Offset Mode między Cutting Depth a Tool
+  Diameter. Pełny opis: `CHANGELOG.md`, `[0.22.8]`.
 - **`BL-73`** *(Zrealizowany, 2026-09-27)* 🔴 — **Pocket Raster tnie pełną
   szerokością freza na starcie każdego poziomu.** Po wejściu Helix jechał po
   przekątnej na pełnej głębokości do narożnika pierwszej linii, a pierwsza
