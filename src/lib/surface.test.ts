@@ -110,7 +110,7 @@ describe('generateSurfaceUnidirectional', () => {
     // the whole empty Safe-Z-to-toZ gap — and without stopping right on the
     // stock top.
     expect(lines.filter((l) => l === 'G0 Z0.5')).toHaveLength(1)
-    // 'G0 Z0' is now only the toolpath's own initial rapidToTop(startZ).
+    // 'G0 Z0' is now only the toolpath's own initial rapid to Start Z.
     expect(lines.filter((l) => l === 'G0 Z0')).toHaveLength(1)
     // The re-entry plunge after that retract, plus the initial Helix-mode
     // Z-transition into the first level (single stepdown-sized turn ->

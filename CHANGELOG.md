@@ -7,6 +7,28 @@ zgodne z [SemVer](https://semver.org/). Ten plik pozostaje głównym, czytelnym
 thingsbypluzz/SimpleCAM), ale to infrastruktura pod izolację pracy
 (branch/worktree per zadanie), nie zamiennik tego changeloga.
 
+## [0.22.4] — 2026-09-27
+
+### Zmieniono
+
+- **`BL-61` zakończony — Outline Rectangle na wspólnej liście ruchów.**
+  Ramp i Standard (z mostkami) budują listę ruchów
+  (`buildRectRampToolpath()`/`buildRectStandardToolpath()`), z której
+  powstaje G-code i podgląd 3D. Od teraz każda operacja działa w ten
+  sposób: podgląd 3D nie liczy ścieżki narzędzia sam, więc nie może się
+  rozjechać z plikiem. G-code bez zmian — sprawdzone znak po znaku na 4000
+  losowych programach Outline w obu trybach interpolacji. Usunięte
+  ostatnie lustra silnika w `buildScene.ts` i `rapidToTop()`.
+
+### Naprawiono
+
+- Podgląd 3D Outline Rectangle Ramp: gdy dłuższy bok (ten, wzdłuż
+  którego schodzi rampa) nie był pierwszym bokiem obiegu — Inside z
+  prostokątem wyższym niż szerszym albo Outside/On-line z szerszym niż
+  wyższym — kreskowany najazd Safe Z → Start Z i retrakt były rysowane w
+  sąsiednim narożniku, nie w punkcie startu ścieżki. Teraz oba są
+  częścią listy ruchów silnika, w prawdziwym punkcie startu.
+
 ## [0.22.3] — 2026-09-27
 
 ### Zmieniono

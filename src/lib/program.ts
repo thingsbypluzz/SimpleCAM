@@ -3,17 +3,6 @@ import type { Point2D, WizardParams } from '../types/wizard'
 import { fmt } from './format'
 import { resolvePoints } from './positioning'
 
-// `startZ` is the approach margin above the stock top (Z0): the rapid stops
-// there and the rest of the way down runs at feed, in case Z zeroing is a
-// little off. It's only guaranteed to be air for startZ >= 0 — a negative
-// Start Z is allowed (resuming a partly cut job) but flagged as a warning
-// in Steps 3/4 (feedsWarnings(), validation.ts). Used by the string-based
-// Outline Rectangle engines (outlineRectangle.ts); move-list engines emit
-// the same line through toolpathToGcode()'s `zTo('rapid', startZ)`.
-export function rapidToTop(startZ: number): string {
-  return `G0 Z${fmt(startZ)}`
-}
-
 // BL-54: every arc uses incremental I/J, so the arc-center mode must be
 // pinned — Mach3's "IJ Mode" is configurable and in absolute mode would
 // swing every G2/G3 around the wrong center. G94 (units/min feed), G40 (no

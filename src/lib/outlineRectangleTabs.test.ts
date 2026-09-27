@@ -1,7 +1,15 @@
 import { describe, expect, it } from 'vitest'
-import { computeRectTabRanges, tabbedRectanglePass } from './outlineRectangleTabs'
+import { appendTabbedRectanglePass, computeRectTabRanges } from './outlineRectangleTabs'
+import { ToolpathBuilder, toolpathToGcode } from './toolpath'
 import { rectCorners } from './outlineRectangleGeometry'
 import { fmt } from './format'
+
+// One tabbed pass on its own, formatted as G-code (G1 at `feed`).
+function tabbedRectanglePass(p: Parameters<typeof appendTabbedRectanglePass>[1] & { feed: number }): string[] {
+  const b = new ToolpathBuilder({ x: p.corners[0].x, y: p.corners[0].y, z: p.cutZ })
+  appendTabbedRectanglePass(b, p)
+  return toolpathToGcode(b.build(), { feeds: { cut: p.feed }, interpolation: 'linear', leadInRapid: false })
+}
 
 describe('computeRectTabRanges', () => {
   it('returns tabCountPerSide ranges, evenly spaced and phase-shifted by half a step', () => {
@@ -38,7 +46,7 @@ describe('computeRectTabRanges', () => {
   })
 })
 
-describe('tabbedRectanglePass', () => {
+describe('appendTabbedRectanglePass', () => {
   const corners = rectCorners('rectCornered', 40, 20, 40, 20, 0, 0, 'ccw')
   const cutZ = -5
   const liftZ = -3

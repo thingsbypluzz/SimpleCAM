@@ -838,8 +838,7 @@ niezależnie od `Start Z` (dno cięcia to zawsze `-totalDepth`, patrz
 `Start Z` a `Z=0` celowo wystaje ponad bryłę — to uczciwy obraz tego, co
 faktycznie się dzieje (najazd na posuwie roboczym w powietrzu, zanim
 frez dotknie materiału), nie błąd. Ruch szybki `Safe Z → Start Z`
-(pierwszy ruch listy ruchów silnika; dla Outline Rectangle
-`rapidZLineObjects()`) jest tym niedotknięty — to osobny, realny odcinek
+(pierwszy ruch listy ruchów silnika) jest tym niedotknięty — to osobny, realny odcinek
 G0, niezwiązany z pozycją bryły. Dotyczy tylko Hole(s) i Outline —
 Surface ma osobną, już wcześniej ustaloną logikę bryły "pozostałego
 materiału" (patrz sekcja Surface w "Kluczowe decyzje projektowe" wyżej).
@@ -951,8 +950,7 @@ idzie wyłącznie przez **styl linii** (`ToolpathLineStyle` w
 - **`solid`** — realne skrawanie: pełne okręgi/spirale/łuki Helixa,
   linie rastra Surface, ramp Outline.
 - **`dashed`** — prawdziwy ruch szybki G0: przejazd między otworami,
-  najazd Safe Z → Start Z i retrakt (z listy ruchów silnika; Outline
-  Rectangle — `rapidZLineObjects()`), retrakt/
+  najazd Safe Z → Start Z i retrakt (z listy ruchów silnika), retrakt/
   reposition między poziomami i (Unidirectional) między liniami rastra
   Surface.
 - **`dotted`** — nieskrawający, pionowy ruch G1: krok w dół między
@@ -971,9 +969,7 @@ w jednym obiekcie. `createSegmentBuilder3D()` akumuluje kolejne odcinki
 (każdy dzieli wspólny punkt graniczny z poprzednim — brak przerwy
 wizualnej), `buildToolpathLines3D()` zamienia je na rzeczywiste
 `THREE.Line` (pomijając zdegenerowane odcinki < 2 punktów).
-`rectRampPoints3D()`/`rectStandardPoints3D()` (Outline Rectangle) zwracają
-`ToolpathSegment3D[]`. Operacje, które budują wspólną listę ruchów
-(Hole(s), Outline Circle, Surface, Pocket), rysuje
+Każda operacja buduje wspólną listę ruchów, a ścieżkę narzędzia rysuje
 `toolpathLines3D()` — styl wynika wprost z rodzaju ruchu (`MOVE_STYLE`:
 `cut` → `solid`, `rapid` → `dashed`, `plunge` → `dotted`, `link` →
 `linking`), a kolejne ruchy tego samego stylu dzielą jeden `THREE.Line`.
@@ -1133,7 +1129,7 @@ Rozstawienie mostków automatyczne i równomierne, przesunięte w fazie o
 pół kroku (środek pierwszego mostka na połowie kroku, nie na kącie/
 pozycji 0 — punkt startowy przejścia nigdy nie trafia w mostek).
 `computeTabRanges()`/`appendTabbedCirclePass()` (`src/lib/tabs.ts`,
-Hole(s) i Outline Circle) i `computeRectTabRanges()`/`tabbedRectanglePass()`
+Hole(s) i Outline Circle) i `computeRectTabRanges()`/`appendTabbedRectanglePass()`
 (`src/lib/outlineRectangleTabs.ts`, Outline Rectangle, per bok) liczą
 listę kątów/pozycji jako **sumę** równomiernego próbkowania **i**
 dokładnych granic każdego mostka wymuszonych jako punkty łamania —
@@ -1154,10 +1150,8 @@ defensywnie obcinają ułamek (`Math.floor`) i zaciskają zakresy do
 Podglądy 2D i 3D renderują realne przerwy: `drawGappedCircle()`/
 `drawGappedRectangle()` (`drawToolpath.ts`) rysują przerwaną linię
 (`ctx.setLineDash()`, stała `TAB_DASH`) na łuku/odcinku mostka zamiast
-zwykłej pustki; 3D rysuje Hole(s)/Outline Circle wprost z listy ruchów
-silnika (także podniesienia nad mostkami), a Outline Rectangle przez
-`tabbedRectanglePoints3D()` (`buildScene.ts`), tą samą matematyką co
-silnik.
+zwykłej pustki; 3D rysuje ścieżkę wprost z listy ruchów silnika, razem
+z podniesieniami nad mostkami.
 Świadomie poza zakresem: bryła otworu/kształtu (półprzezroczysty
 cylinder/box) zostaje pełnym, niepodziurawionym kształtem — tylko linia
 ścieżki narzędzia dostała dokładną geometrię przerw.
@@ -1690,14 +1684,10 @@ src/
                                materiału (Z=0) + siatka, osie X/Y przez
                                fizyczny origin z grotem strzałki i
                                etykietą (sprite'y z canvas-texture),
-                               ścieżka narzędzia Hole(s), Outline Circle,
-                               Surface i Pocket rysowana wprost z listy
-                               ruchów silnika przez `toolpathLines3D()`;
-                               tylko Outline Rectangle liczy jeszcze
-                               punkty samodzielnie (mirror pętli silnika,
-                               `Vector3` zamiast stringów G-code, podział
-                               głębokości przez wspólne
-                               `computeDepthPasses()`), bryła
+                               ścieżka narzędzia każdej operacji rysowana
+                               wprost z listy ruchów silnika przez
+                               `toolpathLines3D()` (podgląd nie liczy
+                               ścieżki sam), bryła
                                finalnego kształtu, `buildStockCapObject()`
                                (patrz "Otwarta/zamknięta geometria..."
                                wyżej — zwraca `null` dla Surface, blok
@@ -1796,11 +1786,15 @@ src/
                                  (wewnętrzna/zewnętrzna) dla On-line,
                                  czysto wizualne (3D).
     outlineRectangle.ts / outlineRectangleGeometry.ts — Outline Rectangle:
-                                 metody Ramp/Standard, geometria boków
+                                 metody Ramp/Standard
+                                 (`buildRectRampToolpath()`/
+                                 `buildRectStandardToolpath()` — lista
+                                 ruchów dla G-code i podglądu 3D, opcje z
+                                 `rectOutlineOptions()`), geometria boków
                                  (`longerEdgeIndex()`,
                                  `onLineRectDimensions()`).
     outlineRectangleTabs.ts      — `computeRectTabRanges()`/
-                                 `tabbedRectanglePass()` — mostki per bok
+                                 `appendTabbedRectanglePass()` — mostki per bok
                                  dla Outline Rectangle, ta sama logika
                                  unii breakpointów co `tabs.ts`, bez
                                  próbkowania kątowego (prosta krawędź nie
@@ -1921,13 +1915,14 @@ src/
                                  `G1 Z… F<plunge>`, `G1 X Y Z F`, `G2/G3 … I
                                  J F`). Silnik buduje listę raz, G-code i
                                  podgląd 3D ją konsumują — podgląd nie może
-                                 rozjechać się z plikiem. Dziś: Surface
-                                 (`buildSurfaceToolpath()`) i Pocket
-                                 (`buildPocketToolpath()`, wszystkie
-                                 metody), Hole(s) i Outline Circle
+                                 rozjechać się z plikiem. Każda operacja:
+                                 Hole(s) i Outline Circle
                                  (`buildHelixCircleToolpath()`/
-                                 `buildStandardCircleToolpath()`); Outline
-                                 Rectangle czeka na ostatni krok etapu 3.
+                                 `buildStandardCircleToolpath()`), Outline
+                                 Rectangle (`buildRectRampToolpath()`/
+                                 `buildRectStandardToolpath()`), Surface
+                                 (`buildSurfaceToolpath()`) i Pocket
+                                 (`buildPocketToolpath()`).
     fuzzParams.ts                   — tylko testy: deterministyczny PRNG +
                                  losowe `WizardParams` per operacja (test
                                  niezmienników, porównania przy refaktorze).

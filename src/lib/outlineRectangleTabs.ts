@@ -1,5 +1,5 @@
-import { fmt } from './format'
 import type { Point2D } from '../types/wizard'
+import type { Point3D, ToolpathBuilder } from './toolpath'
 
 export interface SideTabRange {
   startFrac: number
@@ -17,7 +17,7 @@ export interface SideTabRange {
 // tabCount), per the Outline design (CLAUDE.md).
 //
 // Validation requires a whole count (BL-45) — a fractional one (2.5) used
-// to put the last tab's center at frac 1.0, so tabbedRectanglePass
+// to put the last tab's center at frac 1.0, so the tabbed pass
 // extrapolated past the corner and plunged to full depth there, cutting
 // into the kept wall. The floor and the clamp to [0, 1] keep every range on
 // its own side even for an unvalidated value (the preview renders before
@@ -65,20 +65,19 @@ export interface TabbedRectanglePassParams {
   sideRanges: SideTabRange[][] // exactly 4 arrays, sideRanges[i] applies to the edge corners[i] -> corners[(i+1)%4]
   cutZ: number
   liftZ: number
-  feed: number
 }
 
 // One full flat pass around the 4-corner perimeter at `cutZ`, skipping
 // each tab in `sideRanges[edge]` per edge — same lift-at-entry/plunge-at-
-// exit strategy as tabs.ts's appendTabbedCirclePass, but simpler: a straight G1
-// edge needs no angular-sampling resolution, only each tab's exact
-// start/end fraction as a breakpoint (no equivalent of
-// SEGMENTS_PER_TURN — the line between two corners is already exact).
-// Degrades to a plain 4-line perimeter walk when every side's
-// `sideRanges` entry is empty (no tabs on that side).
-export function tabbedRectanglePass(p: TabbedRectanglePassParams): string[] {
-  const { corners, sideRanges, cutZ, liftZ, feed } = p
-  const lines: string[] = []
+// exit strategy as tabs.ts's appendTabbedCirclePass, but simpler: a
+// straight edge needs no angular-sampling resolution, only each tab's exact
+// start/end fraction as a breakpoint (the line between two corners is
+// already exact). Straight 'cut' moves (G1 at Feedrate XY). Degrades to a
+// plain 4-line perimeter walk when every side's `sideRanges` entry is empty
+// (no tabs on that side).
+export function appendTabbedRectanglePass(b: ToolpathBuilder, p: TabbedRectanglePassParams): void {
+  const { corners, sideRanges, cutZ, liftZ } = p
+  const points: Point3D[] = []
   let prevX = corners[0].x
   let prevY = corners[0].y
   let inTab = false // corners are guaranteed outside any tab, see computeRectTabRanges
@@ -103,13 +102,11 @@ export function tabbedRectanglePass(p: TabbedRectanglePassParams): string[] {
       const y = p0.y + (p1.y - p0.y) * frac
 
       if (nextInTab && !inTab) {
-        lines.push(`G1 X${fmt(prevX)} Y${fmt(prevY)} Z${fmt(liftZ)} F${fmt(feed)}`)
-        lines.push(`G1 X${fmt(x)} Y${fmt(y)} Z${fmt(liftZ)} F${fmt(feed)}`)
+        points.push({ x: prevX, y: prevY, z: liftZ }, { x, y, z: liftZ })
       } else if (!nextInTab && inTab) {
-        lines.push(`G1 X${fmt(prevX)} Y${fmt(prevY)} Z${fmt(cutZ)} F${fmt(feed)}`)
-        lines.push(`G1 X${fmt(x)} Y${fmt(y)} Z${fmt(cutZ)} F${fmt(feed)}`)
+        points.push({ x: prevX, y: prevY, z: cutZ }, { x, y, z: cutZ })
       } else {
-        lines.push(`G1 X${fmt(x)} Y${fmt(y)} Z${fmt(nextInTab ? liftZ : cutZ)} F${fmt(feed)}`)
+        points.push({ x, y, z: nextInTab ? liftZ : cutZ })
       }
 
       prevX = x
@@ -118,8 +115,8 @@ export function tabbedRectanglePass(p: TabbedRectanglePassParams): string[] {
     }
   }
 
-  // Snap the last point onto the exact start corner, matching
-  // the circle passes' convention (avoids float drift).
-  lines[lines.length - 1] = `G1 X${fmt(corners[0].x)} Y${fmt(corners[0].y)} Z${fmt(cutZ)} F${fmt(feed)}`
-  return lines
+  // Snap the last point onto the exact start corner, matching the circle
+  // passes' convention (avoids float drift).
+  points[points.length - 1] = { x: corners[0].x, y: corners[0].y, z: cutZ }
+  for (const pt of points) b.lineTo('cut', pt.x, pt.y, pt.z)
 }

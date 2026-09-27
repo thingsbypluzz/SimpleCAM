@@ -60,8 +60,8 @@ export function isPlungeRateValid(feeds: FeedsParams): boolean {
 }
 
 // BL-46: non-blocking by design — a negative Start Z is a legitimate way
-// to resume a partially cut job, but rapidToTop() then rapids straight
-// below Z0 (into material, unless it's already been removed there).
+// to resume a partially cut job, but every toolpath's first move then
+// rapids from Safe Z straight to Start Z, below Z0 (into material, unless it's already been removed there).
 export function isStartZBelowStock(feeds: FeedsParams): boolean {
   return feeds.startZ < 0
 }
