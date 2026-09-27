@@ -280,13 +280,12 @@ pełny opis (lokalizacja w kodzie, scenariusz błędu, proponowana zmiana)
 w sekcji **"Szczegóły code review (2026-09-26)"** na końcu tego pliku.
 Waga z review w nawiasie kwadratowym.
 
-- **`BL-61`** *(W trakcie)* 🔴 **[Low, kosztowne w czasie]** — **Podglądy
-  duplikują geometrię silnika** — docelowo jedna lista ruchów (jak
-  Adaptive) dla G-code i obu podglądów, po jednej operacji na raz
-  (zaczynając od Surface). Etapy 1–2 (porządki, rejestry
-  `OPERATION_META`/`OPERATION_RULES`, `TextToggle`) zrobione w 0.20.8;
-  etap 3: Surface (0.20.9), Pocket (0.20.10) oraz Hole(s) i Outline Circle
-  (0.22.3) już na `lib/toolpath.ts`, zostaje Outline Rectangle.
+- **`BL-61`** *(Zrealizowany, 2026-09-27)* 🔴 **[Low, kosztowne w czasie]**
+  — **Podglądy duplikują geometrię silnika** — jedna lista ruchów (jak
+  Adaptive) dla G-code i podglądu 3D, po jednej operacji na raz. Etapy 1–2
+  (porządki, rejestry `OPERATION_META`/`OPERATION_RULES`, `TextToggle`) w
+  0.20.8; etap 3 (`lib/toolpath.ts`): Surface (0.20.9), Pocket (0.20.10),
+  Hole(s) i Outline Circle (0.22.3), Outline Rectangle (0.22.4).
 - **`BL-63`** *(Otwarty)* 🟠 **[Low]** — **Wydajność podglądów** — brak
   debounce, Adaptive przy 1% i cały G-code w jednym `<pre>`, podgląd
   1000 otworów przy literówce, domyślna zakładka 3D, `WebGLRenderer` bez
@@ -385,11 +384,11 @@ wierszy — stan kodu z dnia review (`main` @ `b867d4f`).
   przełączników, usunięty `lib/index.ts`, poprawione komentarze. Etap 3
   (lista ruchów `lib/toolpath.ts`, po jednej operacji, każda osobnym
   commitem z wizualną weryfikacją podglądów): Surface w 0.20.9, Pocket w
-  0.20.10, Hole(s) i Outline Circle w 0.22.3 (G-code porównany znak po
-  znaku ze wzorcem z `lib/fuzzParams.ts`). Zostaje Outline Rectangle
-  (Ramp/Standard + mostki) — ostatnie lustra w `buildScene.ts`
-  (`rectRampPoints3D`, `rectStandardPoints3D`, `tabbedRectanglePoints3D`).
-  Ten sam sposób: wzorzec G-code przed zmianą, porównanie po.
+  0.20.10, Hole(s) i Outline Circle w 0.22.3, Outline Rectangle w 0.22.4
+  (G-code porównany znak po znaku ze wzorcem z `lib/fuzzParams.ts`).
+  Zakończone: `buildScene.ts` nie ma już żadnego lustra pętli silnika.
+  Podgląd 2D Hole(s)/Outline rysuje tylko rzut kształtu (okrąg/prostokąt,
+  mostki jako linia przerywana), nie pętle silnika — świadomie zostaje.
 - **Nakład:** trudny (lista ruchów).
 
 ### `BL-63` — Wydajność podglądów

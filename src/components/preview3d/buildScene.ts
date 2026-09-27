@@ -1,18 +1,16 @@
 import * as THREE from 'three'
 import { getFixedColors, getPaletteAccents, hexToThreeColor, type PaletteId } from '../../config/palettes'
 import { resolvePoints } from '../../lib/positioning'
-import { computeDepthPasses } from '../../lib/depthPasses'
 import { circleOutlineOptions, circleOutlineRadiusAndDirection, onLineCircleEdges } from '../../lib/outlineCircle'
 import { buildHelixCircleToolpath, holeCircleOptions } from '../../lib/helix'
 import { buildStandardCircleToolpath } from '../../lib/standardHole'
+import { onLineRectDimensions, rectCorners, rectToolDimensions } from '../../lib/outlineRectangleGeometry'
 import {
-  longerEdgeIndex,
-  onLineRectDimensions,
-  rectCorners,
-  rectToolDimensions,
-} from '../../lib/outlineRectangleGeometry'
-import { sideRangesFor, type SideTabRange } from '../../lib/outlineRectangleTabs'
-import { outlineDirectionForOffsetMode } from '../../lib/outlineRectangle'
+  buildRectRampToolpath,
+  buildRectStandardToolpath,
+  outlineDirectionForOffsetMode,
+  rectOutlineOptions,
+} from '../../lib/outlineRectangle'
 import { surfaceNominalBounds, surfaceToolBounds, type SurfaceBounds } from '../../lib/surfaceGeometry'
 import { buildSurfaceToolpath } from '../../lib/surface'
 import { buildPocketToolpath } from '../../lib/pocket'
@@ -40,9 +38,6 @@ function toThree(x: number, y: number, z: number): THREE.Vector3 {
   return new THREE.Vector3(x, z, -y)
 }
 
-// Passes accumulate Z via repeated float subtraction — matches the
-// tolerance used for the same comparison in standardHole.ts/helix.ts.
-const TAB_BAND_EPSILON = 1e-9
 // Lifts any flat, solid "cap" surface a hair above its nominal startZ
 // height so it never renders exactly coplanar with the material plane
 // (fixed at world Y=0) or the grid (world Y=0.01, see the GridHelper
@@ -96,150 +91,6 @@ const GRID_LABEL_SIZE_PX: Record<Grid3DLabelSize, number> = {
   small: 15,
   medium: 19,
   large: 25,
-}
-
-// Mirrors outlineRectangleTabs.ts's tabbedRectanglePass — walks the
-// 4-corner perimeter, skipping tabs per edge (BL-14 for Outline), with
-// lift/plunge point-doubling at transitions. The caller is expected to have
-// already pushed the arrival point.
-function tabbedRectanglePoints3D(
-  corners: Point2D[],
-  sideRanges: SideTabRange[][],
-  cutZ: number,
-  liftZ: number,
-): THREE.Vector3[] {
-  const points: THREE.Vector3[] = []
-  let prevX = corners[0].x
-  let prevY = corners[0].y
-  let inTab = false
-
-  for (let edge = 0; edge < 4; edge++) {
-    const p0 = corners[edge]
-    const p1 = corners[(edge + 1) % 4]
-    const ranges = sideRanges[edge]
-    const fracs = new Set<number>([0, 1])
-    for (const r of ranges) {
-      fracs.add(r.startFrac)
-      fracs.add(r.endFrac)
-    }
-    const sorted = [...fracs].sort((a, b) => a - b)
-
-    for (let idx = 1; idx < sorted.length; idx++) {
-      const frac = sorted[idx]
-      const midFrac = (sorted[idx - 1] + frac) / 2
-      const nextInTab = ranges.some((r) => midFrac > r.startFrac && midFrac < r.endFrac)
-      const x = p0.x + (p1.x - p0.x) * frac
-      const y = p0.y + (p1.y - p0.y) * frac
-
-      if (nextInTab && !inTab) {
-        points.push(toThree(prevX, prevY, liftZ))
-        points.push(toThree(x, y, liftZ))
-      } else if (!nextInTab && inTab) {
-        points.push(toThree(prevX, prevY, cutZ))
-        points.push(toThree(x, y, cutZ))
-      } else {
-        points.push(toThree(x, y, nextInTab ? liftZ : cutZ))
-      }
-
-      prevX = x
-      prevY = y
-      inTab = nextInTab
-    }
-  }
-
-  return points
-}
-
-interface RectTabsConfig3D {
-  tabHeight: number
-  tabCount: number
-  tabWidth: number
-}
-
-// Mirrors lib/outlineRectangle.ts's rectStandardToolpath.
-function rectStandardPoints3D(
-  corners: Point2D[],
-  totalDepth: number,
-  stepdown: number,
-  startZ: number,
-  tabs: RectTabsConfig3D | null,
-): ToolpathSegment3D[] {
-  const builder = createSegmentBuilder3D(toThree(corners[0].x, corners[0].y, startZ))
-  const tabBandTopZ = tabs ? -(totalDepth - tabs.tabHeight) : 0
-  const sideRanges = tabs ? sideRangesFor(corners, tabs.tabCount, tabs.tabWidth) : [[], [], [], []]
-
-  let currentZ = startZ
-  for (const passDepth of computeDepthPasses(totalDepth + startZ, stepdown)) {
-    currentZ -= passDepth
-    // Straight step-down between passes — non-cutting vertical G1 move.
-    builder.add('dotted', [toThree(corners[0].x, corners[0].y, currentZ)])
-    if (tabs && currentZ <= tabBandTopZ + TAB_BAND_EPSILON) {
-      builder.add('solid', tabbedRectanglePoints3D(corners, sideRanges, currentZ, tabBandTopZ))
-    } else {
-      builder.add('solid', tabbedRectanglePoints3D(corners, [[], [], [], []], currentZ, currentZ))
-    }
-  }
-  return builder.segments
-}
-
-// Mirrors lib/outlineRectangle.ts's rectRampToolpath — same ramp-edge
-// rotation (`ordered`), same "single lap = 4 lines, ramp edge carries the
-// Z drop" structure, same cleanup-lap reasoning (see the engine's own
-// comments for the full explanation of why only the ramp edge needs it).
-function rectRampPoints3D(
-  corners: Point2D[],
-  rampEdge: 0 | 1,
-  totalDepth: number,
-  stepdown: number,
-  startZ: number,
-  tabs: RectTabsConfig3D | null,
-): ToolpathSegment3D[] {
-  const ordered = [0, 1, 2, 3].map((i) => corners[(i + rampEdge) % 4])
-  const builder = createSegmentBuilder3D(toThree(ordered[0].x, ordered[0].y, startZ))
-  let currentZ = startZ
-
-  const lapPoints = (nextZ: number): THREE.Vector3[] => {
-    const pts: THREE.Vector3[] = [toThree(ordered[1].x, ordered[1].y, nextZ)]
-    for (let i = 1; i < 4; i++) {
-      const p = ordered[(i + 1) % 4]
-      pts.push(toThree(p.x, p.y, nextZ))
-    }
-    return pts
-  }
-
-  if (tabs) {
-    const tabBandTopZ = -(totalDepth - tabs.tabHeight)
-    const rampDepth = totalDepth + startZ - tabs.tabHeight
-    const sideRanges = sideRangesFor(ordered, tabs.tabCount, tabs.tabWidth)
-    const rampPoints: THREE.Vector3[] = []
-
-    for (const turnDepth of computeDepthPasses(rampDepth, stepdown)) {
-      const nextZ = currentZ - turnDepth
-      rampPoints.push(...lapPoints(nextZ))
-      currentZ = nextZ
-    }
-    rampPoints.push(...lapPoints(currentZ))
-    builder.add('solid', rampPoints)
-
-    for (const passDepth of computeDepthPasses(tabs.tabHeight, stepdown)) {
-      currentZ -= passDepth
-      // Straight step-down between tabbed passes — non-cutting vertical G1
-      // move, once tabs switch Ramp over to flat stepdown-incremented passes.
-      builder.add('dotted', [toThree(ordered[0].x, ordered[0].y, currentZ)])
-      builder.add('solid', tabbedRectanglePoints3D(ordered, sideRanges, currentZ, tabBandTopZ))
-    }
-  } else {
-    const rampPoints: THREE.Vector3[] = []
-    for (const turnDepth of computeDepthPasses(totalDepth + startZ, stepdown)) {
-      const nextZ = currentZ - turnDepth
-      rampPoints.push(...lapPoints(nextZ))
-      currentZ = nextZ
-    }
-    rampPoints.push(...lapPoints(currentZ))
-    builder.add('solid', rampPoints)
-  }
-
-  return builder.segments
 }
 
 // Line style per move kind — see "Styl linii ruchu narzędzia w 3D Preview"
@@ -445,7 +296,6 @@ type ResolvedPattern =
       params: WizardParams
       nominalCorners: Point2D[]
       toolCorners: Point2D[]
-      rampEdge: 0 | 1
     }
   | {
       kind: 'surface'
@@ -525,8 +375,7 @@ function resolvePattern(params: WizardParams): ResolvedPattern {
       outline.offsetY,
       direction,
     )
-    const rampEdge = longerEdgeIndex(Math.max(0, toolWidth), Math.max(0, toolHeight), direction)
-    return { kind: 'outlineRect', params, nominalCorners, toolCorners, rampEdge }
+    return { kind: 'outlineRect', params, nominalCorners, toolCorners }
   }
 
   const { geometry } = params
@@ -681,12 +530,6 @@ function createSegmentBuilder3D(start: THREE.Vector3) {
     },
     segments,
   }
-}
-
-function rapidZLineObjects(x: number, y: number, safeZ: number, startZ: number, bottomZ: number, theme: Theme, span: number) {
-  const descentLine = buildToolpathLine3D([toThree(x, y, safeZ), toThree(x, y, startZ)], 'dashed', theme, span)
-  const retractLine = buildToolpathLine3D([toThree(x, y, bottomZ), toThree(x, y, safeZ)], 'dashed', theme, span)
-  return [descentLine, retractLine]
 }
 
 // Builds everything that's per-pattern (BL-3 overlay): offset vector, rapid
@@ -974,16 +817,11 @@ function buildOutlineRectPatternObjects(
   showStock: boolean,
   showToolpath: boolean,
 ): THREE.Object3D[] {
-  const { nominalCorners, toolCorners, rampEdge, params } = pattern
+  const { nominalCorners, params } = pattern
   const { outline, feeds } = params
   const objects: THREE.Object3D[] = []
 
   objects.push(...buildOffsetVectorObjects(outline.offsetX, outline.offsetY, theme, arrowSize))
-  if (showToolpath) {
-    objects.push(
-      ...rapidZLineObjects(toolCorners[0].x, toolCorners[0].y, feeds.safeZ, feeds.startZ, -outline.totalDepth, theme, span),
-    )
-  }
 
   // Nominal shape (semi-transparent box, aligned with CNC X/Y — BoxGeometry's
   // own local X/Y/Z axes need no rotation here, unlike ExtrudeGeometry,
@@ -1042,16 +880,11 @@ function buildOutlineRectPatternObjects(
     }
   }
 
+  // Engine move list (BL-61), same as every other operation.
   if (showToolpath) {
-    const tabs = outline.tabsEnabled
-      ? { tabHeight: outline.tabHeight, tabCount: outline.tabCount, tabWidth: outline.tabWidth }
-      : null
-
-    const pathSegments =
-      outline.method === 'ramp'
-        ? rectRampPoints3D(toolCorners, rampEdge, outline.totalDepth, feeds.stepdown, feeds.startZ, tabs)
-        : rectStandardPoints3D(toolCorners, outline.totalDepth, feeds.stepdown, feeds.startZ, tabs)
-    objects.push(...buildToolpathLines3D(pathSegments, theme, span))
+    const opts = rectOutlineOptions(params)
+    const build = outline.method === 'ramp' ? buildRectRampToolpath : buildRectStandardToolpath
+    objects.push(...toolpathLines3D(build(outline.offsetX, outline.offsetY, opts), theme, span, feeds.safeZ))
   }
 
   return objects
