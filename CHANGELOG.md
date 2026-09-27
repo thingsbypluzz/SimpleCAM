@@ -7,6 +7,19 @@ zgodne z [SemVer](https://semver.org/). Ten plik pozostaje głównym, czytelnym
 thingsbypluzz/SimpleCAM), ale to infrastruktura pod izolację pracy
 (branch/worktree per zadanie), nie zamiennik tego changeloga.
 
+## [0.22.1] — 2026-09-27
+
+### Zmieniono
+
+- **Pocket Raster ukryty** (`BL-73`, sesja `/grill-me` 2026-09-27). Po
+  wejściu Helix w środku kieszeni narzędzie jechało po przekątnej na pełnej
+  głębokości do narożnika pierwszej linii — przez nieobrobiony materiał,
+  pełną szerokością freza — a pierwsza linia każdego rastra i tak jest
+  szczeliną. Spiral i Adaptive kontrolują zaangażowanie, więc Raster znika
+  z Kroku 2 i z Feedrate Calculator (`pocketMethodAllowed()`, nowy
+  `lib/pocketMethods.ts`); zapisane presety z Raster wczytują się jako
+  Spiral. Silnik i testy zostają do decyzji, czy i jak Raster wróci.
+
 ## [0.22.0] — 2026-09-27
 
 ### Zmieniono

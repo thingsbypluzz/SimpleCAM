@@ -22,6 +22,7 @@ import {
   type ZTransitionMode,
 } from '../types/wizard'
 import { formatCustomPoints } from './customPoints'
+import { pocketMethodAllowed } from './pocketMethods'
 
 // `operation` and `method` are the two top-level scalar fields
 // mergeWithDefaults() below can't fix with a plain `??` fallback: a preset
@@ -182,12 +183,11 @@ function mergeGeometry(saved: unknown): GeometryParams {
   return merged
 }
 
-// Raster has no circle-clipping math (pocketMethodAllowed()), so a stored
-// circle + raster pair — only reachable through a corrupted/hand-edited
-// save — gets the same fallback Step 1 applies when switching to Circle.
+// A saved method the shape doesn't offer (pocketMethodAllowed()) falls back
+// to Spiral — Raster is hidden for now (BL-73), and never fitted a Circle.
 function mergePocket(saved: unknown): PocketParams {
   const merged = mergeSection(DEFAULT_WIZARD_PARAMS.pocket, saved, POCKET_GUARDS)
-  if (merged.shape === 'circle' && merged.method === 'raster') merged.method = 'spiral'
+  if (!pocketMethodAllowed(merged.shape, merged.method)) merged.method = 'spiral'
   return merged
 }
 

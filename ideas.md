@@ -246,7 +246,7 @@ faktycznym.
   Mode, Ramp Angle (jeśli występuje), Offset. Dotyczy wszystkich czterech
   `Step2Geometry*.tsx`; komentarze „Field order” na górze plików do
   aktualizacji.
-- **`BL-73`** *(Otwarty)* 🔴 — **Pocket Raster tnie pełną szerokością
+- **`BL-73`** *(W trakcie)* 🔴 — **Pocket Raster tnie pełną szerokością
   freza na starcie każdego poziomu.** Zgłoszone po teście z Ramp Angle
   (2026-09-27): po wejściu Helix w środku kieszeni narzędzie jedzie po
   przekątnej na pełnej głębokości do narożnika pierwszej linii rastra —
@@ -256,6 +256,13 @@ faktycznym.
   `/grill-me`: przeniesienie wejścia na start pierwszej linii, kolejność
   linii od wejścia na zewnątrz, obniżony posuw dla ruchów pełną szerokością,
   albo rezygnacja z Raster na rzecz Spiral/Adaptive.
+  **Sesja `/grill-me` (2026-09-27):** Raster ukryty w 0.22.1 (UI, kalkulator,
+  migracja zapisów na Spiral; silnik i testy zostają). Ustalenia: przekątny
+  dojazd to błąd (`rasterRectLevel()` robi `lineTo('cut')` od końca helixa
+  do pierwszego punktu), pierwsza linia jako szczelina jest nieunikniona w
+  każdym rastrze, Spiral tego problemu nie ma. Do rozstrzygnięcia w kolejnej
+  sesji `/grill-me`: czy Raster jest w ogóle potrzebny obok Spiral, a jeśli
+  tak — jak go naprawić (i wtedy usunąć go z `HIDDEN_POCKET_METHODS`).
 
 **`BL-17` zamknięte — "Interface Anatomy"**, Artifact z umownymi nazwami
 elementów UI, dziś aktywnie używany w `CLAUDE.md`:
