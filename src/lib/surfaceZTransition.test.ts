@@ -1,12 +1,21 @@
 import { describe, expect, it } from 'vitest'
-import { buildLevelDescents, helixCenterFor, helixDirectionFor, zTransitionMoves } from './surfaceZTransition'
+import { fmt } from './format'
+import {
+  buildLevelDescents,
+  entryHelixExceedsTurnLimit,
+  helixCenterFor,
+  helixDirectionFor,
+  helixPitchForRampAngle,
+  levelEntryZ,
+  zTransitionMoves,
+} from './surfaceZTransition'
 
 // rasterDirection: 'y' matches the historical (pre-direction-aware) center
 // offset exactly — kept as the default here so most expected G-code below
 // reads the same as before that fix; a dedicated describe block below
 // covers 'x' specifically.
 const baseOpts = {
-  stepdown: 1,
+  rampAngleDeg: 2,
   feedrateXY: 800,
   plungeRate: 300,
   helixRadius: 2,
@@ -43,29 +52,63 @@ describe('zTransitionMoves — plunge', () => {
 })
 
 describe('zTransitionMoves — helix', () => {
-  it('one arc turn per stepdown increment, centered so the arc starts/ends exactly on the corner', () => {
-    const lines = zTransitionMoves({ ...baseOpts, fromZ: 0, toZ: -2, mode: 'helix', interpolation: 'arc' })
-    // computeDepthPasses(2, 1) -> [1, 1] -> 2 turns. Direction 'y' centers
-    // -helixRadius on X, so I/J = (centerX-startX, centerY-startY) = (-2, 0).
-    expect(lines).toEqual(['G3 X5 Y5 Z-1 I-2 J0 F800', 'G3 X5 Y5 Z-2 I-2 J0 F800'])
+  // r = 2, 2° -> 2π·2·tan 2° ≈ 0.4388 mm per turn.
+  const pitch = helixPitchForRampAngle(2, 2)
+
+  it('descends at the ramp angle — turns of one pitch each, the last one shorter, ending exactly on toZ at the corner', () => {
+    const lines = zTransitionMoves({ ...baseOpts, fromZ: 0, toZ: -1, mode: 'helix', interpolation: 'arc' })
+    // Direction 'y' centers -helixRadius on X -> I/J = (-2, 0).
+    expect(lines).toEqual([
+      `G3 X5 Y5 Z-${fmt(pitch)} I-2 J0 F800`,
+      `G3 X5 Y5 Z-${fmt(2 * pitch)} I-2 J0 F800`,
+      'G3 X5 Y5 Z-1 I-2 J0 F800',
+    ])
+  })
+
+  it('does not depend on Stepdown — a steeper angle means fewer turns', () => {
+    const lines = zTransitionMoves({ ...baseOpts, rampAngleDeg: 10, fromZ: 0, toZ: -1, mode: 'helix', interpolation: 'arc' })
+    // 2π·2·tan 10° ≈ 2.216 mm per turn -> one turn covers the whole 1 mm.
+    expect(lines).toEqual(['G3 X5 Y5 Z-1 I-2 J0 F800'])
   })
 
   it("direction 'x' centers the arc on the Y axis instead and turns CW, so the exit tangent matches an X-running raster while the loop stays outside the material", () => {
-    const lines = zTransitionMoves({ ...baseOpts, rasterDirection: 'x', fromZ: 0, toZ: -1, mode: 'helix', interpolation: 'arc' })
+    const lines = zTransitionMoves({ ...baseOpts, rampAngleDeg: 10, rasterDirection: 'x', fromZ: 0, toZ: -1, mode: 'helix', interpolation: 'arc' })
     // center = (5, 3) -> I/J = (5-5, 3-5) = (0, -2). CW -> G2, not G3.
     expect(lines).toEqual(['G2 X5 Y5 Z-1 I0 J-2 F800'])
   })
 
   it('linear interpolation approximates each turn with the shared 72-segment polygon', () => {
-    const lines = zTransitionMoves({ ...baseOpts, fromZ: 0, toZ: -2, mode: 'helix', interpolation: 'linear' })
-    // 2 turns * 72 segments per turn.
-    expect(lines).toHaveLength(144)
+    const lines = zTransitionMoves({ ...baseOpts, fromZ: 0, toZ: -1, mode: 'helix', interpolation: 'linear' })
+    // 3 turns * 72 segments per turn.
+    expect(lines).toHaveLength(216)
     expect(lines.every((l) => l.startsWith('G1 X'))).toBe(true)
   })
+})
 
-  it('a single stepdown-sized transition (the common between-level case) is exactly one turn', () => {
-    const lines = zTransitionMoves({ ...baseOpts, fromZ: 0, toZ: -1, mode: 'helix', interpolation: 'arc' })
-    expect(lines).toEqual(['G3 X5 Y5 Z-1 I-2 J0 F800'])
+describe('helixPitchForRampAngle', () => {
+  it('is the turn length times tan(angle)', () => {
+    expect(helixPitchForRampAngle(1.5, 2)).toBeCloseTo(2 * Math.PI * 1.5 * Math.tan((2 * Math.PI) / 180))
+    expect(helixPitchForRampAngle(1.5, 2)).toBeCloseTo(0.3291, 4)
+  })
+})
+
+describe('levelEntryZ', () => {
+  it('starts level 0 at Start Z and every later level 0.5 mm above the previous floor', () => {
+    expect(levelEntryZ(0, 0, 0)).toBe(0)
+    expect(levelEntryZ(1, -6, 0)).toBe(-5.5)
+    expect(levelEntryZ(3, -18, 2)).toBe(-17.5)
+  })
+
+  it('never starts above Start Z', () => {
+    expect(levelEntryZ(1, -0.2, 0)).toBe(0)
+  })
+})
+
+describe('entryHelixExceedsTurnLimit', () => {
+  it('counts turns from each level entry, not from Start Z', () => {
+    expect(entryHelixExceedsTurnLimit(0, 30, 6, 1.5, 2)).toBe(false)
+    // A 0.01 mm helix at 0.5° drops ~0.00055 mm per turn — far over 5000 turns for a 6 mm level.
+    expect(entryHelixExceedsTurnLimit(0, 30, 6, 0.01, 0.5)).toBe(true)
   })
 })
 

@@ -1,12 +1,14 @@
 import { computeDepthPasses } from './depthPasses'
 import { fullTurn, toolpathToGcode, ToolpathBuilder } from './toolpath'
+import { helixPitchForRampAngle } from './surfaceZTransition'
 import type { InterpolationMode, PocketParams, Point2D, ZTransitionMode } from '../types/wizard'
 
 export interface PocketZTransitionOptions {
   fromZ: number
   toZ: number
   mode: ZTransitionMode
-  stepdown: number
+  // Helix only: descent angle — pitch per turn from this and the radius.
+  rampAngleDeg: number
   feedrateXY: number
   plungeRate: number
   helixRadius: number
@@ -51,7 +53,7 @@ export function appendPocketZTransition(builder: ToolpathBuilder, opts: PocketZT
   const center = { x: opts.centerX, y: opts.centerY }
   const exact = { from: { x: opts.centerX + opts.helixRadius, y: opts.centerY }, radius: opts.helixRadius }
   let z = opts.fromZ
-  for (const turnDepth of computeDepthPasses(opts.fromZ - opts.toZ, opts.stepdown)) {
+  for (const turnDepth of computeDepthPasses(opts.fromZ - opts.toZ, helixPitchForRampAngle(opts.helixRadius, opts.rampAngleDeg))) {
     z -= turnDepth
     builder.arc('cut', center, 'ccw', fullTurn, z, exact)
   }

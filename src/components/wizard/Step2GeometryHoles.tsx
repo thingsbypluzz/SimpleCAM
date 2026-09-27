@@ -28,9 +28,10 @@ interface Step2GeometryHolesProps {
   machine: MachineSettings
   toolDiameters: ToolDiameterOption[]
   flutes: number
+  onFlutesChange: (flutes: number) => void
 }
 
-export function Step2GeometryHoles({ params, onChange, machine, toolDiameters, flutes }: Step2GeometryHolesProps) {
+export function Step2GeometryHoles({ params, onChange, machine, toolDiameters, flutes, onFlutesChange }: Step2GeometryHolesProps) {
   const { geometry } = params
 
   const updateGeometry = (patch: Partial<WizardParams['geometry']>) =>
@@ -72,24 +73,21 @@ export function Step2GeometryHoles({ params, onChange, machine, toolDiameters, f
   return (
     <div className="flex flex-col gap-6">
       <div className="flex flex-col gap-4">
-        <div className="flex gap-4">
-          <div className="min-w-0 flex-1">
-            <FieldRow label="Tool Diameter [mm]">
-              <select
-                className={inputClass}
-                value={geometry.toolDiameter}
-                onChange={(e) => updateGeometry({ toolDiameter: Number(e.target.value) })}
-              >
-                {resolveToolDiameterSelectOptions(toolDiameters, geometry.toolDiameter).map((opt) => (
-                  <option key={opt.value} value={opt.value}>
-                    {opt.label}
-                  </option>
-                ))}
-              </select>
-            </FieldRow>
-          </div>
-          <ToolChipLoad params={params} machine={machine} flutes={flutes} />
-        </div>
+        <ToolChipLoad params={params} machine={machine} flutes={flutes} onFlutesChange={onFlutesChange}>
+          <FieldRow label="Tool Diameter [mm]">
+            <select
+              className={inputClass}
+              value={geometry.toolDiameter}
+              onChange={(e) => updateGeometry({ toolDiameter: Number(e.target.value) })}
+            >
+              {resolveToolDiameterSelectOptions(toolDiameters, geometry.toolDiameter).map((opt) => (
+                <option key={opt.value} value={opt.value}>
+                  {opt.label}
+                </option>
+              ))}
+            </select>
+          </FieldRow>
+        </ToolChipLoad>
         <div className="flex gap-4">
           <div className="min-w-0 flex-1">
             <FieldRow label="Hole Diameter [mm]">

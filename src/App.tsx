@@ -661,6 +661,7 @@ function App() {
                       machine={machine}
                       toolDiameters={toolDiameters}
                       flutes={feedCalc.flutes}
+                      onFlutesChange={(flutes) => handleSaveFeedCalc({ ...feedCalc, flutes })}
                     />
                   )}
                   {step.id === 3 && (

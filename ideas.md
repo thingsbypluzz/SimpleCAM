@@ -232,6 +232,30 @@ faktycznym.
   `SURFACE_METHOD_META`, `POCKET_METHOD_META` — ikony, tytuły, `description`),
   żeby Help nie rozjechał się z UI; brakujące opisy operacji do dopisania w
   `OPERATION_META`.
+- **`BL-71`** *(Otwarty)* 🟢 — **Średnica freza w Feedrate Calculator z
+  listy Settings.** Dziś kalkulator ma zwykłe pole liczbowe, więc można
+  wpisać średnicę spoza listy i Apply zapisze ją do Kroku 2. Ma być tym
+  samym Drop-downem co Tool Diameter w Kroku 2 — wspólna lista z Settings →
+  Tool Diameters (`resolveToolDiameterSelectOptions()`), bez możliwości
+  wybrania rozmiaru, którego na liście nie ma.
+- **`BL-72`** *(Otwarty)* 🟠 — **Kolejność pól w Kroku 2.** Po dodaniu
+  kolejnych pól kolejność przestała być logiczna. Proponowana (dla każdej
+  operacji analogicznie, z jej własnymi polami): Width × Height (albo
+  średnica / pozycjonowanie), Total Depth, Tool Diameter (+ Flutes/fz),
+  Method, opcje metody (Optimal Load, Direction, Stepover…), Z-Transition
+  Mode, Ramp Angle (jeśli występuje), Offset. Dotyczy wszystkich czterech
+  `Step2Geometry*.tsx`; komentarze „Field order” na górze plików do
+  aktualizacji.
+- **`BL-73`** *(Otwarty)* 🔴 — **Pocket Raster tnie pełną szerokością
+  freza na starcie każdego poziomu.** Zgłoszone po teście z Ramp Angle
+  (2026-09-27): po wejściu Helix w środku kieszeni narzędzie jedzie po
+  przekątnej na pełnej głębokości do narożnika pierwszej linii rastra —
+  przez nieobrobiony materiał, ae = 100% — a pierwsza linia wzdłuż ściany
+  to też pełna szczelina. Dopiero kolejne linie tną szerokością Stepover.
+  Ścieżka „nie wie”, co już jest wycięte. Opcje do rozstrzygnięcia sesją
+  `/grill-me`: przeniesienie wejścia na start pierwszej linii, kolejność
+  linii od wejścia na zewnątrz, obniżony posuw dla ruchów pełną szerokością,
+  albo rezygnacja z Raster na rzecz Spiral/Adaptive.
 
 **`BL-17` zamknięte — "Interface Anatomy"**, Artifact z umownymi nazwami
 elementów UI, dziś aktywnie używany w `CLAUDE.md`:

@@ -2,7 +2,7 @@ import { computeDepthPasses, exceedsPassLimit } from './depthPasses'
 import { pocketCenter, pocketCircleWallRadius, pocketRectWallHalfDims } from './pocketGeometry'
 import { engagementAngleFor, largestStepWithin, maxArcEngagement, nextConstantEngagementRadius } from './pocketAdaptiveMath'
 import { pocketEntryPoint } from './pocketZTransition'
-import { buildLevelDescents } from './surfaceZTransition'
+import { buildLevelDescents, helixPitchForRampAngle } from './surfaceZTransition'
 import type { InterpolationMode, Point2D, WizardParams } from '../types/wizard'
 import { movePoints, toolpathToGcode, ToolpathBuilder, type ArcDirection, type Move, type MoveKind, type Point3D, type Toolpath } from './toolpath'
 
@@ -244,7 +244,7 @@ export function adaptiveExceedsLimits(params: Pick<WizardParams, 'pocket' | 'fee
   const helixRadius = pocket.helixRadius
   if (!(toolRadius > 0) || !(helixRadius > 0) || !(theta > 0)) return false
 
-  const pitch = 2 * Math.PI * helixRadius * Math.tan((pocket.rampAngleDeg * Math.PI) / 180)
+  const pitch = helixPitchForRampAngle(helixRadius, pocket.rampAngleDeg)
   let fromZ = feeds.startZ
   for (const { toZ } of buildLevelDescents(feeds.startZ, pocket.totalDepth, feeds.stepdown)) {
     if (exceedsPassLimit(fromZ - toZ, pitch)) return true
@@ -285,8 +285,7 @@ export function buildAdaptiveToolpath(params: Pick<WizardParams, 'pocket' | 'fee
   const sign: 1 | -1 = pocket.cutDirection === 'climb' ? 1 : -1
   const direction: ArcDirection = sign > 0 ? 'ccw' : 'cw'
   const ctx: LevelContext = { b, cx: center.x, cy: center.y, toolRadius, theta, sign, direction }
-  const rampRad = (pocket.rampAngleDeg * Math.PI) / 180
-  const pitch = 2 * Math.PI * helixRadius * Math.tan(rampRad)
+  const pitch = helixPitchForRampAngle(helixRadius, pocket.rampAngleDeg)
 
   const isCircle = pocket.shape === 'circle'
   const wallRadius = pocketCircleWallRadius(pocket)

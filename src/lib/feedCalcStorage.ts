@@ -17,7 +17,8 @@ export const DEFAULT_FEED_CALC_SETTINGS: FeedCalcSettings = {
   toolMaterial: 'carbide',
 }
 
-export const MAX_FLUTES = 8
+// Hobby end mills top out well below this; 6 still covers roughers.
+export const MAX_FLUTES = 6
 
 export function isValidFluteCount(n: number): boolean {
   return Number.isInteger(n) && n >= 1 && n <= MAX_FLUTES

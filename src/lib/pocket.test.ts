@@ -124,6 +124,8 @@ describe('generatePocketSpiral — Circle', () => {
         totalDepth: 1,
         zTransitionMode: 'helix',
         helixRadius: 1,
+        // 2π·1·tan 10° ≈ 1.11 mm per turn — the 1 mm entry is one turn.
+        rampAngleDeg: 10,
       },
       feeds: { stepdown: 1 },
       output: { interpolation: 'arc' },
@@ -173,8 +175,10 @@ describe('generatePocketSpiral — multi-level retract', () => {
     })
     const lines = generatePocketSpiral(params, DEFAULT_MACHINE_SETTINGS)
     // buildLevelDescents(0, 2, 1) -> [-1, -2]. Level 2's transition retracts
-    // to Safe Z, repositions to center (5,5), then rapids back to Start Z.
-    expect(lines.filter((l) => l === 'G0 Z0')).toHaveLength(2) // initial rapidToTop + 1 mid-level
+    // to Safe Z, repositions to center (5,5), then rapids down to 0.5 mm
+    // above level 1's floor (levelEntryZ) and plunges only from there.
+    expect(lines.filter((l) => l === 'G0 Z0')).toHaveLength(1) // initial rapid to Start Z
+    expect(lines.filter((l) => l === 'G0 Z-0.5')).toHaveLength(1) // level 2 re-entry
     expect(lines.filter((l) => l === 'G0 X5 Y5')).toHaveLength(2) // initial entry + 1 mid-level reposition
     expect(lines.filter((l) => l === 'G1 Z-1 F300')).toHaveLength(1)
     expect(lines.filter((l) => l === 'G1 Z-2 F300')).toHaveLength(1)

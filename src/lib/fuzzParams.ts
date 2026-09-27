@@ -154,6 +154,7 @@ export function randomSurface(rng: Rng, method: 'zigzag' | 'unidirectional'): Wi
       stepoverPercent,
       zTransitionMode: rng.pick(['plunge', 'helix'] as const),
       helixRadius: rng.range(0.05, (toolDiameter * stepoverPercent) / 100, 2),
+      rampAngleDeg: rng.range(1, 10, 1),
     },
   }
 }
