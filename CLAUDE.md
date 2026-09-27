@@ -1508,8 +1508,16 @@ src/
                               — Raster Direction, Z-Transition Mode, Cut
                               Direction, a w Kroku 4 interpolacja — idą
                               przez jeden `TextToggle.tsx`, z listami opcji
-                              w `toggleOptions.ts`). Wszystkie pola liczbowe na
-                              Krokach 2/3 idą przez `useNumberField()`.
+                              w `toggleOptions.ts`). Każdy przycisk-
+                              przełącznik (pickery, `TextToggle`, opcje
+                              Kroku 1, oko/ołówek, zaznaczone sloty w
+                              Overlay/Edit Mode, dark mode, karty Theme/
+                              Palette) niesie `aria-pressed`, zakładki
+                              podglądu `role="tab"` + `aria-selected`,
+                              aktywna pozycja Settings Nav `aria-current` —
+                              stan nigdy nie tylko kolorem. Wszystkie pola
+                              liczbowe na Krokach 2/3 idą przez
+                              `useNumberField()`.
   components/wizard/useNumberField.ts — hook `useNumberField(value, onCommit)`
                               — oddziela wyświetlany tekst inputa od
                               zatwierdzonej wartości, żeby pole dało się

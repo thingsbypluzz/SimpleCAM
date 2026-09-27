@@ -7,6 +7,19 @@ zgodne z [SemVer](https://semver.org/). Ten plik pozostaje głównym, czytelnym
 thingsbypluzz/SimpleCAM), ale to infrastruktura pod izolację pracy
 (branch/worktree per zadanie), nie zamiennik tego changeloga.
 
+## [0.22.6] — 2026-09-28
+
+### Zmieniono
+
+- **Dostępność: stan przełączników nie tylko kolorem** (`BL-64`). Każdy
+  przycisk-przełącznik ma `aria-pressed` — wybór metody, kształtu i trybu
+  offsetu, przełączniki tekstowe (kierunek rastra, Plunge/Helix,
+  Conv./Climb, interpolacja, Carbide/HSS), opcje Kroku 1, Overlay i Edit
+  Mode, zaznaczone sloty presetów w tych trybach, dark mode oraz karty
+  Theme/Palette w Settings. Zakładki podglądu to `role="tab"` z
+  `aria-selected`, aktywna pozycja Settings Nav — `aria-current`. Czytnik
+  ekranu słyszy teraz, co jest wybrane.
+
 ## [0.22.5] — 2026-09-28
 
 ### Zmieniono

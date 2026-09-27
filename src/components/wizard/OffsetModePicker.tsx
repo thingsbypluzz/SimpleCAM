@@ -19,6 +19,7 @@ export function OffsetModePicker({ params, onChange }: OffsetModePickerProps) {
           <button
             key={mode}
             type="button"
+            aria-pressed={isSelected}
             onClick={() => onChange({ outline: { ...outline, offsetMode: mode } })}
             className={[
               'rounded-md border px-2.5 py-1 text-xs font-medium transition',

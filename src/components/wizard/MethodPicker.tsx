@@ -19,6 +19,7 @@ export function MethodPicker({ params, onChange }: MethodPickerProps) {
           <button
             key={method.value}
             type="button"
+            aria-pressed={isSelected}
             onClick={() => onChange({ method: method.value })}
             title={method.description}
             className={[

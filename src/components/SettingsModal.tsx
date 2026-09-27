@@ -335,6 +335,7 @@ export function SettingsModal({
             <button
               key={section.id}
               type="button"
+              aria-current={activeSection === section.id ? 'page' : undefined}
               onClick={() => setActiveSection(section.id)}
               className={
                 activeSection === section.id
@@ -627,6 +628,7 @@ export function SettingsModal({
                       <button
                         key={theme.id}
                         type="button"
+                        aria-pressed={isSelected}
                         onClick={() => onSaveAppearance({ ...appearance, theme: theme.id })}
                         title={theme.label}
                         className={
@@ -681,6 +683,7 @@ export function SettingsModal({
                       <button
                         key={palette.id}
                         type="button"
+                        aria-pressed={isSelected}
                         onClick={() => onSaveAppearance({ ...appearance, palette: palette.id })}
                         title={palette.label}
                         className={

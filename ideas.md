@@ -291,8 +291,10 @@ Waga z review w nawiasie kwadratowym.
   debounce, Adaptive przy 1% i cały G-code w jednym `<pre>`, podgląd
   1000 otworów przy literówce, domyślna zakładka 3D, `WebGLRenderer` bez
   `forceContextLoss()`.
-- **`BL-64`** *(Otwarty)* 🟢 **[Low]** — **Dostępność: stan przełączników
-  tylko kolorem** — brak `aria-pressed`/`radiogroup`.
+- **`BL-64`** *(Zrealizowany, 2026-09-28)* 🟢 **[Low]** — **Dostępność: stan
+  przełączników tylko kolorem** — `aria-pressed` na przełącznikach,
+  `role="tab"`/`aria-selected` na zakładkach podglądu, `aria-current` w
+  Settings Nav. Pełny opis: `CHANGELOG.md`, `[0.22.6]`.
 
 ## Przyszłe operacje (`OP-#`)
 
