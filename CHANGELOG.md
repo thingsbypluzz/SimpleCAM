@@ -7,6 +7,26 @@ zgodne z [SemVer](https://semver.org/). Ten plik pozostaje głównym, czytelnym
 thingsbypluzz/SimpleCAM), ale to infrastruktura pod izolację pracy
 (branch/worktree per zadanie), nie zamiennik tego changeloga.
 
+## [0.22.7] — 2026-09-28
+
+### Zmieniono
+
+- **Wydajność podglądów** (`BL-63`, ostatnia pozycja z code review
+  2026-09-26):
+  - Podgląd 2D/3D przebudowuje się z odroczonej kopii parametrów
+    (`useDeferredValue`) — pole reaguje na klawisz od razu, a ciężka
+    przebudowa (np. Pocket Adaptive przy 1% Optimal Load, wpisywanym w
+    drodze do „10”) nadrabia chwilę później zamiast blokować pisanie.
+  - Zakładka G-Code pokazuje najwyżej 5000 linii z informacją, ile
+    pominięto — program Adaptive w trybie G1 potrafi mieć setki tysięcy
+    linii i zamrażał stronę. Pobrany plik jest zawsze pełny.
+  - N-Holes on Circle: wzorzec przycięty do 100 otworów (limit walidacji)
+    — literówka „1000” nie buduje już w podglądzie tysiąca otworów.
+  - Podgląd 3D zwalnia kontekst WebGL przy każdym przełączeniu na inną
+    zakładkę (`forceContextLoss()`), zamiast czekać, aż przeglądarka
+    porzuci najstarszy.
+  - Domyślna zakładka zostaje 3D (świadoma decyzja).
+
 ## [0.22.6] — 2026-09-28
 
 ### Zmieniono

@@ -287,10 +287,13 @@ Waga z review w nawiasie kwadratowym.
   (porządki, rejestry `OPERATION_META`/`OPERATION_RULES`, `TextToggle`) w
   0.20.8; etap 3 (`lib/toolpath.ts`): Surface (0.20.9), Pocket (0.20.10),
   Hole(s) i Outline Circle (0.22.3), Outline Rectangle (0.22.4).
-- **`BL-63`** *(Otwarty)* 🟠 **[Low]** — **Wydajność podglądów** — brak
+- **`BL-63`** *(Zrealizowany, 2026-09-28)* 🟠 **[Low]** — **Wydajność podglądów** — brak
   debounce, Adaptive przy 1% i cały G-code w jednym `<pre>`, podgląd
   1000 otworów przy literówce, domyślna zakładka 3D, `WebGLRenderer` bez
-  `forceContextLoss()`.
+  `forceContextLoss()`. Rozwiązane: odroczony podgląd (`useDeferredValue`),
+  G-Code do 5000 linii, wzorzec przycięty do 100 otworów,
+  `forceContextLoss()`; domyślna zakładka świadomie zostaje 3D. Pełny opis:
+  `CHANGELOG.md`, `[0.22.7]`.
 - **`BL-64`** *(Zrealizowany, 2026-09-28)* 🟢 **[Low]** — **Dostępność: stan
   przełączników tylko kolorem** — `aria-pressed` na przełącznikach,
   `role="tab"`/`aria-selected` na zakładkach podglądu, `aria-current` w

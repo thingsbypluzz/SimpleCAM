@@ -1,5 +1,12 @@
 import type { GeometryParams, Point2D } from '../types/wizard'
 
+// Purely arbitrary sanity ceiling (BL-1) for N-Holes on Circle — no
+// physical quantity to derive it from. Validation blocks Generate above it
+// (isCircleHoleCountValid()); the pattern itself is capped here too, so a
+// typo like "1000" can't make the 2D/3D previews build a thousand holes
+// before the error shows (BL-63).
+export const MAX_CIRCLE_HOLE_COUNT = 100
+
 function rawPoints(geometry: GeometryParams): Point2D[] {
   switch (geometry.positioning) {
     case 'single':
@@ -35,8 +42,9 @@ function rawPoints(geometry: GeometryParams): Point2D[] {
     case 'circle': {
       // Guarded against fractional/negative hole counts (same defensive
       // pattern as the toolRadius clamp in buildScene.ts) — 0 holes just
-      // returns an empty pattern, same as an empty Custom List.
-      const count = Math.max(0, Math.round(geometry.circleHoleCount))
+      // returns an empty pattern, same as an empty Custom List — and capped
+      // at MAX_CIRCLE_HOLE_COUNT (see above).
+      const count = Math.min(MAX_CIRCLE_HOLE_COUNT, Math.max(0, Math.round(geometry.circleHoleCount)))
       const radius = geometry.circleDiameter / 2
       const startRad = (geometry.circleStartAngle * Math.PI) / 180
       return Array.from({ length: count }, (_, i) => {

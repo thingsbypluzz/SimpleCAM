@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect, useMemo, useState, type ComponentType } from 'react'
+import { lazy, Suspense, useDeferredValue, useEffect, useMemo, useState, type ComponentType } from 'react'
 import { Step1Positioning } from './components/wizard/Step1Positioning'
 import { Step2Geometry } from './components/wizard/Step2Geometry'
 import { Step3Feeds } from './components/wizard/Step3Feeds'
@@ -91,6 +91,12 @@ interface Step4Badge {
 // independent, e.g. a param change can leave stale G-code generated while
 // the live pattern no longer fits. `colorClassName` excludes sizing so
 // each call site can pick its own h-*/w-*.
+// BL-63: the G-Code tab shows at most this many lines — a Pocket Adaptive
+// program in G1 mode can reach hundreds of thousands, and rendering them
+// all into one <pre> freezes the page. The downloaded file is always
+// complete.
+const GCODE_PREVIEW_LINES = 5000
+
 function step4Badge(generatedGCode: string[] | null, warnings: string[]): Step4Badge {
   if (warnings.length > 0) {
     return {
@@ -256,6 +262,12 @@ function App() {
     () => deriveOverlayParams(overlaySlots, presetSlots),
     [overlaySlots, presetSlots],
   )
+
+  // BL-63: the 2D/3D previews rebuild from a deferred copy of params — a
+  // keystroke re-renders the fields right away and the (possibly heavy,
+  // e.g. Pocket Adaptive at a low Optimal Load) preview rebuild follows
+  // once React has time, instead of every keystroke waiting on it.
+  const previewParams = useDeferredValue(params)
 
   const handleSaveMachine = (next: typeof machine) => {
     // Unlike travel X/Y/Z (which only affect the soft machineFitWarnings
@@ -866,7 +878,7 @@ function App() {
 
             {previewTab === '2d' && (
               <ToolpathCanvas
-                params={params}
+                params={previewParams}
                 isDark={isDark}
                 paletteId={appearance.palette}
                 themeId={appearance.theme}
@@ -888,7 +900,7 @@ function App() {
                 }
               >
                 <Scene3D
-                  params={params}
+                  params={previewParams}
                   isDark={isDark}
                   paletteId={appearance.palette}
                   themeId={appearance.theme}
@@ -914,7 +926,13 @@ function App() {
             {previewTab === 'gcode' &&
               (generatedGCode ? (
                 <pre className="flex-1 overflow-auto bg-code-bg p-6 font-mono text-xs leading-relaxed text-value">
-                  {generatedGCode.join('\n')}
+                  {generatedGCode.slice(0, GCODE_PREVIEW_LINES).join('\n')}
+                  {generatedGCode.length > GCODE_PREVIEW_LINES && (
+                    <span className="mt-4 block font-sans text-sm text-muted">
+                      … {generatedGCode.length - GCODE_PREVIEW_LINES} more lines not shown. Download the file from
+                      Step 4 for the full program.
+                    </span>
+                  )}
                 </pre>
               ) : (
                 <div className="flex flex-1 items-center justify-center p-6 text-center text-sm text-muted">

@@ -170,6 +170,10 @@ export function Scene3D({
       disposeObject3D(contentGroup)
       controls.dispose()
       renderer.dispose()
+      // Release the WebGL context right away (BL-63) — every 2D↔3D switch
+      // unmounts this component and creates a new renderer, and browsers
+      // cap live contexts (~16), dropping the oldest with a console warning.
+      renderer.forceContextLoss()
       container.removeChild(renderer.domElement)
     }
   }, [])

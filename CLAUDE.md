@@ -556,6 +556,10 @@ Artifact aktualizować tylko jeśli realny layout appki zmieni się na tyle,
   pole puste, gdy tryb ≠ Helix — para zostaje w jednym wierszu, żeby
   uniknąć scrollowania). Pola o niepowiązanym znaczeniu zostają w
   kolumnie.
+- Preview Tabs: 2D Preview / 3D Preview (domyślna) / G-Code. G-Code
+  pokazuje ostatnio wygenerowany program, najwyżej `GCODE_PREVIEW_LINES`
+  = 5000 linii (`App.tsx`) z informacją, ile pominięto — pełny program
+  zawsze w pobranym pliku.
 - Header: dark/light Icon Button (klasa `.dark` na `<html>`, Tailwind
   `@custom-variant dark` w `src/index.css`) — **dark mode jest domyślny**
   niezależnie od preferencji systemowej — oraz Settings Icon Button,
@@ -1064,7 +1068,11 @@ tekst inputa od zatwierdzonej wartości, żeby pole dało się realnie
 wyczyścić (bezpośrednie sterowanie `value={Number(text)}` cofa puste
 pole do `"0"` w locie, bo `Number('')` daje `0`). Commit dzieje się na
 **każdym** naciśnięciu klawisza, które parsuje się do skończonej liczby
-(`Number.isFinite`) — Preview zostaje live. `onBlur` resynchronizuje
+(`Number.isFinite`) — Preview zostaje live, ale 2D/3D Preview dostają
+odroczoną kopię parametrów (`useDeferredValue` w `App.tsx`): pole
+odświeża się od razu, przebudowa podglądu (przy ciężkich ścieżkach, np.
+Pocket Adaptive z niskim Optimal Load) nadrabia chwilę później zamiast
+blokować pisanie. `onBlur` resynchronizuje
 wyświetlany tekst z powrotem do `String(value)` (porządkuje puste
 pole/końcową kropkę), nie bramkuje aktualizacji Preview. Opcja
 `{ syncWhenBlurred: true }` — dla pary pól pokazujących tę samą wielkość w
@@ -1664,7 +1672,11 @@ src/
                                (przebudowa sceny, resize), nie co klatkę;
                                inaczej rozmyte tło modala
                                (`backdrop-blur-sm`) byłoby przeliczane 60
-                               razy na sekundę.
+                               razy na sekundę. Sprzątanie woła
+                               `renderer.forceContextLoss()` — każde
+                               przełączenie 2D↔3D tworzy nowy renderer, a
+                               przeglądarki limitują liczbę żywych
+                               kontekstów WebGL.
     cameraPresets.ts             — `VIEW_PRESETS` (kierunek + up-vector dla
                                top/isometric/front/side) + `frameCamera()`
                                — pozycjonuje kamerę wzdłuż kierunku, w
@@ -1733,7 +1745,11 @@ src/
                                  (stare zapisy bez `customPointsText`
                                  dostają tekst odtworzony z punktów).
     positioning.ts             — `resolvePoints(geometry) → Point2D[]`
-                                 (single/grid/gridCentered/circle/custom +
+                                 (single/grid/gridCentered/circle/custom —
+                                 circle przycięty do
+                                 `MAX_CIRCLE_HOLE_COUNT` = 100, żeby
+                                 literówka nie budowała w podglądzie
+                                 tysiąca otworów przed błędem walidacji +
                                  kolaps grid do 2/1 punktów + globalny
                                  offset X/Y jako ostatni krok). Silnik
                                  G-code oraz 2D/3D Preview wołają tę

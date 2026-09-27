@@ -2,7 +2,7 @@ import type { MachineSettings } from '../types/machine'
 import type { FeedsParams, GeometryParams, OperationType, OutlineParams, PocketParams, SurfaceParams, WizardParams } from '../types/wizard'
 import type { ToolDiameterOption } from '../types/toolDiameters'
 import type { Engagement } from './feedCalc'
-import { resolvePoints } from './positioning'
+import { MAX_CIRCLE_HOLE_COUNT, resolvePoints } from './positioning'
 import { parseCustomPointsText } from './customPoints'
 import { rectToolDimensions } from './outlineRectangleGeometry'
 import { circleOutlineRadiusAndDirection } from './outlineCircle'
@@ -209,13 +209,13 @@ export function isPocketSizeValid(pocket: PocketParams): boolean {
   return pocket.shape === 'circle' ? pocket.diameter > 0 : pocket.width > 0 && pocket.height > 0
 }
 
-// Purely arbitrary sanity ceiling (BL-1) — unlike the machine-fit checks
-// below, there's no physical quantity to derive this from, so it's a flat
-// constant. Vacuously valid outside 'circle' positioning: circleHoleCount
-// only affects the resolved pattern in that mode, and blocking Generate
-// over a value the user can't even see (the Circle fields are hidden for
-// every other mode) would be confusing rather than helpful.
-export const MAX_CIRCLE_HOLE_COUNT = 100
+// MAX_CIRCLE_HOLE_COUNT lives in positioning.ts (the pattern is capped
+// there too). Vacuously valid outside 'circle' positioning:
+// circleHoleCount only affects the resolved pattern in that mode, and
+// blocking Generate over a value the user can't even see (the Circle
+// fields are hidden for every other mode) would be confusing rather than
+// helpful.
+export { MAX_CIRCLE_HOLE_COUNT }
 
 export function isCircleHoleCountValid(geometry: GeometryParams): boolean {
   return geometry.positioning !== 'circle' || geometry.circleHoleCount <= MAX_CIRCLE_HOLE_COUNT
