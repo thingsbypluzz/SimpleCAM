@@ -5,9 +5,11 @@ import { OPERATION_META, type CalcPatch } from '../config/operationMeta'
 import { computeFeeds, rigidityFactor, suggestedChipLoad, tableChipLoad, type ToolMaterial } from '../lib/feedCalc'
 import { isValidFluteCount, MAX_FLUTES, type FeedCalcSettings } from '../lib/feedCalcStorage'
 import { fmt } from '../lib/format'
+import { resolveToolDiameterSelectOptions } from '../lib/toolDiameterOptions'
 import { engagementAngleFor } from '../lib/pocketAdaptiveMath'
 import { OPERATION_RULES } from '../lib/validation'
 import type { MachineSettings, Rigidity } from '../types/machine'
+import type { ToolDiameterOption } from '../types/toolDiameters'
 import type { WizardParams } from '../types/wizard'
 import { Checkbox } from './wizard/Checkbox'
 import { inputClass } from './wizard/FieldRow'
@@ -20,6 +22,9 @@ interface FeedCalculatorModalProps {
   params: WizardParams
   machine: MachineSettings
   settings: FeedCalcSettings
+  // Settings → Tool Diameters — the diameter is picked from the same list as
+  // Step 2's Tool Diameter, never typed (BL-71).
+  toolDiameters: ToolDiameterOption[]
   onSaveSettings: (settings: FeedCalcSettings) => void
   // `patch` goes into WizardParams; `spindleSpeed` (when the RPM result was
   // selected) into Settings → Machine.
@@ -46,7 +51,7 @@ const chipLoadText = (n: number) => String(Math.round(n * 10000) / 10000)
 // were computed for), each result only when its checkbox is on. The
 // material and tool (flutes, carbide/HSS) are remembered across sessions;
 // a typed chip load is not.
-export function FeedCalculatorModal({ params, machine, settings, onSaveSettings, onApply, onClose }: FeedCalculatorModalProps) {
+export function FeedCalculatorModal({ params, machine, settings, toolDiameters, onSaveSettings, onApply, onClose }: FeedCalculatorModalProps) {
   const { modalRef, initialFocusRef: closeButtonRef } = useModalFocus<HTMLButtonElement>(onClose)
   const meta = OPERATION_META[params.operation]
   const currentMethod = meta.methodValue(params)
@@ -67,7 +72,6 @@ export function FeedCalculatorModal({ params, machine, settings, onSaveSettings,
   const material = MATERIALS[settings.material]
   const updateSettings = (patch: Partial<FeedCalcSettings>) => onSaveSettings({ ...settings, ...patch })
 
-  const diameterField = useNumberField(toolDiameter, setToolDiameter)
   const flutesField = useNumberField(settings.flutes, (v) => {
     if (isValidFluteCount(v)) updateSettings({ flutes: v })
   })
@@ -229,7 +233,16 @@ export function FeedCalculatorModal({ params, machine, settings, onSaveSettings,
             <div className="flex gap-4">
               <div className="min-w-0 flex-1">
                 <Field label="Tool ⌀ [mm]">
-                  <NumberInput type="number" step="0.1" min="0" className={inputClass} {...diameterField} />
+                  <select className={inputClass} value={toolDiameter} onChange={(e) => setToolDiameter(Number(e.target.value))}>
+                    {/* The current Step 2 value stays selectable even if it
+                        was removed from the list — same as Step 2's own
+                        dropdown (resolveToolDiameterSelectOptions). */}
+                    {resolveToolDiameterSelectOptions(toolDiameters, currentDiameter).map((opt) => (
+                      <option key={opt.value} value={opt.value}>
+                        {opt.label}
+                      </option>
+                    ))}
+                  </select>
                 </Field>
               </div>
               <div className="min-w-0 flex-1">
@@ -266,7 +279,7 @@ export function FeedCalculatorModal({ params, machine, settings, onSaveSettings,
             </p>
             {!inputsValid && (
               <p className="text-sm text-status-error">
-                Tool diameter and chip load must be greater than 0, flutes a whole number from 1 to {MAX_FLUTES}.
+                Chip load must be greater than 0, flutes a whole number from 1 to {MAX_FLUTES}.
               </p>
             )}
             <div className="flex flex-col gap-1 border-t border-border pt-4 text-xs text-muted">

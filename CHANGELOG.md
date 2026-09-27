@@ -7,6 +7,16 @@ zgodne z [SemVer](https://semver.org/). Ten plik pozostaje głównym, czytelnym
 thingsbypluzz/SimpleCAM), ale to infrastruktura pod izolację pracy
 (branch/worktree per zadanie), nie zamiennik tego changeloga.
 
+## [0.22.5] — 2026-09-28
+
+### Zmieniono
+
+- **Średnica freza w Feedrate Calculator z listy Settings** (`BL-71`).
+  Zamiast pola liczbowego — ten sam Drop-down co Tool Diameter w Kroku 2
+  (Settings → Tool Diameters), więc Apply nie zapisze do Kroku 2 średnicy
+  spoza listy. Bieżąca średnica z Kroku 2 zostaje wybieralna, nawet gdy
+  usunięto ją z listy (jak w Kroku 2).
+
 ## [0.22.4] — 2026-09-27
 
 ### Zmieniono

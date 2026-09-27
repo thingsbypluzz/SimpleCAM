@@ -616,7 +616,8 @@ Icon Button z `CalculatorIcon` na końcu wiersza Feedrate XY w Kroku 3
 `backdrop-blur-sm`, `renderPaused` podglądu 3D, `useModalFocus()`). Dwie
 kolumny: **wejścia** — Method (lista `OPERATION_META.calcMethods()`, ta sama
 co w Kroku 2 dla bieżącego kształtu), materiał (`config/materials.ts`, 10
-wpisów z krótką notą), średnica freza (edytowalna), liczba ostrzy,
+wpisów z krótką notą), średnica freza (Drop-down z listy Settings → Tool
+Diameters, ta sama co w Kroku 2 — bez wpisywania spoza listy), liczba ostrzy,
 Carbide/HSS, fz (z tabeli × sztywność albo wpisane ręcznie, „Use table”
 wraca do tabeli), plus podsumowanie limitów z Settings → Machine tylko do
 odczytu; **wyniki** — tabela „bieżąca → sugerowana” z checkboxem przy

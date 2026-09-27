@@ -922,6 +922,7 @@ function App() {
           params={params}
           machine={machine}
           settings={feedCalc}
+          toolDiameters={toolDiameters}
           onSaveSettings={handleSaveFeedCalc}
           onApply={handleApplyFeedCalc}
           onClose={() => setIsFeedCalcOpen(false)}

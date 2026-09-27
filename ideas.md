@@ -232,12 +232,13 @@ faktycznym.
   `SURFACE_METHOD_META`, `POCKET_METHOD_META` — ikony, tytuły, `description`),
   żeby Help nie rozjechał się z UI; brakujące opisy operacji do dopisania w
   `OPERATION_META`.
-- **`BL-71`** *(Otwarty)* 🟢 — **Średnica freza w Feedrate Calculator z
+- **`BL-71`** *(Zrealizowany, 2026-09-28)* 🟢 — **Średnica freza w Feedrate Calculator z
   listy Settings.** Dziś kalkulator ma zwykłe pole liczbowe, więc można
   wpisać średnicę spoza listy i Apply zapisze ją do Kroku 2. Ma być tym
   samym Drop-downem co Tool Diameter w Kroku 2 — wspólna lista z Settings →
   Tool Diameters (`resolveToolDiameterSelectOptions()`), bez możliwości
-  wybrania rozmiaru, którego na liście nie ma.
+  wybrania rozmiaru, którego na liście nie ma. Pełny opis: `CHANGELOG.md`,
+  `[0.22.5]`.
 - **`BL-72`** *(Otwarty)* 🟠 — **Kolejność pól w Kroku 2.** Po dodaniu
   kolejnych pól kolejność przestała być logiczna. Proponowana (dla każdej
   operacji analogicznie, z jej własnymi polami): Width × Height (albo
