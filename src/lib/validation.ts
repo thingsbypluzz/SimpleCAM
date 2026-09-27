@@ -8,6 +8,7 @@ import { rectToolDimensions } from './outlineRectangleGeometry'
 import { circleOutlineRadiusAndDirection } from './outlineCircle'
 import { surfaceStepoverMm, surfaceToolBounds } from './surfaceGeometry'
 import { effectivePocketZTransitionMode } from './pocketZTransition'
+import { entryHelixExceedsTurnLimit } from './surfaceZTransition'
 import { MAX_OPTIMAL_LOAD_PERCENT, MIN_OPTIMAL_LOAD_PERCENT } from './pocketAdaptiveMath'
 import { exceedsPassLimit, MAX_PASSES } from './depthPasses'
 import { exceedsLineLimit, rasterExceedsLineLimit } from './surfaceRaster'
@@ -110,9 +111,23 @@ export function isSurfaceLineCountWithinLimit(surface: SurfaceParams): boolean {
   return !rasterExceedsLineLimit(surfaceToolBounds(surface), surface.rasterDirection, surfaceStepoverMm(surface))
 }
 
+// A gentle ramp on a tiny helix radius takes many turns per level — past
+// MAX_PASSES the entry would stop short of the level's depth.
+export function isSurfaceEntryHelixWithinLimit(params: WizardParams): boolean {
+  const { surface, feeds } = params
+  if (surface.zTransitionMode !== 'helix' || !isSurfaceRampAngleValid(surface)) return true
+  return !entryHelixExceedsTurnLimit(feeds.startZ, surface.totalDepth, feeds.stepdown, surface.helixRadius, surface.rampAngleDeg)
+}
+
 export function isPocketToolpathWithinLimits(params: WizardParams): boolean {
   const { pocket } = params
   if (pocket.method === 'adaptive') return !adaptiveExceedsLimits(params)
+  if (
+    pocket.zTransitionMode === 'helix' &&
+    isPocketRampAngleValid(pocket) &&
+    entryHelixExceedsTurnLimit(params.feeds.startZ, pocket.totalDepth, params.feeds.stepdown, pocket.helixRadius, pocket.rampAngleDeg)
+  )
+    return false
   const stepoverMm = pocketStepoverMm(pocket)
   if (pocket.method === 'raster') {
     return pocket.shape === 'circle' || !rasterExceedsLineLimit(pocketRectRasterBounds(pocket), pocket.rasterDirection, stepoverMm)
@@ -125,15 +140,15 @@ export function isPocketToolpathWithinLimits(params: WizardParams): boolean {
   return !exceedsLineLimit(0, Math.max(halfWidth, halfHeight), stepoverMm)
 }
 
-// BL-50: every helix/ramp except Pocket Adaptive's (which has its own Ramp
-// Angle) drops a full Stepdown per turn/lap at Feedrate XY, so a small
-// radius or a short ramp edge makes it close to a plunge at cutting feed.
+// BL-50: the Hole(s)/Outline helix and ramp drop a full Stepdown per
+// turn/lap at Feedrate XY, so a small radius or a short ramp edge makes it
+// close to a plunge at cutting feed. Surface/Pocket entry helixes descend
+// at their own Ramp Angle, which is reported as is.
 // Non-blocking by design — only flagged above this angle.
 export const MAX_RECOMMENDED_DESCENT_DEG = 10
 
 // Steepest helix/ramp descent angle of the active operation, in degrees, or
-// null when it has no helix/ramp (Standard methods, Plunge entries,
-// Adaptive).
+// null when it has no helix/ramp (Standard methods, Plunge entries).
 export function descentAngleDeg(params: WizardParams): number | null {
   const pitch = Math.min(params.feeds.stepdown, activeTotalDepth(params) + Math.max(0, params.feeds.startZ))
   if (!(pitch > 0)) return null
@@ -157,11 +172,9 @@ export function descentAngleDeg(params: WizardParams): number | null {
       return angleFor(Math.max(toolWidth, toolHeight))
     }
     case 'surface':
-      return params.surface.zTransitionMode === 'helix' ? helix(params.surface.helixRadius) : null
+      return params.surface.zTransitionMode === 'helix' ? params.surface.rampAngleDeg : null
     case 'pocket':
-      return params.pocket.method !== 'adaptive' && params.pocket.zTransitionMode === 'helix'
-        ? helix(params.pocket.helixRadius)
-        : null
+      return effectivePocketZTransitionMode(params.pocket) === 'helix' ? params.pocket.rampAngleDeg : null
   }
 }
 
@@ -169,7 +182,11 @@ export function descentWarnings(params: WizardParams): string[] {
   const angle = descentAngleDeg(params)
   if (angle === null || angle <= MAX_RECOMMENDED_DESCENT_DEG) return []
   return [
-    `The helix/ramp descends at about ${Math.round(angle)}° (more than ${MAX_RECOMMENDED_DESCENT_DEG}°) while moving at Feedrate XY — close to plunging at cutting feed. A smaller Stepdown or a larger helix radius / ramp length makes it gentler.`,
+    `The helix/ramp descends at about ${Math.round(angle)}° (more than ${MAX_RECOMMENDED_DESCENT_DEG}°) while moving at Feedrate XY — close to plunging at cutting feed. ${
+      params.operation === 'surface' || params.operation === 'pocket'
+        ? 'A lower Ramp Angle makes it gentler.'
+        : 'A smaller Stepdown or a larger helix radius / ramp length makes it gentler.'
+    }`,
   ]
 }
 
@@ -383,9 +400,17 @@ export function isPocketOptimalLoadValid(pocket: PocketParams): boolean {
 export const MIN_RAMP_ANGLE_DEG = 0.5
 export const MAX_RAMP_ANGLE_DEG = 30
 
+const isRampAngleInRange = (deg: number) => deg >= MIN_RAMP_ANGLE_DEG && deg <= MAX_RAMP_ANGLE_DEG
+
+// Every Pocket Helix entry (always, for Adaptive) descends at this angle.
 export function isPocketRampAngleValid(pocket: PocketParams): boolean {
-  if (pocket.method !== 'adaptive') return true
-  return pocket.rampAngleDeg >= MIN_RAMP_ANGLE_DEG && pocket.rampAngleDeg <= MAX_RAMP_ANGLE_DEG
+  if (effectivePocketZTransitionMode(pocket) !== 'helix') return true
+  return isRampAngleInRange(pocket.rampAngleDeg)
+}
+
+export function isSurfaceRampAngleValid(surface: SurfaceParams): boolean {
+  if (surface.zTransitionMode !== 'helix') return true
+  return isRampAngleInRange(surface.rampAngleDeg)
 }
 
 export function isPocketLinkingFeedValid(pocket: PocketParams): boolean {
@@ -579,7 +604,9 @@ export const OPERATION_RULES: Record<OperationType, OperationRules> = {
       isSurfaceSizeValid(p.surface) &&
       isSurfaceStepoverValid(p.surface) &&
       isSurfaceLineCountWithinLimit(p.surface) &&
-      isSurfaceHelixRadiusValid(p.surface),
+      isSurfaceHelixRadiusValid(p.surface) &&
+      isSurfaceRampAngleValid(p.surface) &&
+      isSurfaceEntryHelixWithinLimit(p),
     footprint: (p) => surfaceFootprint(p.surface),
     zSpan: (p) => surfaceZSpan(p.surface, p.feeds),
     engagement: (p) => ({ kind: 'stepover', percent: p.surface.stepoverPercent }),

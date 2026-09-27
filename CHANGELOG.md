@@ -7,6 +7,41 @@ zgodne z [SemVer](https://semver.org/). Ten plik pozostaje głównym, czytelnym
 thingsbypluzz/SimpleCAM), ale to infrastruktura pod izolację pracy
 (branch/worktree per zadanie), nie zamiennik tego changeloga.
 
+## [0.22.0] — 2026-09-27
+
+### Zmieniono
+
+- **Wejście Helix w Pocket Raster/Spiral i Surface schodzi pod Ramp
+  Angle** (0.5–30°, domyślnie 2°), jak Adaptive — skok na obrót
+  `2π·r·tan(kąt)` zamiast całego Stepdown na obrót. Przy Stepdown 6 mm z
+  Feedrate Calculator i Helix Radius 1.5 mm wejście schodziło dotąd pod
+  ~32°. Pocket: istniejące pole Ramp Angle widoczne przy każdym wejściu
+  Helix (wspólne z Adaptive); Surface: nowe pole pod Helix Radius.
+  Zapisane presety dostają 2° — G-code z wejściem Helix zmienia się
+  (łagodniejsze, dłuższe wejście).
+- **Kolejne poziomy Z (Surface, Pocket Raster/Spiral) zaczynają zejście
+  0.5 mm nad dnem poprzedniego poziomu**, nie od Start Z — obszar wejścia
+  jest już wycięty, więc Helix pod małym kątem nie kręci obrotów przez
+  powietrze, a Plunge schodzi na Plunge Rate tylko przez nową głębokość.
+  Poziom 0 bez zmian.
+- Walidacja: kąt poza zakresem i zbyt wiele obrotów helixa na poziom
+  (mały promień × mały kąt) blokują Generate z komunikatem w Kroku 2.
+  Ostrzeżenie o stromym zejściu pokazuje dla Surface/Pocket sam Ramp Angle.
+- Wspólne `helixPitchForRampAngle()`/`levelEntryZ()`
+  (`lib/surfaceZTransition.ts`), reużyte też przez Adaptive.
+
+## [0.21.1] — 2026-09-27
+
+### Zmieniono
+
+- **Flutes w Kroku 2 edytowalne.** Pole obok Tool Diameter (każda
+  operacja) to ta sama zapamiętana liczba ostrzy co w Feedrate Calculator —
+  zmiana w jednym miejscu zmienia drugie, a fz obok przelicza się od razu.
+  Zapisywana tylko liczba całkowita; inna wartość pokazuje błąd pod
+  wierszem.
+- Limit liczby ostrzy 1–6 (było 1–8) — hobbystyczne frezy nie mają więcej.
+  Zapisane 7–8 wraca do domyślnych 2.
+
 ## [0.21.0] — 2026-09-27
 
 ### Dodano

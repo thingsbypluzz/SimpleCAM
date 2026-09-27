@@ -94,6 +94,7 @@ export interface SurfaceParams {
   stepoverPercent: number // 1-100, single source of truth — mm value is derived
   zTransitionMode: ZTransitionMode
   helixRadius: number // only enforced/shown when zTransitionMode === 'helix'
+  rampAngleDeg: number // only enforced/shown when zTransitionMode === 'helix' — descent angle of the entry helix
 }
 
 export interface PocketParams {
@@ -111,7 +112,7 @@ export interface PocketParams {
   zTransitionMode: ZTransitionMode
   helixRadius: number // only enforced/shown when zTransitionMode === 'helix' (always, for Adaptive)
   optimalLoadPercent: number // Adaptive only, 1-30, single source of truth — mm and engagement angle are derived
-  rampAngleDeg: number // Adaptive only — helix entry descent angle, independent of stepdown
+  rampAngleDeg: number // every Helix entry (always, for Adaptive) — descent angle, independent of stepdown
   cutDirection: CutDirection // Adaptive only
   linkingFeed: number // Adaptive only, mm/min — G1 moves through already-cleared area
   // Adaptive only: the Feed XY value in effect when chip-thinning
@@ -198,6 +199,7 @@ export const DEFAULT_WIZARD_PARAMS: WizardParams = {
     stepoverPercent: 40,
     zTransitionMode: 'plunge',
     helixRadius: 1,
+    rampAngleDeg: 2,
   },
   pocket: {
     shape: 'rectCornered',

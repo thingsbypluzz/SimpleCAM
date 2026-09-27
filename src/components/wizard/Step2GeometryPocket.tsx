@@ -42,6 +42,7 @@ interface Step2GeometryPocketProps {
   machine: MachineSettings
   toolDiameters: ToolDiameterOption[]
   flutes: number
+  onFlutesChange: (flutes: number) => void
 }
 
 const round2 = (n: number) => Math.round(n * 100) / 100
@@ -57,7 +58,7 @@ const round4 = (n: number) => Math.round(n * 10000) / 10000
 // as Surface: Pocket doesn't cut through, nothing to bridge. No Offset
 // Mode picker either (unlike Outline) — Pocket is always an inside
 // cut, there's no other physically meaningful mode.
-export function Step2GeometryPocket({ params, onChange, machine, toolDiameters, flutes }: Step2GeometryPocketProps) {
+export function Step2GeometryPocket({ params, onChange, machine, toolDiameters, flutes, onFlutesChange }: Step2GeometryPocketProps) {
   const { pocket } = params
 
   const updatePocket = (patch: Partial<WizardParams['pocket']>) => onChange({ pocket: { ...pocket, ...patch } })
@@ -96,24 +97,21 @@ export function Step2GeometryPocket({ params, onChange, machine, toolDiameters, 
   return (
     <div className="flex flex-col gap-6">
       <div className="flex flex-col gap-4">
-        <div className="flex gap-4">
-          <div className="min-w-0 flex-1">
-            <FieldRow label="Tool Diameter [mm]">
-              <select
-                className={inputClass}
-                value={pocket.toolDiameter}
-                onChange={(e) => updatePocket({ toolDiameter: Number(e.target.value) })}
-              >
-                {resolveToolDiameterSelectOptions(toolDiameters, pocket.toolDiameter).map((opt) => (
-                  <option key={opt.value} value={opt.value}>
-                    {opt.label}
-                  </option>
-                ))}
-              </select>
-            </FieldRow>
-          </div>
-          <ToolChipLoad params={params} machine={machine} flutes={flutes} />
-        </div>
+        <ToolChipLoad params={params} machine={machine} flutes={flutes} onFlutesChange={onFlutesChange}>
+          <FieldRow label="Tool Diameter [mm]">
+            <select
+              className={inputClass}
+              value={pocket.toolDiameter}
+              onChange={(e) => updatePocket({ toolDiameter: Number(e.target.value) })}
+            >
+              {resolveToolDiameterSelectOptions(toolDiameters, pocket.toolDiameter).map((opt) => (
+                <option key={opt.value} value={opt.value}>
+                  {opt.label}
+                </option>
+              ))}
+            </select>
+          </FieldRow>
+        </ToolChipLoad>
         <FieldRow label="Total Depth [mm]">
           <NumberInput
             type="number"
@@ -320,12 +318,12 @@ export function Step2GeometryPocket({ params, onChange, machine, toolDiameters, 
             the tool.
           </p>
         )}
-        {isAdaptive && (
+        {zMode === 'helix' && (
           <div className="flex gap-4">
             <div className="min-w-0 flex-1">
               <FieldRow
                 label="Ramp Angle [°]"
-                hint="How steeply the entry helix descends. Independent of Stepdown, so a deep Adaptive pass still enters gently — typical 1–3°."
+                hint="How steeply the entry helix descends. Independent of Stepdown, so a deep pass still enters gently — typical 1–3°. Every level after the first starts just above the previous floor, so only the new depth is ramped."
               >
                 <NumberInput
                   type="number"
@@ -340,7 +338,7 @@ export function Step2GeometryPocket({ params, onChange, machine, toolDiameters, 
             <div className="min-w-0 flex-1" />
           </div>
         )}
-        {isAdaptive && !isPocketRampAngleValid(pocket) && (
+        {!isPocketRampAngleValid(pocket) && (
           <p className="text-sm text-status-error">
             Ramp angle must be between {MIN_RAMP_ANGLE_DEG}° and {MAX_RAMP_ANGLE_DEG}°.
           </p>
@@ -361,7 +359,9 @@ export function Step2GeometryPocket({ params, onChange, machine, toolDiameters, 
           <p className="text-sm text-status-error">
             {isAdaptive
               ? 'This pocket needs too many helix turns or passes — the toolpath would be cut short by its safety limit. Raise the Ramp Angle, Helix Radius or Optimal Load, or lower Stepdown.'
-              : 'Stepover is too small for this pocket — too many passes, the toolpath would be cut short by its safety limit.'}
+              : zMode === 'helix'
+                ? 'Too many helix turns or passes — the toolpath would be cut short by its safety limit. Raise the Ramp Angle, Helix Radius or Stepover.'
+                : 'Stepover is too small for this pocket — too many passes, the toolpath would be cut short by its safety limit.'}
           </p>
         )}
       </div>

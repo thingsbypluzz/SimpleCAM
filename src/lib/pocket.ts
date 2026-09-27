@@ -1,7 +1,7 @@
 import type { MachineSettings } from '../types/machine'
 import type { PocketMethodType, Point2D, WizardParams } from '../types/wizard'
 import { assembleProgram } from './program'
-import { buildLevelDescents } from './surfaceZTransition'
+import { buildLevelDescents, levelEntryZ } from './surfaceZTransition'
 import { computeRasterLines, zigzagWaypoints } from './surfaceRaster'
 import { appendPocketZTransition, pocketEntryPoint } from './pocketZTransition'
 import { buildAdaptiveToolpath } from './pocketAdaptive'
@@ -81,8 +81,9 @@ const LEVEL_CLEAR: Record<Exclude<PocketMethodType, 'adaptive'>, (pocket: Wizard
 // Raster/Spiral: one full XY clear per Z level (buildLevelDescents(), reused
 // unchanged from Surface) — level 0 rapids down to Start Z; every later
 // level retracts to Safe Z, rapids back over the entry point and down to
-// Start Z first; then the Plunge/Helix entry (appendPocketZTransition()) and
-// the method's level clear. See CLAUDE.md's Pocket design notes.
+// just above the previous level's floor (levelEntryZ()); then the
+// Plunge/Helix entry (appendPocketZTransition(), helix at the Ramp Angle)
+// and the method's level clear. See CLAUDE.md's Pocket design notes.
 //
 // Adaptive has its own level structure (stays down between levels, helix
 // pitch from the ramp angle) inside buildAdaptiveToolpath(), which starts at
@@ -103,17 +104,20 @@ export function buildPocketToolpath(params: WizardParams, method = params.pocket
   const b = new ToolpathBuilder({ x: entry.x, y: entry.y, z: feeds.safeZ })
   b.zTo('rapid', feeds.startZ)
 
+  let previousToZ = feeds.startZ
   buildLevelDescents(feeds.startZ, pocket.totalDepth, feeds.stepdown).forEach(({ toZ }, idx) => {
+    const entryZ = levelEntryZ(idx, previousToZ, feeds.startZ)
+    previousToZ = toZ
     if (idx > 0) {
       b.zTo('rapid', feeds.safeZ)
       b.rapidXY(entry.x, entry.y)
-      b.zTo('rapid', feeds.startZ)
+      b.zTo('rapid', entryZ)
     }
     appendPocketZTransition(b, {
-      fromZ: feeds.startZ,
+      fromZ: entryZ,
       toZ,
       mode: pocket.zTransitionMode,
-      stepdown: feeds.stepdown,
+      rampAngleDeg: pocket.rampAngleDeg,
       feedrateXY: feeds.feedrateXY,
       plungeRate: feeds.plungeRate,
       helixRadius: pocket.helixRadius,

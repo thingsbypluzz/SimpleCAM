@@ -1,6 +1,10 @@
 import type { WizardParams } from '../../types/wizard'
 import type { MachineSettings } from '../../types/machine'
 import {
+  isSurfaceEntryHelixWithinLimit,
+  isSurfaceRampAngleValid,
+  MAX_RAMP_ANGLE_DEG,
+  MIN_RAMP_ANGLE_DEG,
   isSurfaceHelixRadiusValid,
   isSurfaceLineCountWithinLimit,
   isSurfaceSizeValid,
@@ -25,6 +29,7 @@ interface Step2GeometrySurfaceProps {
   machine: MachineSettings
   toolDiameters: ToolDiameterOption[]
   flutes: number
+  onFlutesChange: (flutes: number) => void
 }
 
 // Field order: Tool Diameter -> Depth to Remove -> Width/Height -> Method ->
@@ -34,7 +39,7 @@ interface Step2GeometrySurfaceProps {
 // (FieldRow/useNumberField, flex-row pairs, border-t section dividers). No
 // Tabs section — tabs don't apply to Surface at all (it never isolates or
 // cuts through a piece).
-export function Step2GeometrySurface({ params, onChange, machine, toolDiameters, flutes }: Step2GeometrySurfaceProps) {
+export function Step2GeometrySurface({ params, onChange, machine, toolDiameters, flutes, onFlutesChange }: Step2GeometrySurfaceProps) {
   const { surface } = params
 
   const updateSurface = (patch: Partial<WizardParams['surface']>) => onChange({ surface: { ...surface, ...patch } })
@@ -44,30 +49,28 @@ export function Step2GeometrySurface({ params, onChange, machine, toolDiameters,
   const heightField = useNumberField(surface.height, (v) => updateSurface({ height: v }))
   const stepoverField = useNumberField(surface.stepoverPercent, (v) => updateSurface({ stepoverPercent: v }))
   const helixRadiusField = useNumberField(surface.helixRadius, (v) => updateSurface({ helixRadius: v }))
+  const rampAngleField = useNumberField(surface.rampAngleDeg, (v) => updateSurface({ rampAngleDeg: v }))
   const offsetXField = useNumberField(surface.offsetX, (v) => updateSurface({ offsetX: v }))
   const offsetYField = useNumberField(surface.offsetY, (v) => updateSurface({ offsetY: v }))
 
   return (
     <div className="flex flex-col gap-6">
       <div className="flex flex-col gap-4">
-        <div className="flex gap-4">
-          <div className="min-w-0 flex-1">
-            <FieldRow label="Tool Diameter [mm]">
-              <select
-                className={inputClass}
-                value={surface.toolDiameter}
-                onChange={(e) => updateSurface({ toolDiameter: Number(e.target.value) })}
-              >
-                {resolveToolDiameterSelectOptions(toolDiameters, surface.toolDiameter).map((opt) => (
-                  <option key={opt.value} value={opt.value}>
-                    {opt.label}
-                  </option>
-                ))}
-              </select>
-            </FieldRow>
-          </div>
-          <ToolChipLoad params={params} machine={machine} flutes={flutes} />
-        </div>
+        <ToolChipLoad params={params} machine={machine} flutes={flutes} onFlutesChange={onFlutesChange}>
+          <FieldRow label="Tool Diameter [mm]">
+            <select
+              className={inputClass}
+              value={surface.toolDiameter}
+              onChange={(e) => updateSurface({ toolDiameter: Number(e.target.value) })}
+            >
+              {resolveToolDiameterSelectOptions(toolDiameters, surface.toolDiameter).map((opt) => (
+                <option key={opt.value} value={opt.value}>
+                  {opt.label}
+                </option>
+              ))}
+            </select>
+          </FieldRow>
+        </ToolChipLoad>
         <FieldRow label="Depth to Remove [mm]">
           <NumberInput
             type="number"
@@ -147,6 +150,37 @@ export function Step2GeometrySurface({ params, onChange, machine, toolDiameters,
         {surface.zTransitionMode === 'helix' && !isSurfaceHelixRadiusValid(surface) && (
           <p className="text-sm text-status-error">
             Helix radius must be greater than 0 and can't exceed the stepover ({fmt(surfaceStepoverMm(surface))}mm).
+          </p>
+        )}
+        {surface.zTransitionMode === 'helix' && (
+          <div className="flex gap-4">
+            <div className="min-w-0 flex-1">
+              <FieldRow
+                label="Ramp Angle [°]"
+                hint="How steeply the entry helix descends. Independent of Stepdown, so a deep pass still enters gently — typical 1–3°. Every level after the first starts just above the previous floor, so only the new depth is ramped."
+              >
+                <NumberInput
+                  type="number"
+                  step="0.5"
+                  min={MIN_RAMP_ANGLE_DEG}
+                  max={MAX_RAMP_ANGLE_DEG}
+                  className={inputClass}
+                  {...rampAngleField}
+                />
+              </FieldRow>
+            </div>
+            <div className="min-w-0 flex-1" />
+          </div>
+        )}
+        {!isSurfaceRampAngleValid(surface) && (
+          <p className="text-sm text-status-error">
+            Ramp angle must be between {MIN_RAMP_ANGLE_DEG}° and {MAX_RAMP_ANGLE_DEG}°.
+          </p>
+        )}
+        {!isSurfaceEntryHelixWithinLimit(params) && (
+          <p className="text-sm text-status-error">
+            Too many helix turns per level — the entry would be cut short by its safety limit. Raise the Ramp Angle or
+            Helix Radius.
           </p>
         )}
       </div>

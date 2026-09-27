@@ -56,14 +56,14 @@ describe('generateSurfaceZigzag', () => {
     // buildLevelDescents(0, 3, 1) -> target depths -1, -2, -3 (see
     // surfaceZTransition.test.ts) — the 2nd and 3rd level transitions both
     // retract all the way to Safe Z (default 5), reposition to (0,0), THEN
-    // rapid back down to Start Z (0) before the Plunge/Helix — every
-    // level's transition always starts from Start Z, never from Safe Z
-    // directly (that's what made the Helix overshoot before this fix).
-    // 'G0 Z0' appears 3 times: the initial rapidToTop(startZ), plus one
-    // rapid-to-Start-Z per level-2/3 transition. 'G0 Z5' appears 4 times:
-    // buildHeader's own initial rapid, the 2 mid-level Safe-Z retracts, and
-    // assembleProgram's trailing retract.
-    expect(lines.filter((l) => l === 'G0 Z0')).toHaveLength(3)
+    // rapid down to 0.5 mm above the previous level's floor (levelEntryZ)
+    // before the Plunge/Helix — never straight from Safe Z (a Helix would
+    // overshoot) and never back through the already-cut depth.
+    // 'G0 Z5' appears 4 times: buildHeader's own initial rapid, the 2
+    // mid-level Safe-Z retracts, and assembleProgram's trailing retract.
+    expect(lines.filter((l) => l === 'G0 Z0')).toHaveLength(1)
+    expect(lines.filter((l) => l === 'G0 Z-0.5')).toHaveLength(1)
+    expect(lines.filter((l) => l === 'G0 Z-1.5')).toHaveLength(1)
     expect(lines.filter((l) => l === 'G0 Z5')).toHaveLength(4)
     expect(lines.filter((l) => l === 'G1 Z-1 F300')).toHaveLength(1)
     expect(lines.filter((l) => l === 'G1 Z-2 F300')).toHaveLength(1)

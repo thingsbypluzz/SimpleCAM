@@ -38,6 +38,13 @@ describe('loadFeedCalcSettings / saveFeedCalcSettings', () => {
     expect(loadFeedCalcSettings()).toEqual({ ...DEFAULT_FEED_CALC_SETTINGS, toolMaterial: 'hss' })
   })
 
+  it('rejects flute counts above the limit', () => {
+    localStorage.setItem('simplecam.feedCalc', JSON.stringify({ flutes: 8 }))
+    expect(loadFeedCalcSettings().flutes).toBe(DEFAULT_FEED_CALC_SETTINGS.flutes)
+    localStorage.setItem('simplecam.feedCalc', JSON.stringify({ flutes: 6 }))
+    expect(loadFeedCalcSettings().flutes).toBe(6)
+  })
+
   it('falls back to defaults on corrupted JSON', () => {
     localStorage.setItem('simplecam.feedCalc', '{')
     vi.spyOn(console, 'warn').mockImplementation(() => {})

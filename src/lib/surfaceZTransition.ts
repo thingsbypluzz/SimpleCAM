@@ -1,4 +1,4 @@
-import { computeDepthPasses } from './depthPasses'
+import { computeDepthPasses, exceedsPassLimit } from './depthPasses'
 import { fullTurn, toolpathToGcode, ToolpathBuilder } from './toolpath'
 import type { InterpolationMode, RasterDirection, ZTransitionMode } from '../types/wizard'
 
@@ -6,7 +6,9 @@ export interface ZTransitionOptions {
   fromZ: number
   toZ: number
   mode: ZTransitionMode
-  stepdown: number
+  // Helix only: how steeply it descends — pitch per turn comes from this
+  // and the radius (helixPitchForRampAngle), not from Stepdown.
+  rampAngleDeg: number
   feedrateXY: number
   plungeRate: number
   helixRadius: number
@@ -65,8 +67,8 @@ export function helixCenterFor(
 // Plunge: one straight vertical G1 (`G1 Z… F<plunge>`) for the whole
 // descend distance — no chunking needed, unlike the multi-turn helix below.
 //
-// Helix: one full turn per computeDepthPasses() increment, like helix.ts's
-// no-tabs loop. Rotation sense and center both depend on rasterDirection
+// Helix: turns of helixPitchForRampAngle() depth each (the last one
+// shorter), like helix.ts's no-tabs loop but at a fixed descent angle. Rotation sense and center both depend on rasterDirection
 // (helixDirectionFor/helixCenterFor above) — together they keep the exit
 // tangent smooth AND the loop off the material. Appends to `builder`, whose
 // current point must be the corner at `fromZ`.
@@ -78,7 +80,7 @@ export function appendZTransition(builder: ToolpathBuilder, opts: ZTransitionOpt
   const center = helixCenterFor(opts.cornerX, opts.cornerY, opts.helixRadius, opts.rasterDirection)
   const direction = helixDirectionFor(opts.rasterDirection)
   let z = opts.fromZ
-  for (const turnDepth of computeDepthPasses(opts.fromZ - opts.toZ, opts.stepdown)) {
+  for (const turnDepth of computeDepthPasses(opts.fromZ - opts.toZ, helixPitchForRampAngle(opts.helixRadius, opts.rampAngleDeg))) {
     z -= turnDepth
     builder.arc('cut', center, direction, fullTurn, z)
   }
@@ -96,23 +98,55 @@ export function zTransitionMoves(opts: ZTransitionOptions): string[] {
   })
 }
 
+// Depth per turn of an entry helix descending at `rampAngleDeg` on
+// `radius` — the turn's path length × tan(angle). Shared by every entry
+// helix (Surface, Pocket Raster/Spiral, Pocket Adaptive).
+export function helixPitchForRampAngle(radius: number, rampAngleDeg: number): number {
+  return 2 * Math.PI * radius * Math.tan((rampAngleDeg * Math.PI) / 180)
+}
+
+// Clearance kept above the previous level's floor when rapiding back down
+// (Surface/Pocket level entries, Surface Unidirectional line re-entry) —
+// its highest point, since a helix or ramp leaves nothing above it.
+export const LEVEL_REENTRY_CLEARANCE = 0.5
+
+// Where a level's Plunge/Helix transition starts: level 0 at Start Z (the
+// first entry into the stock); every later one rapids back down to just
+// above the previous level's floor — the entry area was already cut there,
+// so descending through it again (at a gentle ramp angle, many turns) would
+// only cut air. Never above Start Z.
+export function levelEntryZ(levelIndex: number, previousToZ: number, startZ: number): number {
+  return levelIndex === 0 ? startZ : Math.min(startZ, previousToZ + LEVEL_REENTRY_CLEARANCE)
+}
+
+// Would any level's entry helix hit MAX_PASSES turns (and stop short of
+// the level's depth)? Validation blocks Generate before that.
+export function entryHelixExceedsTurnLimit(
+  startZ: number,
+  totalDepth: number,
+  stepdown: number,
+  helixRadius: number,
+  rampAngleDeg: number,
+): boolean {
+  const pitch = helixPitchForRampAngle(helixRadius, rampAngleDeg)
+  let previousToZ = startZ
+  return buildLevelDescents(startZ, totalDepth, stepdown).some(({ toZ }, idx) => {
+    const fromZ = levelEntryZ(idx, previousToZ, startZ)
+    previousToZ = toZ
+    return exceedsPassLimit(fromZ - toZ, pitch)
+  })
+}
+
 export interface LevelDescent {
   toZ: number
 }
 
-// Per-Z-level plan shared by Zigzag and Unidirectional — the target depth
-// for each stepdown-sized level, from computeDepthPasses(). Every level's
-// actual Plunge/Helix transition (see lib/surface.ts) starts from `startZ`,
-// never from wherever the previous level happened to end — between levels,
-// the caller retracts all the way to Safe Z, repositions to the start
-// corner, THEN rapids back down to Start Z before running the transition.
-// That "Safe Z, then Start Z" split matters specifically for Helix: helixing
-// straight from Safe Z would spiral through open air for whatever gap sits
-// above Start Z, and — since the descend distance would then be measured
-// from Safe Z instead of Start Z — overshoot past the level's real target
-// depth. Routing every level's transition through the same fixed Start Z
-// keeps `toZ` exactly reachable, and reuses the identical entry shape level
-// 0 already has (rapidToTop(startZ) then the transition).
+// Per-Z-level plan shared by Surface and Pocket — the target depth for each
+// stepdown-sized level, from computeDepthPasses(). Between levels the
+// caller retracts to Safe Z, repositions over the entry point, rapids down
+// to levelEntryZ() and runs the Plunge/Helix transition from there — never
+// straight from Safe Z, which would helix through open air and (with the
+// descent measured from Safe Z) overshoot the level's target depth.
 export function buildLevelDescents(startZ: number, totalDepth: number, stepdown: number): LevelDescent[] {
   const increments = computeDepthPasses(totalDepth + startZ, stepdown)
   const result: LevelDescent[] = []

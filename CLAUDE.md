@@ -150,22 +150,27 @@ decyzją projektową).
   kierunku rastra. **Głębokość**: Total Depth + Stepdown (global
   `feeds.stepdown`), pełny raster całego obszaru na każdym poziomie —
   `buildLevelDescents()` zwraca wyłącznie listę docelowych głębokości
-  (`toZ`) z `computeDepthPasses()`, bez własnego "fromZ" per poziom,
-  bo faktyczne przejście Plunge/Helix zawsze zaczyna się z `startZ` (patrz
-  niżej), nie z miejsca, w którym skończył się poprzedni poziom.
+  (`toZ`) z `computeDepthPasses()`; wysokość, od której zaczyna się
+  przejście Plunge/Helix danego poziomu, daje osobno `levelEntryZ()`
+  (patrz niżej).
   **Przejście między poziomami Z** (poziom 0 zaczyna z `startZ` bez
   retraktu, jak pierwsze wejście w Hole(s)/Outline) — wspólny mechanizm
   dla obu metod, trzy kroki: **pełny retrakt na `Safe Z`** (na aktualnym
   XY — ta sama konwencja "powrót na Safe Z przed G0 do kolejnego
   punktu", co wszędzie indziej w appce), `G0` do rogu startowego (na
-  wysokości Safe Z), **`G0` w dół do `Start Z`** (dokładnie ten sam
-  `rapidToTop(startZ)`, co przy pierwszym wejściu — dopiero stąd
-  zaczyna się właściwe zejście). Dopiero wtedy **Plunge** (prosty `G1
-  Z`) albo **Helix** (mini-spirala) wg toggle'a `ZTransitionMode` w
-  Step 2 — zejście zawsze liczone od `Start Z` do `toZ` tego poziomu,
-  nigdy od `Safe Z` bezpośrednio (inaczej helix przelatywałby przez
-  pustą przestrzeń nad `Start Z` i nie trafiał dokładnie w docelową
-  głębokość w punkcie startu przejazdu rastra). Helix reużywa wprost
+  wysokości Safe Z), **`G0` w dół do `levelEntryZ()`** — 0.5 mm
+  (`LEVEL_REENTRY_CLEARANCE`) nad dnem poprzedniego poziomu, nigdy
+  powyżej `Start Z` (obszar wejścia jest już wycięty poziom wyżej, więc
+  zejście przez niego drugi raz cięłoby powietrze). Dopiero wtedy
+  **Plunge** (prosty `G1 Z`) albo **Helix** (mini-spirala) wg toggle'a
+  `ZTransitionMode` w Step 2 — zejście liczone od tej wysokości do `toZ`,
+  nigdy od `Safe Z` bezpośrednio (helix przelatywałby przez pustą
+  przestrzeń i nie trafiał dokładnie w docelową głębokość w punkcie
+  startu rastra). Helix schodzi pod kątem z pola **Ramp Angle**
+  (`surface.rampAngleDeg`, 0.5–30°, domyślnie 2°) — skok na obrót
+  `helixPitchForRampAngle()` = `2π·r·tan(kąt)`, niezależnie od Stepdown
+  (głęboki Stepdown z Feedrate Calculator nie robi z wejścia stromego
+  zagłębienia). Helix reużywa wprost
   `fullCircleMove()`/`computeDepthPasses()` z silnika Helix Hole(s), ale
   — inaczej niż tam — **kierunek obrotu zależy od `rasterDirection`**
   (`helixDirectionFor()`, `lib/surfaceZTransition.ts`): `'y'` → CCW,
@@ -184,7 +189,9 @@ decyzją projektową).
   materiału, nie zawija się nad przyszłe przejazdy rastra. **Helix
   Radius** — osobne pole
   (tylko w trybie Helix), walidacja `isSurfaceHelixRadiusValid()`: `>
-  0`, sufit = stepover (mm). Mini-helix reużywa istniejący toggle
+  0`, sufit = stepover (mm); Ramp Angle pod spodem
+  (`isSurfaceRampAngleValid()`, limit obrotów na poziom
+  `isSurfaceEntryHelixWithinLimit()`). Mini-helix reużywa istniejący toggle
   interpolacji G2/G3 vs G1 (`output.interpolation`). **Tabs nie
   dotyczą Surface w ogóle** — brak checkboxa, brak pola, poza zakresem
   koncepcyjnym
@@ -253,6 +260,9 @@ decyzją projektową).
   pierścień `r − R`…`r + R` wokół środka, więc większy promień zostawiłby
   w środku niewycięty słupek, którego pierścienie Spiral/Adaptive (rosnące
   od `r` na zewnątrz) już nie zbierają.
+  Helix schodzi pod kątem z pola **Ramp Angle** (`pocket.rampAngleDeg`,
+  wspólne dla wszystkich metod — widoczne przy każdym wejściu Helix,
+  `helixPitchForRampAngle()`), nie o cały Stepdown na obrót.
   Pozycjonowanie XY przed zejściem (`pocketEntryPoint()`): środek
   kieszeni dla Plunge, ale **punkt startowy spirali** `(centerX +
   helixRadius, centerY)` dla Helix — pierwszy łuk G2/G3 musi zaczynać
@@ -379,9 +389,9 @@ decyzją projektową).
   prawdziwy pierścień do wycięcia, tylko punkt środka.
 
   **Głębokość:** per-poziom pełny XY clear, 1:1 reużycie
-  `buildLevelDescents()` z Surface'a — każdy poziom Z zaczyna od
-  `Start Z`, pełny retrakt na `Safe Z` i reposition nad środkiem
-  kieszeni między poziomami.
+  `buildLevelDescents()` z Surface'a — między poziomami pełny retrakt na
+  `Safe Z`, reposition nad punkt wejścia i `G0` do `levelEntryZ()` (0.5
+  mm nad dnem poprzedniego poziomu); poziom 0 zaczyna od `Start Z`.
 
   **Roughing-only w v1** (`BL-42` dla finishing passa/stock-to-leave) —
   zewnętrzny pierścień (Spiral) albo skrajna linia raster (Raster,
@@ -438,9 +448,10 @@ decyzją projektową).
   `'helix'` dla Adaptive; toggle Z-Transition wyszarzony z wyjaśnieniem,
   zapisany `zTransitionMode` nietknięty — wzorzec Tabs→G1): pierścienie o
   stałym zaangażowaniu nie mogą wyrosnąć z otworu o średnicy freza
-  (rekurencja daje z promienia 0 znowu 0). Skok spirali z nowego pola
-  **Ramp Angle** (`rampAngleDeg`, 0.5–30°, domyślnie 2°) — `2π·r·tan(kąt)`,
-  niezależnie od Stepdown. Helix Radius — istniejące pole (sufit = promień
+  (rekurencja daje z promienia 0 znowu 0). Skok spirali z pola
+  **Ramp Angle** (`rampAngleDeg`, 0.5–30°, domyślnie 2°, to samo pole co
+  wejście Helix w Raster/Spiral) — `2π·r·tan(kąt)`, niezależnie od
+  Stepdown. Helix Radius — istniejące pole (sufit = promień
   freza, jak dla każdego Helixa w Pocket — patrz walidacja) +
   nieblokująca podpowiedź, gdy < 25% D.
 
@@ -670,11 +681,13 @@ publikowanym zakresie. Pod „How it's calculated” rozwijana **Material
 table** — cała tabela materiałów do wglądu, bieżący wyróżniony.
 
 **Pamięć** (`lib/feedCalcStorage.ts`, klucz `simplecam.feedCalc`):
-materiał, liczba ostrzy (całkowita 1–8), Carbide/HSS — globalna, nie per
+materiał, liczba ostrzy (całkowita 1–6), Carbide/HSS — globalna, nie per
 preset; wpisane fz nie jest pamiętane i zeruje się przy zmianie materiału.
-**Krok 2** pokazuje obok Tool Diameter (każda operacja, `ToolChipLoad.tsx`)
-liczbę ostrzy z tej pamięci i rzeczywiste fz tylko do odczytu, liczone na
-żywo (`effectiveChipLoad()`: Feed XY ÷ (Spindle Speed × z), ÷ chip thinning
+**Krok 2** ma obok Tool Diameter (każda operacja, `ToolChipLoad.tsx`)
+edytowalne pole Flutes — ta sama wartość z tej pamięci co w modalu, zmiana
+w jednym miejscu zmienia oba; zapisywana tylko liczba całkowita 1–6, inna
+wartość pokazuje błąd pod wierszem (nie blokuje Generate) — oraz
+rzeczywiste fz tylko do odczytu, liczone na żywo (`effectiveChipLoad()`: Feed XY ÷ (Spindle Speed × z), ÷ chip thinning
 dla szerokości < 50% D).
 
 ### Overlay presetów w 2D/3D Preview
@@ -1430,8 +1443,9 @@ src/
   components/useModalFocus.ts — wspólne zachowanie klawiatury modali
                               (fokus przy otwarciu i powrót przy zamknięciu,
                               Escape, pułapka Tab) — Settings i kalkulator.
-  components/wizard/ToolChipLoad.tsx — liczba ostrzy i rzeczywiste fz tylko
-                              do odczytu obok Tool Diameter w Kroku 2.
+  components/wizard/ToolChipLoad.tsx — wiersz Tool Diameter w Kroku 2 z
+                              edytowalnym Flutes (wspólnym z kalkulatorem)
+                              i rzeczywistym fz tylko do odczytu.
   components/ErrorBoundary.tsx — klasowy error boundary owijający
                               `<App />` (`main.tsx`): zamiast białego ekranu
                               komunikat z "Reload" i "Reset saved state"
@@ -1834,9 +1848,13 @@ src/
                                  per obrót, dokładnie jak nietabbed branch
                                  `helix.ts`, środek spirali przesunięty o
                                  `helixRadius` żeby start/koniec wypadł na
-                                 rogu), `buildLevelDescents()` (lista
-                                 poziomów Z: poziom 0 bez retraktu, kolejne
-                                 retraktują o `stepdown` przed zejściem).
+                                 rogu, skok `helixPitchForRampAngle()` z
+                                 Ramp Angle), `buildLevelDescents()` (lista
+                                 docelowych głębokości poziomów),
+                                 `levelEntryZ()` (skąd zaczyna się zejście
+                                 poziomu: Start Z albo 0.5 mm nad dnem
+                                 poprzedniego), `entryHelixExceedsTurnLimit()`
+                                 (walidacja).
     surface.ts                    — `generateSurfaceZigzag`/
                                  `generateSurfaceUnidirectional` — spięte
                                  przez `assembleProgram()` tą samą
@@ -2012,9 +2030,10 @@ src/
                                  który oznacza wyłącznie dopasowanie do
                                  maszyny), `descentAngleDeg()`/
                                  `descentWarnings()` (nieblokujące, ta sama
-                                 ścieżka wyświetlania: helix/ramp poza
-                                 Adaptive schodzi o cały Stepdown na
-                                 obrót/okrążenie na Feedrate XY —
+                                 ścieżka wyświetlania: helix/ramp Hole(s)
+                                 i Outline schodzi o cały Stepdown na
+                                 obrót/okrążenie na Feedrate XY, wejście
+                                 Helix Surface/Pocket pod Ramp Angle —
                                  ostrzeżenie powyżej
                                  `MAX_RECOMMENDED_DESCENT_DEG` = 10°),
                                  `isPassCountWithinLimit`/

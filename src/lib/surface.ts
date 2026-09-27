@@ -3,7 +3,7 @@ import type { Point2D, SurfaceMethodType, WizardParams } from '../types/wizard'
 import { assembleProgram } from './program'
 import { surfaceStartCorner, surfaceStepoverMm, surfaceToolBounds } from './surfaceGeometry'
 import { computeRasterLines, zigzagWaypoints } from './surfaceRaster'
-import { appendZTransition, buildLevelDescents } from './surfaceZTransition'
+import { appendZTransition, buildLevelDescents, LEVEL_REENTRY_CLEARANCE, levelEntryZ } from './surfaceZTransition'
 import { ToolpathBuilder, toolpathToGcode, type Toolpath } from './toolpath'
 
 function surfaceStartPoint(surface: WizardParams['surface']): Point2D {
@@ -15,8 +15,9 @@ function surfaceStartPoint(surface: WizardParams['surface']): Point2D {
 // assembleProgram() leaves the tool) and ends at the last cut — the final
 // retract to Safe Z is assembleProgram()'s. Per level: level 0 rapids down
 // to Start Z; every later one retracts to Safe Z, rapids back over the
-// corner and down to Start Z first; then the Plunge/Helix transition to
-// the level's depth (appendZTransition()).
+// corner and down to just above the previous level's floor
+// (levelEntryZ()); then the Plunge/Helix transition to the level's depth
+// (appendZTransition()).
 //
 // Zigzag: one continuous G1 chain per level — waypoints[0] is the corner
 // the transition already ended on, so the chain starts at index 1.
@@ -37,17 +38,20 @@ export function buildSurfaceToolpath(params: WizardParams, method = params.surfa
   const b = new ToolpathBuilder({ x: corner.x, y: corner.y, z: feeds.safeZ })
   b.zTo('rapid', feeds.startZ)
 
+  let previousToZ = feeds.startZ
   descents.forEach(({ toZ }, idx) => {
+    const entryZ = levelEntryZ(idx, previousToZ, feeds.startZ)
+    previousToZ = toZ
     if (idx > 0) {
       b.zTo('rapid', feeds.safeZ)
       b.rapidXY(corner.x, corner.y)
-      b.zTo('rapid', feeds.startZ)
+      b.zTo('rapid', entryZ)
     }
     appendZTransition(b, {
-      fromZ: feeds.startZ,
+      fromZ: entryZ,
       toZ,
       mode: surface.zTransitionMode,
-      stepdown: feeds.stepdown,
+      rampAngleDeg: surface.rampAngleDeg,
       feedrateXY: feeds.feedrateXY,
       plungeRate: feeds.plungeRate,
       helixRadius: surface.helixRadius,
@@ -80,7 +84,7 @@ export function buildSurfaceToolpath(params: WizardParams, method = params.surfa
 // down between Unidirectional lines — the rapid used to stop exactly on
 // that floor, and on the first level exactly on the stock top, so any Z
 // error or lost step meant contact at rapid speed. Capped at Safe Z.
-export const UNIDIRECTIONAL_REENTRY_CLEARANCE = 0.5
+export const UNIDIRECTIONAL_REENTRY_CLEARANCE = LEVEL_REENTRY_CLEARANCE
 
 export function unidirectionalReentryZ(toZ: number, stepdown: number, safeZ: number): number {
   return Math.min(safeZ, toZ + stepdown + UNIDIRECTIONAL_REENTRY_CLEARANCE)
