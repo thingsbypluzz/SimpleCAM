@@ -20,6 +20,7 @@ export function OutlineMethodPicker({ params, onChange }: OutlineMethodPickerPro
           <button
             key={method.value}
             type="button"
+            aria-pressed={isSelected}
             onClick={() => onChange({ outline: { ...outline, method: method.value } })}
             title={method.description}
             className={[

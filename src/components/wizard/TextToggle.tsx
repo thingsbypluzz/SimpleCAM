@@ -16,7 +16,9 @@ interface TextToggleProps<T extends string> {
 // Direction, Z-Transition Mode, Cut Direction (Step 2) and Circle
 // interpolation (Step 4). Same selected-state tokens as every other
 // "user's choice" control (OptionButton, Checkbox). Pickers with icons and
-// descriptions (MethodPicker and friends) stay separate.
+// descriptions (MethodPicker and friends) stay separate. Every one of these
+// buttons carries aria-pressed (BL-64) — the selected state must not be
+// conveyed by color alone.
 export function TextToggle<T extends string>({ options, value, onChange, disabled = false }: TextToggleProps<T>) {
   return (
     <div className="flex gap-2">
@@ -24,6 +26,7 @@ export function TextToggle<T extends string>({ options, value, onChange, disable
         <button
           key={opt.value}
           type="button"
+          aria-pressed={value === opt.value}
           title={opt.title}
           disabled={disabled}
           onClick={() => onChange(opt.value)}

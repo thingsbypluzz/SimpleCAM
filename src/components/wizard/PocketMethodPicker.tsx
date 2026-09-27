@@ -18,6 +18,7 @@ export function PocketMethodPicker({ params, onChange }: PocketMethodPickerProps
           <button
             key={method.value}
             type="button"
+            aria-pressed={isSelected}
             onClick={() => onChange({ pocket: { ...pocket, method: method.value } })}
             title={method.description}
             className={[

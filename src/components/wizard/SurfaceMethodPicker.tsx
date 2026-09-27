@@ -17,6 +17,7 @@ export function SurfaceMethodPicker({ params, onChange }: SurfaceMethodPickerPro
           <button
             key={method.value}
             type="button"
+            aria-pressed={isSelected}
             onClick={() => onChange({ surface: { ...surface, method: method.value } })}
             title={method.description}
             className={[

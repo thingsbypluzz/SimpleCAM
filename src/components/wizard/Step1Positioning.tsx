@@ -61,6 +61,7 @@ function OptionButton({
   return (
     <button
       type="button"
+      aria-pressed={isSelected}
       onClick={onClick}
       className={[
         'flex items-center gap-2 rounded-md border px-2.5 py-1.5 text-left transition',

@@ -513,6 +513,9 @@ function App() {
                         : handleLoadPreset(id)
                   }
                   disabled={!preset}
+                  // Selection only exists in Overlay/Edit Mode; a plain
+                  // load is a one-shot action, not a toggle.
+                  aria-pressed={preset && (overlayEnabled || editModeEnabled) ? isSelected : undefined}
                   title={
                     !preset
                       ? `Preset [${id}] — empty`
@@ -554,6 +557,7 @@ function App() {
             type="button"
             onClick={handleToggleOverlay}
             aria-label="Toggle preset overlay"
+            aria-pressed={overlayEnabled}
             title={
               overlayEnabled
                 ? 'Overlay preview: on — click preset slots to add/remove them from the 2D/3D overlay'
@@ -576,6 +580,7 @@ function App() {
             type="button"
             onClick={handleToggleEditMode}
             aria-label="Toggle preset edit mode"
+            aria-pressed={editModeEnabled}
             title={
               editModeEnabled
                 ? 'Edit mode: on — click a preset slot to load it and auto-save further changes back to it live'
@@ -597,6 +602,7 @@ function App() {
             type="button"
             onClick={() => setIsDark((d) => !d)}
             aria-label="Toggle dark mode"
+            aria-pressed={isDark}
             title="Toggle dark mode"
             className="flex h-9 w-9 items-center justify-center rounded-md border border-border text-value hover:bg-border/40"
           >
@@ -825,11 +831,13 @@ function App() {
 
         <div className="flex flex-1 flex-col overflow-hidden">
           <div className="flex items-center justify-between border-b border-border px-6 py-3">
-            <div className="flex gap-2">
+            <div className="flex gap-2" role="tablist" aria-label="Preview">
               {(['2d', '3d', 'gcode'] as const).map((tab) => (
                 <button
                   key={tab}
                   type="button"
+                  role="tab"
+                  aria-selected={previewTab === tab}
                   onClick={() => setPreviewTab(tab)}
                   className={[
                     'rounded-md px-2.5 py-1 text-xs font-semibold uppercase tracking-wide transition',
