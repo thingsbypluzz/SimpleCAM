@@ -7,6 +7,21 @@ zgodne z [SemVer](https://semver.org/). Ten plik pozostaje głównym, czytelnym
 thingsbypluzz/SimpleCAM), ale to infrastruktura pod izolację pracy
 (branch/worktree per zadanie), nie zamiennik tego changeloga.
 
+## [0.22.2] — 2026-09-27
+
+### Usunięto
+
+- **Pocket Raster usunięty całkowicie** (`BL-73`, druga sesja `/grill-me`
+  2026-09-27). Ukryty w 0.22.1 — teraz znika też silnik, jego testy,
+  granica rastra kieszeni, strzałki rastra w podglądzie 2D i pole
+  `rasterDirection` w parametrach Pocket. Żaden przypadek nie uzasadniał
+  metody, której pierwsza linia każdego poziomu to szczelina pełną
+  szerokością freza, obok Spiral i Adaptive, które kontrolują
+  zaangażowanie. Obie pozostałe metody pasują do każdego kształtu, więc
+  zniknęło też bramkowanie metody po kształcie. Zapisane presety z Raster
+  nadal wczytują się jako Spiral (domyślna metoda). Silnik rastra Surface
+  bez zmian.
+
 ## [0.22.1] — 2026-09-27
 
 ### Zmieniono

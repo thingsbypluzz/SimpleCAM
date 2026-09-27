@@ -17,7 +17,7 @@ import {
   outlineShapeSlug,
   outlineSummary,
 } from './outlineMeta'
-import { POCKET_METHOD_META, pocketMethodListForShape } from './pocketMethodMeta'
+import { POCKET_METHOD_LIST, POCKET_METHOD_META } from './pocketMethodMeta'
 import { POCKET_SHAPE_META, pocketShapeIcon, pocketShapeLabel, pocketShapeLines, pocketShapeSlug, pocketSummary } from './pocketMeta'
 import { patternLabel, patternSlug, positioningIcon, positioningLines, positioningSummary } from './positioningMeta'
 import { SURFACE_METHOD_LIST, SURFACE_METHOD_META } from './surfaceMethodMeta'
@@ -260,7 +260,7 @@ export const OPERATION_META: Record<OperationType, OperationMeta> = {
     presetLabel: (p) => `${pocketShapeLabel(p.pocket)} • ${POCKET_METHOD_META[p.pocket.method].shortLabel}`,
     toolDiameter: (p) => p.pocket.toolDiameter,
     methodValue: (p) => p.pocket.method,
-    calcMethods: (p) => methodOptions(pocketMethodListForShape(p.pocket.shape)),
+    calcMethods: () => methodOptions(POCKET_METHOD_LIST),
     withCalc: (p, c) => {
       const method = c.method as PocketMethodType
       const pocket = { ...p.pocket, method, toolDiameter: c.toolDiameter }

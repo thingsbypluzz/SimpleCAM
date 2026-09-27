@@ -2,7 +2,6 @@ import type { MachineSettings } from '../types/machine'
 import type { PocketMethodType, Point2D, WizardParams } from '../types/wizard'
 import { assembleProgram } from './program'
 import { buildLevelDescents, levelEntryZ } from './surfaceZTransition'
-import { computeRasterLines, zigzagWaypoints } from './surfaceRaster'
 import { appendPocketZTransition, pocketEntryPoint } from './pocketZTransition'
 import { buildAdaptiveToolpath } from './pocketAdaptive'
 import {
@@ -16,7 +15,6 @@ import {
 import {
   pocketCenter,
   pocketCircleWallRadius,
-  pocketRectRasterBounds,
   pocketRectWallHalfDims,
   pocketStepoverMm,
 } from './pocketGeometry'
@@ -59,17 +57,7 @@ function spiralRectLevel(b: ToolpathBuilder, cx: number, cy: number, toZ: number
   }
 }
 
-// The raster boundary is derived entirely from pocket.* (via
-// pocketRectRasterBounds); the connecting move to the raster's first
-// waypoint starts from wherever the preceding Z-entry left the tool.
-function rasterRectLevel(b: ToolpathBuilder, _cx: number, _cy: number, toZ: number, params: WizardParams): void {
-  const { pocket } = params
-  const lines = computeRasterLines(pocketRectRasterBounds(pocket), pocket.rasterDirection, pocketStepoverMm(pocket))
-  for (const p of zigzagWaypoints(lines)) b.lineTo('cut', p.x, p.y, toZ)
-}
-
 const LEVEL_CLEAR: Record<Exclude<PocketMethodType, 'adaptive'>, (pocket: WizardParams['pocket']) => LevelClear> = {
-  raster: () => rasterRectLevel,
   spiral: (pocket) => (pocket.shape === 'circle' ? spiralCircleLevel : spiralRectLevel),
 }
 
@@ -78,7 +66,7 @@ const LEVEL_CLEAR: Record<Exclude<PocketMethodType, 'adaptive'>, (pocket: Wizard
 // leaves the tool) and ends at the last cut — the final retract to Safe Z
 // is assembleProgram()'s.
 //
-// Raster/Spiral: one full XY clear per Z level (buildLevelDescents(), reused
+// Spiral: one full XY clear per Z level (buildLevelDescents(), reused
 // unchanged from Surface) — level 0 rapids down to Start Z; every later
 // level retracts to Safe Z, rapids back over the entry point and down to
 // just above the previous level's floor (levelEntryZ()); then the
@@ -144,5 +132,4 @@ function generate(method: PocketMethodType) {
 }
 
 export const generatePocketSpiral = generate('spiral')
-export const generatePocketRaster = generate('raster')
 export const generatePocketAdaptive = generate('adaptive')

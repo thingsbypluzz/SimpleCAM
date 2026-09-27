@@ -20,11 +20,8 @@ export type ZTransitionMode = 'plunge' | 'helix'
 
 export type PocketShape = 'rectCornered' | 'rectCentered' | 'circle'
 
-// 'raster' only valid for rectCornered/rectCentered (reuses the Surface
-// raster engine, which has no circle-clipping math); 'spiral' and
-// 'adaptive' are valid for every shape — see CLAUDE.md's Pocket design
-// notes.
-export type PocketMethodType = 'raster' | 'spiral' | 'adaptive'
+// Both valid for every shape — see CLAUDE.md's Pocket design notes.
+export type PocketMethodType = 'spiral' | 'adaptive'
 
 // Pocket Adaptive only. Under M3 (spindle CW seen from above), climb = CCW
 // for an internal cut (uncut material on the right of travel), conventional
@@ -108,7 +105,6 @@ export interface PocketParams {
   offsetX: number
   offsetY: number
   stepoverPercent: number // 1-100, single source of truth — mm value is derived
-  rasterDirection: RasterDirection // only enforced/shown when method === 'raster'
   zTransitionMode: ZTransitionMode
   helixRadius: number // only enforced/shown when zTransitionMode === 'helix' (always, for Adaptive)
   optimalLoadPercent: number // Adaptive only, 1-30, single source of truth — mm and engagement angle are derived
@@ -212,7 +208,6 @@ export const DEFAULT_WIZARD_PARAMS: WizardParams = {
     offsetX: 0,
     offsetY: 0,
     stepoverPercent: 40,
-    rasterDirection: 'x',
     zTransitionMode: 'plunge',
     helixRadius: 1,
     optimalLoadPercent: 10,

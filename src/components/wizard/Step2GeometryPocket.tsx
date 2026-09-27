@@ -33,7 +33,7 @@ import { FieldRow, inputClass } from './FieldRow'
 import { NumberInput } from './NumberInput'
 import { PocketMethodPicker } from './PocketMethodPicker'
 import { TextToggle } from './TextToggle'
-import { CUT_DIRECTION_OPTIONS, RASTER_DIRECTION_OPTIONS, Z_TRANSITION_MODE_OPTIONS } from './toggleOptions'
+import { CUT_DIRECTION_OPTIONS, Z_TRANSITION_MODE_OPTIONS } from './toggleOptions'
 import { useNumberField } from './useNumberField'
 
 interface Step2GeometryPocketProps {
@@ -48,8 +48,7 @@ interface Step2GeometryPocketProps {
 const round2 = (n: number) => Math.round(n * 100) / 100
 const round4 = (n: number) => Math.round(n * 10000) / 10000
 
-// Field order: Tool Diameter -> Total Depth -> Method -> Raster Direction
-// (Raster only) -> shape size fields -> Stepover (% + read-only mm) ->
+// Field order: Tool Diameter -> Total Depth -> Method -> shape size fields -> Stepover (% + read-only mm) ->
 // Z-Transition Mode -> Helix Radius (Helix only) -> Offset X/Y — mirrors
 // Step2GeometrySurface.tsx's conventions throughout. Adaptive swaps
 // Stepover for Optimal Load (% ↔ mm, both editable, % stored; engagement
@@ -139,12 +138,6 @@ export function Step2GeometryPocket({ params, onChange, machine, toolDiameters, 
           <span className="text-sm font-medium text-value">Method</span>
           <PocketMethodPicker params={params} onChange={onChange} />
         </div>
-        {pocket.method === 'raster' && (
-          <div className="flex min-w-0 flex-col gap-1">
-            <span className="text-sm font-medium text-value">Raster Direction</span>
-            <TextToggle options={RASTER_DIRECTION_OPTIONS} value={pocket.rasterDirection} onChange={(v) => updatePocket({ rasterDirection: v })} />
-          </div>
-        )}
         {isAdaptive && (
           <div className="flex min-w-0 flex-col gap-1">
             <span className="text-sm font-medium text-value">Direction</span>

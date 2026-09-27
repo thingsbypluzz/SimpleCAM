@@ -13,7 +13,7 @@ import { arcRadiusMismatches } from './gcodeTestUtils'
 import { generateHelix } from './helix'
 import { forcedLinearReason } from './interpolation'
 import { generateOutline } from './outline'
-import { generatePocketAdaptive, generatePocketRaster, generatePocketSpiral } from './pocket'
+import { generatePocketAdaptive, generatePocketSpiral } from './pocket'
 import { pocketCenter, pocketCircleWallRadius, pocketRectWallHalfDims } from './pocketGeometry'
 import { endOfProgramCode } from './program'
 import { generateStandardHole } from './standardHole'
@@ -156,7 +156,6 @@ const SUITES: Suite[] = [
   { name: 'Outline', samples: 120, build: randomOutline, generate: generateOutline },
   { name: 'Surface Zigzag', samples: 40, build: (r) => randomSurface(r, 'zigzag'), generate: generateSurfaceZigzag },
   { name: 'Surface Unidirectional', samples: 40, build: (r) => randomSurface(r, 'unidirectional'), generate: generateSurfaceUnidirectional },
-  { name: 'Pocket Raster', samples: 40, build: (r) => randomPocket(r, 'raster'), generate: generatePocketRaster },
   { name: 'Pocket Spiral', samples: 40, build: (r) => randomPocket(r, 'spiral'), generate: generatePocketSpiral },
   { name: 'Pocket Adaptive', samples: 25, build: (r) => randomPocket(r, 'adaptive'), generate: generatePocketAdaptive },
 ]

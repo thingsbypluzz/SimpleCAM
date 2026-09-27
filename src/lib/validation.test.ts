@@ -657,7 +657,7 @@ describe('safety-limit validators (BL-55)', () => {
     for (const operation of ['holes', 'outline', 'surface', 'pocket'] as const) {
       expect(isPassCountWithinLimit({ ...DEFAULT_WIZARD_PARAMS, operation })).toBe(true)
     }
-    for (const method of ['raster', 'spiral', 'adaptive'] as const) {
+    for (const method of ['spiral', 'adaptive'] as const) {
       const pocket = { ...DEFAULT_WIZARD_PARAMS.pocket, method }
       expect(isPocketToolpathWithinLimits({ ...DEFAULT_WIZARD_PARAMS, operation: 'pocket', pocket })).toBe(true)
     }

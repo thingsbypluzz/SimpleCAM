@@ -41,9 +41,8 @@ Appka obsługuje dziś cztery operacje (`WizardParams.operation`):
   Unidirectional), kierunek rastra X/Y, stepover jako % średnicy
   narzędzia.
 - **Pocket** — kieszeniowanie (usuwanie materiału wewnątrz zamkniętego
-  konturu). Rectangle Cornered/Centered i Circle. Dostępne metody:
-  Spiral i Adaptive; trzecia, Raster (tylko Rectangle), jest ukryta
-  (`BL-73`) — silnik zostaje, UI i migracja zapisów jej nie oferują.
+  konturu). Rectangle Cornered/Centered i Circle. Dwie metody: Spiral i
+  Adaptive.
 
 Pełne uzasadnienie i historia każdej decyzji — łącznie z tym, jak
 appka doszła do dzisiejszego stanu, wersja po wersji — żyje wyłącznie w
@@ -226,33 +225,19 @@ decyzją projektową).
   `null` dla Surface — blok "pozostałego materiału" już jest tą
   wizualizacją).
 - **Pocket — kieszeniowanie, tylko roughing w v1:** rozstrzygnięcia sesji
-  `/grill-me` (2026-09-21). **Trzy metody** (`PocketMethodType`:
-  `'raster' | 'spiral' | 'adaptive'`, płaski rejestr
-  `config/pocketMethodMeta.ts` jak `SURFACE_METHOD_META`; Adaptive —
-  osobny punkt niżej). **Raster jest dziś ukryty** (`BL-73`,
-  `lib/pocketMethods.ts::pocketMethodAllowed()` zwraca `false` dla niego
-  przy każdym kształcie): po wejściu Helix jechał po przekątnej pełną
-  szerokością freza do narożnika pierwszej linii, a pierwsza linia każdego
-  rastra i tak jest szczeliną. Znika z Kroku 2 i z Feedrate Calculator,
-  zapisane presety z Raster wczytują się jako Spiral (`mergePocket()`,
-  `lib/storage.ts`); silnik `generatePocketRaster` i jego testy zostają do
-  decyzji w `BL-73`. Opis Raster poniżej dotyczy tego ukrytego silnika: **Raster** — tylko Rectangle
-  (Cornered/Centered), dosłowne reużycie silnika rastra Surface'a
-  (`computeRasterLines`/`zigzagWaypoints`), ale granica to prostokąt
-  **zainsetowany** o promień narzędzia (`pocketRectRasterBounds()`,
-  `lib/pocketGeometry.ts`) — odwrotność Surface'owego overtravel'u
-  (granica się kurczy, nie rośnie, bo ściana kieszeni to twardy limit
-  geometryczny, nie margines najazdu). **Spiral** — Rectangle (oba
-  warianty) i Circle; bramkowanie metody po kształcie identyczne z
-  `OutlineMethod` (`pocketMethodAllowed()`/`pocketMethodListForShape()`)
-  — Circle dostaje Spiral i Adaptive (nigdy Raster), `Step1Positioning.tsx`
-  resetuje metodę na `'spiral'` automatycznie przy przejściu na Circle
-  tylko wtedy, gdy wybrany był Raster.
+  `/grill-me` (2026-09-21). **Dwie metody** (`PocketMethodType`:
+  `'spiral' | 'adaptive'`, płaski rejestr `config/pocketMethodMeta.ts` jak
+  `SURFACE_METHOD_META`; Adaptive — osobny punkt niżej), obie dla każdego
+  kształtu (Rectangle Cornered/Centered i Circle) — bez bramkowania metody
+  po kształcie. Brak metody rastrowej: pierwsza linia każdego rastra to
+  szczelina pełną szerokością freza, a Spiral/Adaptive kontrolują
+  zaangażowanie (`BL-73`); zapisane presety z dawnym `'raster'` nie
+  przechodzą strażnika enuma w `mergeSection()` i wczytują się z domyślną
+  metodą (Spiral).
 
   **Kierunek czyszczenia:** zawsze inside-out (środek → ściana), zawsze
   CCW, czyli pod `M3` frezowanie współbieżne (climb — nieobrobiony
-  materiał po prawej stronie ruchu; Raster, jak zigzag w Surface, tnie
-  naprzemiennie w obu kierunkach) — Pocket nie ma pojęcia offset mode
+  materiał po prawej stronie ruchu) — Pocket nie ma pojęcia offset mode
   jak Outline, to zawsze cięcie od wewnątrz. **Wejście** zawsze w
   **centrum kieszeni** (`pocketCenter()`, ten sam origin-convention co
   `rectCorners()` — Cornered: origin w lewym dolnym rogu, Centered:
@@ -261,8 +246,7 @@ decyzją projektową).
   wersja mechanizmu Surface'a (`surfaceZTransition.ts`), prostsza niż
   jego narożnikowy `helixCenterFor`/`helixDirectionFor` (brak stycznej
   do wyprowadzania — okrąg wyśrodkowany na kieszeni nie ma
-  uprzywilejowanego kierunku wyjścia, bo pierwszy pierścień/linia
-  rastra i tak zaczyna własnym, niezależnym punktem odniesienia).
+  uprzywilejowanego kierunku wyjścia, bo pierwszy pierścień i tak zaczyna własnym, niezależnym punktem odniesienia).
   Helix Radius ≤ promień freza (i ≤ ściana kieszeni): spirala wycina
   pierścień `r − R`…`r + R` wokół środka, więc większy promień zostawiłby
   w środku niewycięty słupek, którego pierścienie Spiral/Adaptive (rosnące
@@ -278,8 +262,7 @@ decyzją projektową).
   `helixRadius`, dokładnie na `toZ` (mirror `helix.ts`'s Hole(s) Helix
   "flat finishing pass") — spiralne rampowanie w dół zostawia śrubową,
   nie płaską, powierzchnię (tylko jeden punkt obrotu faktycznie trafia
-  w `toZ`), a to, co następuje potem (pierwszy ramp pierścienia/linia
-  rastra/prostokąta), przechodzi przez ten promień tylko przelotnie
+  w `toZ`), a to, co następuje potem (pierwszy ramp pierścienia), przechodzi przez ten promień tylko przelotnie
   blisko własnego punktu startowego — bez tego przejazdu większość
   obwodu wejścia Helix zostawałaby nietknięta na docelowej głębokości.
   Wychwycone sesją weryfikacji wizualnej użytkownika (2026-09-21, bez
@@ -401,8 +384,7 @@ decyzją projektową).
   mm nad dnem poprzedniego poziomu); poziom 0 zaczyna od `Start Z`.
 
   **Roughing-only w v1** (`BL-42` dla finishing passa/stock-to-leave) —
-  zewnętrzny pierścień (Spiral) albo skrajna linia raster (Raster,
-  przycięta dokładnie do zainsetowanej granicy) JEST ścianą, bez
+  zewnętrzny pierścień (Spiral) JEST ścianą, bez
   osobnego, dokładnego przejazdu wykończeniowego. **Bez Tabs** — jak
   Surface, Pocket nie przewierca na wylot, nic do przytrzymania
   mostkiem. **Stepover** — identyczny mechanizm co Surface
@@ -414,9 +396,9 @@ decyzją projektową).
   `drawToolpathMoves()`) i **Preview 3D** (`toolpathLines3D()`) rysują
   każdą metodę wprost z listy ruchów silnika (`buildPocketToolpath()`,
   `lib/pocket.ts` — patrz `lib/toolpath.ts`): wejście Helix/Plunge,
-  rampy i pełne pierścienie Spiral, łańcuch Raster, przejazdy Adaptive —
+  rampy i pełne pierścienie Spiral, przejazdy Adaptive —
   dokładnie to, co trafia do G-code, bez osobnego odtwarzania pętli. 2D
-  dokłada strzałki kierunku rastra i znacznik punktu wejścia. Wizualizacja bryły 3D reużywa wprost modelu
+  dokłada znacznik punktu wejścia. Wizualizacja bryły 3D reużywa wprost modelu
   Outline Inside (otwarta ściana — `DoubleSide`, brak nakrywek — + stock
   cap z otworem w kształcie granicy zewnętrznej, ten sam
   `buildRectWallMesh()`/`circlePath()`/`rectPath()`) — Pocket fizycznie
@@ -457,7 +439,7 @@ decyzją projektową).
   stałym zaangażowaniu nie mogą wyrosnąć z otworu o średnicy freza
   (rekurencja daje z promienia 0 znowu 0). Skok spirali z pola
   **Ramp Angle** (`rampAngleDeg`, 0.5–30°, domyślnie 2°, to samo pole co
-  wejście Helix w Raster/Spiral) — `2π·r·tan(kąt)`, niezależnie od
+  wejście Helix w Spiral) — `2π·r·tan(kąt)`, niezależnie od
   Stepdown. Helix Radius — istniejące pole (sufit = promień
   freza, jak dla każdego Helixa w Pocket — patrz walidacja) +
   nieblokująca podpowiedź, gdy < 25% D.
@@ -476,7 +458,7 @@ decyzją projektową).
     przejazd łączący z powrotem w poprzek wyciętego koła.
   - **C — narożniki**, **każdy osobno**, ćwierćłuki o malejącym promieniu
     aż do ostrego narożnika ścieżki narzędzia (kieszeń identyczna jak z
-    Raster/Spiral), na końcu jeden prosty ruch w sam narożnik. Narożniki w
+    Spiral), na końcu jeden prosty ruch w sam narożnik. Narożniki w
     kolejności obrotu zgodnej z kierunkiem cięcia, żeby przejazd między
     nimi zawsze biegł po już wyciętej ścianie. Kwadrat = A + C.
 
@@ -566,10 +548,9 @@ Artifact aktualizować tylko jeśli realny layout appki zmieni się na tyle,
   szerokości ma domyślną min-content podłogę, której flex-shrink nie
   może ominąć) — Grid X/Y, Offset X/Y, Hole Diameter+Total Depth,
   Circle Count/Diameter/Start Angle, Tabs Height/Width/Count, Surface
-  Method+Raster Direction, Pocket Method+Direction/Raster Direction (tu
+  Method+Raster Direction, Pocket Method+Direction (Adaptive; tu
   Method ma szerokość własnych przycisków, `shrink-0`, a drugi toggle
-  zaczyna się po wyraźnym odstępie w tej samej linii — trzy przyciski metod
-  nie mieszczą się w połowie panelu; Direction jako "Conv."/"Climb", pełne
+  zaczyna się po wyraźnym odstępie w tej samej linii; Direction jako "Conv."/"Climb", pełne
   nazwy w tooltipie), Pocket
   Optimal Load %/mm/Engagement (Adaptive), Surface Z-Transition Mode+Helix Radius (drugie
   pole puste, gdy tryb ≠ Helix — para zostaje w jednym wierszu, żeby
@@ -665,7 +646,7 @@ szerokość do chip thinning analogicznie (sugerowana albo bieżąca).
 
 **Rodzaj zaangażowania** daje `OPERATION_RULES[op].engagement(params)`
 (`lib/validation.ts`): Hole(s) i Outline — szczelina (ae = D), Surface i
-Pocket Raster/Spiral — stepover %, Pocket Adaptive — Optimal Load %. Modal
+Pocket Spiral — stepover %, Pocket Adaptive — Optimal Load %. Modal
 liczy go na parametrach z podmienioną metodą i średnicą
 (`OPERATION_META[op].withCalc()`).
 
@@ -1206,7 +1187,7 @@ method drugorzędny). Migracja schematu: merge per-sekcja i per-pole z
 `DEFAULT_WIZARD_PARAMS` przy wczytaniu (`mergeSection()` w
 `lib/storage.ts`) — każde pole musi mieć typ wartości domyślnej, a pola
 enumowe znaną wartość, inaczej dostaje domyślną; nieznane klucze są
-odrzucane; zapisane Circle + Raster w Pocket przechodzi na Spiral.
+odrzucane; zapisane dawne Pocket `'raster'` przechodzi na Spiral.
 `machineStorage.ts` sprawdza pola maszyny tak samo. Błędy (private mode,
 quota exceeded, uszkodzony JSON) — cichy fallback do wartości domyślnych +
 `console.warn`. Ostatnia linia obrony to `ErrorBoundary`
@@ -1412,15 +1393,9 @@ src/
                               (Rectangle Cornered/Centered),
                               `surfaceShapeLabel()`/`surfaceShapeSlug()`/
                               `surfaceShapeLines()`/`surfaceSummary()`.
-  config/pocketMethodMeta.ts — analogicznie dla Pocket (Raster/Spiral/Adaptive):
-                              `POCKET_METHOD_META`, płaski rejestr jak
-                              `surfaceMethodMeta.ts`, plus
-                              `pocketMethodAllowed()`/
-                              `pocketMethodListForShape()` — Raster
-                              bramkowane do Rectangle (jedyne miejsce w
-                              tym rejestrze, gdzie metoda NIE jest
-                              uniwersalna dla każdego kształtu, w
-                              odróżnieniu od Surface).
+  config/pocketMethodMeta.ts — analogicznie dla Pocket (Spiral/Adaptive):
+                              `POCKET_METHOD_META`/`POCKET_METHOD_LIST`,
+                              płaski rejestr jak `surfaceMethodMeta.ts`.
   config/pocketMeta.ts      — analogicznie dla Pocket (kształt):
                               `POCKET_SHAPE_META`/`POCKET_SHAPE_LIST`
                               (Rectangle Cornered/Centered/Circle),
@@ -1522,9 +1497,7 @@ src/
                               pattern picker, nic liczbowego — pionowy
                               stos operacji (Hole(s)/Outline/Surface/
                               Pocket, wszystkie rozwinięte z kompaktową
-                              listą wariantów w środku — Pocket resetuje
-                              `pocket.method` na `'spiral'`, gdy klik w
-                              Circle, bo Raster jest tam niedostępne).
+                              listą wariantów w środku).
                               `Step2Geometry.tsx` = cienki router na
                               `params.operation` → `Step2GeometryHoles.tsx`
                               / `Step2GeometryOutline.tsx` /
@@ -1532,11 +1505,7 @@ src/
                               `Step2GeometryPocket.tsx`
                               (`SurfaceMethodPicker.tsx`/
                               `PocketMethodPicker.tsx` — wzorzec
-                              `OutlineMethodPicker`, `PocketMethodPicker`
-                              filtruje listę metod po kształcie
-                              (`pocketMethodListForShape()`) zamiast
-                              renderować wszystkie na stałe jak
-                              `SurfaceMethodPicker`; tekstowe przełączniki
+                              `OutlineMethodPicker`; tekstowe przełączniki
                               — Raster Direction, Z-Transition Mode, Cut
                               Direction, a w Kroku 4 interpolacja — idą
                               przez jeden `TextToggle.tsx`, z listami opcji
@@ -1884,8 +1853,6 @@ src/
                                  `pocketCircleWallRadius()` (ściana =
                                  nominał zainsetowany o promień narzędzia —
                                  odwrotny znak niż Surface'owy overtravel),
-                                 `pocketRectRasterBounds()` (granica Raster,
-                                 wyśrodkowana na `pocketCenter()`),
                                  `pocketStepoverMm()` (jedyne źródło prawdy
                                  % → mm, jak Surface).
     pocketSpiral.ts                 — geometria metody Spiral.
@@ -1997,14 +1964,14 @@ src/
     pocket.ts                       — `buildPocketToolpath()` — jedna lista
                                  ruchów dla każdej metody (`toolpath.ts`),
                                  z której powstaje G-code
-                                 (`generatePocketRaster`/`Spiral`/
-                                 `Adaptive`) i oba podglądy. Raster/Spiral:
+                                 (`generatePocketSpiral`/
+                                 `Adaptive`) i oba podglądy. Spiral:
                                  ten sam szkielet co `surface.ts` (jeden
                                  syntetyczny punkt-środek,
                                  `assembleProgram()`), per-poziom pełny XY
                                  clear (`buildLevelDescents()`), wejście
                                  `appendPocketZTransition()`, poziom przez
-                                 `LEVEL_CLEAR` (Spiral rozgałęzia się po
+                                 `LEVEL_CLEAR` (rozgałęzia się po
                                  kształcie; pierścienie
                                  `appendCircleRing()`/`appendRectRing()`
                                  z `pocketSpiral.ts`). Adaptive: własna
@@ -2179,9 +2146,7 @@ pomocnicze funkcje w `config/positioningMeta.ts`, nie przez rozproszone
 płaski rejestr, nie bespoke-switch jak `lib/outline.ts`, bo metody Surface
 nie są ograniczone per-kształt), Pocket analogicznie przez
 `config/pocketMeta.ts` (kształt) i `config/pocketMethodMeta.ts` (metoda,
-z własnym `generate` — płaski rejestr jak Surface, ale z dodatkowym
-`pocketMethodListForShape()` filtrem, bo Raster JEST ograniczone
-per-kształt, w odróżnieniu od Surface). Wszystkie kolory podglądu 2D/3D
+z własnym `generate` — płaski rejestr jak Surface). Wszystkie kolory podglądu 2D/3D
 idą przez
 `config/palettes.ts` (`getFixedColors()`/`getPaletteAccents()`/
 `hexToThreeColor()`), nie przez osobne stałe kolorów w

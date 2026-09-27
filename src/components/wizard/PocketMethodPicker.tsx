@@ -1,21 +1,18 @@
 import type { WizardParams } from '../../types/wizard'
-import { pocketMethodListForShape } from '../../config/pocketMethodMeta'
+import { POCKET_METHOD_LIST } from '../../config/pocketMethodMeta'
 
 interface PocketMethodPickerProps {
   params: WizardParams
   onChange: (patch: Partial<WizardParams>) => void
 }
 
-// Same compact toggle style as SurfaceMethodPicker.tsx — but filtered by
-// shape first (pocketMethodListForShape), since unlike Surface's two
-// methods (both valid for its one shape family), Pocket's Raster is
-// Rectangle-only — Circle only ever shows Spiral (see pocketMethodMeta.ts).
+// Same compact toggle style as SurfaceMethodPicker.tsx — both Pocket
+// methods are valid for every shape.
 export function PocketMethodPicker({ params, onChange }: PocketMethodPickerProps) {
   const { pocket } = params
-  const methods = pocketMethodListForShape(pocket.shape)
   return (
     <div className="flex gap-2">
-      {methods.map((method) => {
+      {POCKET_METHOD_LIST.map((method) => {
         const isSelected = pocket.method === method.value
         return (
           <button

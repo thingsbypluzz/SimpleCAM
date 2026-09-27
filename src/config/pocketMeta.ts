@@ -26,7 +26,7 @@ export const POCKET_SHAPE_META: Record<PocketShape, PocketShapeMeta> = {
   circle: {
     value: 'circle',
     title: 'Circle',
-    description: 'Circular pocket, centered at the origin. Spiral or Adaptive — Raster needs a rectangle.',
+    description: 'Circular pocket, centered at the origin. Spiral or Adaptive.',
     Icon: PocketCircleIcon,
   },
 }
