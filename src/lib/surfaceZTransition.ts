@@ -38,7 +38,7 @@ export function helixDirectionFor(rasterDirection: RasterDirection): 'cw' | 'ccw
   return rasterDirection === 'x' ? 'cw' : 'ccw'
 }
 
-// Where the helix's center must sit so that fullCircleMove's own start/end
+// Where the helix's center must sit so that a full turn's own start/end
 // point (always exactly `radius` from the center) lands ON the corner, the
 // tool's exit tangent there continues smoothly into the raster's first line
 // (no 90° kink), AND the loop itself stays outside the material footprint

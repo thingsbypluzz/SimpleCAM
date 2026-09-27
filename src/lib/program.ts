@@ -7,10 +7,9 @@ import { resolvePoints } from './positioning'
 // there and the rest of the way down runs at feed, in case Z zeroing is a
 // little off. It's only guaranteed to be air for startZ >= 0 — a negative
 // Start Z is allowed (resuming a partly cut job) but flagged as a warning
-// in Steps 3/4 (feedsWarnings(), validation.ts). Shared by every toolpath
-// generator (helix.ts/standardHole.ts for Hole(s), outlineCircle.ts/
-// outlineRectangle.ts for Outline), which would otherwise each duplicate
-// this as a hardcoded format string.
+// in Steps 3/4 (feedsWarnings(), validation.ts). Used by the string-based
+// Outline Rectangle engines (outlineRectangle.ts); move-list engines emit
+// the same line through toolpathToGcode()'s `zTo('rapid', startZ)`.
 export function rapidToTop(startZ: number): string {
   return `G0 Z${fmt(startZ)}`
 }

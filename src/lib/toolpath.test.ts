@@ -1,5 +1,4 @@
 import { describe, expect, it } from 'vitest'
-import { fullCircleMove } from './circle'
 import { fullTurn, toolpathToGcode, ToolpathBuilder } from './toolpath'
 
 const feeds = { cut: 800, plunge: 300, link: 1500 }
@@ -33,25 +32,17 @@ describe('toolpathToGcode', () => {
     expect(skip.build().moves).toEqual([])
   })
 
-  it('formats a full helical turn exactly like fullCircleMove, in both interpolation modes', () => {
-    for (const interpolation of ['arc', 'linear'] as const) {
-      for (const direction of ['cw', 'ccw'] as const) {
-        const b = new ToolpathBuilder({ x: 3.175, y: -1.2, z: 0.4 })
-        b.arc('cut', { x: 1.1, y: -1.2 }, direction, fullTurn, -0.85)
-        const expected = fullCircleMove({
-          centerX: 1.1,
-          centerY: -1.2,
-          radius: 3.175 - 1.1,
-          startX: 3.175,
-          startY: -1.2,
-          zStart: 0.4,
-          zEnd: -0.85,
-          feed: 800,
-          interpolation,
-          direction,
-        })
-        expect(toolpathToGcode(b.build(), { feeds, interpolation, leadInRapid: false })).toEqual(expected)
-      }
+  it('formats a full helical turn as one G2/G3, or 72 G1 segments landing back on the start', () => {
+    for (const direction of ['cw', 'ccw'] as const) {
+      const b = new ToolpathBuilder({ x: 3.175, y: -1.2, z: 0.4 })
+      b.arc('cut', { x: 1.1, y: -1.2 }, direction, fullTurn, -0.85)
+      const code = direction === 'cw' ? 'G2' : 'G3'
+      expect(toolpathToGcode(b.build(), { feeds, interpolation: 'arc', leadInRapid: false })).toEqual([
+        `${code} X3.175 Y-1.2 Z-0.85 I-2.075 J0 F800`,
+      ])
+      const linear = toolpathToGcode(b.build(), { feeds, interpolation: 'linear', leadInRapid: false })
+      expect(linear).toHaveLength(72)
+      expect(linear[71]).toBe('G1 X3.175 Y-1.2 Z-0.85 F800')
     }
   })
 })

@@ -47,7 +47,7 @@ export interface Toolpath {
 
 const FULL_TURN = 2 * Math.PI
 // 5° per segment — every G1-approximated curve in the app uses this density
-// (72 segments per full turn, same as circle.ts's LINEAR_SEGMENTS).
+// (72 segments per full turn).
 const SEGMENT_RAD = (5 * Math.PI) / 180
 const EPS = 1e-6
 
@@ -62,9 +62,9 @@ function arcEndPoint(from: Point3D, center: Point2D, direction: ArcDirection, sw
 
 // Points along one move, excluding its start (the previous move's end).
 // Arcs are sampled at SEGMENT_RAD with Z interpolated linearly (helix
-// turns), last point snapped exactly onto `to`. The expressions follow
-// circle.ts's fullCircleMove() term for term, so a full turn samples to the
-// same numbers the pre-toolpath engines emitted.
+// turns), last point snapped exactly onto `to`. The expressions follow the
+// pre-toolpath engines' full-circle loop term for term, so a full turn
+// samples to the same numbers they emitted.
 export function movePoints(from: Point3D, move: Move): Point3D[] {
   if (move.type === 'line') return [move.to]
   const segments = Math.max(1, Math.round(move.sweep / SEGMENT_RAD))

@@ -70,7 +70,7 @@ export interface TabbedRectanglePassParams {
 
 // One full flat pass around the 4-corner perimeter at `cutZ`, skipping
 // each tab in `sideRanges[edge]` per edge — same lift-at-entry/plunge-at-
-// exit strategy as tabs.ts's tabbedCirclePass, but simpler: a straight G1
+// exit strategy as tabs.ts's appendTabbedCirclePass, but simpler: a straight G1
 // edge needs no angular-sampling resolution, only each tab's exact
 // start/end fraction as a breakpoint (no equivalent of
 // SEGMENTS_PER_TURN — the line between two corners is already exact).
@@ -119,7 +119,7 @@ export function tabbedRectanglePass(p: TabbedRectanglePassParams): string[] {
   }
 
   // Snap the last point onto the exact start corner, matching
-  // tabbedCirclePass/fullCircleMove's convention (avoids float drift).
+  // the circle passes' convention (avoids float drift).
   lines[lines.length - 1] = `G1 X${fmt(corners[0].x)} Y${fmt(corners[0].y)} Z${fmt(cutZ)} F${fmt(feed)}`
   return lines
 }

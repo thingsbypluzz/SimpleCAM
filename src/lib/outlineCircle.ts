@@ -1,7 +1,7 @@
 import type { MachineSettings } from '../types/machine'
 import type { OutlineParams, WizardParams } from '../types/wizard'
 import { assembleProgram } from './program'
-import { helixCircleToolpath, type CircleTabsOptions } from './helix'
+import { helixCircleToolpath, type CircleToolpathOptions } from './helix'
 import { standardCircleToolpath } from './standardHole'
 
 // Circle Outline reuses the exact Helix/Standard math from Hole(s)
@@ -43,52 +43,36 @@ export function onLineCircleEdges(outline: OutlineParams): { innerRadius: number
   }
 }
 
-function outlineTabs(outline: OutlineParams): CircleTabsOptions | null {
-  return outline.tabsEnabled
-    ? { tabHeight: outline.tabHeight, tabWidth: outline.tabWidth, tabCount: outline.tabCount }
-    : null
+// Circle Outline's options — shared by both methods and the 3D preview.
+export function circleOutlineOptions(params: WizardParams): CircleToolpathOptions {
+  const { outline, feeds, output } = params
+  const { radius, direction } = circleOutlineRadiusAndDirection(outline)
+  return {
+    radius,
+    totalDepth: outline.totalDepth,
+    stepdown: feeds.stepdown,
+    safeZ: feeds.safeZ,
+    startZ: feeds.startZ,
+    feedrateXY: feeds.feedrateXY,
+    plungeRate: feeds.plungeRate,
+    interpolation: output.interpolation,
+    direction,
+    tabs: outline.tabsEnabled
+      ? { tabHeight: outline.tabHeight, tabWidth: outline.tabWidth, tabCount: outline.tabCount }
+      : null,
+  }
 }
 
 function circleOutlinePoint(outline: OutlineParams) {
   return [{ x: outline.offsetX, y: outline.offsetY }]
 }
 
-function circleOutlineHelixToolpath(cx: number, cy: number, params: WizardParams): string[] {
-  const { outline, feeds, output } = params
-  const { radius, direction } = circleOutlineRadiusAndDirection(outline)
-  return helixCircleToolpath(cx, cy, {
-    radius,
-    totalDepth: outline.totalDepth,
-    stepdown: feeds.stepdown,
-    startZ: feeds.startZ,
-    feedrateXY: feeds.feedrateXY,
-    plungeRate: feeds.plungeRate,
-    interpolation: output.interpolation,
-    direction,
-    tabs: outlineTabs(outline),
-  })
-}
-
-function circleOutlineStandardToolpath(cx: number, cy: number, params: WizardParams): string[] {
-  const { outline, feeds, output } = params
-  const { radius, direction } = circleOutlineRadiusAndDirection(outline)
-  return standardCircleToolpath(cx, cy, {
-    radius,
-    totalDepth: outline.totalDepth,
-    stepdown: feeds.stepdown,
-    startZ: feeds.startZ,
-    feedrateXY: feeds.feedrateXY,
-    plungeRate: feeds.plungeRate,
-    interpolation: output.interpolation,
-    direction,
-    tabs: outlineTabs(outline),
-  })
-}
-
 export function generateCircleOutlineHelix(params: WizardParams, machine: MachineSettings): string[] {
-  return assembleProgram(params, machine, circleOutlineHelixToolpath, circleOutlinePoint(params.outline))
+  const opts = circleOutlineOptions(params)
+  return assembleProgram(params, machine, (cx, cy) => helixCircleToolpath(cx, cy, opts), circleOutlinePoint(params.outline))
 }
 
 export function generateCircleOutlineStandard(params: WizardParams, machine: MachineSettings): string[] {
-  return assembleProgram(params, machine, circleOutlineStandardToolpath, circleOutlinePoint(params.outline))
+  const opts = circleOutlineOptions(params)
+  return assembleProgram(params, machine, (cx, cy) => standardCircleToolpath(cx, cy, opts), circleOutlinePoint(params.outline))
 }

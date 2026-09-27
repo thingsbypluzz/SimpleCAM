@@ -1,6 +1,6 @@
-import { fmt } from './format'
+import type { Point3D, ToolpathBuilder } from './toolpath'
 
-// Matches circle.ts's LINEAR_SEGMENTS — same resolution for the cutting
+// Matches a full turn's 72 G1 segments (toolpath.ts) — same resolution for the cutting
 // motion between tabs, so a tabbed pass looks like the same polygon
 // approximation as an untabbed one away from the gaps.
 const SEGMENTS_PER_TURN = 72
@@ -12,7 +12,7 @@ export interface TabRange {
 
 // Tabs are evenly spaced, but phase-shifted by half a step so the FIRST
 // tab is centered at `step/2`, not at angle 0 — angle 0 is where every
-// pass starts/ends (see fullCircleMove/tabbedCirclePass), so this
+// pass starts/ends (see appendFullTurn/appendTabbedCirclePass), so this
 // guarantees the start point never lands inside a tab.
 //
 // Given the validation rule enforced elsewhere (tabCount * tabWidth <
@@ -55,17 +55,16 @@ interface TabbedCirclePassParams {
   startY: number
   cutZ: number
   liftZ: number
-  feed: number
   tabRanges: TabRange[]
   direction: 'cw' | 'ccw'
 }
 
 // One full 360° flat pass around (centerX, centerY) at `cutZ`, skipping
-// each tab in `tabRanges` — the tool rapids/feeds up to `liftZ` (the
-// tab-band top) before a tab's arc, traverses it there, then plunges back
-// to `cutZ` to resume. G1-only: tabs force segmented interpolation for
-// the whole program (see helix.ts/standardHole.ts), so this never needs
-// to emit G2/G3.
+// each tab in `tabRanges` — the tool feeds up to `liftZ` (the tab-band
+// top) before a tab's arc, traverses it there, then feeds back down to
+// `cutZ` to resume. Straight 'cut' moves only (G1 at Feedrate XY): tabs
+// force segmented interpolation for the whole program (see
+// helix.ts/standardHole.ts), so this never needs G2/G3.
 //
 // Unlike a plain fixed-resolution walk, the angle list is the union of
 // the uniform SEGMENTS_PER_TURN sweep AND every tab's exact start/end
@@ -75,7 +74,7 @@ interface TabbedCirclePassParams {
 // snapping to the nearest sample instead of the true boundary); forcing
 // the boundaries in as breakpoints makes every tab detected and sized
 // exactly, regardless of the cutting resolution.
-export function tabbedCirclePass(p: TabbedCirclePassParams): string[] {
+export function appendTabbedCirclePass(b: ToolpathBuilder, p: TabbedCirclePassParams): void {
   const twoPi = 2 * Math.PI
   const angles = new Set<number>([0, twoPi])
   for (let step = 1; step < SEGMENTS_PER_TURN; step++) {
@@ -89,10 +88,10 @@ export function tabbedCirclePass(p: TabbedCirclePassParams): string[] {
   // Tab ranges (from computeTabRanges) and the breakpoint sweep above are
   // always defined as an ascending-angle walk from 0 to 2π, independent of
   // cutting direction — only the physical XY position each angle maps to
-  // flips sign for 'cw', mirroring fullCircleMove's `sign` treatment.
+  // flips sign for 'cw', mirroring a full turn's direction.
   const sign = p.direction === 'cw' ? -1 : 1
 
-  const lines: string[] = []
+  const points: Point3D[] = []
   let prevX = p.startX
   let prevY = p.startY
   let inTab = false // angle 0 is guaranteed outside any tab, see computeTabRanges
@@ -105,19 +104,17 @@ export function tabbedCirclePass(p: TabbedCirclePassParams): string[] {
     const y = p.centerY + p.radius * Math.sin(sign * angle)
 
     if (nextInTab && !inTab) {
-      // Entering a tab: retract straight up where we already are, then
-      // move across to this breakpoint at liftZ.
-      lines.push(`G1 X${fmt(prevX)} Y${fmt(prevY)} Z${fmt(p.liftZ)} F${fmt(p.feed)}`)
-      lines.push(`G1 X${fmt(x)} Y${fmt(y)} Z${fmt(p.liftZ)} F${fmt(p.feed)}`)
+      // Entering a tab: rise straight up where we already are, then move
+      // across to this breakpoint at liftZ.
+      points.push({ x: prevX, y: prevY, z: p.liftZ }, { x, y, z: p.liftZ })
     } else if (!nextInTab && inTab) {
-      // Leaving a tab: plunge straight down where we already are (the
-      // tab's own end boundary), then move across to this breakpoint at
-      // cutZ, resuming normal cutting immediately instead of only after
-      // reaching the next breakpoint.
-      lines.push(`G1 X${fmt(prevX)} Y${fmt(prevY)} Z${fmt(p.cutZ)} F${fmt(p.feed)}`)
-      lines.push(`G1 X${fmt(x)} Y${fmt(y)} Z${fmt(p.cutZ)} F${fmt(p.feed)}`)
+      // Leaving a tab: feed straight down where we already are (the tab's
+      // own end boundary), then move across to this breakpoint at cutZ,
+      // resuming normal cutting immediately instead of only after reaching
+      // the next breakpoint.
+      points.push({ x: prevX, y: prevY, z: p.cutZ }, { x, y, z: p.cutZ })
     } else {
-      lines.push(`G1 X${fmt(x)} Y${fmt(y)} Z${fmt(nextInTab ? p.liftZ : p.cutZ)} F${fmt(p.feed)}`)
+      points.push({ x, y, z: nextInTab ? p.liftZ : p.cutZ })
     }
 
     prevX = x
@@ -125,8 +122,8 @@ export function tabbedCirclePass(p: TabbedCirclePassParams): string[] {
     inTab = nextInTab
   }
 
-  // Snap the last point onto the exact start, matching fullCircleMove's
-  // G1 branch (avoids float drift).
-  lines[lines.length - 1] = `G1 X${fmt(p.startX)} Y${fmt(p.startY)} Z${fmt(p.cutZ)} F${fmt(p.feed)}`
-  return lines
+  // Snap the last point onto the exact start, matching a full turn's own
+  // end point (avoids float drift).
+  points[points.length - 1] = { x: p.startX, y: p.startY, z: p.cutZ }
+  for (const pt of points) b.lineTo('cut', pt.x, pt.y, pt.z)
 }

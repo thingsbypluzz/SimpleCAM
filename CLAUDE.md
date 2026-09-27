@@ -169,8 +169,8 @@ decyzją projektową).
   (`surface.rampAngleDeg`, 0.5–30°, domyślnie 2°) — skok na obrót
   `helixPitchForRampAngle()` = `2π·r·tan(kąt)`, niezależnie od Stepdown
   (głęboki Stepdown z Feedrate Calculator nie robi z wejścia stromego
-  zagłębienia). Helix reużywa wprost
-  `fullCircleMove()`/`computeDepthPasses()` z silnika Helix Hole(s), ale
+  zagłębienia). Helix reużywa wprost pełne obroty (łuk pełnego obrotu z
+  `lib/toolpath.ts`) i `computeDepthPasses()` jak silnik Helix Hole(s), ale
   — inaczej niż tam — **kierunek obrotu zależy od `rasterDirection`**
   (`helixDirectionFor()`, `lib/surfaceZTransition.ts`): `'y'` → CCW,
   `'x'` → CW. Nie jest to dowolna konwencja jak w Hole(s) Helix (gdzie
@@ -303,7 +303,7 @@ decyzją projektową).
   G2/G3 ze zmiennym promieniem, więc ramp zawsze emituje G1
   niezależnie od przełącznika interpolacji, z gęstością 5°/segment jak
   wszędzie indziej, ale liczbą segmentów skalowaną do rzeczywistego
-  kąta), potem pełny obrót przez `fullCircleMove()` bez zmian
+  kąta), potem pełny obrót (łuk pełnego obrotu na liście ruchów)
   (respektuje przełącznik G2/G3 vs G1 jak wszędzie indziej). Kąt
   startowy kolejnego rampu to zawsze `poprzedni + rampSweepDegFor(...)
   tej transycji`, bez zawijania do 0 — pierścienie faktycznie
@@ -838,7 +838,8 @@ niezależnie od `Start Z` (dno cięcia to zawsze `-totalDepth`, patrz
 `Start Z` a `Z=0` celowo wystaje ponad bryłę — to uczciwy obraz tego, co
 faktycznie się dzieje (najazd na posuwie roboczym w powietrzu, zanim
 frez dotknie materiału), nie błąd. Ruch szybki `Safe Z → Start Z`
-(`rapidZLineObjects()`) jest tym niedotknięty — to osobny, realny odcinek
+(pierwszy ruch listy ruchów silnika; dla Outline Rectangle
+`rapidZLineObjects()`) jest tym niedotknięty — to osobny, realny odcinek
 G0, niezwiązany z pozycją bryły. Dotyczy tylko Hole(s) i Outline —
 Surface ma osobną, już wcześniej ustaloną logikę bryły "pozostałego
 materiału" (patrz sekcja Surface w "Kluczowe decyzje projektowe" wyżej).
@@ -950,7 +951,8 @@ idzie wyłącznie przez **styl linii** (`ToolpathLineStyle` w
 - **`solid`** — realne skrawanie: pełne okręgi/spirale/łuki Helixa,
   linie rastra Surface, ramp Outline.
 - **`dashed`** — prawdziwy ruch szybki G0: przejazd między otworami,
-  najazd Safe Z → Start Z i retrakt (`rapidZLineObjects()`), retrakt/
+  najazd Safe Z → Start Z i retrakt (z listy ruchów silnika; Outline
+  Rectangle — `rapidZLineObjects()`), retrakt/
   reposition między poziomami i (Unidirectional) między liniami rastra
   Surface.
 - **`dotted`** — nieskrawający, pionowy ruch G1: krok w dół między
@@ -969,9 +971,9 @@ w jednym obiekcie. `createSegmentBuilder3D()` akumuluje kolejne odcinki
 (każdy dzieli wspólny punkt graniczny z poprzednim — brak przerwy
 wizualnej), `buildToolpathLines3D()` zamienia je na rzeczywiste
 `THREE.Line` (pomijając zdegenerowane odcinki < 2 punktów).
-`helixPoints3D()`/`standardHolePoints3D()`/`rectRampPoints3D()`/
-`rectStandardPoints3D()` zwracają `ToolpathSegment3D[]`. Operacje, które
-już budują wspólną listę ruchów (Surface, Pocket), rysuje
+`rectRampPoints3D()`/`rectStandardPoints3D()` (Outline Rectangle) zwracają
+`ToolpathSegment3D[]`. Operacje, które budują wspólną listę ruchów
+(Hole(s), Outline Circle, Surface, Pocket), rysuje
 `toolpathLines3D()` — styl wynika wprost z rodzaju ruchu (`MOVE_STYLE`:
 `cut` → `solid`, `rapid` → `dashed`, `plunge` → `dotted`, `link` →
 `linking`), a kolejne ruchy tego samego stylu dzielą jeden `THREE.Line`.
@@ -1130,8 +1132,8 @@ zostawia płaskiej powierzchni na granicy).
 Rozstawienie mostków automatyczne i równomierne, przesunięte w fazie o
 pół kroku (środek pierwszego mostka na połowie kroku, nie na kącie/
 pozycji 0 — punkt startowy przejścia nigdy nie trafia w mostek).
-`computeTabRanges()`/`tabbedCirclePass()` (`src/lib/tabs.ts`, Hole(s) i
-Outline Circle) i `computeRectTabRanges()`/`tabbedRectanglePass()`
+`computeTabRanges()`/`appendTabbedCirclePass()` (`src/lib/tabs.ts`,
+Hole(s) i Outline Circle) i `computeRectTabRanges()`/`tabbedRectanglePass()`
 (`src/lib/outlineRectangleTabs.ts`, Outline Rectangle, per bok) liczą
 listę kątów/pozycji jako **sumę** równomiernego próbkowania **i**
 dokładnych granic każdego mostka wymuszonych jako punkty łamania —
@@ -1152,8 +1154,10 @@ defensywnie obcinają ułamek (`Math.floor`) i zaciskają zakresy do
 Podglądy 2D i 3D renderują realne przerwy: `drawGappedCircle()`/
 `drawGappedRectangle()` (`drawToolpath.ts`) rysują przerwaną linię
 (`ctx.setLineDash()`, stała `TAB_DASH`) na łuku/odcinku mostka zamiast
-zwykłej pustki; `tabbedCirclePoints3D()`/`tabbedRectanglePoints3D()`
-(`buildScene.ts`) emitują `Vector3` tą samą matematyką co silnik.
+zwykłej pustki; 3D rysuje Hole(s)/Outline Circle wprost z listy ruchów
+silnika (także podniesienia nad mostkami), a Outline Rectangle przez
+`tabbedRectanglePoints3D()` (`buildScene.ts`), tą samą matematyką co
+silnik.
 Świadomie poza zakresem: bryła otworu/kształtu (półprzezroczysty
 cylinder/box) zostaje pełnym, niepodziurawionym kształtem — tylko linia
 ścieżki narzędzia dostała dokładną geometrię przerw.
@@ -1686,14 +1690,14 @@ src/
                                materiału (Z=0) + siatka, osie X/Y przez
                                fizyczny origin z grotem strzałki i
                                etykietą (sprite'y z canvas-texture),
-                               punkty helix/standard-hole/outline/surface
-                               liczone samodzielnie (mirror pętli silnika,
-                               ale `Vector3` zamiast stringów G-code —
-                               dzielenie głębokości na przejścia idzie
-                               przez wspólne `computeDepthPasses()`;
-                               Surface i Pocket rysowane wprost z
-                               listy ruchów silnika przez
-                               `toolpathLines3D()`), bryła
+                               ścieżka narzędzia Hole(s), Outline Circle,
+                               Surface i Pocket rysowana wprost z listy
+                               ruchów silnika przez `toolpathLines3D()`;
+                               tylko Outline Rectangle liczy jeszcze
+                               punkty samodzielnie (mirror pętli silnika,
+                               `Vector3` zamiast stringów G-code, podział
+                               głębokości przez wspólne
+                               `computeDepthPasses()`), bryła
                                finalnego kształtu, `buildStockCapObject()`
                                (patrz "Otwarta/zamknięta geometria..."
                                wyżej — zwraca `null` dla Surface, blok
@@ -1740,11 +1744,6 @@ src/
                                  (amber) zarezerwowany dla wektora offsetu
                                  w 2D/3D Preview, inny niż fizyczne osie
                                  czy origin (indigo).
-    circle.ts                  — `fullCircleMove()` — wspólna logika pełnego
-                                 okręgu (płaskiego lub helikalnego) w obu
-                                 trybach interpolacji, z parametrem
-                                 `direction: 'cw'|'ccw'` (Hole(s) zawsze
-                                 przekazuje `'ccw'`).
     depthPasses.ts              — `computeDepthPasses(totalDepth, stepdown)
                                  → number[]` (lista przejść/obrotów).
                                  Jedyne miejsce dzielące głębokość przez
@@ -1766,26 +1765,33 @@ src/
                                  `generateStandardHole(params, machine)`
                                  — publiczne funkcje
                                  `(WizardParams, MachineSettings) =>
-                                 string[]`. Wewnętrznie przyjmują jawny
-                                 obiekt opcji (`CircleToolpathOptions`)
-                                 zamiast czytać `params.geometry`
-                                 bezpośrednio, eksportowane też jako
-                                 `helixCircleToolpath`/
-                                 `standardCircleToolpath` i reużyte przez
-                                 `lib/outlineCircle.ts`. Gdy
-                                 `geometry.tabsEnabled`, przełączają się
-                                 na płaskie przejścia z pominięciem łuków
-                                 mostków — patrz "Tabs (mostki)..." wyżej.
-    tabs.ts                      — `computeTabRanges()`/`tabbedCirclePass()`
-                                 — geometria mostków dla Hole(s)/Outline
-                                 Circle, współdzielona przez
+                                 string[]`. Silnik to
+                                 `buildHelixCircleToolpath()`/
+                                 `buildStandardCircleToolpath()` — lista
+                                 ruchów (`toolpath.ts`) dla jednego okręgu
+                                 z jawnego obiektu opcji
+                                 (`CircleToolpathOptions`: Hole(s) z
+                                 `holeCircleOptions()`, Outline Circle z
+                                 `circleOutlineOptions()`), z której
+                                 powstaje G-code (`circleToolpathGcode()`,
+                                 mostki wymuszają G1) i podgląd 3D.
+                                 `appendFullTurn()` — pełny obrót (płaski
+                                 albo helikalny), `direction: 'cw'|'ccw'`
+                                 (Hole(s) zawsze `'ccw'`). Gdy mostki
+                                 włączone, przełączają się na płaskie
+                                 przejścia z pominięciem łuków mostków —
+                                 patrz "Tabs (mostki)..." wyżej.
+    tabs.ts                      — `computeTabRanges()`/
+                                 `appendTabbedCirclePass()` — geometria
+                                 mostków dla Hole(s)/Outline Circle,
+                                 współdzielona przez
                                  `helix.ts`/`standardHole.ts`. Kąty
                                  mostków to suma równomiernego
                                  próbkowania i dokładnych granic każdego
                                  mostka wymuszonych jako punkty łamania.
-    outlineCircle.ts             — Outline Circle: reużywa
-                                 `helixCircleToolpath`/
-                                 `standardCircleToolpath`.
+    outlineCircle.ts             — Outline Circle: reużywa silnika
+                                 Hole(s) z opcjami z
+                                 `circleOutlineOptions()`.
                                  `onLineCircleEdges()` — dwie krawędzie
                                  (wewnętrzna/zewnętrzna) dla On-line,
                                  czysto wizualne (3D).
@@ -1820,7 +1826,7 @@ src/
                                  `rasterExceedsLineLimit()` dla walidacji.
     surfaceZTransition.ts         — `zTransitionMoves()` (Plunge = prosty
                                  `G1 Z`; Helix = pętla
-                                 `computeDepthPasses()` + `fullCircleMove()`
+                                 `computeDepthPasses()` + pełny obrót
                                  per obrót, dokładnie jak nietabbed branch
                                  `helix.ts`, środek spirali przesunięty o
                                  `helixRadius` żeby start/koniec wypadł na
@@ -1871,7 +1877,7 @@ src/
                                  `rectRingMoves()` — jeden pierścień = gradual
                                  ramp (zawsze G1, dialekt nie wspiera G2/G3 ze
                                  zmiennym promieniem/rozmiarem) + pełny flat
-                                 obrót (`fullCircleMove()` dla Circle,
+                                 obrót (łuk pełnego obrotu dla Circle,
                                  respektuje toggle interpolacji;
                                  `rectFullLapPoints()` dla Rectangle, zawsze
                                  G1, start w punkcie gdzie skończył się ramp,
@@ -1907,9 +1913,9 @@ src/
     toolpath.ts                     — wspólna lista ruchów (`BL-61`, etap 3):
                                  `Move` (linia/łuk × `rapid`/`cut`/
                                  `plunge`/`link`), `ToolpathBuilder`,
-                                 `movePoints()` (próbkowanie łuków — te same
-                                 wyrażenia co `fullCircleMove()`, więc G1 i
-                                 podglądy dają identyczne punkty) i
+                                 `movePoints()` (próbkowanie łuków — to samo
+                                 próbkowanie trafia do G1 i do podglądów,
+                                 więc dają identyczne punkty) i
                                  `toolpathToGcode()` (jedyny formatter: `G0`
                                  tylko zmienianych osi albo jawnie `xy`/`z`,
                                  `G1 Z… F<plunge>`, `G1 X Y Z F`, `G2/G3 … I
@@ -1918,8 +1924,10 @@ src/
                                  rozjechać się z plikiem. Dziś: Surface
                                  (`buildSurfaceToolpath()`) i Pocket
                                  (`buildPocketToolpath()`, wszystkie
-                                 metody); Hole(s) i Outline czekają na
-                                 kolejne kroki etapu 3.
+                                 metody), Hole(s) i Outline Circle
+                                 (`buildHelixCircleToolpath()`/
+                                 `buildStandardCircleToolpath()`); Outline
+                                 Rectangle czeka na ostatni krok etapu 3.
     fuzzParams.ts                   — tylko testy: deterministyczny PRNG +
                                  losowe `WizardParams` per operacja (test
                                  niezmienników, porównania przy refaktorze).

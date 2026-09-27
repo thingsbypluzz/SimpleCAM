@@ -16,7 +16,7 @@ function buildParams(overrides: {
   }
 }
 
-// Trivial stand-in for helixToolpath/standardHoleToolpath — assembleProgram
+// Trivial stand-in for a real per-point toolpath — assembleProgram
 // itself doesn't care what a toolpath contains, only where it sits relative
 // to the header/footer/user-code wrapping.
 const noopToolpath = () => ['; toolpath']

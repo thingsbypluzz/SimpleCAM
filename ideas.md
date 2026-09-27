@@ -47,8 +47,8 @@ usuwane z pliku) — teraz cała historia decyzji zostaje widoczna
 bezpośrednio tutaj, nie tylko rozproszona po `CHANGELOG.md`.
 
 Ta sama lista, wizualnie — pogrupowana etapami trudności, z kolorowym
-oznaczeniem 🟢/🟠/🔴 i filtrem statusu (domyślnie pokazuje tylko
-**Otwarte**) — jest opublikowana jako Artifact:
+oznaczeniem 🟢/🟠/🔴 i filtrem statusu (domyślnie pokazuje
+**Otwarte** i **W trakcie**) — jest opublikowana jako Artifact:
 **<https://claude.ai/code/artifact/e90a2f5c-932c-4772-804e-0fe155ab32a0>**.
 
 **Zasada — trzymać oba źródła w zgodzie:** po wdrożeniu zmiany
@@ -285,8 +285,8 @@ Waga z review w nawiasie kwadratowym.
   Adaptive) dla G-code i obu podglądów, po jednej operacji na raz
   (zaczynając od Surface). Etapy 1–2 (porządki, rejestry
   `OPERATION_META`/`OPERATION_RULES`, `TextToggle`) zrobione w 0.20.8;
-  etap 3: Surface (0.20.9) i Pocket (0.20.10) już na `lib/toolpath.ts`,
-  zostają Hole(s) i Outline.
+  etap 3: Surface (0.20.9), Pocket (0.20.10) oraz Hole(s) i Outline Circle
+  (0.22.3) już na `lib/toolpath.ts`, zostaje Outline Rectangle.
 - **`BL-63`** *(Otwarty)* 🟠 **[Low]** — **Wydajność podglądów** — brak
   debounce, Adaptive przy 1% i cały G-code w jednym `<pre>`, podgląd
   1000 otworów przy literówce, domyślna zakładka 3D, `WebGLRenderer` bez
@@ -385,11 +385,11 @@ wierszy — stan kodu z dnia review (`main` @ `b867d4f`).
   przełączników, usunięty `lib/index.ts`, poprawione komentarze. Etap 3
   (lista ruchów `lib/toolpath.ts`, po jednej operacji, każda osobnym
   commitem z wizualną weryfikacją podglądów): Surface w 0.20.9, Pocket w
-  0.20.10. Zostają Hole(s) (Helix/Standard + mostki) i Outline
-  (Circle/Rectangle + mostki) — największe lustra w `buildScene.ts`
-  (`helixPoints3D`, `standardHolePoints3D`, `tabbed*Points3D`,
-  `rect*Points3D`). Przed zmianą warto nagrać wzorzec G-code z
-  `lib/fuzzParams.ts` i porównać po zmianie znak po znaku.
+  0.20.10, Hole(s) i Outline Circle w 0.22.3 (G-code porównany znak po
+  znaku ze wzorcem z `lib/fuzzParams.ts`). Zostaje Outline Rectangle
+  (Ramp/Standard + mostki) — ostatnie lustra w `buildScene.ts`
+  (`rectRampPoints3D`, `rectStandardPoints3D`, `tabbedRectanglePoints3D`).
+  Ten sam sposób: wzorzec G-code przed zmianą, porównanie po.
 - **Nakład:** trudny (lista ruchów).
 
 ### `BL-63` — Wydajność podglądów
