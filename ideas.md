@@ -223,6 +223,15 @@ faktycznym.
   (lub polami — np. frez vs średnica otworu, Tab Count × Width), np. prop
   `invalid` w `FieldRow`/`NumberInput`, spójnie w Krokach 2 i 3 oraz w
   Settings.
+- **`BL-70`** *(Otwarty)* 🟠 — **Sekcja Help w Settings Modal.** Część
+  treści z Artifactu Interface Anatomy przeniesiona do appki jako nowy
+  Settings Nav Item „Help”: rodzaje operacji (Hole(s), Outline, Surface,
+  Pocket) z ich ikonami i krótkim opisem, co robią, oraz opis dostępnych
+  metod obróbki per operacja. Treść najlepiej czytana wprost z istniejących
+  rejestrów (`OPERATION_META`, `METHOD_META`, `OUTLINE_METHOD_LIST`,
+  `SURFACE_METHOD_META`, `POCKET_METHOD_META` — ikony, tytuły, `description`),
+  żeby Help nie rozjechał się z UI; brakujące opisy operacji do dopisania w
+  `OPERATION_META`.
 
 **`BL-17` zamknięte — "Interface Anatomy"**, Artifact z umownymi nazwami
 elementów UI, dziś aktywnie używany w `CLAUDE.md`:

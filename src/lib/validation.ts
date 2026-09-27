@@ -1,6 +1,7 @@
 import type { MachineSettings } from '../types/machine'
 import type { FeedsParams, GeometryParams, OperationType, OutlineParams, PocketParams, SurfaceParams, WizardParams } from '../types/wizard'
 import type { ToolDiameterOption } from '../types/toolDiameters'
+import type { Engagement } from './feedCalc'
 import { resolvePoints } from './positioning'
 import { parseCustomPointsText } from './customPoints'
 import { rectToolDimensions } from './outlineRectangleGeometry'
@@ -536,6 +537,9 @@ interface OperationRules {
   isValid: (params: WizardParams) => boolean
   footprint: (params: WizardParams) => { x: number; y: number }
   zSpan: (params: WizardParams) => number
+  // How the tool meets the material with the current method and width —
+  // the Feedrate Calculator's model and Step 2's live chip load (BL-68).
+  engagement: (params: WizardParams) => Engagement
 }
 
 export const OPERATION_RULES: Record<OperationType, OperationRules> = {
@@ -552,6 +556,7 @@ export const OPERATION_RULES: Record<OperationType, OperationRules> = {
       isTabCountValid(p.geometry),
     footprint: (p) => patternSpan(p.geometry),
     zSpan: (p) => zSpan(p.geometry, p.feeds),
+    engagement: () => ({ kind: 'slot' }),
   },
   outline: {
     totalDepth: (p) => p.outline.totalDepth,
@@ -564,6 +569,7 @@ export const OPERATION_RULES: Record<OperationType, OperationRules> = {
       isOutlineTabCountValid(p.outline),
     footprint: (p) => outlineFootprint(p.outline),
     zSpan: (p) => outlineZSpan(p.outline, p.feeds),
+    engagement: () => ({ kind: 'slot' }),
   },
   surface: {
     totalDepth: (p) => p.surface.totalDepth,
@@ -576,6 +582,7 @@ export const OPERATION_RULES: Record<OperationType, OperationRules> = {
       isSurfaceHelixRadiusValid(p.surface),
     footprint: (p) => surfaceFootprint(p.surface),
     zSpan: (p) => surfaceZSpan(p.surface, p.feeds),
+    engagement: (p) => ({ kind: 'stepover', percent: p.surface.stepoverPercent }),
   },
   pocket: {
     totalDepth: (p) => p.pocket.totalDepth,
@@ -591,5 +598,9 @@ export const OPERATION_RULES: Record<OperationType, OperationRules> = {
       isPocketToolpathWithinLimits(p),
     footprint: (p) => pocketFootprint(p.pocket),
     zSpan: (p) => pocketZSpan(p.pocket, p.feeds),
+    engagement: (p) =>
+      p.pocket.method === 'adaptive'
+        ? { kind: 'optimalLoad', percent: p.pocket.optimalLoadPercent }
+        : { kind: 'stepover', percent: p.pocket.stepoverPercent },
   },
 }

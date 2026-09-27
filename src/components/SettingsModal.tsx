@@ -1,8 +1,9 @@
-import { useEffect, useRef, useState } from 'react'
+import { useState } from 'react'
 import { getPaletteAccents, PALETTE_LIST } from '../config/palettes'
-import type { Dialect, MachineSettings } from '../types/machine'
+import type { Dialect, MachineSettings, Rigidity } from '../types/machine'
 import type { AppearanceSettings, Grid3DLabelSize } from '../types/appearance'
 import { THEME_LIST } from '../types/theme'
+import { isRouterId, ROUTER_IDS, ROUTERS } from '../config/routers'
 import { DEFAULT_TOOL_DIAMETER_OPTIONS, type ToolDiameterOption } from '../types/toolDiameters'
 import { formatToolDiameterLabel } from '../lib/toolDiameterOptions'
 import { isToolDiameterEntryValid, isValidTabCount, MAX_TOOL_DIAMETER_COUNT } from '../lib/validation'
@@ -10,6 +11,7 @@ import { Checkbox } from './wizard/Checkbox'
 import { inputClass } from './wizard/FieldRow'
 import { NumberInput } from './wizard/NumberInput'
 import { roundToStepPrecision } from './wizard/useNumberField'
+import { useModalFocus } from './useModalFocus'
 
 interface SettingsModalProps {
   machine: MachineSettings
@@ -25,10 +27,11 @@ interface SettingsModalProps {
 type TravelField = 'travelX' | 'travelY' | 'travelZ'
 type TabDefaultField = 'defaultTabHeight' | 'defaultTabWidth' | 'defaultTabCount'
 type SpindleField = 'spindleSpeed' | 'dwellSeconds'
+type LimitField = 'spindleMinRpm' | 'spindleMaxRpm' | 'maxFeed'
 // All groups are plain positive numbers (dwell may also be 0), sharing one
 // local-buffer/onBlur mechanism (text/savedField/handleBlur below) — only
 // the field list and per-field step/label differ.
-type NumericField = TravelField | TabDefaultField | SpindleField
+type NumericField = TravelField | TabDefaultField | SpindleField | LimitField
 type CodeField = 'headerText' | 'footerText'
 type SectionId = 'machine' | 'tabs' | 'toolDiameters' | 'appearance' | 'privacy' | 'reset' | 'about'
 
@@ -58,9 +61,24 @@ const TAB_DEFAULT_FIELDS: { key: TabDefaultField; label: string; step: string }[
 
 // BL-53: emitted as `M3 S<speed>` + `G4 P<dwell>` when Step 4's "Start
 // spindle" is checked.
-const SPINDLE_FIELDS: { key: SpindleField; label: string; step: string }[] = [
+// BL-68: Spindle Speed shares its row with the spindle's range, which the
+// Feedrate Calculator clamps its suggestion to; dwell sits with the other
+// calculator limits below.
+const SPINDLE_FIELDS: { key: SpindleField | LimitField; label: string; step: string }[] = [
   { key: 'spindleSpeed', label: 'Spindle Speed [RPM]', step: '100' },
+  { key: 'spindleMinRpm', label: 'Min RPM', step: '100' },
+  { key: 'spindleMaxRpm', label: 'Max RPM', step: '100' },
+]
+
+const MOTION_FIELDS: { key: SpindleField | LimitField; label: string; step: string }[] = [
   { key: 'dwellSeconds', label: 'Spin-up Dwell [s]', step: '0.5' },
+  { key: 'maxFeed', label: 'Max Feed [mm/min]', step: '100' },
+]
+
+const RIGIDITY_OPTIONS: { value: Rigidity; label: string }[] = [
+  { value: 'light', label: 'Light (router on extrusions)' },
+  { value: 'medium', label: 'Medium' },
+  { value: 'rigid', label: 'Rigid (steel / cast frame)' },
 ]
 
 const DIALECT_OPTIONS: { value: Dialect; label: string }[] = [
@@ -84,6 +102,9 @@ function numericTextFrom(machine: MachineSettings): Record<NumericField, string>
     defaultTabCount: String(machine.defaultTabCount),
     spindleSpeed: String(machine.spindleSpeed),
     dwellSeconds: String(machine.dwellSeconds),
+    spindleMinRpm: String(machine.spindleMinRpm),
+    spindleMaxRpm: String(machine.spindleMaxRpm),
+    maxFeed: String(machine.maxFeed),
   }
 }
 
@@ -133,51 +154,9 @@ export function SettingsModal({
   const [newDiameterText, setNewDiameterText] = useState('')
   const [newDiameterError, setNewDiameterError] = useState<string | null>(null)
 
-  const modalRef = useRef<HTMLDivElement>(null)
-  const closeButtonRef = useRef<HTMLButtonElement>(null)
-
-  // Moves focus into the modal on open and restores it to whatever was
-  // focused before (the Settings button in the header, in practice) once
-  // the modal unmounts — without this a keyboard user's focus silently
-  // drops back to <body> on close.
-  useEffect(() => {
-    const previouslyFocused = document.activeElement as HTMLElement | null
-    closeButtonRef.current?.focus()
-    return () => {
-      previouslyFocused?.focus?.()
-    }
-  }, [])
-
-  // Escape closes the modal; Tab/Shift+Tab wraps focus within it instead of
-  // escaping to the page behind the backdrop. Not portaled to document.body
-  // (renders inline in App's tree), so `inert` on sibling content isn't a
-  // practical option here — a plain keydown-based trap covers the same
-  // requirement (modality.md: give people an obvious, contained way to
-  // interact with a modal view) without a new dependency.
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        onClose()
-        return
-      }
-      if (e.key !== 'Tab' || !modalRef.current) return
-      const focusable = modalRef.current.querySelectorAll<HTMLElement>(
-        'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])',
-      )
-      if (focusable.length === 0) return
-      const first = focusable[0]
-      const last = focusable[focusable.length - 1]
-      if (e.shiftKey && document.activeElement === first) {
-        e.preventDefault()
-        last.focus()
-      } else if (!e.shiftKey && document.activeElement === last) {
-        e.preventDefault()
-        first.focus()
-      }
-    }
-    window.addEventListener('keydown', handleKeyDown)
-    return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [onClose])
+  // Focus on open/restore on close, Escape, Tab trap — shared with the
+  // Feedrate Calculator.
+  const { modalRef, initialFocusRef: closeButtonRef } = useModalFocus<HTMLButtonElement>(onClose)
 
   // Shared by both onBlur (parses the typed text) and the NumberInput
   // stepper buttons below (already has a numeric value in hand, no text
@@ -188,12 +167,15 @@ export function SettingsModal({
     // Default Tab Count also has to be a whole number within the wizard's
     // own Tab Count limit (BL-45) — seeding a fractional default into Step
     // 2 would just land the user on a validation error.
-    // Dwell 0 is meaningful (no G4 at all), so it's the one field allowed
-    // to reach zero.
+    // Dwell 0 is meaningful (no G4 at all), and so is Min RPM 0 (no lower
+    // limit) — the only fields allowed to reach zero. The spindle range
+    // must stay a range (min below max).
     const invalid =
       !Number.isFinite(next) ||
-      (key === 'dwellSeconds' ? next < 0 : next <= 0) ||
-      (key === 'defaultTabCount' && !isValidTabCount(next))
+      (key === 'dwellSeconds' || key === 'spindleMinRpm' ? next < 0 : next <= 0) ||
+      (key === 'defaultTabCount' && !isValidTabCount(next)) ||
+      (key === 'spindleMinRpm' && next >= machine.spindleMaxRpm) ||
+      (key === 'spindleMaxRpm' && next <= machine.spindleMinRpm)
     if (invalid) {
       setText((prev) => ({ ...prev, [key]: String(machine[key]) }))
       return
@@ -225,6 +207,44 @@ export function SettingsModal({
   const handleDialectChange = (dialect: Dialect) => {
     onSave({ ...machine, dialect })
   }
+
+  const handleRigidityChange = (rigidity: Rigidity) => {
+    onSave({ ...machine, rigidity })
+  }
+
+  // BL-69: picking a router also sets the spindle range to its dial's —
+  // the calculator's suggestion should never land between two positions
+  // the dial can't reach.
+  const handleRouterChange = (value: string) => {
+    if (!isRouterId(value)) {
+      onSave({ ...machine, router: null })
+      return
+    }
+    const dial = ROUTERS[value].dial
+    onSave({ ...machine, router: value, spindleMinRpm: dial[0], spindleMaxRpm: dial[dial.length - 1] })
+  }
+  const router = machine.router ? ROUTERS[machine.router] : null
+
+  const numericField = (field: { key: NumericField; label: string; step: string }) => (
+    <div key={field.key} className="min-w-0 flex-1">
+      <label className="flex flex-col gap-1">
+        <span className="flex items-center gap-2 text-sm font-medium text-value">
+          {field.label}
+          {savedField === field.key && <span className="text-xs font-normal text-status-success">✓ Saved</span>}
+        </span>
+        <NumberInput
+          type="number"
+          step={field.step}
+          min="0"
+          className={inputClass}
+          value={text[field.key]}
+          onChange={(e) => setText((prev) => ({ ...prev, [field.key]: e.target.value }))}
+          onBlur={() => handleBlur(field.key)}
+          onAdjust={(delta) => handleAdjust(field.key, delta)}
+        />
+      </label>
+    </div>
+  )
 
   const sortedToolDiameters = [...toolDiameters].sort((a, b) => a.value - b.value)
 
@@ -261,14 +281,14 @@ export function SettingsModal({
   }
 
   // BL-40: distinct from handleResetToolDiameters above — this wipes every
-  // localStorage key the app owns (Appearance, Tool Diameters, Machine,
+  // localStorage key the app owns (Appearance, Tool Diameters, Machine, Feedrate Calculator,
   // and every preset slot including the hidden session one), not just one
   // list. onResetAll (App.tsx) owns the actual reset + in-memory state
   // sync; this is only the confirm gate.
   const handleResetAll = () => {
     if (
       !window.confirm(
-        'Reset ALL settings to their defaults? This clears the theme, tool diameters, machine settings, and every saved preset — it cannot be undone.',
+        'Reset ALL settings to their defaults? This clears the theme, tool diameters, machine settings, the Feedrate Calculator memory, and every saved preset — it cannot be undone.',
       )
     )
       return
@@ -385,39 +405,53 @@ export function SettingsModal({
                   </select>
                 </label>
 
+                <div className="flex gap-4">{SPINDLE_FIELDS.map(numericField)}</div>
                 <div className="flex gap-4">
-                  {SPINDLE_FIELDS.map((field) => (
-                    <div key={field.key} className="min-w-0 flex-1">
-                      <label className="flex flex-col gap-1">
-                        <span className="flex items-center gap-2 text-sm font-medium text-value">
-                          {field.label}
-                          {savedField === field.key && (
-                            <span className="text-xs font-normal text-status-success">
-                              ✓ Saved
-                            </span>
-                          )}
-                        </span>
-                        <NumberInput
-                          type="number"
-                          step={field.step}
-                          min="0"
-                          className={inputClass}
-                          value={text[field.key]}
-                          onChange={(e) =>
-                            setText((prev) => ({ ...prev, [field.key]: e.target.value }))
-                          }
-                          onBlur={() => handleBlur(field.key)}
-                          onAdjust={(delta) => handleAdjust(field.key, delta)}
-                        />
-                      </label>
-                    </div>
-                  ))}
+                  {MOTION_FIELDS.map(numericField)}
+                  <label className="flex min-w-0 flex-1 flex-col gap-1">
+                    <span className="text-sm font-medium text-value">Rigidity</span>
+                    <select
+                      className={inputClass}
+                      value={machine.rigidity}
+                      onChange={(e) => handleRigidityChange(e.target.value as Rigidity)}
+                    >
+                      {RIGIDITY_OPTIONS.map((opt) => (
+                        <option key={opt.value} value={opt.value}>
+                          {opt.label}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
                 </div>
+                <label className="flex flex-col gap-1">
+                  <span className="text-sm font-medium text-value">Router (speed dial)</span>
+                  <select className={inputClass} value={machine.router ?? ''} onChange={(e) => handleRouterChange(e.target.value)}>
+                    <option value="">None — spindle speed set by S</option>
+                    {ROUTER_IDS.map((id) => (
+                      <option key={id} value={id}>
+                        {ROUTERS[id].label}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                {router && (
+                  <p className="text-sm text-muted">
+                    Dial {router.dial.map((rpm, i) => `${i + 1} ≈ ${rpm}`).join(', ')} RPM
+                    {router.approximate ? ' (only the range is published — positions in between are estimated)' : ''}.
+                    A router ignores S in the G-code: the Feedrate Calculator shows which dial position to set.
+                    Choosing it also set Min/Max RPM to the dial's range.
+                  </p>
+                )}
                 <p className="text-sm text-muted">
                   Used when Step 4's "Start spindle" is checked: <code className="font-mono text-xs">M3 S
                   {machine.spindleSpeed}</code>, then a dwell while the spindle spins up (0 = none).
                   {machine.dialect === 'marlin' &&
                     ' On Marlin, S is often PWM 0–255 or a percentage (depends on CUTTER_POWER_UNIT) — set it to what your firmware expects.'}
+                </p>
+                <p className="text-sm text-muted">
+                  Min/Max RPM, Max Feed and Rigidity are only used by the Feedrate Calculator (Step 3): its
+                  suggested RPM stays within the spindle's range, a feed above Max Feed lowers the RPM first, and
+                  Rigidity scales the chip load it suggests, and the stepdown of wide cuts (not Adaptive). The defaults mean no limit.
                 </p>
 
                 <span className="text-sm font-medium text-value">
@@ -731,7 +765,7 @@ export function SettingsModal({
               <div className="flex flex-col gap-2 border-t border-border pt-4">
                 <span className="text-sm font-medium text-value">What's stored, and where</span>
                 <p className="text-sm text-muted">
-                  Presets and settings (Machine, Appearance, Tabs, Tool Diameters) are stored only
+                  Presets and settings (Machine, Appearance, Tabs, Tool Diameters, Feedrate Calculator) are stored only
                   in your browser's localStorage, scoped to this site. Nothing is synced,
                   exported, or read by us — it stays on your device and is cleared whenever you
                   clear your browser's site data, or automatically if you use a private/incognito
@@ -788,7 +822,11 @@ export function SettingsModal({
               <ul className="flex list-disc flex-col gap-1 pl-5 text-sm text-muted">
                 <li>Theme, Preview Color Palette, and Grid Labels (Appearance)</li>
                 <li>The Tool Diameters list</li>
-                <li>Machine Settings — dialect, X/Y/Z travel, Start/End G-Code, default tab sizes</li>
+                <li>
+                  Machine Settings — dialect, X/Y/Z travel, spindle and feed limits, rigidity, Start/End G-Code, default
+                  tab sizes
+                </li>
+                <li>The Feedrate Calculator's remembered material and tool</li>
                 <li>Every saved preset, including the hidden auto-save from your last session</li>
               </ul>
 

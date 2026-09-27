@@ -50,3 +50,44 @@ describe('OPERATION_META (BL-61)', () => {
     }
   })
 })
+
+describe('OPERATION_META calculator hooks (BL-68)', () => {
+  const p = DEFAULT_WIZARD_PARAMS
+
+  it('offers the same methods as Step 2 for the current shape', () => {
+    expect(OPERATION_META.holes.calcMethods(p).map((m) => m.value)).toEqual(['helix', 'standard'])
+    const circlePocket = { ...p, pocket: { ...p.pocket, shape: 'circle' as const } }
+    expect(OPERATION_META.pocket.calcMethods(circlePocket).map((m) => m.value)).toEqual(['spiral', 'adaptive'])
+    const rectOutline = { ...p, outline: { ...p.outline, shape: 'rectCornered' as const } }
+    expect(OPERATION_META.outline.calcMethods(rectOutline).map((m) => m.value)).toEqual(['ramp', 'standard'])
+  })
+
+  it('writes method and tool into the operation section', () => {
+    expect(OPERATION_META.holes.withCalc(p, { method: 'standard', toolDiameter: 4 })).toMatchObject({
+      method: 'standard',
+      geometry: { toolDiameter: 4 },
+    })
+    expect(OPERATION_META.surface.withCalc(p, { method: 'zigzag', toolDiameter: 8, widthPercent: 45 })).toMatchObject({
+      surface: { method: 'zigzag', toolDiameter: 8, stepoverPercent: 45 },
+    })
+  })
+
+  it('routes Pocket width to optimal load for Adaptive and to stepover otherwise', () => {
+    const adaptive = OPERATION_META.pocket.withCalc(p, {
+      method: 'adaptive',
+      toolDiameter: 6,
+      widthPercent: 8,
+      linkingFeed: 4000,
+      chipThinningBaseFeed: 1200,
+    })
+    expect(adaptive.pocket).toMatchObject({
+      method: 'adaptive',
+      optimalLoadPercent: 8,
+      linkingFeed: 4000,
+      chipThinningBaseFeed: 1200,
+      stepoverPercent: p.pocket.stepoverPercent,
+    })
+    const spiral = OPERATION_META.pocket.withCalc(p, { method: 'spiral', toolDiameter: 6, widthPercent: 40 })
+    expect(spiral.pocket).toMatchObject({ stepoverPercent: 40, optimalLoadPercent: p.pocket.optimalLoadPercent })
+  })
+})

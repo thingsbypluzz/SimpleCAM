@@ -11,6 +11,7 @@ import { surfaceStepoverMm } from '../../lib/surfaceGeometry'
 import { fmt } from '../../lib/format'
 import { resolveToolDiameterSelectOptions } from '../../lib/toolDiameterOptions'
 import type { ToolDiameterOption } from '../../types/toolDiameters'
+import { ToolChipLoad } from './ToolChipLoad'
 import { FieldRow, inputClass } from './FieldRow'
 import { NumberInput } from './NumberInput'
 import { SurfaceMethodPicker } from './SurfaceMethodPicker'
@@ -23,6 +24,7 @@ interface Step2GeometrySurfaceProps {
   onChange: (patch: Partial<WizardParams>) => void
   machine: MachineSettings
   toolDiameters: ToolDiameterOption[]
+  flutes: number
 }
 
 // Field order: Tool Diameter -> Depth to Remove -> Width/Height -> Method ->
@@ -32,7 +34,7 @@ interface Step2GeometrySurfaceProps {
 // (FieldRow/useNumberField, flex-row pairs, border-t section dividers). No
 // Tabs section — tabs don't apply to Surface at all (it never isolates or
 // cuts through a piece).
-export function Step2GeometrySurface({ params, onChange, machine, toolDiameters }: Step2GeometrySurfaceProps) {
+export function Step2GeometrySurface({ params, onChange, machine, toolDiameters, flutes }: Step2GeometrySurfaceProps) {
   const { surface } = params
 
   const updateSurface = (patch: Partial<WizardParams['surface']>) => onChange({ surface: { ...surface, ...patch } })
@@ -48,19 +50,24 @@ export function Step2GeometrySurface({ params, onChange, machine, toolDiameters 
   return (
     <div className="flex flex-col gap-6">
       <div className="flex flex-col gap-4">
-        <FieldRow label="Tool Diameter [mm]">
-          <select
-            className={inputClass}
-            value={surface.toolDiameter}
-            onChange={(e) => updateSurface({ toolDiameter: Number(e.target.value) })}
-          >
-            {resolveToolDiameterSelectOptions(toolDiameters, surface.toolDiameter).map((opt) => (
-              <option key={opt.value} value={opt.value}>
-                {opt.label}
-              </option>
-            ))}
-          </select>
-        </FieldRow>
+        <div className="flex gap-4">
+          <div className="min-w-0 flex-1">
+            <FieldRow label="Tool Diameter [mm]">
+              <select
+                className={inputClass}
+                value={surface.toolDiameter}
+                onChange={(e) => updateSurface({ toolDiameter: Number(e.target.value) })}
+              >
+                {resolveToolDiameterSelectOptions(toolDiameters, surface.toolDiameter).map((opt) => (
+                  <option key={opt.value} value={opt.value}>
+                    {opt.label}
+                  </option>
+                ))}
+              </select>
+            </FieldRow>
+          </div>
+          <ToolChipLoad params={params} machine={machine} flutes={flutes} />
+        </div>
         <FieldRow label="Depth to Remove [mm]">
           <NumberInput
             type="number"

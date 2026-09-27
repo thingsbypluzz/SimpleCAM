@@ -566,9 +566,16 @@ Artifact aktualizować tylko jeśli realny layout appki zmieni się na tyle,
 
 Settings Modal, Settings Nav item „Machine”. Pola: X/Y/Z travel maszyny
 (auto-save `onBlur`, zapis tylko przy poprawnej wartości `> 0`),
-G-Code Dialect (Drop-down, zapis natychmiastowy), Spindle Speed [RPM] i
-Spin-up Dwell [s] (ten sam wzorzec `onBlur` co travel; dwell może być 0,
-przy Marlinie podpowiedź, że `S` bywa PWM 0–255), Start G-Code / End
+G-Code Dialect (Drop-down, zapis natychmiastowy), Spindle Speed [RPM] z
+Min RPM / Max RPM w tym samym wierszu, Spin-up Dwell [s], Max Feed
+[mm/min] i Rigidity (Drop-down Light/Medium/Rigid, zapis natychmiastowy)
+— liczby tym samym wzorcem `onBlur` co travel (dwell i Min RPM mogą być 0,
+Min RPM < Max RPM; przy Marlinie podpowiedź, że `S` bywa PWM 0–255). Min/
+Max RPM, Max Feed i Rigidity czyta wyłącznie Feedrate Calculator (patrz
+niżej), nigdy silnik G-code; domyślnie `0`/`60000`/`50000`/Light, czyli
+bez realnego limitu. Router (speed dial) — Drop-down routerów z ręcznym
+pokrętłem (`config/routers.ts`, `machine.router`, domyślnie brak); wybór
+ustawia Min/Max RPM na zakres pokrętła, pod spodem lista pozycji. Start G-Code / End
 G-Code (dwa `<textarea>` — `headerText`/`footerText`, tekst wolny,
 commit `onBlur`). Trwałe w `localStorage` pod kluczem
 `simplecam.machine` (`src/lib/machineStorage.ts`), osobno od presetów
@@ -602,6 +609,73 @@ Settings Nav ma też sekcję **„About”** — nazwa appki, numer wersji
 (`__APP_VERSION__`, wstrzyknięty z `package.json` przez `define` w
 `vite.config.ts`, typ w `src/vite-env.d.ts`) i "Envisioned by
 ThingsByPluzz" (ten sam tekst też pod podtytułem w Header).
+
+### Feedrate Calculator
+
+Icon Button z `CalculatorIcon` na końcu wiersza Feedrate XY w Kroku 3
+(każda operacja) otwiera `FeedCalculatorModal` (wzorzec Settings Modal:
+`backdrop-blur-sm`, `renderPaused` podglądu 3D, `useModalFocus()`). Dwie
+kolumny: **wejścia** — Method (lista `OPERATION_META.calcMethods()`, ta sama
+co w Kroku 2 dla bieżącego kształtu), materiał (`config/materials.ts`, 10
+wpisów z krótką notą), średnica freza (edytowalna), liczba ostrzy,
+Carbide/HSS, fz (z tabeli × sztywność albo wpisane ręcznie, „Use table”
+wraca do tabeli), plus podsumowanie limitów z Settings → Machine tylko do
+odczytu; **wyniki** — tabela „bieżąca → sugerowana” z checkboxem przy
+każdym wierszu (domyślnie wszystkie zaznaczone): Spindle Speed (z adnotacją,
+że jest globalne), Feedrate XY, Plunge Rate, Stepdown, Stepover % albo
+Optimal Load % (brak dla szczeliny), Linking Feed (tylko Adaptive).
+Pod spodem ostrzeżenia (RPM docięty do zakresu wrzeciona, RPM obniżony dla
+Max Feed, posuw docięty do Max Feed ze spadkiem fz) i rozwijane „How it's
+calculated” z wartościami pośrednimi. Wszystko liczone na żywo.
+
+**Model** (`lib/feedCalc.ts`, czyste funkcje, `computeFeeds()`): RPM =
+środek zakresu Vc materiału (HSS × 0.4) × 1000 / (π·D), zaokrąglony do 100
+i docięty do [Min RPM, Max RPM]; fz = tabela 3/6/8+ mm (liniowo pomiędzy,
+proporcjonalnie poniżej 3 mm, stałe powyżej 8 mm) × sztywność (Light 0.75 /
+Medium 1 / Rigid 1.25), chyba że wpisane; chip thinning `1/sin θ`
+(`chipThinningFactor()` z `pocketAdaptiveMath.ts`) tylko dla szerokości
+< 50% D, dla szczeliny 1; Feed = RPM × z × fz × chip thinning. Powyżej Max
+Feed — gdy sugerowany RPM jest przyjmowany — najpierw RPM w dół (nie
+poniżej Min RPM), żeby utrzymać fz; co nadal za dużo, zostaje docięte do Max Feed.
+Plunge = posuw bez chip thinning × współczynnik materiału; Stepdown = D ×
+`ap` (szczelina / stepover / Adaptive) × sztywność (dla Adaptive bez
+sztywności — wąskie skrawanie samo pozwala na głębokość, a fz już jest
+skalowane), siatka 0.05 mm; Linking
+Feed = 2 × Feed (≤ Max Feed). RPM, dla którego liczony jest posuw, to
+sugerowany, gdy jego checkbox jest zaznaczony, inaczej bieżący z Settings;
+szerokość do chip thinning analogicznie (sugerowana albo bieżąca).
+
+**Rodzaj zaangażowania** daje `OPERATION_RULES[op].engagement(params)`
+(`lib/validation.ts`): Hole(s) i Outline — szczelina (ae = D), Surface i
+Pocket Raster/Spiral — stepover %, Pocket Adaptive — Optimal Load %. Modal
+liczy go na parametrach z podmienioną metodą i średnicą
+(`OPERATION_META[op].withCalc()`).
+
+**Apply selected** (`handleApplyFeedCalc()`, `App.tsx`): metoda i średnica
+trafiają do sekcji operacji zawsze (to kontekst wyliczenia — modal pokazuje,
+co się zmieni), szerokość/Linking Feed przez `withCalc()`, posuwy i Stepdown
+do `feeds`, a zaznaczony RPM nadpisuje globalne `machine.spindleSpeed`.
+Dla Adaptive zapis Feed XY ustawia też `pocket.chipThinningBaseFeed` na
+posuw bez kompensacji — Apply chip thinning w Kroku 2 i adnotacja w Kroku 3
+rozpoznają posuw jako już skompensowany. Istniejące Apply (chip thinning,
+Stepdown 1.5×D) zostają. Po zapisie Kroki 2 i 3 przemontowują się (ten sam
+`paramsLoadGeneration` co przy wczytaniu presetu).
+
+**Router z pokrętłem** (`machine.router`): router ignoruje `S`, więc modal
+pokazuje pod Spindle Speed pozycje pokrętła tylko do odczytu (najbliższa
+RPM, dla którego liczony jest posuw, wyróżniona — `nearestDialPosition()`),
+a wiersz RPM mówi, którą pozycję ustawić. Tabele w `config/routers.ts`:
+Makita z instrukcji, pozostałe (`approximate`) — równomiernie w
+publikowanym zakresie. Pod „How it's calculated” rozwijana **Material
+table** — cała tabela materiałów do wglądu, bieżący wyróżniony.
+
+**Pamięć** (`lib/feedCalcStorage.ts`, klucz `simplecam.feedCalc`):
+materiał, liczba ostrzy (całkowita 1–8), Carbide/HSS — globalna, nie per
+preset; wpisane fz nie jest pamiętane i zeruje się przy zmianie materiału.
+**Krok 2** pokazuje obok Tool Diameter (każda operacja, `ToolChipLoad.tsx`)
+liczbę ostrzy z tej pamięci i rzeczywiste fz tylko do odczytu, liczone na
+żywo (`effectiveChipLoad()`: Feed XY ÷ (Spindle Speed × z), ÷ chip thinning
+dla szerokości < 50% D).
 
 ### Overlay presetów w 2D/3D Preview
 
@@ -1337,9 +1411,27 @@ src/
                               opis tego, co wybiera Krok 1 (`pick*`),
                               wyświetlana metoda, statystyki i tooltip
                               podsumowania Kroku 2, `generate`, slug nazwy
-                              pliku, etykieta presetu. `Record<OperationType,
+                              pliku, etykieta presetu, a dla Feedrate
+                              Calculator `toolDiameter`/`methodValue`/
+                              `calcMethods`/`withCalc` (zapis metody,
+                              średnicy, szerokości i Linking Feed do sekcji
+                              operacji). `Record<OperationType,
                               …>` — nowa operacja nie przejdzie typecheck,
                               dopóki nie wypełni każdego pola.
+  config/materials.ts       — tabela materiałów Feedrate Calculator
+                              (`MATERIALS`, `MaterialId`): zakres Vc, fz dla
+                              3/6/8+ mm, współczynnik Plunge, Stepdown per
+                              zaangażowanie, sugerowane szerokości, nota.
+  config/routers.ts         — routery z ręcznym pokrętłem (`ROUTERS`,
+                              pozycja → RPM, flaga `approximate`),
+                              `nearestDialPosition()`.
+  components/FeedCalculatorModal.tsx — modal Feedrate Calculator (patrz
+                              „Feedrate Calculator” wyżej).
+  components/useModalFocus.ts — wspólne zachowanie klawiatury modali
+                              (fokus przy otwarciu i powrót przy zamknięciu,
+                              Escape, pułapka Tab) — Settings i kalkulator.
+  components/wizard/ToolChipLoad.tsx — liczba ostrzy i rzeczywiste fz tylko
+                              do odczytu obok Tool Diameter w Kroku 2.
   components/ErrorBoundary.tsx — klasowy error boundary owijający
                               `<App />` (`main.tsx`): zamiast białego ekranu
                               komunikat z "Reload" i "Reset saved state"
@@ -1367,9 +1459,10 @@ src/
                               (tokeny `status-delete-*`, żeby odróżnić od
                               węższego "Reset to Default" w Tool
                               Diameters), `window.confirm()` przed akcją —
-                              czyści naraz wszystkie cztery klucze
+                              czyści naraz wszystkie pięć kluczy
                               `localStorage`, które appka posiada:
-                              Appearance, Tool Diameters, Machine Settings
+                              Appearance, Tool Diameters, Machine Settings,
+                              pamięć Feedrate Calculator
                               i wszystkie sloty presetów (`clearAllSlots()`
                               w `lib/storage.ts`, łącznie z ukrytym
                               auto-save sesji `"0"`, nie tylko widoczne
@@ -1568,7 +1661,8 @@ src/
                                siatka) — patrz "Etykiety siatki w 3D
                                Preview" wyżej.
                                Prop `renderPaused` (`App.tsx`: `true`, gdy
-                               Settings Modal jest otwarty) — pętla wtedy
+                               Settings Modal albo Feedrate Calculator jest
+                               otwarty) — pętla wtedy
                                przerysowuje scenę tylko po realnej zmianie
                                (przebudowa sceny, resize), nie co klatkę;
                                inaczej rozmyte tło modala
@@ -1893,7 +1987,8 @@ src/
                                  (`buildAdaptiveToolpath()`), dokładany
                                  tylko dojazd do Start Z.
     validation.ts                — `OPERATION_RULES` (rejestr per operacja,
-                                 patrz „Zasada” niżej). `isWizardParamsValid()` — cała reguła
+                                 patrz „Zasada” niżej; także
+                                 `engagement()` dla Feedrate Calculator). `isWizardParamsValid()` — cała reguła
                                  bramkująca Generate (i live-save Edit
                                  Mode) dla aktywnej operacji, jedno źródło
                                  prawdy dla `App.tsx` i testu
@@ -1966,6 +2061,17 @@ src/
                                  `MAX_TOOL_DIAMETER_COUNT` (`BL-19`) —
                                  osobna kategoria: bramkuje przycisk "Add"
                                  w Settings → Tool Diameters, nie Generate.
+    feedCalc.ts                  — model Feedrate Calculator:
+                                 `computeFeeds()` (RPM, fz, chip thinning,
+                                 posuwy, Stepdown, docięcia do limitów
+                                 maszyny), `tableChipLoad()`/
+                                 `suggestedChipLoad()`,
+                                 `engagementChipThinning()`,
+                                 `effectiveChipLoad()` (fz w Kroku 2), typ
+                                 `Engagement`.
+    feedCalcStorage.ts           — `loadFeedCalcSettings`/
+                                 `saveFeedCalcSettings`, klucz
+                                 `simplecam.feedCalc`, straże per pole.
     download.ts                  — `buildFilename(params)`/
                                  `downloadTextFile` — efekt uboczny
                                  (Blob/URL), celowo poza czystym rdzeniem

@@ -7,6 +7,77 @@ zgodne z [SemVer](https://semver.org/). Ten plik pozostaje głównym, czytelnym
 thingsbypluzz/SimpleCAM), ale to infrastruktura pod izolację pracy
 (branch/worktree per zadanie), nie zamiennik tego changeloga.
 
+## [0.21.0] — 2026-09-27
+
+### Dodano
+
+- **`BL-68` — Feedrate Calculator** (rozstrzygnięcia sesji `/grill-me`,
+  2026-09-27). Icon Button z ikoną kalkulatora na końcu wiersza Feedrate
+  XY w Kroku 3, dla każdej operacji, otwiera modal (wzorzec Settings
+  Modal: rozmyte tło, podgląd 3D wstrzymany). Po lewej wejścia: metoda
+  (lista jak w Kroku 2 dla bieżącego kształtu), materiał, średnica freza,
+  liczba ostrzy, węglik/HSS i fz (z tabeli albo własne). Po prawej wyniki
+  „bieżąca → sugerowana” z checkboxami: Spindle Speed, Feedrate XY, Plunge
+  Rate, Stepdown, Stepover % (Surface, Pocket Raster/Spiral) albo Optimal
+  Load % (Adaptive) oraz Linking Feed (Adaptive). Pod spodem rozwijane
+  „How it's calculated”. „Apply selected” zapisuje zaznaczone wyniki;
+  metoda i średnica, dla których liczono, trafiają do Kroku 2 zawsze.
+- **Tabela 10 materiałów** (`config/materials.ts`): drewno miękkie i
+  twarde, MDF, sklejka, Delrin/POM, akryl, HDPE, PVC, aluminium, mosiądz.
+  Zakres prędkości skrawania (HSS × 0.4), fz dla 3/6/8+ mm, współczynnik
+  Plunge, Stepdown per rodzaj zaangażowania (szczelina / stepover /
+  Adaptive) i sugerowane szerokości. Zachowawcze punkty startowe, nie
+  gwarancja.
+- **Model obliczeń** (`lib/feedCalc.ts`, czyste funkcje): RPM ze środka
+  zakresu prędkości skrawania, docięty do zakresu wrzeciona; fz × sztywność
+  maszyny; chip thinning (1/sin θ) dla szerokości poniżej 50% średnicy;
+  powyżej Max Feed najpierw obniżenie RPM (fz bez zmian), dopiero potem
+  docięcie posuwu z ostrzeżeniem o spadku fz. Rodzaj zaangażowania
+  operacji/metody z nowego `OPERATION_RULES.engagement()`.
+- **Settings → Machine:** Min RPM, Max RPM (w wierszu ze Spindle Speed),
+  Max Feed i Rigidity (Light / Medium / Rigid, domyślnie Light) — używane
+  wyłącznie przez kalkulator, domyślnie bez realnego limitu. Zaakceptowany
+  RPM nadpisuje globalne Spindle Speed.
+- **Krok 2:** obok Tool Diameter liczba ostrzy i rzeczywiste fz tylko do
+  odczytu — liczone na żywo z Feed XY, Spindle Speed i liczby ostrzy (z
+  chip thinning dla wąskiego skrawania), więc nie zestarzeje się po ręcznej
+  edycji posuwu ani wczytaniu presetu.
+- **`BL-69` — pokrętło routera.** Settings → Machine → „Router (speed
+  dial)”: Makita RT0700C/RT0701C, DeWalt DWP611/D26200, Kress 800 FME,
+  Kress 1050 FME, AMB (Kress) 1050 FME-1 (`config/routers.ts`). Wybór
+  ustawia Min/Max RPM na zakres pokrętła. Kalkulator pokazuje pod Spindle
+  Speed pozycje pokrętła tylko do odczytu z zaznaczoną najbliższą
+  sugerowanemu RPM, a przy wierszu RPM — którą pozycję ustawić. Makita
+  według instrukcji producenta; dla pozostałych producent podaje tylko
+  zakres, więc pozycje pośrednie są rozłożone równomiernie (oznaczone jako
+  szacunek).
+- Stepdown dla Adaptive bez współczynnika sztywności — wąskie skrawanie
+  jest tym, co pozwala na głębokie przejście na lekkiej maszynie, a fz jest
+  już skalowane (test fizyczny: aluminium, frez 6 mm jednoostrzowy, ap
+  6 mm, ae 10%, 10 000 RPM, 600 mm/min — bez problemu, podczas gdy Light
+  podpowiadał 4.5 mm). Dla szczeliny i stepoveru sztywność nadal skaluje
+  Stepdown.
+- W kalkulatorze rozwijana „Material table” pod „How it's calculated” —
+  wartości tabeli materiałów do wglądu, bieżący materiał wyróżniony.
+- Kalkulator pamięta materiał, liczbę ostrzy i materiał freza
+  (`simplecam.feedCalc`); wpisane ręcznie fz nie jest pamiętane. „Reset
+  All Settings” czyści też ten klucz.
+
+### Zmieniono
+
+- Dotychczasowe Apply chip thinning (Krok 2) i Stepdown 1.5×D (Krok 3)
+  zostają. Kalkulator, zapisując Feed XY dla Adaptive, ustawia bazę chip
+  thinning na posuw bez kompensacji, więc Krok 2 rozpoznaje posuw jako już
+  skompensowany i nie mnoży go drugi raz.
+- Zachowanie klawiatury modali (fokus, Escape, pułapka Tab) wydzielone do
+  `useModalFocus()`, wspólnego dla Settings i kalkulatora.
+
+### Naprawiono
+
+- Zmiana Spindle Speed albo Spin-up Dwell w Settings unieważnia teraz
+  wygenerowany G-code (oba trafiają do pliku), tak jak zmiana dialektu czy
+  Start/End G-Code.
+
 ## [0.20.10] — 2026-09-26
 
 ### Zmieniono

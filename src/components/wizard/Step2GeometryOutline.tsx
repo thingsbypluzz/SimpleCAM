@@ -11,6 +11,7 @@ import {
 import { resolveToolDiameterSelectOptions } from '../../lib/toolDiameterOptions'
 import type { ToolDiameterOption } from '../../types/toolDiameters'
 import { Checkbox } from './Checkbox'
+import { ToolChipLoad } from './ToolChipLoad'
 import { FieldRow, inputClass } from './FieldRow'
 import { HintPopover } from './HintPopover'
 import { NumberInput } from './NumberInput'
@@ -23,6 +24,7 @@ interface Step2GeometryOutlineProps {
   onChange: (patch: Partial<WizardParams>) => void
   machine: MachineSettings
   toolDiameters: ToolDiameterOption[]
+  flutes: number
 }
 
 // Field order: Tool Diameter -> Cutting Depth -> Offset Mode -> Method ->
@@ -30,7 +32,7 @@ interface Step2GeometryOutlineProps {
 // notes. Mirrors Step2GeometryHoles.tsx's conventions throughout
 // (FieldRow/useNumberField/HintPopover, flex-row pairs for X/Y-like
 // fields, border-t section dividers).
-export function Step2GeometryOutline({ params, onChange, machine, toolDiameters }: Step2GeometryOutlineProps) {
+export function Step2GeometryOutline({ params, onChange, machine, toolDiameters, flutes }: Step2GeometryOutlineProps) {
   const { outline } = params
 
   const updateOutline = (patch: Partial<WizardParams['outline']>) =>
@@ -52,19 +54,24 @@ export function Step2GeometryOutline({ params, onChange, machine, toolDiameters 
   return (
     <div className="flex flex-col gap-6">
       <div className="flex flex-col gap-4">
-        <FieldRow label="Tool Diameter [mm]">
-          <select
-            className={inputClass}
-            value={outline.toolDiameter}
-            onChange={(e) => updateOutline({ toolDiameter: Number(e.target.value) })}
-          >
-            {resolveToolDiameterSelectOptions(toolDiameters, outline.toolDiameter).map((opt) => (
-              <option key={opt.value} value={opt.value}>
-                {opt.label}
-              </option>
-            ))}
-          </select>
-        </FieldRow>
+        <div className="flex gap-4">
+          <div className="min-w-0 flex-1">
+            <FieldRow label="Tool Diameter [mm]">
+              <select
+                className={inputClass}
+                value={outline.toolDiameter}
+                onChange={(e) => updateOutline({ toolDiameter: Number(e.target.value) })}
+              >
+                {resolveToolDiameterSelectOptions(toolDiameters, outline.toolDiameter).map((opt) => (
+                  <option key={opt.value} value={opt.value}>
+                    {opt.label}
+                  </option>
+                ))}
+              </select>
+            </FieldRow>
+          </div>
+          <ToolChipLoad params={params} machine={machine} flutes={flutes} />
+        </div>
         <FieldRow label="Cutting Depth [mm]">
           <NumberInput
             type="number"

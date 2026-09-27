@@ -15,6 +15,7 @@ import { POSITIONING_META } from '../../config/positioningMeta'
 import { resolveToolDiameterSelectOptions } from '../../lib/toolDiameterOptions'
 import type { ToolDiameterOption } from '../../types/toolDiameters'
 import { Checkbox } from './Checkbox'
+import { ToolChipLoad } from './ToolChipLoad'
 import { FieldRow, inputClass } from './FieldRow'
 import { HintPopover } from './HintPopover'
 import { MethodPicker } from './MethodPicker'
@@ -26,9 +27,10 @@ interface Step2GeometryHolesProps {
   onChange: (patch: Partial<WizardParams>) => void
   machine: MachineSettings
   toolDiameters: ToolDiameterOption[]
+  flutes: number
 }
 
-export function Step2GeometryHoles({ params, onChange, machine, toolDiameters }: Step2GeometryHolesProps) {
+export function Step2GeometryHoles({ params, onChange, machine, toolDiameters, flutes }: Step2GeometryHolesProps) {
   const { geometry } = params
 
   const updateGeometry = (patch: Partial<WizardParams['geometry']>) =>
@@ -70,19 +72,24 @@ export function Step2GeometryHoles({ params, onChange, machine, toolDiameters }:
   return (
     <div className="flex flex-col gap-6">
       <div className="flex flex-col gap-4">
-        <FieldRow label="Tool Diameter [mm]">
-          <select
-            className={inputClass}
-            value={geometry.toolDiameter}
-            onChange={(e) => updateGeometry({ toolDiameter: Number(e.target.value) })}
-          >
-            {resolveToolDiameterSelectOptions(toolDiameters, geometry.toolDiameter).map((opt) => (
-              <option key={opt.value} value={opt.value}>
-                {opt.label}
-              </option>
-            ))}
-          </select>
-        </FieldRow>
+        <div className="flex gap-4">
+          <div className="min-w-0 flex-1">
+            <FieldRow label="Tool Diameter [mm]">
+              <select
+                className={inputClass}
+                value={geometry.toolDiameter}
+                onChange={(e) => updateGeometry({ toolDiameter: Number(e.target.value) })}
+              >
+                {resolveToolDiameterSelectOptions(toolDiameters, geometry.toolDiameter).map((opt) => (
+                  <option key={opt.value} value={opt.value}>
+                    {opt.label}
+                  </option>
+                ))}
+              </select>
+            </FieldRow>
+          </div>
+          <ToolChipLoad params={params} machine={machine} flutes={flutes} />
+        </div>
         <div className="flex gap-4">
           <div className="min-w-0 flex-1">
             <FieldRow label="Hole Diameter [mm]">

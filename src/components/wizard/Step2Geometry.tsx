@@ -11,6 +11,9 @@ interface Step2GeometryProps {
   onChange: (patch: Partial<WizardParams>) => void
   machine: MachineSettings
   toolDiameters: ToolDiameterOption[]
+  // BL-68: the Feedrate Calculator's flute count, for the read-only chip
+  // load next to Tool Diameter (ToolChipLoad).
+  flutes: number
 }
 
 // Thin router on params.operation — each operation's Step 2 fields are

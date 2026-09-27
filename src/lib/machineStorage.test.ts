@@ -103,4 +103,35 @@ describe('loadMachineSettings / saveMachineSettings', () => {
       defaultTabCount: DEFAULT_MACHINE_SETTINGS.defaultTabCount,
     })
   })
+
+  it('keeps the calculator limits and rigidity, falling back on invalid values (BL-68)', () => {
+    localStorage.setItem(
+      'simplecam.machine',
+      JSON.stringify({ spindleMinRpm: 10000, spindleMaxRpm: 30000, maxFeed: 4000, rigidity: 'medium' }),
+    )
+    expect(loadMachineSettings()).toMatchObject({ spindleMinRpm: 10000, spindleMaxRpm: 30000, maxFeed: 4000, rigidity: 'medium' })
+
+    localStorage.setItem(
+      'simplecam.machine',
+      JSON.stringify({ spindleMinRpm: -5, spindleMaxRpm: 0, maxFeed: 'fast', rigidity: 'granite' }),
+    )
+    expect(loadMachineSettings()).toMatchObject({
+      spindleMinRpm: DEFAULT_MACHINE_SETTINGS.spindleMinRpm,
+      spindleMaxRpm: DEFAULT_MACHINE_SETTINGS.spindleMaxRpm,
+      maxFeed: DEFAULT_MACHINE_SETTINGS.maxFeed,
+      rigidity: DEFAULT_MACHINE_SETTINGS.rigidity,
+    })
+  })
+
+  it('drops the minimum RPM of an inverted range', () => {
+    localStorage.setItem('simplecam.machine', JSON.stringify({ spindleMinRpm: 30000, spindleMaxRpm: 20000 }))
+    expect(loadMachineSettings()).toMatchObject({ spindleMinRpm: 0, spindleMaxRpm: 20000 })
+  })
+
+  it('keeps a known router and drops an unknown one (BL-69)', () => {
+    localStorage.setItem('simplecam.machine', JSON.stringify({ router: 'makitaRt0700c' }))
+    expect(loadMachineSettings().router).toBe('makitaRt0700c')
+    localStorage.setItem('simplecam.machine', JSON.stringify({ router: 'festool' }))
+    expect(loadMachineSettings().router).toBeNull()
+  })
 })
