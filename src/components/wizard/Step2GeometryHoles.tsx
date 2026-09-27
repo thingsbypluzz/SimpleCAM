@@ -11,7 +11,6 @@ import {
   MAX_CIRCLE_HOLE_COUNT,
   MAX_TAB_COUNT,
 } from '../../lib/validation'
-import { POSITIONING_META } from '../../config/positioningMeta'
 import { resolveToolDiameterSelectOptions } from '../../lib/toolDiameterOptions'
 import type { ToolDiameterOption } from '../../types/toolDiameters'
 import { Checkbox } from './Checkbox'
@@ -20,6 +19,7 @@ import { FieldRow, inputClass } from './FieldRow'
 import { HintPopover } from './HintPopover'
 import { MethodPicker } from './MethodPicker'
 import { NumberInput } from './NumberInput'
+import { PickHeader } from './PickHeader'
 import { useNumberField } from './useNumberField'
 
 interface Step2GeometryHolesProps {
@@ -31,6 +31,10 @@ interface Step2GeometryHolesProps {
   onFlutesChange: (flutes: number) => void
 }
 
+// Field order (BL-72, shared idea across all four Step 2 panels): where
+// and how big first, then the tool, then how to cut — Pattern (+ its
+// Grid/Circle/Custom fields) -> Hole Diameter + Total Depth -> Tool Diameter
+// -> Method -> Tabs -> Offset X/Y.
 export function Step2GeometryHoles({ params, onChange, machine, toolDiameters, flutes, onFlutesChange }: Step2GeometryHolesProps) {
   const { geometry } = params
 
@@ -72,63 +76,7 @@ export function Step2GeometryHoles({ params, onChange, machine, toolDiameters, f
 
   return (
     <div className="flex flex-col gap-6">
-      <div className="flex flex-col gap-4">
-        <ToolChipLoad params={params} machine={machine} flutes={flutes} onFlutesChange={onFlutesChange}>
-          <FieldRow label="Tool Diameter [mm]">
-            <select
-              className={inputClass}
-              value={geometry.toolDiameter}
-              onChange={(e) => updateGeometry({ toolDiameter: Number(e.target.value) })}
-            >
-              {resolveToolDiameterSelectOptions(toolDiameters, geometry.toolDiameter).map((opt) => (
-                <option key={opt.value} value={opt.value}>
-                  {opt.label}
-                </option>
-              ))}
-            </select>
-          </FieldRow>
-        </ToolChipLoad>
-        <div className="flex gap-4">
-          <div className="min-w-0 flex-1">
-            <FieldRow label="Hole Diameter [mm]">
-              <NumberInput type="number" step="0.1" className={inputClass} {...holeDiameterField} />
-            </FieldRow>
-          </div>
-          <div className="min-w-0 flex-1">
-            <FieldRow label="Total Depth [mm]">
-              <NumberInput
-                type="number"
-                step="0.1"
-                min="0"
-                max={machine.travelZ}
-                className={inputClass}
-                {...totalDepthField}
-              />
-            </FieldRow>
-          </div>
-        </div>
-        {!isToolDiameterValid(geometry) && (
-          <p className="text-sm text-status-error">
-            Tool diameter must be smaller than the hole diameter.
-          </p>
-        )}
-        {!isHolesSizeValid(geometry) && <p className="text-sm text-status-error">Dimensions and depth must be greater than 0.</p>}
-      </div>
-
-      <div className="flex flex-col gap-1">
-        <span className="text-sm font-medium text-value">Method</span>
-        <MethodPicker params={params} onChange={onChange} />
-      </div>
-
-      <div className="flex flex-col gap-1">
-        <span className="text-sm font-medium text-value">Pattern</span>
-        <p className="text-sm text-fg">
-          {POSITIONING_META[geometry.positioning].title}
-        </p>
-        <p className="text-sm text-muted">
-          {POSITIONING_META[geometry.positioning].description}
-        </p>
-      </div>
+      <PickHeader params={params} />
 
       {(geometry.positioning === 'grid' || geometry.positioning === 'gridCentered') && (
         <div className="flex flex-col gap-4">
@@ -223,6 +171,57 @@ export function Step2GeometryHoles({ params, onChange, machine, toolDiameters, f
           )}
         </div>
       )}
+
+      <div className="flex flex-col gap-4">
+        <div className="flex gap-4">
+          <div className="min-w-0 flex-1">
+            <FieldRow label="Hole Diameter [mm]">
+              <NumberInput type="number" step="0.1" className={inputClass} {...holeDiameterField} />
+            </FieldRow>
+          </div>
+          <div className="min-w-0 flex-1">
+            <FieldRow label="Total Depth [mm]">
+              <NumberInput
+                type="number"
+                step="0.1"
+                min="0"
+                max={machine.travelZ}
+                className={inputClass}
+                {...totalDepthField}
+              />
+            </FieldRow>
+          </div>
+        </div>
+        {!isHolesSizeValid(geometry) && <p className="text-sm text-status-error">Dimensions and depth must be greater than 0.</p>}
+      </div>
+
+      <div className="flex flex-col gap-4">
+        <ToolChipLoad params={params} machine={machine} flutes={flutes} onFlutesChange={onFlutesChange}>
+          <FieldRow label="Tool Diameter [mm]">
+            <select
+              className={inputClass}
+              value={geometry.toolDiameter}
+              onChange={(e) => updateGeometry({ toolDiameter: Number(e.target.value) })}
+            >
+              {resolveToolDiameterSelectOptions(toolDiameters, geometry.toolDiameter).map((opt) => (
+                <option key={opt.value} value={opt.value}>
+                  {opt.label}
+                </option>
+              ))}
+            </select>
+          </FieldRow>
+        </ToolChipLoad>
+        {!isToolDiameterValid(geometry) && (
+          <p className="text-sm text-status-error">
+            Tool diameter must be smaller than the hole diameter.
+          </p>
+        )}
+      </div>
+
+      <div className="flex flex-col gap-1">
+        <span className="text-sm font-medium text-value">Method</span>
+        <MethodPicker params={params} onChange={onChange} />
+      </div>
 
       <div className="border-t border-border pt-4">
         <Checkbox
