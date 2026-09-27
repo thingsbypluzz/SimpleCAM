@@ -2,8 +2,9 @@ import * as THREE from 'three'
 import { getFixedColors, getPaletteAccents, hexToThreeColor, type PaletteId } from '../../config/palettes'
 import { resolvePoints } from '../../lib/positioning'
 import { computeDepthPasses } from '../../lib/depthPasses'
-import { computeTabRanges, type TabRange } from '../../lib/tabs'
-import { circleOutlineRadiusAndDirection, onLineCircleEdges } from '../../lib/outlineCircle'
+import { circleOutlineOptions, circleOutlineRadiusAndDirection, onLineCircleEdges } from '../../lib/outlineCircle'
+import { buildHelixCircleToolpath, holeCircleOptions } from '../../lib/helix'
+import { buildStandardCircleToolpath } from '../../lib/standardHole'
 import {
   longerEdgeIndex,
   onLineRectDimensions,
@@ -39,7 +40,6 @@ function toThree(x: number, y: number, z: number): THREE.Vector3 {
   return new THREE.Vector3(x, z, -y)
 }
 
-const SEGMENTS_PER_TURN = 48
 // Passes accumulate Z via repeated float subtraction — matches the
 // tolerance used for the same comparison in standardHole.ts/helix.ts.
 const TAB_BAND_EPSILON = 1e-9
@@ -98,196 +98,10 @@ const GRID_LABEL_SIZE_PX: Record<Grid3DLabelSize, number> = {
   large: 25,
 }
 
-interface TabsConfig3D {
-  tabHeight: number
-  tabRanges: TabRange[]
-}
-
-// Mirrors tabs.ts's tabbedCirclePass, but emits Vector3 samples instead of
-// G-code lines (BL-14) — same "breakpoint union" approach (uniform
-// SEGMENTS_PER_TURN sweep plus every tab's exact start/end angle forced in
-// as a breakpoint), so a tab is never missed or drawn wider than requested
-// regardless of this file's own sampling resolution. Unlike
-// tabbedCirclePass, the caller is expected to have already pushed the
-// arrival point at (cx+radius, cy, cutZ) — mirrors how
-// standardHolePoints3D/helixPoints3D already push their own "start of this
-// pass" point before sweeping. `direction`: same sign-flip treatment as
-// circle.ts/tabs.ts — Hole(s) always passes 'ccw' (unchanged behavior);
-// Circle Outline needs both (see lib/outlineCircle.ts).
-function tabbedCirclePoints3D(
-  cx: number,
-  cy: number,
-  radius: number,
-  cutZ: number,
-  liftZ: number,
-  tabRanges: TabRange[],
-  direction: 'cw' | 'ccw',
-): THREE.Vector3[] {
-  const sign = direction === 'cw' ? -1 : 1
-  const twoPi = 2 * Math.PI
-  const angleSet = new Set<number>([0, twoPi])
-  for (let step = 1; step < SEGMENTS_PER_TURN; step++) {
-    angleSet.add((twoPi * step) / SEGMENTS_PER_TURN)
-  }
-  for (const r of tabRanges) {
-    angleSet.add(r.startAngle)
-    angleSet.add(r.endAngle)
-  }
-  const angles = [...angleSet].sort((a, b) => a - b)
-
-  const points: THREE.Vector3[] = []
-  let prevX = cx + radius
-  let prevY = cy
-  let inTab = false
-
-  for (let idx = 1; idx < angles.length; idx++) {
-    const angle = angles[idx]
-    const midAngle = (angles[idx - 1] + angle) / 2
-    const nextInTab = tabRanges.some((r) => midAngle > r.startAngle && midAngle < r.endAngle)
-    const x = cx + radius * Math.cos(sign * angle)
-    const y = cy + radius * Math.sin(sign * angle)
-
-    if (nextInTab && !inTab) {
-      points.push(toThree(prevX, prevY, liftZ))
-      points.push(toThree(x, y, liftZ))
-    } else if (!nextInTab && inTab) {
-      points.push(toThree(prevX, prevY, cutZ))
-      points.push(toThree(x, y, cutZ))
-    } else {
-      points.push(toThree(x, y, nextInTab ? liftZ : cutZ))
-    }
-
-    prevX = x
-    prevY = y
-    inTab = nextInTab
-  }
-
-  return points
-}
-
-// Mirrors the descent loop in src/lib/helix.ts, but emits Vector3 samples
-// instead of G-code lines — kept separate from the engine on purpose, since
-// entangling tested G-code text generation with rendering-only geometry
-// isn't worth it for a ~10-line loop. Shares `computeDepthPasses()` though,
-// since that's where the actual infinite-loop guard (stepdown <= 0) lives.
-// `tabs`: when set (BL-14), mirrors helix.ts's two-phase split — spiral
-// turns stop exactly at the tab-band top, then flat tabbed passes take
-// over for the remainder, replacing the plain flat finishing pass below.
-// `direction`: Hole(s) always passes 'ccw'; Circle Outline needs both.
-function helixPoints3D(
-  cx: number,
-  cy: number,
-  radius: number,
-  totalDepth: number,
-  stepdown: number,
-  startZ: number,
-  tabs: TabsConfig3D | null,
-  direction: 'cw' | 'ccw',
-): ToolpathSegment3D[] {
-  const sign = direction === 'cw' ? -1 : 1
-  const builder = createSegmentBuilder3D(toThree(cx + radius, cy, startZ))
-  let currentZ = startZ
-
-  if (tabs) {
-    const tabBandTopZ = -(totalDepth - tabs.tabHeight)
-    const spiralDepth = totalDepth + startZ - tabs.tabHeight
-    let angle = 0
-    const spiralPoints: THREE.Vector3[] = []
-
-    for (const turnDepth of computeDepthPasses(spiralDepth, stepdown)) {
-      for (let i = 1; i <= SEGMENTS_PER_TURN; i++) {
-        const a = angle + (2 * Math.PI * i) / SEGMENTS_PER_TURN
-        const z = currentZ - (turnDepth * i) / SEGMENTS_PER_TURN
-        spiralPoints.push(toThree(cx + radius * Math.cos(sign * a), cy + radius * Math.sin(sign * a), z))
-      }
-      angle += 2 * Math.PI
-      currentZ -= turnDepth
-    }
-
-    // Square off the helical ledge the spiral leaves behind at the tab-band
-    // top before descending into the tabbed passes — mirrors the fix in
-    // helix.ts (see its comment for the full explanation). Still part of
-    // the same continuous, real cutting motion as the spiral above it.
-    for (let i = 1; i <= SEGMENTS_PER_TURN; i++) {
-      const a = (2 * Math.PI * i) / SEGMENTS_PER_TURN
-      spiralPoints.push(toThree(cx + radius * Math.cos(sign * a), cy + radius * Math.sin(sign * a), currentZ))
-    }
-    builder.add('solid', spiralPoints)
-
-    for (const passDepth of computeDepthPasses(tabs.tabHeight, stepdown)) {
-      currentZ -= passDepth
-      // Straight step-down between tabbed passes — same non-cutting
-      // vertical G1 move as Standard Hole's between-pass step, once tabs
-      // switch Helix over to flat stepdown-incremented passes.
-      builder.add('dotted', [toThree(cx + radius, cy, currentZ)])
-      builder.add('solid', tabbedCirclePoints3D(cx, cy, radius, currentZ, tabBandTopZ, tabs.tabRanges, direction))
-    }
-
-    return builder.segments
-  }
-
-  let angle = 0
-  const spiralPoints: THREE.Vector3[] = []
-  for (const turnDepth of computeDepthPasses(totalDepth + startZ, stepdown)) {
-    for (let i = 1; i <= SEGMENTS_PER_TURN; i++) {
-      const a = angle + (2 * Math.PI * i) / SEGMENTS_PER_TURN
-      const z = currentZ - (turnDepth * i) / SEGMENTS_PER_TURN
-      spiralPoints.push(toThree(cx + radius * Math.cos(sign * a), cy + radius * Math.sin(sign * a), z))
-    }
-    angle += 2 * Math.PI
-    currentZ -= turnDepth
-  }
-
-  for (let i = 1; i <= SEGMENTS_PER_TURN; i++) {
-    const a = angle + (2 * Math.PI * i) / SEGMENTS_PER_TURN
-    spiralPoints.push(toThree(cx + radius * Math.cos(sign * a), cy + radius * Math.sin(sign * a), currentZ))
-  }
-  builder.add('solid', spiralPoints)
-  return builder.segments
-}
-
-// Mirrors src/lib/standardHole.ts. `tabs`: when set (BL-14), passes at or
-// below the tab-band top skip the tab arcs — an atomic per-pass choice,
-// same as the engine, since every pass here is already flat. `direction`:
-// Hole(s) always passes 'ccw'; Circle Outline needs both.
-function standardHolePoints3D(
-  cx: number,
-  cy: number,
-  radius: number,
-  totalDepth: number,
-  stepdown: number,
-  startZ: number,
-  tabs: TabsConfig3D | null,
-  direction: 'cw' | 'ccw',
-): ToolpathSegment3D[] {
-  const sign = direction === 'cw' ? -1 : 1
-  const builder = createSegmentBuilder3D(toThree(cx + radius, cy, startZ))
-  let currentZ = startZ
-  const tabBandTopZ = tabs ? -(totalDepth - tabs.tabHeight) : 0
-
-  for (const passDepth of computeDepthPasses(totalDepth + startZ, stepdown)) {
-    currentZ -= passDepth
-    // Straight step-down between full-circle passes — a non-cutting
-    // vertical G1 move, not part of the flat pass it leads into.
-    builder.add('dotted', [toThree(cx + radius, cy, currentZ)])
-    if (tabs && currentZ <= tabBandTopZ + TAB_BAND_EPSILON) {
-      builder.add('solid', tabbedCirclePoints3D(cx, cy, radius, currentZ, tabBandTopZ, tabs.tabRanges, direction))
-    } else {
-      const passPoints: THREE.Vector3[] = []
-      for (let i = 1; i <= SEGMENTS_PER_TURN; i++) {
-        const a = (2 * Math.PI * i) / SEGMENTS_PER_TURN
-        passPoints.push(toThree(cx + radius * Math.cos(sign * a), cy + radius * Math.sin(sign * a), currentZ))
-      }
-      builder.add('solid', passPoints)
-    }
-  }
-  return builder.segments
-}
-
-// Rectangle analog of tabbedCirclePoints3D — walks the 4-corner perimeter,
-// skipping tabs per edge (BL-14 for Outline). Same lift/plunge
-// point-doubling at transitions, same "caller already pushed the arrival
-// point" contract.
+// Mirrors outlineRectangleTabs.ts's tabbedRectanglePass — walks the
+// 4-corner perimeter, skipping tabs per edge (BL-14 for Outline), with
+// lift/plunge point-doubling at transitions. The caller is expected to have
+// already pushed the arrival point.
 function tabbedRectanglePoints3D(
   corners: Point2D[],
   sideRanges: SideTabRange[][],
@@ -625,7 +439,6 @@ type ResolvedPattern =
       center: Point2D
       nominalRadius: number
       toolRadius: number
-      direction: 'cw' | 'ccw'
     }
   | {
       kind: 'outlineRect'
@@ -676,14 +489,13 @@ function resolvePattern(params: WizardParams): ResolvedPattern {
   if (params.operation === 'outline') {
     const { outline } = params
     if (outline.shape === 'circle') {
-      const { radius: toolRadius, direction } = circleOutlineRadiusAndDirection(outline)
+      const { radius: toolRadius } = circleOutlineRadiusAndDirection(outline)
       return {
         kind: 'outlineCircle',
         params,
         center: { x: outline.offsetX, y: outline.offsetY },
         nominalRadius: outline.diameter / 2,
         toolRadius: Math.max(0, toolRadius),
-        direction,
       }
     }
     const nominalCorners = rectCorners(
@@ -889,39 +701,23 @@ function buildHolesPatternObjects(
   showStock: boolean,
   showToolpath: boolean,
 ): THREE.Object3D[] {
-  const { points, holeRadius, toolRadius, params } = pattern
+  const { points, holeRadius, params } = pattern
   const { geometry, feeds, method } = params
   const objects: THREE.Object3D[] = []
 
-  const tabsConfig: TabsConfig3D | null = geometry.tabsEnabled
-    ? { tabHeight: geometry.tabHeight, tabRanges: computeTabRanges(geometry.tabCount, geometry.tabWidth, toolRadius) }
-    : null
-
   objects.push(...buildOffsetVectorObjects(geometry.offsetX, geometry.offsetY, theme, arrowSize))
+  const opts = holeCircleOptions(params)
 
   // Rapid traverse between holes, at Safe Z — through each hole's actual
-  // descent-start XY (center + toolRadius on +X), matching the real G-code
-  // (program.ts's assembleProgram no longer rapids to the raw center first)
-  // and rapidZLineObjects below, which already uses this same startX.
+  // descent-start XY (the toolpath's own start, center + radius on +X),
+  // matching the real G-code (program.ts's assembleProgram no longer rapids
+  // to the raw center first).
   if (showToolpath && points.length > 1) {
-    const rapidPoints = points.map((p) => toThree(p.x + toolRadius, p.y, feeds.safeZ))
+    const rapidPoints = points.map((p) => toThree(p.x + opts.radius, p.y, feeds.safeZ))
     objects.push(buildToolpathLine3D(rapidPoints, 'dashed', theme, span))
   }
 
   for (const p of points) {
-    const startX = p.x + toolRadius
-
-    // Rapid Z moves around each hole: descend from Safe Z to the top of the
-    // cut (Z0, or +startZ when the material is treated as taller), then
-    // retract from full depth back to Safe Z (the actual "G0 Z5"-style moves
-    // the engine emits) — previously only the lateral travel between holes
-    // was drawn, not these.
-    if (showToolpath) {
-      objects.push(
-        ...rapidZLineObjects(startX, p.y, feeds.safeZ, feeds.startZ, -geometry.totalDepth, theme, span),
-      )
-    }
-
     // Final bore (semi-transparent cylinder, top at Z=0 down to
     // -totalDepth — the real material extent. Start Z doesn't affect this
     // at all (BL-37): it's where the feed-rate descent begins, not a
@@ -956,22 +752,12 @@ function buildHolesPatternObjects(
       objects.push(hole)
     }
 
-    // Actual tool-center toolpath
+    // The engine's own move list for this hole (BL-61) — rapid down to
+    // Start Z, every turn/pass/tab exactly as the G-code has it — plus the
+    // retract to Safe Z assembleProgram() appends after each hole.
     if (showToolpath) {
-      const pathSegments =
-        method === 'helix'
-          ? helixPoints3D(p.x, p.y, toolRadius, geometry.totalDepth, feeds.stepdown, feeds.startZ, tabsConfig, 'ccw')
-          : standardHolePoints3D(
-              p.x,
-              p.y,
-              toolRadius,
-              geometry.totalDepth,
-              feeds.stepdown,
-              feeds.startZ,
-              tabsConfig,
-              'ccw',
-            )
-      objects.push(...buildToolpathLines3D(pathSegments, theme, span))
+      const toolpath = method === 'helix' ? buildHelixCircleToolpath(p.x, p.y, opts) : buildStandardCircleToolpath(p.x, p.y, opts)
+      objects.push(...toolpathLines3D(toolpath, theme, span, feeds.safeZ))
     }
   }
 
@@ -986,16 +772,11 @@ function buildOutlineCirclePatternObjects(
   showStock: boolean,
   showToolpath: boolean,
 ): THREE.Object3D[] {
-  const { center, nominalRadius, toolRadius, direction, params } = pattern
+  const { center, nominalRadius, params } = pattern
   const { outline, feeds } = params
   const objects: THREE.Object3D[] = []
 
   objects.push(...buildOffsetVectorObjects(outline.offsetX, outline.offsetY, theme, arrowSize))
-
-  if (showToolpath) {
-    const startX = center.x + toolRadius
-    objects.push(...rapidZLineObjects(startX, center.y, feeds.safeZ, feeds.startZ, -outline.totalDepth, theme, span))
-  }
 
   // Nominal shape (semi-transparent cylinder) — same convention as Hole(s):
   // the finished material boundary, not the tool-corrected path. Open/closed
@@ -1098,25 +879,11 @@ function buildOutlineCirclePatternObjects(
     }
   }
 
+  // Engine move list (BL-61), same as Hole(s).
   if (showToolpath) {
-    const tabsConfig: TabsConfig3D | null = outline.tabsEnabled
-      ? { tabHeight: outline.tabHeight, tabRanges: computeTabRanges(outline.tabCount, outline.tabWidth, toolRadius) }
-      : null
-
-    const pathSegments =
-      outline.method === 'helix'
-        ? helixPoints3D(center.x, center.y, toolRadius, outline.totalDepth, feeds.stepdown, feeds.startZ, tabsConfig, direction)
-        : standardHolePoints3D(
-            center.x,
-            center.y,
-            toolRadius,
-            outline.totalDepth,
-            feeds.stepdown,
-            feeds.startZ,
-            tabsConfig,
-            direction,
-          )
-    objects.push(...buildToolpathLines3D(pathSegments, theme, span))
+    const opts = circleOutlineOptions(params)
+    const build = outline.method === 'helix' ? buildHelixCircleToolpath : buildStandardCircleToolpath
+    objects.push(...toolpathLines3D(build(center.x, center.y, opts), theme, span, feeds.safeZ))
   }
 
   return objects

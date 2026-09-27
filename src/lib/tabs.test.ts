@@ -1,5 +1,13 @@
 import { describe, expect, it } from 'vitest'
-import { computeTabRanges, tabbedCirclePass } from './tabs'
+import { appendTabbedCirclePass, computeTabRanges } from './tabs'
+import { ToolpathBuilder, toolpathToGcode } from './toolpath'
+
+// One tabbed pass on its own, formatted as G-code (G1 at `feed`).
+function tabbedCirclePass(p: Parameters<typeof appendTabbedCirclePass>[1] & { feed: number }): string[] {
+  const b = new ToolpathBuilder({ x: p.startX, y: p.startY, z: p.cutZ })
+  appendTabbedCirclePass(b, p)
+  return toolpathToGcode(b.build(), { feeds: { cut: p.feed }, interpolation: 'linear', leadInRapid: false })
+}
 
 describe('computeTabRanges', () => {
   it('returns tabCount ranges, evenly spaced and phase-shifted by half a step', () => {
@@ -37,7 +45,7 @@ describe('computeTabRanges', () => {
   })
 })
 
-describe('tabbedCirclePass', () => {
+describe('appendTabbedCirclePass', () => {
   const base = {
     centerX: 0,
     centerY: 0,

@@ -190,7 +190,7 @@ describe('generateHelix', () => {
         }),
       )
       // Each tab-band pass is preceded by its own explicit bare `G1 Z<depth>
-      // F<plungeRate>` plunge line (mirroring standardHoleToolpath) — a
+      // F<plungeRate>` plunge line (mirroring the Standard method) — a
       // stray old finishing pass would add a second one reaching -4, since
       // that's the only kind of line this shape can come from (the spiral
       // itself never emits a bare Z-only line).

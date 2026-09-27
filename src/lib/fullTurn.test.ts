@@ -1,17 +1,32 @@
 import { describe, expect, it } from 'vitest'
-import { fullCircleMove } from './circle'
+import { appendFullTurn } from './helix'
+import { ToolpathBuilder, toolpathToGcode } from './toolpath'
+import type { InterpolationMode } from '../types/wizard'
 
-describe('fullCircleMove — arc interpolation', () => {
+// One full turn on its own, formatted as G-code at F800 — the tool starts
+// on the circle at (centerX + radius, centerY).
+function fullTurn(p: {
+  centerX: number
+  centerY: number
+  radius: number
+  zStart: number
+  zEnd: number
+  interpolation: InterpolationMode
+  direction: 'cw' | 'ccw'
+}): string[] {
+  const b = new ToolpathBuilder({ x: p.centerX + p.radius, y: p.centerY, z: p.zStart })
+  appendFullTurn(b, p.centerX, p.centerY, p.radius, p.direction, p.zEnd)
+  return toolpathToGcode(b.build(), { feeds: { cut: 800 }, interpolation: p.interpolation, leadInRapid: false })
+}
+
+describe('appendFullTurn — arc interpolation', () => {
   it('emits a single G3 command with correct I/J and Z', () => {
-    const lines = fullCircleMove({
+    const lines = fullTurn({
       centerX: 10,
       centerY: 5,
       radius: 4,
-      startX: 14,
-      startY: 5,
       zStart: -1,
       zEnd: -2,
-      feed: 800,
       interpolation: 'arc',
       direction: 'ccw',
     })
@@ -20,15 +35,12 @@ describe('fullCircleMove — arc interpolation', () => {
   })
 
   it('flat pass keeps zStart === zEnd', () => {
-    const lines = fullCircleMove({
+    const lines = fullTurn({
       centerX: 0,
       centerY: 0,
       radius: 4,
-      startX: 4,
-      startY: 0,
       zStart: -3,
       zEnd: -3,
-      feed: 800,
       interpolation: 'arc',
       direction: 'ccw',
     })
@@ -36,17 +48,14 @@ describe('fullCircleMove — arc interpolation', () => {
   })
 })
 
-describe('fullCircleMove — linear interpolation', () => {
+describe('appendFullTurn — linear interpolation', () => {
   it('emits 72 G1 segments', () => {
-    const lines = fullCircleMove({
+    const lines = fullTurn({
       centerX: 0,
       centerY: 0,
       radius: 4,
-      startX: 4,
-      startY: 0,
       zStart: -1,
       zEnd: -2,
-      feed: 800,
       interpolation: 'linear',
       direction: 'ccw',
     })
@@ -55,15 +64,12 @@ describe('fullCircleMove — linear interpolation', () => {
   })
 
   it('lands exactly on the start XY and target Z at the end', () => {
-    const lines = fullCircleMove({
+    const lines = fullTurn({
       centerX: 0,
       centerY: 0,
       radius: 4,
-      startX: 4,
-      startY: 0,
       zStart: -1,
       zEnd: -2,
-      feed: 800,
       interpolation: 'linear',
       direction: 'ccw',
     })
@@ -71,15 +77,12 @@ describe('fullCircleMove — linear interpolation', () => {
   })
 
   it('interpolates Z monotonically from zStart to zEnd', () => {
-    const lines = fullCircleMove({
+    const lines = fullTurn({
       centerX: 0,
       centerY: 0,
       radius: 4,
-      startX: 4,
-      startY: 0,
       zStart: 0,
       zEnd: -1,
-      feed: 800,
       interpolation: 'linear',
       direction: 'ccw',
     })
@@ -91,15 +94,12 @@ describe('fullCircleMove — linear interpolation', () => {
   })
 
   it('flat pass (zStart === zEnd) keeps Z constant across all segments', () => {
-    const lines = fullCircleMove({
+    const lines = fullTurn({
       centerX: 0,
       centerY: 0,
       radius: 4,
-      startX: 4,
-      startY: 0,
       zStart: -3,
       zEnd: -3,
-      feed: 800,
       interpolation: 'linear',
       direction: 'ccw',
     })
@@ -107,17 +107,14 @@ describe('fullCircleMove — linear interpolation', () => {
   })
 })
 
-describe('fullCircleMove — direction', () => {
+describe('appendFullTurn — direction', () => {
   it('cw arc interpolation emits G2 instead of G3', () => {
-    const lines = fullCircleMove({
+    const lines = fullTurn({
       centerX: 10,
       centerY: 5,
       radius: 4,
-      startX: 14,
-      startY: 5,
       zStart: -1,
       zEnd: -2,
-      feed: 800,
       interpolation: 'arc',
       direction: 'cw',
     })
@@ -125,27 +122,21 @@ describe('fullCircleMove — direction', () => {
   })
 
   it('cw linear interpolation sweeps the opposite way but still lands on the start XY', () => {
-    const ccw = fullCircleMove({
+    const ccw = fullTurn({
       centerX: 0,
       centerY: 0,
       radius: 4,
-      startX: 4,
-      startY: 0,
       zStart: -1,
       zEnd: -2,
-      feed: 800,
       interpolation: 'linear',
       direction: 'ccw',
     })
-    const cw = fullCircleMove({
+    const cw = fullTurn({
       centerX: 0,
       centerY: 0,
       radius: 4,
-      startX: 4,
-      startY: 0,
       zStart: -1,
       zEnd: -2,
-      feed: 800,
       interpolation: 'linear',
       direction: 'cw',
     })

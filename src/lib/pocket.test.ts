@@ -127,7 +127,7 @@ describe('generatePocketSpiral — Circle', () => {
       feeds: { stepdown: 1 },
     })
     const lines = generatePocketSpiral(params, DEFAULT_MACHINE_SETTINGS)
-    // G1 interpolation (default): fullCircleMove() always snaps its last
+    // G1 interpolation (default): a full turn always snaps its last
     // segment onto the exact (startX, startY, zEnd) point — both the
     // spiral's own single turn (fromZ=0 to toZ=-1) and the new flat
     // finishing pass (zStart=zEnd=-1) end at the identical point

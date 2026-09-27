@@ -36,7 +36,7 @@ export function pocketEntryPoint(centerX: number, centerY: number, mode: ZTransi
 // Plunge: single vertical G1 straight down — the caller already
 // positioned XY at the pocket's own center before calling this (same
 // convention as Surface's zTransitionMoves: `G1 Z...` with no X/Y).
-// Helix: reuses fullCircleMove exactly like Surface's zTransitionMoves,
+// Helix: full-turn arcs exactly like Surface's zTransitionMoves,
 // but centered directly on the pocket's own center (always CCW — climb
 // milling for an internal cut under M3) instead of offset from a
 // corner. No tangent-continuity derivation needed (unlike Surface's

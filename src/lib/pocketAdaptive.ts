@@ -328,7 +328,7 @@ export function buildAdaptiveToolpath(params: Pick<WizardParams, 'pocket' | 'fee
 // (through already-cleared area) at `linkFeed` — always G1, never G0 below
 // Safe Z. Arcs follow the G2/G3 vs G1 toggle like every other circle in
 // the app; a full turn (start === end) uses the same I/J full-circle
-// convention as fullCircleMove().
+// convention as every other full turn (helix.ts's appendFullTurn).
 export function adaptiveMovesToGcode(
   toolpath: AdaptiveToolpath,
   opts: { cutFeed: number; linkFeed: number; interpolation: InterpolationMode },

@@ -43,8 +43,8 @@ export function rampSweepDegFor(radiusFrom: number, radiusTo: number): number {
   return Math.min(360, (sweepRad * 180) / Math.PI)
 }
 
-// Same 5°-per-segment density as circle.ts's LINEAR_SEGMENTS (72 per
-// 360°), scaled to whatever sweep rampSweepDegFor() actually returns for
+// Same 5°-per-segment density as every full turn (72 per
+// 360°, toolpath.ts), scaled to whatever sweep rampSweepDegFor() actually returns for
 // this transition — floored at 1 so even a near-zero sweep still emits a
 // valid segment.
 function rampSegmentCountFor(sweepDeg: number): number {
@@ -90,7 +90,7 @@ export function circleRingRampPoints(
 // the ramp always emits G1 regardless of the interpolation toggle) from
 // (radiusFrom, startAngleDeg) to (radiusTo, startAngleDeg + sweep, see
 // rampSweepDegFor()), then a full flat 360° turn at radiusTo
-// (fullCircleMove, unchanged — DOES respect the G2/G3 vs G1 toggle, same
+// (a full-turn arc — DOES respect the G2/G3 vs G1 toggle, same
 // as every other full circle in the engine). Always CCW (climb milling
 // for an internal cut under M3, same convention as Hole(s) Helix / Outline
 // Inside). Returns the angle the NEXT ring's ramp should start from —

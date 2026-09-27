@@ -7,6 +7,22 @@ zgodne z [SemVer](https://semver.org/). Ten plik pozostaje głównym, czytelnym
 thingsbypluzz/SimpleCAM), ale to infrastruktura pod izolację pracy
 (branch/worktree per zadanie), nie zamiennik tego changeloga.
 
+## [0.22.3] — 2026-09-27
+
+### Zmieniono
+
+- **`BL-61` etap 3 — Hole(s) i Outline Circle na wspólnej liście ruchów.**
+  Helix i Standard (z mostkami) budują teraz jedną listę ruchów
+  (`buildHelixCircleToolpath()`/`buildStandardCircleToolpath()`,
+  `lib/toolpath.ts`), z której powstaje G-code i podgląd 3D — tak jak
+  Surface i Pocket. Podgląd 3D nie odtwarza już pętli silnika osobno
+  (usunięte `helixPoints3D`/`standardHolePoints3D`/`tabbedCirclePoints3D`),
+  więc nie może się rozjechać z plikiem; okręgi w 3D są rysowane z tą samą
+  gęstością co G1 w pliku (72 odcinki na obrót zamiast 48). G-code bez
+  zmian — sprawdzone znak po znaku na 2260 losowych programach wszystkich
+  operacji w obu trybach interpolacji. `lib/circle.ts` usunięty (pełny
+  obrót to teraz `appendFullTurn()`). Zostaje Outline Rectangle.
+
 ## [0.22.2] — 2026-09-27
 
 ### Usunięto
