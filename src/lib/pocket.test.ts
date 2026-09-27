@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { generatePocketRaster, generatePocketSpiral } from './pocket'
+import { generatePocketSpiral } from './pocket'
 import { rampSweepDegFor } from './pocketSpiral'
 import { arcRadiusMismatches } from './gcodeTestUtils'
 import { DEFAULT_MACHINE_SETTINGS } from '../types/machine'
@@ -20,44 +20,15 @@ function buildParams(overrides: {
 }
 
 describe('Pocket Helix entry in G2/G3 mode', () => {
-  it.each(['raster', 'spiral'] as const)('%s: every arc starts on its own circle (tool positioned at the helix start, not the center)', (method) => {
+  it('Spiral: every arc starts on its own circle (tool positioned at the helix start, not the center)', () => {
     const params = buildParams({
-      pocket: { shape: 'rectCentered', method, width: 20, height: 20, toolDiameter: 2, totalDepth: 2, zTransitionMode: 'helix', helixRadius: 1 },
+      pocket: { shape: 'rectCentered', method: 'spiral', width: 20, height: 20, toolDiameter: 2, totalDepth: 2, zTransitionMode: 'helix', helixRadius: 1 },
       feeds: { stepdown: 1 },
       output: { interpolation: 'arc' },
     })
-    const lines = method === 'raster' ? generatePocketRaster(params, DEFAULT_MACHINE_SETTINGS) : generatePocketSpiral(params, DEFAULT_MACHINE_SETTINGS)
+    const lines = generatePocketSpiral(params, DEFAULT_MACHINE_SETTINGS)
     expect(lines.some((l) => /^G3 /.test(l))).toBe(true)
     expect(arcRadiusMismatches(lines)).toEqual([])
-  })
-})
-
-describe('generatePocketRaster', () => {
-  it('enters at the pocket center, then rasters the tool-center wall (inset, not overtravel)', () => {
-    const params = buildParams({
-      pocket: { shape: 'rectCornered', width: 12, height: 7, toolDiameter: 2, stepoverPercent: 100, rasterDirection: 'x', totalDepth: 1 },
-      feeds: { stepdown: 1 },
-    })
-    const lines = generatePocketRaster(params, DEFAULT_MACHINE_SETTINGS)
-
-    // center = (6, 3.5), wall half-dims = (5, 2.5) -> bounds x:[1,11] y:[1,6].
-    // stepoverMm = 2 -> raster lines at y = 1, 3, 5, 6 (last snapped to the
-    // wall). Direction 'x' -> zigzag: (1,1)-(11,1), (11,3)-(1,3),
-    // (1,5)-(11,5), (11,6)-(1,6).
-    expect(lines).toContain('G0 X6 Y3.5') // entry rapid, always the pocket's own center
-    const cutLines = lines.filter((l) => l.startsWith('G1 X'))
-    expect(cutLines).toEqual([
-      'G1 X1 Y1 Z-1 F800',
-      'G1 X11 Y1 Z-1 F800',
-      'G1 X11 Y3 Z-1 F800',
-      'G1 X1 Y3 Z-1 F800',
-      'G1 X1 Y5 Z-1 F800',
-      'G1 X11 Y5 Z-1 F800',
-      'G1 X11 Y6 Z-1 F800',
-      'G1 X1 Y6 Z-1 F800',
-    ])
-    // Exactly one Plunge Z-transition (into the single level), no XY on it.
-    expect(lines.filter((l) => l === 'G1 Z-1 F300')).toHaveLength(1)
   })
 })
 

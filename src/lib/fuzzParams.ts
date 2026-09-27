@@ -159,9 +159,9 @@ export function randomSurface(rng: Rng, method: 'zigzag' | 'unidirectional'): Wi
   }
 }
 
-export function randomPocket(rng: Rng, method: 'raster' | 'spiral' | 'adaptive'): WizardParams {
+export function randomPocket(rng: Rng, method: 'spiral' | 'adaptive'): WizardParams {
   const totalDepth = rng.range(0.5, 12, 1)
-  const shape = method === 'raster' ? rng.pick(['rectCornered', 'rectCentered'] as const) : rng.pick(['rectCornered', 'rectCentered', 'circle'] as const)
+  const shape = rng.pick(['rectCornered', 'rectCentered', 'circle'] as const)
   const pocket = {
     ...DEFAULT_WIZARD_PARAMS.pocket,
     shape,
@@ -174,7 +174,6 @@ export function randomPocket(rng: Rng, method: 'raster' | 'spiral' | 'adaptive')
     offsetX: rng.range(-20, 20, 1),
     offsetY: rng.range(-20, 20, 1),
     stepoverPercent: rng.int(20, 90),
-    rasterDirection: rng.pick(['x', 'y'] as const),
     zTransitionMode: rng.pick(['plunge', 'helix'] as const),
     optimalLoadPercent: rng.int(5, 30),
     rampAngleDeg: rng.range(1, 10, 1),

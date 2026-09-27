@@ -22,7 +22,6 @@ import {
   type ZTransitionMode,
 } from '../types/wizard'
 import { formatCustomPoints } from './customPoints'
-import { pocketMethodAllowed } from './pocketMethods'
 
 // `operation` and `method` are the two top-level scalar fields
 // mergeWithDefaults() below can't fix with a plain `??` fallback: a preset
@@ -160,8 +159,9 @@ const SURFACE_GUARDS: Partial<Record<keyof SurfaceParams, FieldGuard>> = {
 
 const POCKET_GUARDS: Partial<Record<keyof PocketParams, FieldGuard>> = {
   shape: oneOf<PocketShape>(['rectCornered', 'rectCentered', 'circle']),
-  method: oneOf<PocketMethodType>(['raster', 'spiral', 'adaptive']),
-  rasterDirection: RASTER_DIRECTIONS,
+  // A stored 'raster' (method removed, BL-73) fails the guard and falls back
+  // to the default, Spiral.
+  method: oneOf<PocketMethodType>(['spiral', 'adaptive']),
   zTransitionMode: Z_TRANSITION_MODES,
   cutDirection: oneOf<CutDirection>(['conventional', 'climb']),
   chipThinningBaseFeed: (value) => value === null || isFiniteNumber(value),
@@ -183,14 +183,6 @@ function mergeGeometry(saved: unknown): GeometryParams {
   return merged
 }
 
-// A saved method the shape doesn't offer (pocketMethodAllowed()) falls back
-// to Spiral — Raster is hidden for now (BL-73), and never fitted a Circle.
-function mergePocket(saved: unknown): PocketParams {
-  const merged = mergeSection(DEFAULT_WIZARD_PARAMS.pocket, saved, POCKET_GUARDS)
-  if (!pocketMethodAllowed(merged.shape, merged.method)) merged.method = 'spiral'
-  return merged
-}
-
 // Per-section, per-field merge with defaults — a snapshot saved by an older
 // version of the app that's missing newly-added fields still loads cleanly,
 // picking up defaults for whatever it doesn't have (or has in a shape this
@@ -203,7 +195,7 @@ function mergeWithDefaults(saved: unknown): WizardParams {
     geometry: mergeGeometry(source.geometry),
     outline: mergeSection(DEFAULT_WIZARD_PARAMS.outline, source.outline, OUTLINE_GUARDS),
     surface: mergeSection(DEFAULT_WIZARD_PARAMS.surface, source.surface, SURFACE_GUARDS),
-    pocket: mergePocket(source.pocket),
+    pocket: mergeSection(DEFAULT_WIZARD_PARAMS.pocket, source.pocket, POCKET_GUARDS),
     feeds: mergeSection(DEFAULT_WIZARD_PARAMS.feeds, source.feeds),
     output: mergeSection(DEFAULT_WIZARD_PARAMS.output, source.output, OUTPUT_GUARDS),
   }

@@ -217,7 +217,7 @@ describe('field validation on load (BL-57)', () => {
     expect(loadSlot(AUTO_SAVE_SLOT)!.output).toEqual(DEFAULT_WIZARD_PARAMS.output)
   })
 
-  it('moves a stored Raster Pocket to Spiral (Raster hidden, BL-73)', () => {
+  it('moves a stored Raster Pocket to Spiral (Raster removed, BL-73)', () => {
     storeAutoSave({ pocket: { shape: 'circle', method: 'raster' } })
     expect(loadSlot(AUTO_SAVE_SLOT)!.pocket.method).toBe('spiral')
     storeAutoSave({ pocket: { shape: 'rectCornered', method: 'raster' } })

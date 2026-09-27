@@ -6,7 +6,7 @@ import { rectCorners, rectToolDimensions } from '../../lib/outlineRectangleGeome
 import { sideRangesFor, type SideTabRange } from '../../lib/outlineRectangleTabs'
 import { surfaceNominalBounds, surfaceStepoverMm, surfaceToolBounds, type SurfaceBounds } from '../../lib/surfaceGeometry'
 import { computeRasterLines, zigzagWaypoints, type RasterLine } from '../../lib/surfaceRaster'
-import { pocketCenter, pocketRectRasterBounds, pocketStepoverMm } from '../../lib/pocketGeometry'
+import { pocketCenter } from '../../lib/pocketGeometry'
 import { buildPocketToolpath } from '../../lib/pocket'
 import { movePoints, type Toolpath } from '../../lib/toolpath'
 import type { Point2D, PocketMethodType, PocketShape, WizardParams } from '../../types/wizard'
@@ -247,8 +247,6 @@ type ResolvedPattern =
       nominal: { shape: 'circle'; radius: number } | { shape: 'rect'; halfWidth: number; halfHeight: number }
       // The engine's own move list (lib/pocket.ts, BL-61), every method.
       toolpath: Toolpath
-      // Raster only — for the direction arrows drawn over the toolpath.
-      rasterLines: RasterLine[]
     }
 
 // An engine's own move list (lib/toolpath.ts), projected onto XY — the same
@@ -300,13 +298,9 @@ function resolvePattern(params: WizardParams): ResolvedPattern {
       ? { shape: 'circle', radius: pocket.diameter / 2 }
       : { shape: 'rect', halfWidth: pocket.width / 2, halfHeight: pocket.height / 2 }
 
-    const rasterLines =
-      pocket.method === 'raster'
-        ? computeRasterLines(pocketRectRasterBounds(pocket), pocket.rasterDirection, pocketStepoverMm(pocket))
-        : []
     const toolpath = buildPocketToolpath(params)
 
-    return { kind: 'pocket', params, center, shape: pocket.shape, method: pocket.method, nominal, toolpath, rasterLines }
+    return { kind: 'pocket', params, center, shape: pocket.shape, method: pocket.method, nominal, toolpath }
   }
   if (params.operation === 'surface') {
     const { surface } = params
@@ -704,7 +698,7 @@ function drawPocketGeometry(
   showStock: boolean,
   showToolpath: boolean,
 ) {
-  const { center, nominal, toolpath, rasterLines, params } = pattern
+  const { center, nominal, toolpath, params } = pattern
   const [cx, cy] = toPx(center.x, center.y)
 
   if (showStock) {
@@ -737,23 +731,6 @@ function drawPocketGeometry(
 
   if (showToolpath) {
     drawToolpathMoves(ctx, toPx, toolpath, theme)
-
-    // Raster direction arrows, one per line, over the zigzag.
-    if (rasterLines.length > 0) {
-      rasterLines.forEach((line, i) => {
-        const forward = i % 2 === 0
-        const from = forward ? line.from : line.to
-        const to = forward ? line.to : line.from
-        const [fx, fy] = toPx(from.x, from.y)
-        const [tx, ty] = toPx(to.x, to.y)
-        const midX = (fx + tx) / 2
-        const midY = (fy + ty) / 2
-        const dx = tx - fx
-        const dy = ty - fy
-        const len = Math.hypot(dx, dy) || 1
-        drawArrowhead(ctx, midX, midY, dx / len, dy / len, arrowSize * 0.7, theme.toolpath)
-      })
-    }
 
     // Entry point marker — always the pocket's own center, regardless of
     // method/shape (see CLAUDE.md's Pocket design notes: entry is always

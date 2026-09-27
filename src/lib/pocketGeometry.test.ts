@@ -2,7 +2,6 @@ import { describe, expect, it } from 'vitest'
 import {
   pocketCenter,
   pocketCircleWallRadius,
-  pocketRectRasterBounds,
   pocketRectWallHalfDims,
   pocketStepoverMm,
 } from './pocketGeometry'
@@ -50,15 +49,5 @@ describe('pocketCircleWallRadius', () => {
 describe('pocketStepoverMm', () => {
   it('converts stepover % of tool diameter to mm', () => {
     expect(pocketStepoverMm(pocket({ toolDiameter: 10, stepoverPercent: 40 }))).toBe(4)
-  })
-})
-
-describe('pocketRectRasterBounds', () => {
-  it('is centered on the pocket center, inset by the wall half-dims', () => {
-    const bounds = pocketRectRasterBounds(
-      pocket({ shape: 'rectCornered', width: 50, height: 30, toolDiameter: 4, offsetX: 0, offsetY: 0 }),
-    )
-    // center = (25, 15), wall half-dims = (23, 13)
-    expect(bounds).toEqual({ minX: 2, maxX: 48, minY: 2, maxY: 28 })
   })
 })

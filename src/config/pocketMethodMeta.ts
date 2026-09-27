@@ -1,11 +1,8 @@
 import type { ComponentType } from 'react'
-import { AdaptiveIcon, HelixIcon, ZigzagIcon } from '../components/icons'
-import { generatePocketAdaptive, generatePocketRaster, generatePocketSpiral } from '../lib/pocket'
+import { AdaptiveIcon, HelixIcon } from '../components/icons'
+import { generatePocketAdaptive, generatePocketSpiral } from '../lib/pocket'
 import type { MachineSettings } from '../types/machine'
-import type { PocketMethodType, PocketShape, WizardParams } from '../types/wizard'
-import { pocketMethodAllowed } from '../lib/pocketMethods'
-
-export { pocketMethodAllowed }
+import type { PocketMethodType, WizardParams } from '../types/wizard'
 
 export interface PocketMethodMeta {
   value: PocketMethodType
@@ -20,21 +17,9 @@ export interface PocketMethodMeta {
   }
 }
 
-// Flat registry, like SURFACE_METHOD_META — but unlike Surface, Pocket's
-// methods AREN'T both valid for every shape (see pocketMethodAllowed()
-// below): Raster reuses Surface's raster engine wholesale, which has no
-// circle-clipping math, so it's Rectangle-only. Spiral and Adaptive work
-// for every shape. See CLAUDE.md's Pocket design notes.
+// Flat registry, like SURFACE_METHOD_META — both methods work for every
+// shape. See CLAUDE.md's Pocket design notes.
 export const POCKET_METHOD_META: Record<PocketMethodType, PocketMethodMeta> = {
-  raster: {
-    value: 'raster',
-    title: 'Raster',
-    shortLabel: 'Raster',
-    description: 'Continuous back-and-forth sweep, clipped to the pocket wall — reuses the Surface raster engine.',
-    Icon: ZigzagIcon,
-    generate: generatePocketRaster,
-    stepdown: { fieldLabel: 'Stepdown [mm per level]', shortLabel: 'STEP' },
-  },
   spiral: {
     value: 'spiral',
     title: 'Spiral',
@@ -57,10 +42,4 @@ export const POCKET_METHOD_META: Record<PocketMethodType, PocketMethodMeta> = {
   },
 }
 
-export const POCKET_METHOD_LIST: PocketMethodMeta[] = [POCKET_METHOD_META.raster, POCKET_METHOD_META.spiral, POCKET_METHOD_META.adaptive]
-
-// Methods offered for the given shape (Step 2, Feedrate Calculator) —
-// Spiral and Adaptive; Raster is hidden (BL-73) and never fits a Circle.
-export function pocketMethodListForShape(shape: PocketShape): PocketMethodMeta[] {
-  return POCKET_METHOD_LIST.filter((m) => pocketMethodAllowed(shape, m.value))
-}
+export const POCKET_METHOD_LIST: PocketMethodMeta[] = [POCKET_METHOD_META.spiral, POCKET_METHOD_META.adaptive]

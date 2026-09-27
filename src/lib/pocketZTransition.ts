@@ -64,8 +64,7 @@ export function appendPocketZTransition(builder: ToolpathBuilder, opts: PocketZT
   // surface at `toZ`, it's a helical ledge (only the single point where
   // the spiral ends is actually at `toZ`; the rest of that turn's
   // circumference was cut at shallower depths on the way down). Whatever
-  // comes next — the first ring's ramp (Spiral), or a rectangle/raster
-  // line (Rectangle/Raster) — only ever revisits this radius briefly near
+  // comes next — the first ring's ramp (Spiral) — only ever revisits this radius briefly near
   // its own start point, so without this pass most of the helix's own
   // boundary circle is left uncut at the true target depth.
   builder.arc('cut', center, 'ccw', fullTurn, opts.toZ, exact)

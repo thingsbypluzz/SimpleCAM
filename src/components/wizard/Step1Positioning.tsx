@@ -140,11 +140,7 @@ export function Step1Positioning({ params, onChange }: Step1PositioningProps) {
             onClick={() =>
               onChange({
                 operation: 'pocket',
-                // Circle never offers Raster (see pocketMethodMeta.ts) —
-                // switching to it while Raster is selected would otherwise
-                // leave a stale, invalid method/shape combination stored.
-                // Spiral and Adaptive are valid for Circle and stay as-is.
-                pocket: { ...pocket, shape: opt.value, method: opt.value === 'circle' && pocket.method === 'raster' ? 'spiral' : pocket.method },
+                pocket: { ...pocket, shape: opt.value },
               })
             }
             Icon={opt.Icon}

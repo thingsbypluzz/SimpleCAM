@@ -10,7 +10,7 @@ export type ToolMaterial = 'carbide' | 'hss'
 
 // How the tool meets the material, from the active operation and method
 // (OPERATION_RULES.engagement): a full-width slot (Hole(s), Outline), a
-// stepover (Surface, Pocket Raster/Spiral) or Adaptive's optimal load —
+// stepover (Surface, Pocket Spiral) or Adaptive's optimal load —
 // both widths as % of the tool diameter.
 export type EngagementKind = 'slot' | 'stepover' | 'optimalLoad'
 export type Engagement = { kind: 'slot' } | { kind: 'stepover' | 'optimalLoad'; percent: number }

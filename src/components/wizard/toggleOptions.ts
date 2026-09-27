@@ -2,8 +2,8 @@ import type { CutDirection, InterpolationMode, RasterDirection, ZTransitionMode 
 import type { TextToggleOption } from './TextToggle'
 
 // Option lists for TextToggle, shared where the same choice appears in more
-// than one operation's Step 2 (Surface and Pocket both have Raster
-// Direction and Z-Transition Mode).
+// than one operation's Step 2 (Surface and Pocket both have Z-Transition
+// Mode).
 
 export const RASTER_DIRECTION_OPTIONS: readonly TextToggleOption<RasterDirection>[] = [
   { value: 'x', label: 'X' },

@@ -1,11 +1,10 @@
 import type { PocketParams, Point2D } from '../types/wizard'
-import type { SurfaceBounds } from './surfaceGeometry'
 
 // Center of the pocket in program coordinates — mirrors rectCorners()'s
 // origin convention (outlineRectangleGeometry.ts): 'rectCornered' has its
 // origin at the bottom-left corner (center is offset by half the nominal
 // dimensions), 'rectCentered' and 'circle' are already centered on
-// offsetX/offsetY. Every ring/raster/entry computation in the Pocket
+// offsetX/offsetY. Every ring/entry computation in the Pocket
 // engine works from this single center point.
 export function pocketCenter(pocket: Pick<PocketParams, 'shape' | 'width' | 'height' | 'offsetX' | 'offsetY'>): Point2D {
   if (pocket.shape === 'rectCornered') {
@@ -30,19 +29,6 @@ export function pocketRectWallHalfDims(
 // pocketRectWallHalfDims, just for the round shape.
 export function pocketCircleWallRadius(pocket: Pick<PocketParams, 'diameter' | 'toolDiameter'>): number {
   return pocket.diameter / 2 - pocket.toolDiameter / 2
-}
-
-// Raster method's clip boundary (Rectangle only — see CLAUDE.md) — the
-// tool-center wall, expressed as a bounding box around the pocket's own
-// center. computeRasterLines()/zigzagWaypoints() (surfaceRaster.ts) are
-// reused unchanged from Surface; only the bounds math differs (inset here
-// vs Surface's outset overtravel — see pocketRectWallHalfDims above).
-export function pocketRectRasterBounds(
-  pocket: Pick<PocketParams, 'shape' | 'width' | 'height' | 'offsetX' | 'offsetY' | 'toolDiameter'>,
-): SurfaceBounds {
-  const center = pocketCenter(pocket)
-  const { halfWidth, halfHeight } = pocketRectWallHalfDims(pocket)
-  return { minX: center.x - halfWidth, maxX: center.x + halfWidth, minY: center.y - halfHeight, maxY: center.y + halfHeight }
 }
 
 // Single source-of-truth stepover-% -> mm conversion — same mechanism as

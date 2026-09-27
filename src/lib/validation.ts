@@ -12,7 +12,7 @@ import { entryHelixExceedsTurnLimit } from './surfaceZTransition'
 import { MAX_OPTIMAL_LOAD_PERCENT, MIN_OPTIMAL_LOAD_PERCENT } from './pocketAdaptiveMath'
 import { exceedsPassLimit, MAX_PASSES } from './depthPasses'
 import { exceedsLineLimit, rasterExceedsLineLimit } from './surfaceRaster'
-import { pocketCircleWallRadius, pocketRectRasterBounds, pocketRectWallHalfDims, pocketStepoverMm } from './pocketGeometry'
+import { pocketCircleWallRadius, pocketRectWallHalfDims, pocketStepoverMm } from './pocketGeometry'
 import { adaptiveExceedsLimits } from './pocketAdaptive'
 
 // Strict (BL-49): a tool exactly as wide as the hole leaves a zero-radius
@@ -129,9 +129,6 @@ export function isPocketToolpathWithinLimits(params: WizardParams): boolean {
   )
     return false
   const stepoverMm = pocketStepoverMm(pocket)
-  if (pocket.method === 'raster') {
-    return pocket.shape === 'circle' || !rasterExceedsLineLimit(pocketRectRasterBounds(pocket), pocket.rasterDirection, stepoverMm)
-  }
   if (pocket.shape === 'circle') {
     const startRadius = pocket.zTransitionMode === 'helix' ? pocket.helixRadius : 0
     return !exceedsLineLimit(startRadius, pocketCircleWallRadius(pocket), stepoverMm)

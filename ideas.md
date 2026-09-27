@@ -208,7 +208,7 @@ faktycznym.
   `RAMP_LENGTH_FACTOR` jako parametru + walidacja zakresu.
 - **`BL-42`** *(Otwarty)* 🟠 — **Finishing wall pass / stock-to-leave dla
   Pocket.** Z sesji `/grill-me` `OP-2`: v1 to roughing-only (zewnętrzny
-  pierścień/linia raster JEST ścianą). Osobny, dokładny przejazd
+  pierścień JEST ścianą). Osobny, dokładny przejazd
   wykończeniowy (nowy parametr `stockToLeave`, roughing zatrzymuje się
   tym promieniem przed granicą, potem jeden przejazd reużywający Outline
   Rectangle/Circle toolpath na granicy offsetu) dałby czystszą ścianę —
@@ -246,23 +246,14 @@ faktycznym.
   Mode, Ramp Angle (jeśli występuje), Offset. Dotyczy wszystkich czterech
   `Step2Geometry*.tsx`; komentarze „Field order” na górze plików do
   aktualizacji.
-- **`BL-73`** *(W trakcie)* 🔴 — **Pocket Raster tnie pełną szerokością
-  freza na starcie każdego poziomu.** Zgłoszone po teście z Ramp Angle
-  (2026-09-27): po wejściu Helix w środku kieszeni narzędzie jedzie po
-  przekątnej na pełnej głębokości do narożnika pierwszej linii rastra —
-  przez nieobrobiony materiał, ae = 100% — a pierwsza linia wzdłuż ściany
-  to też pełna szczelina. Dopiero kolejne linie tną szerokością Stepover.
-  Ścieżka „nie wie”, co już jest wycięte. Opcje do rozstrzygnięcia sesją
-  `/grill-me`: przeniesienie wejścia na start pierwszej linii, kolejność
-  linii od wejścia na zewnątrz, obniżony posuw dla ruchów pełną szerokością,
-  albo rezygnacja z Raster na rzecz Spiral/Adaptive.
-  **Sesja `/grill-me` (2026-09-27):** Raster ukryty w 0.22.1 (UI, kalkulator,
-  migracja zapisów na Spiral; silnik i testy zostają). Ustalenia: przekątny
-  dojazd to błąd (`rasterRectLevel()` robi `lineTo('cut')` od końca helixa
-  do pierwszego punktu), pierwsza linia jako szczelina jest nieunikniona w
-  każdym rastrze, Spiral tego problemu nie ma. Do rozstrzygnięcia w kolejnej
-  sesji `/grill-me`: czy Raster jest w ogóle potrzebny obok Spiral, a jeśli
-  tak — jak go naprawić (i wtedy usunąć go z `HIDDEN_POCKET_METHODS`).
+- **`BL-73`** *(Zrealizowany, 2026-09-27)* 🔴 — **Pocket Raster tnie pełną
+  szerokością freza na starcie każdego poziomu.** Po wejściu Helix jechał po
+  przekątnej na pełnej głębokości do narożnika pierwszej linii, a pierwsza
+  linia każdego rastra i tak jest szczeliną. Dwie sesje `/grill-me`
+  (2026-09-27): najpierw ukryty (0.22.1), potem usunięty całkowicie — żaden
+  przypadek użycia nie uzasadniał go obok Spiral/Adaptive (wygląd dna w
+  drewnie to raczej `BL-42`). Pełny opis: `CHANGELOG.md`, `[0.22.1]` i
+  `[0.22.2]`.
 - **`BL-74`** *(Otwarty)* 🟠 — **2D Preview: bryła/obrys materiału nie
   respektuje reguły otwarte/zamknięte z 3D.** W 3D Preview (`CLAUDE.md`,
   „Otwarta/zamknięta geometria bryły Outline w 3D”) Outside to zamknięta
