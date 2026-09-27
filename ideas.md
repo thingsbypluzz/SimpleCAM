@@ -263,6 +263,15 @@ faktycznym.
   każdym rastrze, Spiral tego problemu nie ma. Do rozstrzygnięcia w kolejnej
   sesji `/grill-me`: czy Raster jest w ogóle potrzebny obok Spiral, a jeśli
   tak — jak go naprawić (i wtedy usunąć go z `HIDDEN_POCKET_METHODS`).
+- **`BL-74`** *(Otwarty)* 🟠 — **2D Preview: bryła/obrys materiału nie
+  respektuje reguły otwarte/zamknięte z 3D.** W 3D Preview (`CLAUDE.md`,
+  „Otwarta/zamknięta geometria bryły Outline w 3D”) Outside to zamknięta
+  bryła, Inside pustka z podkładką z otworem, On-line hybryda (wewnętrzna
+  wyspa + zewnętrzna ściana z podkładką). W 2D Preview stock jest zawsze
+  rysowany jako zamknięty obiekt, niezależnie od Inside/Outside/On-line
+  (Outline) — podgląd 2D sugeruje inne zachowanie niż 3D. Do ujednolicenia
+  w `drawToolpath.ts` (wypełnienie kształtu vs. materiał wokół otworu),
+  spójnie też dla Hole(s) i Pocket.
 
 **`BL-17` zamknięte — "Interface Anatomy"**, Artifact z umownymi nazwami
 elementów UI, dziś aktywnie używany w `CLAUDE.md`:
@@ -323,6 +332,19 @@ Pocket, 2026-09-21, i dla Adaptive, 2026-09-25; historia implementacji w
   `/grill-me` 2026-09-25, trzecia metoda Pocket (Circle + Rectangle,
   stałe zaangażowanie liczone analitycznie). Pełny opis: `CHANGELOG.md`,
   `[0.19.0]`.
+- **`OP-6` — Lightening Pocket (kieszenie odciążające z ramionami).**
+  Zgłoszone 2026-09-27. Kieszeniowanie, które celowo zostawia materiał w
+  postaci ramion — odciążenie części bez utraty sztywności. **Prostokąt:**
+  ramiona łączą narożniki (przekątne), więc kieszenie mają kształt
+  trójkątów. **Okrąg:** ramiona biegną od środka do zewnętrznej krawędzi,
+  kieszenie to wycinki koła („kawałki pizzy”). Liczba ramion i ich
+  grubość wybierane przez użytkownika. Do rozstrzygnięcia sesją
+  `/grill-me`: osobna operacja czy metoda/tryb Pocket, obrzeże (ramka)
+  przy ścianie zewnętrznej i piasta w środku okręgu, zaokrąglenie
+  narożników kieszeni (promień freza), strategia czyszczenia trójkątów/
+  wycinków (reużycie Spiral/Adaptive wymaga dowolnego wielokąta — dziś
+  silniki znają tylko prostokąt i okrąg), liczba ramion dla prostokąta
+  (2 przekątne = 4 trójkąty; więcej?), podglądy 2D/3D, walidacja.
 
 **Każda z `OP-#` wymaga własnej, pełnej sesji `/grill-me` przed
 napisaniem jakiegokolwiek kodu** — nieporównywalnie większy zakres
