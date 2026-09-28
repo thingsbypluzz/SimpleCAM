@@ -277,7 +277,7 @@ faktycznym.
   samo w 3D (podkładka per preset na wspólnym zasięgu) albo jedna wspólna
   podkładka z pustkami wszystkich presetów. Zgłoszone przy `/grill-me`
   `BL-74` (2026-09-28).
-- **`BL-76`** *(Otwarty)* 🟢 — **Podgląd nie pamięta widoku po
+- **`BL-76`** *(Zrealizowany, 2026-09-28)* 🟢 — **Podgląd nie pamięta widoku po
   przełączeniu zakładki.** Przełączenie 2D ↔ 3D (albo na G-Code i z
   powrotem) resetuje oba widoki: 3D wraca do kamery Front z auto-fitem, 2D
   do Fit View — utracone są obrót/zoom/pan ustawione przez użytkownika.
@@ -288,6 +288,8 @@ faktycznym.
   target) i odtwarzać ją przy ponownym zamontowaniu, zamiast trzymać oba
   podglądy zamontowane (kontekst WebGL, `BL-63`). Do ustalenia: czy
   pamięć ma przetrwać odświeżenie strony. Zgłoszone 2026-09-28.
+  Wdrożone: pamięć tylko w sesji (refy w `App.tsx`), bez `localStorage`.
+  Pełny opis: `CHANGELOG.md`, `[0.22.10]`.
 - **`BL-77`** *(Otwarty)* 🔴 — **Overlay: jedna wspólna bryła materiału
   ze wszystkich presetów.** Dziś w Overlay każdy preset rysuje własny
   materiał (2D: półprzezroczysty arkusz z pustkami, `BL-74`; 3D: tylko

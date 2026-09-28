@@ -32,6 +32,24 @@ interface Scene3DProps {
   // redraws when the scene or viewport actually changes (e.g. a palette
   // picked in Settings > Appearance still shows up behind the blur).
   renderPaused?: boolean
+  // BL-76: the last view, kept by App.tsx across unmounts (switching to the
+  // 2D or G-Code tab unmounts this component) — restored on the next mount
+  // instead of the default Front framing. Session-only, never persisted.
+  viewMemory?: { current: Saved3DView | null }
+}
+
+type XYZ = { x: number; y: number; z: number }
+
+export interface Saved3DView {
+  position: XYZ
+  target: XYZ
+  up: XYZ
+  near: number
+  far: number
+  // The overlay selection the view was framed for — a different one on
+  // the next mount re-fits the distance (angle kept), same as a selection
+  // change while mounted.
+  overlayParams: readonly WizardParams[]
 }
 
 const PRESET_BUTTONS: { name: ViewPresetName; label: string }[] = [
@@ -56,6 +74,7 @@ export function Scene3D({
   onToggleToolpathVisible,
   onToggleGridLabels,
   renderPaused = false,
+  viewMemory,
 }: Scene3DProps) {
   const containerRef = useRef<HTMLDivElement>(null)
   const sceneRef = useRef<THREE.Scene | null>(null)
@@ -164,6 +183,17 @@ export function Scene3D({
     handleResize()
 
     return () => {
+      // BL-76: remember the view for the next mount (see viewMemory).
+      if (viewMemory && hasFramedRef.current) {
+        viewMemory.current = {
+          position: { x: camera.position.x, y: camera.position.y, z: camera.position.z },
+          target: { x: controls.target.x, y: controls.target.y, z: controls.target.z },
+          up: { x: camera.up.x, y: camera.up.y, z: camera.up.z },
+          near: camera.near,
+          far: camera.far,
+          overlayParams: prevOverlayParamsRef.current,
+        }
+      }
       cancelAnimationFrame(frameId)
       window.removeEventListener('resize', handleResize)
       resizeObserver.disconnect()
@@ -176,7 +206,9 @@ export function Scene3D({
       renderer.forceContextLoss()
       container.removeChild(renderer.domElement)
     }
-  }, [])
+    // viewMemory is App's stable ref object — listed for the linter, it
+    // never changes, so setup still runs once per mount.
+  }, [viewMemory])
 
   // Rebuild toolpath content whenever params or theme change.
   useEffect(() => {
@@ -221,9 +253,26 @@ export function Scene3D({
     // elevated on +Z, looking toward +Y — see VIEW_PRESETS.front) — only
     // on the very first build, so later parameter tweaks don't yank the
     // camera out of the angle the user rotated to. hasFramedRef is only
-    // ever reset in the setup effect above.
-    const overlayParamsChanged = prevOverlayParamsRef.current !== overlayParams
+    // ever reset in the setup effect above. A view remembered from before
+    // the last tab switch (BL-76) replaces the default framing; framed for
+    // a different overlay selection, it keeps its angle and re-fits.
+    const saved = !hasFramedRef.current ? viewMemory?.current : null
+    const overlayParamsChanged = saved
+      ? saved.overlayParams !== overlayParams
+      : prevOverlayParamsRef.current !== overlayParams
     prevOverlayParamsRef.current = overlayParams
+
+    if (saved) {
+      camera.position.set(saved.position.x, saved.position.y, saved.position.z)
+      camera.up.set(saved.up.x, saved.up.y, saved.up.z)
+      camera.near = saved.near
+      camera.far = saved.far
+      camera.updateProjectionMatrix()
+      controls.target.set(saved.target.x, saved.target.y, saved.target.z)
+      camera.lookAt(controls.target)
+      controls.update()
+      hasFramedRef.current = true
+    }
 
     if (!hasFramedRef.current) {
       frameCamera(camera, controls, bounds, VIEW_PRESETS.front.direction, VIEW_PRESETS.front.up)
@@ -252,6 +301,7 @@ export function Scene3D({
     gridLabelSize,
     stockVisible,
     toolpathVisible,
+    viewMemory,
   ])
 
   const handlePreset = (name: ViewPresetName) => {

@@ -1,10 +1,11 @@
-import { lazy, Suspense, useDeferredValue, useEffect, useMemo, useState, type ComponentType } from 'react'
+import { lazy, Suspense, useDeferredValue, useEffect, useMemo, useRef, useState, type ComponentType } from 'react'
 import { Step1Positioning } from './components/wizard/Step1Positioning'
 import { Step2Geometry } from './components/wizard/Step2Geometry'
 import { Step3Feeds } from './components/wizard/Step3Feeds'
 import { Step4Output } from './components/wizard/Step4Output'
 import { MiniStat } from './components/wizard/MiniStat'
-import { ToolpathCanvas } from './components/preview/ToolpathCanvas'
+import { ToolpathCanvas, type Saved2DView } from './components/preview/ToolpathCanvas'
+import type { Saved3DView } from './components/preview3d/Scene3D'
 import { SettingsModal } from './components/SettingsModal'
 import { FeedCalculatorModal } from './components/FeedCalculatorModal'
 import {
@@ -268,6 +269,12 @@ function App() {
   // e.g. Pocket Adaptive at a low Optimal Load) preview rebuild follows
   // once React has time, instead of every keystroke waiting on it.
   const previewParams = useDeferredValue(params)
+
+  // BL-76: each preview's last view, kept here because switching tabs
+  // unmounts the preview itself — restored when its tab comes back.
+  // Session-only (a page reload starts from Front / Fit View again).
+  const saved2DViewRef = useRef<Saved2DView | null>(null)
+  const saved3DViewRef = useRef<Saved3DView | null>(null)
 
   const handleSaveMachine = (next: typeof machine) => {
     // Unlike travel X/Y/Z (which only affect the soft machineFitWarnings
@@ -878,6 +885,7 @@ function App() {
 
             {previewTab === '2d' && (
               <ToolpathCanvas
+                viewMemory={saved2DViewRef}
                 params={previewParams}
                 isDark={isDark}
                 paletteId={appearance.palette}
@@ -900,6 +908,7 @@ function App() {
                 }
               >
                 <Scene3D
+                  viewMemory={saved3DViewRef}
                   params={previewParams}
                   isDark={isDark}
                   paletteId={appearance.palette}

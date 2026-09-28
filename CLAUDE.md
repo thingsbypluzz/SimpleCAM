@@ -1086,6 +1086,17 @@ selekcji overlaya wymusza pełny re-fit (2D nie ma pojęcia "kąta" do
 zachowania jak 3D). Fit View — Icon Button w prawym dolnym rogu Preview
 Viewport, ta sama pozycja/styl co w 3D Preview.
 
+**Pamięć widoku między zakładkami (tylko w sesji).** Zakładki podglądu są
+renderowane warunkowo, więc przełączenie 2D ↔ 3D ↔ G-Code odmontowuje
+podgląd razem z kamerą. Ostatni widok każdego podglądu trzyma `App.tsx`
+w refach (`saved2DViewRef`/`saved3DViewRef`, prop `viewMemory`): 2D
+zapisuje `Camera2D` + skalę fitu przy każdej zmianie kamery, 3D pozycję/
+target/up/near/far przy odmontowaniu; przy ponownym zamontowaniu widok
+jest odtwarzany zamiast domyślnego fitu/Front. Widok zapamiętany dla innej
+selekcji Overlay niż bieżąca: 2D robi pełny re-fit, 3D zachowuje kąt i
+dopasowuje odległość. Nic w `localStorage` — odświeżenie strony startuje
+od Fit View/Front.
+
 `camera2d.ts` to czysty moduł matematyki kamery 2D (analogiczny do
 `preview3d/cameraPresets.ts`, bez rotacji — `Camera2D = { scale,
 centerX, centerY }`): `computeFitCamera()`, `zoomAt()`, `panBy()`,
@@ -1686,7 +1697,10 @@ src/
                                rozjechać przy reflow. Kamera
                                auto-dopasowuje się (fit na preset
                                `front`) tylko przy pierwszym zbudowaniu
-                               sceny, pilnowane przez `hasFramedRef` —
+                               sceny — albo odtwarza widok zapamiętany
+                               przed przełączeniem zakładki (`viewMemory`,
+                               patrz "Zoom/pan na 2D Preview") —
+                               pilnowane przez `hasFramedRef` —
                                **ten ref musi być zerowany na starcie
                                efektu setupującego scenę/kamerę/
                                renderer/controls**, nie tylko
