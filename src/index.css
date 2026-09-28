@@ -1,5 +1,11 @@
 @import "tailwindcss";
 
+/* Project documentation (CLAUDE.md files, CHANGELOG, ideas, design specs)
+   is full of class names in prose — keep it out of Tailwind's class scan. */
+@source not "../*.md";
+@source not "./**/*.md";
+@source not "../scripts/**/*.md";
+
 @custom-variant dark (&:where(.dark, .dark *));
 
 :root {
