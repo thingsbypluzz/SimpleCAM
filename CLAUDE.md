@@ -105,7 +105,9 @@ być wierny.
 - **Materiał w podglądach** wg fizycznego znaczenia: pustka (otwór, Outline
   Inside, Pocket) wycięta z arkusza materiału, Outline Outside = lita wyspa,
   On-line = wyspa + arkusz wycięty na zewnętrznej krawędzi; Surface =
-  „pozostały materiał”.
+  „pozostały materiał”. W Overlay jeden wspólny arkusz z pustkami
+  wszystkich presetów, a gdy któryś jest litą bryłą (Outline Outside/
+  On-line, Surface) — żaden (2D i 3D tą samą regułą).
 - **Header:** Preset Bar `[1]…[5]`, oko Overlay, ołówek Edit Mode, dark/
   light (dark domyślny niezależnie od systemu), Settings.
 - **Auto-save i presety** (`simplecam.storage`): slot `"0"` zapisywany przy

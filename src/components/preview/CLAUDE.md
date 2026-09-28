@@ -16,8 +16,12 @@
   nachodzące otwory się sumują), bez obrysu krawędzi arkusza. Pustki
   (Hole(s), Outline Inside, Pocket) — tylko obrys; Outline Outside —
   wypełniona wyspa bez arkusza; On-line — arkusz wycięty na zewnętrznej
-  krawędzi + wypełniona wyspa, obie krawędzie obrysowane. Overlay: każdy
-  preset rysuje własny arkusz na wspólnym zasięgu. Surface bez arkusza.
+  krawędzi + wypełniona wyspa, obie krawędzie obrysowane. Surface bez
+  arkusza. Overlay (reguła wspólna z 3D, `lib/overlayStock.ts`): presety
+  nie rysują własnych arkuszy — jeden wspólny arkusz z pustkami wszystkich
+  presetów (`overlaySheetVoids()`), rysowany raz przed wzorcami; brak
+  arkusza, gdy któryś preset jest litą bryłą (Outline Outside/On-line,
+  Surface). Wyspy i obrysy bez zmian.
   Mostki: `drawGappedCircle()`/`drawGappedRectangle()` — przerywana linia
   (`TAB_DASH`) na łuku/odcinku mostka; materiał je ignoruje.
 - `camera2d.ts` — czysta matematyka kamery (`Camera2D = { scale, centerX,

@@ -273,14 +273,28 @@ faktycznym.
   (2026-09-28): arkusz materiału o zasięgu płaszczyzny 3D bez obrysu,
   pustki wycięte, Outside jako wyspa, On-line jak w 3D, w Overlay każdy
   preset rysuje swój arkusz. Pełny opis: `CHANGELOG.md`, `[0.22.9]`.
-- **`BL-75`** *(Otwarty)* 🟠 — **Overlay presetów w 3D pokazuje tylko
-  brzegi.** W trybie Overlay 3D pomija podkładkę (stock cap) — każdy
-  preset ma tylko swoje ściany/bryły, więc nie widać, co zostaje z płyty.
-  W 2D (`BL-74`) każdy preset rysuje własny półprzezroczysty arkusz z
-  wyciętymi pustkami i złożenie warstw daje ten obraz. Do rozważenia to
-  samo w 3D (podkładka per preset na wspólnym zasięgu) albo jedna wspólna
-  podkładka z pustkami wszystkich presetów. Zgłoszone przy `/grill-me`
-  `BL-74` (2026-09-28).
+- **`BL-75`** *(Zrealizowany, 2026-09-29)* 🟠 — **Overlay: iluzoryczna podkładka, gdy nie
+  ma litej bryły.** Punkt wyjścia: świadoma decyzja z `BL-3`
+  (`CHANGELOG.md`, `[0.13.5]`) — w 3D Overlay podkładka pominięta, bo
+  każdy nałożony preset pokazuje zasięg własną ścianą. Decyzja zostaje w
+  mocy (widać wzajemne położenie operacji), z jednym wyjątkiem: gdy w
+  Overlay są same pustki (otwory, kieszenie), wiszą w powietrzu, a
+  dopiero lita bryła daje „materiał”. Reguła (rozmowa 2026-09-29):
+  - jeśli **żaden** nałożony wzorzec nie jest litą bryłą — Outline
+    Outside, Outline On-line, Surface — rysowana jest jedna wspólna,
+    iluzoryczna podkładka na Z=0 o zasięgu siatki (`stockSheetRect()`),
+    w stylu dzisiejszego stock capu (`buildStockCapObject()`); gdy
+    któryś jest — bez podkładki, jak dziś;
+  - podkładka **z pustkami**: otwory Hole(s), kieszenie Pocket, Outline
+    Inside. Nachodzące pustki różnych presetów trzeba scalić (suma
+    wielokątów — mała biblioteka albo własne scalanie okręgów/
+    prostokątów), bo `THREE.Shape.holes` nie znosi nachodzących otworów;
+  - **2D tą samą regułą** — jeden wspólny arkusz zamiast arkusza per
+    preset z `BL-74`, żeby 2D i 3D pokazywały to samo.
+  Łączenie podkładki z litymi bryłami w jedną spójną bryłę to już
+  **`BL-77`**. Zgłoszone przy `/grill-me` `BL-74` (2026-09-28).
+  Wdrożone: `lib/overlayStock.ts`, scalanie pustek w 3D przez
+  `polygon-clipping`. Pełny opis: `CHANGELOG.md`, `[0.24.0]`.
 - **`BL-76`** *(Zrealizowany, 2026-09-28)* 🟢 — **Podgląd nie pamięta widoku po
   przełączeniu zakładki.** Przełączenie 2D ↔ 3D (albo na G-Code i z
   powrotem) resetuje oba widoki: 3D wraca do kamery Front z auto-fitem, 2D
@@ -303,7 +317,10 @@ faktycznym.
   materiału albo odjęcie wszystkich pustek od największego arkusza.
   Wymaga geometrii boolowskiej na wielokątach/okręgach (2D) i bryłach (3D,
   CSG — dziś świadomie bez, podkładka to `THREE.Shape` + `holes`), więc
-  duży zakres; do przemyślenia razem z `BL-75`. Zgłoszone 2026-09-28.
+  duży zakres. **`BL-75`** (tańszy krok przed tą pozycją) daje jedną
+  wspólną podkładkę z pustkami, ale tylko gdy w Overlay nie ma litej
+  bryły; ta pozycja rozszerza to o łączenie materiału z litymi bryłami
+  (Outline Outside/On-line, Surface). Zgłoszone 2026-09-28.
 
 **`BL-17` zamknięte — "Interface Anatomy"**, Artifact z umownymi nazwami
 elementów UI, dziś aktywnie używany w `CLAUDE.md`:
