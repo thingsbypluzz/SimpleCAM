@@ -7,6 +7,18 @@ zgodne z [SemVer](https://semver.org/). Ten plik pozostaje głównym, czytelnym
 thingsbypluzz/SimpleCAM), ale to infrastruktura pod izolację pracy
 (branch/worktree per zadanie), nie zamiennik tego changeloga.
 
+## [0.22.10] — 2026-09-28
+
+### Zmieniono
+
+- **Podgląd pamięta widok po przełączeniu zakładki** (`BL-76`). Dotąd
+  przejście 2D ↔ 3D (albo na G-Code i z powrotem) resetowało oba widoki —
+  3D do kamery Front, 2D do Fit View. Teraz każdy podgląd wraca do
+  ostatniego obrotu/zoomu/przesunięcia. Pamięć trwa tylko w sesji:
+  odświeżenie strony startuje jak dotąd od Front / Fit View. Jeśli w
+  międzyczasie zmieniła się selekcja Overlay, 2D dopasowuje się od nowa, a
+  3D zachowuje kąt i dopasowuje odległość.
+
 ## [0.22.9] — 2026-09-28
 
 ### Zmieniono

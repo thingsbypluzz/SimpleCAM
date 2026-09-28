@@ -16,6 +16,19 @@ interface ToolpathCanvasProps {
   toolpathVisible: boolean
   onToggleStockVisible: () => void
   onToggleToolpathVisible: () => void
+  // BL-76: the last view, kept by App.tsx across unmounts (switching to
+  // the 3D or G-Code tab unmounts this component) — restored on the next
+  // mount instead of a fresh fit. Session-only, never persisted.
+  viewMemory?: { current: Saved2DView | null }
+}
+
+export interface Saved2DView {
+  camera: Camera2D
+  // Zoom clamping is relative to the last fit's scale (camera2d.ts).
+  fitScale: number
+  // The overlay selection the view belongs to — a different one on the
+  // next mount means a fresh fit, same as a selection change while mounted.
+  overlayParams: readonly WizardParams[]
 }
 
 // Wheel deltaY -> zoom factor, exponential so repeated small scroll ticks
@@ -34,23 +47,32 @@ export function ToolpathCanvas({
   toolpathVisible,
   onToggleStockVisible,
   onToggleToolpathVisible,
+  viewMemory,
 }: ToolpathCanvasProps) {
   const containerRef = useRef<HTMLDivElement>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
-  const [camera, setCamera] = useState<Camera2D | null>(null)
+  // A remembered view (BL-76) is only reused for the same overlay
+  // selection it was framed for.
+  const [restored] = useState(() => {
+    const saved = viewMemory?.current
+    return saved && saved.overlayParams === overlayParams ? saved : null
+  })
+  const [camera, setCamera] = useState<Camera2D | null>(restored?.camera ?? null)
   // Mirrors `camera` state but readable from native event handlers below
   // without re-subscribing them on every camera change.
   const cameraRef = useRef<Camera2D | null>(null)
   // The scale computed by the last fit-to-data — zoom clamping (BL-11,
   // camera2d.ts) is relative to this, not an absolute constant.
-  const fitScaleRef = useRef(1)
-  const hasFittedRef = useRef(false)
+  const fitScaleRef = useRef(restored?.fitScale ?? 1)
+  const hasFittedRef = useRef(restored !== null)
   const prevOverlayParamsRef = useRef(overlayParams)
   const panStateRef = useRef<{ startX: number; startY: number; startCamera: Camera2D } | null>(null)
 
   useEffect(() => {
     cameraRef.current = camera
-  }, [camera])
+    // BL-76: remember the view for the next mount (see viewMemory).
+    if (camera && viewMemory) viewMemory.current = { camera, fitScale: fitScaleRef.current, overlayParams }
+  }, [camera, viewMemory, overlayParams])
 
   // Fit-to-data: recomputed from current bounds + current canvas size.
   // Used for the initial view, the Fit View button, and the BL-3
