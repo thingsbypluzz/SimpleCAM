@@ -49,7 +49,8 @@ Cztery operacje (`WizardParams.operation`):
 - **Surface** — planowanie po prostokącie; Zigzag / Unidirectional,
   kierunek rastra X/Y, stepover % średnicy, wejście Plunge/Helix.
 - **Pocket** — kieszeń Rectangle Cornered / Centered / Circle; metody
-  Spiral i Adaptive (stałe zaangażowanie), tylko roughing.
+  Spiral i Adaptive (stałe zaangażowanie); opcjonalny przejazd
+  wykończeniowy ścian (Stock to Leave, Finish Feed).
 
 ## Kluczowe decyzje (przekrojowe)
 

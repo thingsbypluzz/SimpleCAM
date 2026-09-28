@@ -100,6 +100,7 @@ const MOVE_STYLE: Record<MoveKind, ToolpathLineStyle> = {
   rapid: 'dashed',
   plunge: 'dotted',
   link: 'linking',
+  finish: 'solid',
 }
 
 // Draws an engine's own move list (lib/toolpath.ts, BL-61) — the same

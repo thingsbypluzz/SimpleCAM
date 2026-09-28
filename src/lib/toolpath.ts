@@ -10,7 +10,9 @@ import type { InterpolationMode, Point2D } from '../types/wizard'
 // cut    — G1/G2/G3 at Feedrate XY, solid
 // plunge — straight vertical G1 at Plunge Rate, dotted
 // link   — G1 through already-cleared area at the linking feed (Adaptive)
-export type MoveKind = 'rapid' | 'cut' | 'plunge' | 'link'
+// finish — G1/G2/G3 at the finishing feed (Pocket finishing pass), drawn
+//          like cut
+export type MoveKind = 'rapid' | 'cut' | 'plunge' | 'link' | 'finish'
 export type ArcDirection = 'cw' | 'ccw'
 
 export interface Point3D {
@@ -150,6 +152,7 @@ export interface GcodeFeeds {
   cut: number
   plunge?: number
   link?: number
+  finish?: number
 }
 
 // G-code for a toolpath. The first line rapids to `start` in XY (callers
@@ -157,7 +160,7 @@ export interface GcodeFeeds {
 // after that:
 //   rapid          → `G0` with only the axes that change
 //   plunge         → `G1 Z… F<plunge>`
-//   cut / link     → `G1 X… Y… Z… F…`
+//   cut/link/finish → `G1 X… Y… Z… F…`
 //   arc            → `G2/G3 X… Y… Z… I… J… F…`, or its G1 polygon when
 //                    interpolation is 'linear'
 export function toolpathToGcode(
@@ -167,7 +170,13 @@ export function toolpathToGcode(
   const lines: string[] = []
   if (opts.leadInRapid ?? true) lines.push(`G0 X${fmt(toolpath.start.x)} Y${fmt(toolpath.start.y)}`)
   const feedFor = (kind: MoveKind) =>
-    kind === 'plunge' ? (opts.feeds.plunge ?? opts.feeds.cut) : kind === 'link' ? (opts.feeds.link ?? opts.feeds.cut) : opts.feeds.cut
+    kind === 'plunge'
+      ? (opts.feeds.plunge ?? opts.feeds.cut)
+      : kind === 'link'
+        ? (opts.feeds.link ?? opts.feeds.cut)
+        : kind === 'finish'
+          ? (opts.feeds.finish ?? opts.feeds.cut)
+          : opts.feeds.cut
   let current = toolpath.start
   for (const move of toolpath.moves) {
     const { to } = move

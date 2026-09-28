@@ -226,6 +226,14 @@ describe('field validation on load (BL-57)', () => {
     expect(loadSlot(AUTO_SAVE_SLOT)!.pocket.method).toBe('adaptive')
   })
 
+  it('loads a Pocket saved before the finishing pass with it off (BL-42)', () => {
+    storeAutoSave({ pocket: { shape: 'circle', method: 'spiral', diameter: 30 } })
+    const { pocket } = loadSlot(AUTO_SAVE_SLOT)!
+    expect(pocket.finishingEnabled).toBe(false)
+    expect(pocket.stockToLeave).toBe(DEFAULT_WIZARD_PARAMS.pocket.stockToLeave)
+    expect(pocket.finishFeed).toBe(DEFAULT_WIZARD_PARAMS.pocket.finishFeed)
+  })
+
   it('keeps chipThinningBaseFeed null or numeric', () => {
     storeAutoSave({ pocket: { chipThinningBaseFeed: 700 } })
     expect(loadSlot(AUTO_SAVE_SLOT)!.pocket.chipThinningBaseFeed).toBe(700)

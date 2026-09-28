@@ -4,6 +4,7 @@ import { assembleProgram } from './program'
 import { buildLevelDescents, levelEntryZ } from './surfaceZTransition'
 import { appendPocketZTransition, pocketEntryPoint } from './pocketZTransition'
 import { buildAdaptiveToolpath } from './pocketAdaptive'
+import { appendPocketFinish, pocketFinishMoves } from './pocketFinish'
 import {
   appendCircleRing,
   appendRectRing,
@@ -14,8 +15,8 @@ import {
 } from './pocketSpiral'
 import {
   pocketCenter,
-  pocketCircleWallRadius,
-  pocketRectWallHalfDims,
+  pocketRoughCircleWallRadius,
+  pocketRoughRectWallHalfDims,
   pocketStepoverMm,
 } from './pocketGeometry'
 import { toolpathToGcode, ToolpathBuilder, type Toolpath } from './toolpath'
@@ -29,7 +30,7 @@ type LevelClear = (b: ToolpathBuilder, cx: number, cy: number, toZ: number, para
 function spiralCircleLevel(b: ToolpathBuilder, cx: number, cy: number, toZ: number, params: WizardParams): void {
   const { pocket } = params
   const startRadius = pocket.zTransitionMode === 'helix' ? pocket.helixRadius : 0
-  const radii = pocketCircleRingRadii(startRadius, pocketCircleWallRadius(pocket), pocketStepoverMm(pocket))
+  const radii = pocketCircleRingRadii(startRadius, pocketRoughCircleWallRadius(pocket), pocketStepoverMm(pocket))
   let angle = 0
   for (let i = 1; i < radii.length; i++) {
     angle = appendCircleRing(b, radii[i - 1], radii[i], angle, cx, cy, toZ)
@@ -38,7 +39,7 @@ function spiralCircleLevel(b: ToolpathBuilder, cx: number, cy: number, toZ: numb
 
 function spiralRectLevel(b: ToolpathBuilder, cx: number, cy: number, toZ: number, params: WizardParams): void {
   const { pocket } = params
-  const { halfWidth, halfHeight } = pocketRectWallHalfDims(pocket)
+  const { halfWidth, halfHeight } = pocketRoughRectWallHalfDims(pocket)
   const isHelix = pocket.zTransitionMode === 'helix'
   const rings = pocketRectRingDims(halfWidth, halfHeight, pocketStepoverMm(pocket), isHelix ? pocket.helixRadius : 0)
 
@@ -76,6 +77,9 @@ const LEVEL_CLEAR: Record<Exclude<PocketMethodType, 'adaptive'>, (pocket: Wizard
 // Adaptive has its own level structure (stays down between levels, helix
 // pitch from the ramp angle) inside buildAdaptiveToolpath(), which starts at
 // the helix start at Start Z — only the rapid down to it is added here.
+//
+// Both methods rough to the roughing wall; the optional finishing wall
+// pass (lib/pocketFinish.ts, BL-42) follows the whole roughing.
 export function buildPocketToolpath(params: WizardParams, method = params.pocket.method): Toolpath {
   const { pocket, feeds, output } = params
   const center = pocketCenter(pocket)
@@ -84,7 +88,8 @@ export function buildPocketToolpath(params: WizardParams, method = params.pocket
     const adaptive = buildAdaptiveToolpath(params)
     const b = new ToolpathBuilder({ x: adaptive.start.x, y: adaptive.start.y, z: feeds.safeZ })
     b.zTo('rapid', feeds.startZ)
-    return { start: b.start, moves: [...b.moves, ...adaptive.moves] }
+    const last = adaptive.moves.length > 0 ? adaptive.moves[adaptive.moves.length - 1].to : b.current
+    return { start: b.start, moves: [...b.moves, ...adaptive.moves, ...pocketFinishMoves(last, params)] }
   }
 
   const entry = pocketEntryPoint(center.x, center.y, pocket.zTransitionMode, pocket.helixRadius)
@@ -115,13 +120,19 @@ export function buildPocketToolpath(params: WizardParams, method = params.pocket
     })
     levelClear(b, center.x, center.y, toZ, params)
   })
+  appendPocketFinish(b, params)
 
   return b.build()
 }
 
 function pocketGcode(params: WizardParams, method: PocketMethodType): string[] {
   return toolpathToGcode(buildPocketToolpath(params, method), {
-    feeds: { cut: params.feeds.feedrateXY, plunge: params.feeds.plungeRate, link: params.pocket.linkingFeed },
+    feeds: {
+      cut: params.feeds.feedrateXY,
+      plunge: params.feeds.plungeRate,
+      link: params.pocket.linkingFeed,
+      finish: params.pocket.finishFeed,
+    },
     interpolation: params.output.interpolation,
   })
 }

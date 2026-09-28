@@ -116,6 +116,13 @@ export interface PocketParams {
   // since). Keeps the suggestion from compounding on an already-compensated
   // feed — see chipThinnedFeed().
   chipThinningBaseFeed: number | null
+  // Optional finishing wall pass (BL-42, Spiral and Adaptive): roughing
+  // stops stockToLeave short of the wall, then one lap per Z level runs on
+  // the nominal wall at finishFeed. Walls only — the floor is always cut
+  // to full depth.
+  finishingEnabled: boolean
+  stockToLeave: number // mm, only enforced/shown when finishingEnabled
+  finishFeed: number // mm/min, only enforced/shown when finishingEnabled
 }
 
 export interface FeedsParams {
@@ -215,6 +222,9 @@ export const DEFAULT_WIZARD_PARAMS: WizardParams = {
     cutDirection: 'climb',
     linkingFeed: 800,
     chipThinningBaseFeed: null,
+    finishingEnabled: false,
+    stockToLeave: 0.3,
+    finishFeed: 800,
   },
   feeds: {
     stepdown: 1,

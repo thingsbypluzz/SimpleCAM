@@ -7,6 +7,55 @@ zgodne z [SemVer](https://semver.org/). Ten plik pozostaje głównym, czytelnym
 thingsbypluzz/SimpleCAM), ale to infrastruktura pod izolację pracy
 (branch/worktree per zadanie), nie zamiennik tego changeloga.
 
+## [0.23.0] — 2026-09-28
+
+### Dodano
+
+- **Pocket: opcjonalny przejazd wykończeniowy ścian** (`BL-42`). Dotąd
+  Pocket był wyłącznie roughingiem — zewnętrzny pierścień (Spiral) albo
+  ostatni okrąg i narożniki (Adaptive) były ścianą, ze śladami stepoveru i
+  zmiennego zaangażowania. Teraz w Kroku 2 checkbox **Finishing Pass** z
+  polem **Stock to Leave** (domyślnie 0.3 mm), dla Spiral i Adaptive:
+  - roughing obu metod zatrzymuje się `stockToLeave` przed ścianą (tylko
+    ściany — dno zawsze do pełnej głębokości),
+  - po całym roughingu jedno okrążenie nominalnej ściany na każdy poziom
+    Stepdown, od góry do dna, bez retraktu między poziomami (zejście
+    Plunge Rate w już wyciętym obszarze),
+  - wejście i wyjście ćwierćłukiem stycznym do ściany (w środku dłuższego
+    boku prostokąta / w punkcie 0° okręgu), z promieniem jak najbliżej
+    promienia freza przy starcie w wyciętym obszarze; gdy się nie da
+    (mała kieszeń, dużo naddatku) — półłukiem ze środka kieszeni,
+  - kierunek: Spiral climb, Adaptive wg Climb/Conventional,
+  - posuw z nowego pola **Finish Feed** w Kroku 3 (przy każdym włączeniu
+    checkboxa ustawiany na bieżący Feed XY; Feedrate Calculator go nie
+    liczy).
+  Po ostatnim okrążeniu frez podnosi się z końca łuku wyjścia (nie wraca
+  nad punkt zejścia), więc w podglądzie wyjście jest widoczne osobno.
+  Walidacja: `0 < Stock to Leave ≤` promień freza i musi zostać ściana do
+  roughingu; Helix Radius ograniczony ścianą roughingu. Przy wyłączonym
+  finishingu G-code jest identyczny jak w 0.22.10 (porównany znak po
+  znaku), stare presety wczytują się z wyłączonym.
+
+### Zmieniono
+
+- **Pocket i Surface, Krok 2 — zwarty układ:** Z-Transition, Helix Radius
+  i Ramp Angle w jednym wierszu (w obu operacjach); w Pocket wyjaśnienie, czemu Adaptive zawsze wchodzi
+  Helixem, przeniesione pod znak zapytania przy „Z-Transition”; checkbox
+  Finishing Pass i Stock to Leave w jednym wierszu.
+- **Zwijane notki z kontekstem** (nowy `InfoNote`): Chip thinning, mały
+  Helix Radius (Krok 2) i podpowiedź Stepdown dla Adaptive (Krok 3) mają
+  trójkąt do zwijania; domyślnie rozwinięte, stan pamiętany do
+  odświeżenia strony, przycisk Apply widoczny także po zwinięciu.
+
+### Naprawiono
+
+- **Przewijanie całej strony z białym pasem pod appką**, gdy panel kroku
+  był dłuższy niż ekran i zawierał checkbox (zgłoszone dla Pocket Adaptive
+  z Finishing Pass). Ukryty natywny input checkboxa był pozycjonowany
+  względem strony zamiast własnej etykiety i wydłużał dokument — ta sama
+  przyczyna dotyczy każdego checkboxa w przewiniętym panelu, poprawka
+  obejmuje wszystkie.
+
 ## [0.22.10] — 2026-09-28
 
 ### Zmieniono
