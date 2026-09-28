@@ -206,13 +206,17 @@ faktycznym.
   Mogłaby stać się polem liczbowym (jak Helix Radius) do dostrajania per
   materiał/narzędzie — mechanizm już istnieje, to tylko odsłonięcie
   `RAMP_LENGTH_FACTOR` jako parametru + walidacja zakresu.
-- **`BL-42`** *(Otwarty)* 🟠 — **Finishing wall pass / stock-to-leave dla
+- **`BL-42`** *(Zrealizowany, 2026-09-28)* 🟠 — **Finishing wall pass / stock-to-leave dla
   Pocket.** Z sesji `/grill-me` `OP-2`: v1 to roughing-only (zewnętrzny
   pierścień JEST ścianą). Osobny, dokładny przejazd
   wykończeniowy (nowy parametr `stockToLeave`, roughing zatrzymuje się
   tym promieniem przed granicą, potem jeden przejazd reużywający Outline
   Rectangle/Circle toolpath na granicy offsetu) dałby czystszą ścianę —
   większy zakres niż `BL-41`, dotyka kilku miejsc silnika na raz.
+  Wdrożone (rozmowa 2026-09-28): checkbox Finishing Pass dla Spiral i
+  Adaptive, okrążenie co Stepdown po całym roughingu, wejście/wyjście
+  łukiem stycznym, osobny Finish Feed. Pełny opis: `CHANGELOG.md`,
+  `[0.23.0]`.
 - **`BL-66`** *(Otwarty)* 🟠 — **Wyróżnienie pól, które nie przeszły
   walidacji.** Dziś błąd to wyłącznie czerwony tekst pod polem — samo
   pole (`NumberInput`/`<select>`/textarea) wygląda tak samo jak poprawne,

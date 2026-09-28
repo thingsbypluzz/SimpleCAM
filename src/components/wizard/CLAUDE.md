@@ -10,9 +10,11 @@
   Tool Diameter → Method → Tabs → Offset. Outline: wymiary + Cutting Depth
   → Offset Mode → Tool Diameter → Method → Tabs → Offset. Surface:
   Width/Height + Depth to Remove → Tool Diameter → Method + Raster
-  Direction → Stepover → Z-Transition + Helix Radius → Ramp Angle → Offset.
+  Direction → Stepover → Z-Transition + Helix Radius + Ramp Angle (jeden
+  wiersz) → Offset.
   Pocket: wymiary + Total Depth → Tool Diameter → Method (+ Direction) →
-  Optimal Load albo Stepover → Z-Transition + Helix Radius → Ramp Angle →
+  Optimal Load albo Stepover → Z-Transition + Helix Radius + Ramp Angle
+  (jeden wiersz) → Finishing Pass + Stock to Leave (jeden wiersz) →
   Offset. Błąd pod polem, którego dotyczy.
 - **Pary pól w jednym wierszu** (`flex gap-4`, `min-w-0 flex-1` —
   `min-w-0` konieczne, input ma min-content podłogę): Grid X/Y, Offset
@@ -21,7 +23,11 @@
   Depth, Tabs Height/Width/Count, Surface Method + Raster Direction, Pocket
   Method + Direction (Method `shrink-0`, drugi toggle po odstępie; "Conv."/
   "Climb" z pełną nazwą w tooltipie), Optimal Load %/mm/Engagement,
-  Z-Transition + Helix Radius (puste miejsce, gdy nie Helix). Reszta w
+  Z-Transition + Helix Radius + Ramp Angle w Surface i Pocket (trzy
+  kolumny, puste komórki, gdy nie Helix; skrócone etykiety „Helix R.”/
+  „Ramp”; w Pocket powód blokady Helix w Adaptive pod Hint Button przy
+  „Z-Transition”), Pocket
+  Finishing Pass + Stock to Leave (checkbox na linii inputu). Reszta w
   jednej kolumnie.
 - `ToolChipLoad.tsx` — wiersz Tool Diameter + Flutes (ta sama pamięć co
   Feedrate Calculator, całkowita 1–6, błąd pod wierszem) + fz tylko do
@@ -41,7 +47,14 @@
   siebie, tokeny motywu.
 - `Checkbox.tsx` — natywny input `sr-only`, własny box z `CheckIcon`, kolory
   zaznaczenia `selected-*` (jak zaznaczona opcja, nie `--accent`),
-  `peer-focus-visible` dla fokusu klawiatury. Wszystkie checkboxy appki.
+  `peer-focus-visible` dla fokusu klawiatury; `<label>` jest `relative`,
+  żeby absolutny input nie wydłużał dokumentu w przewiniętym panelu.
+  Wszystkie checkboxy appki.
+- `InfoNote.tsx` — szare notki z kontekstem (Chip thinning, mały Helix
+  Radius, Stepdown Adaptive): trójkąt + tytuł zwija/rozwija treść
+  (`aria-expanded`), domyślnie rozwinięte, stan per `id` w pamięci modułu
+  (tylko sesja, przetrwa zmianę kroku); opcjonalny `action` (Apply)
+  widoczny także po zwinięciu.
 - `FieldRow.tsx` (`label`/`hint`/`annotation`, `inputClass`),
   `HintPopover.tsx` (portal do `document.body`, `position: fixed`, clamp do
   viewportu — omija `overflow-y-auto` panelu; zamyka się na klik poza,

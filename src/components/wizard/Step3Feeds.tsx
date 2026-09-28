@@ -6,6 +6,7 @@ import {
   isPassCountWithinLimit,
   isFeedrateXYValid,
   isPlungeRateValid,
+  isPocketFinishFeedValid,
   isPocketLinkingFeedValid,
   isSafeZValid,
   activeTotalDepth,
@@ -21,6 +22,7 @@ import { isFeedChipThinningCompensated } from '../../lib/pocketAdaptiveMath'
 import { fmt } from '../../lib/format'
 import { CalculatorIcon } from '../icons'
 import { FieldRow, inputClass } from './FieldRow'
+import { InfoNote } from './InfoNote'
 import { NumberInput } from './NumberInput'
 import { useNumberField } from './useNumberField'
 
@@ -39,6 +41,7 @@ interface Step3FeedsProps {
 export function Step3Feeds({ params, onChange, machine, stepdownLabel, onOpenCalculator }: Step3FeedsProps) {
   const { feeds, pocket } = params
   const isPocketAdaptive = params.operation === 'pocket' && pocket.method === 'adaptive'
+  const isPocketFinishing = params.operation === 'pocket' && pocket.finishingEnabled
 
   const updateFeeds = (patch: Partial<WizardParams['feeds']>) =>
     onChange({ feeds: { ...feeds, ...patch } })
@@ -60,6 +63,10 @@ export function Step3Feeds({ params, onChange, machine, stepdownLabel, onOpenCal
   const startZField = useNumberField(feeds.startZ, (v) => updateFeeds({ startZ: v }))
   const safeZField = useNumberField(feeds.safeZ, (v) => updateFeeds({ safeZ: v }))
   const linkingFeedField = useNumberField(pocket.linkingFeed, (v) => onChange({ pocket: { ...pocket, linkingFeed: v } }))
+  // Step 2's Finishing Pass checkbox resets it to Feed XY on every enable.
+  const finishFeedField = useNumberField(pocket.finishFeed, (v) => onChange({ pocket: { ...pocket, finishFeed: v } }), {
+    syncWhenBlurred: true,
+  })
 
   return (
     <div className="flex flex-col gap-4">
@@ -98,6 +105,17 @@ export function Step3Feeds({ params, onChange, machine, stepdownLabel, onOpenCal
       {isPocketAdaptive && !isPocketLinkingFeedValid(pocket) && (
         <p className="text-sm text-status-error">Linking Feed must be greater than 0.</p>
       )}
+      {isPocketFinishing && (
+        <FieldRow
+          label="Finish Feed [mm/min]"
+          hint="Feed for the Finishing Pass laps on the pocket walls (Step 2), including their tangent lead-in and lead-out arcs. Not set by the Feedrate Calculator."
+        >
+          <NumberInput type="number" step="1" className={inputClass} {...finishFeedField} />
+        </FieldRow>
+      )}
+      {isPocketFinishing && !isPocketFinishFeedValid(pocket) && (
+        <p className="text-sm text-status-error">Finish Feed must be greater than 0.</p>
+      )}
       <FieldRow label="Plunge Rate [mm/min]">
         <NumberInput type="number" step="1" className={inputClass} {...plungeRateField} />
       </FieldRow>
@@ -125,20 +143,23 @@ export function Step3Feeds({ params, onChange, machine, stepdownLabel, onOpenCal
         </p>
       ))}
       {params.operation === 'pocket' && isAdaptiveStepdownShallow(pocket, feeds.stepdown) && (
-        <div className="flex items-start gap-3">
-          <p className="min-w-0 flex-1 text-sm text-muted">
-            Adaptive keeps each pass light, so it can go much deeper — consider a Stepdown of 1–2× the tool diameter (
-            {pocket.toolDiameter}–{pocket.toolDiameter * 2} mm). Apply sets {suggestedAdaptiveStepdown(pocket)} mm (1.5×).
-          </p>
-          <button
-            type="button"
-            onMouseDown={(e) => e.preventDefault()}
-            onClick={() => updateFeeds({ stepdown: suggestedAdaptiveStepdown(pocket) })}
-            className="shrink-0 rounded-md border border-border px-2.5 py-1 text-xs font-medium text-muted transition hover:border-field-border hover:text-fg"
-          >
-            Apply
-          </button>
-        </div>
+        <InfoNote
+          id="adaptive-stepdown"
+          title="Adaptive can go deeper"
+          action={
+            <button
+              type="button"
+              onMouseDown={(e) => e.preventDefault()}
+              onClick={() => updateFeeds({ stepdown: suggestedAdaptiveStepdown(pocket) })}
+              className="shrink-0 rounded-md border border-border px-2.5 py-1 text-xs font-medium text-muted transition hover:border-field-border hover:text-fg"
+            >
+              Apply
+            </button>
+          }
+        >
+          Adaptive keeps each pass light, so it can go much deeper — consider a Stepdown of 1–2× the tool diameter (
+          {pocket.toolDiameter}–{pocket.toolDiameter * 2} mm). Apply sets {suggestedAdaptiveStepdown(pocket)} mm (1.5×).
+        </InfoNote>
       )}
       <FieldRow label="Start Z [mm]">
         <NumberInput type="number" step="0.1" min="0" className={inputClass} {...startZField} />

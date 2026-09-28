@@ -7,6 +7,7 @@ import {
   isPocketRampAngleValid,
   isPocketSizeValid,
   isPocketStepoverValid,
+  isPocketStockToLeaveValid,
   isPocketToolDiameterValid,
   isPocketToolpathWithinLimits,
   MAX_RAMP_ANGLE_DEG,
@@ -29,6 +30,9 @@ import { fmt } from '../../lib/format'
 import { resolveToolDiameterSelectOptions } from '../../lib/toolDiameterOptions'
 import type { ToolDiameterOption } from '../../types/toolDiameters'
 import { ToolChipLoad } from './ToolChipLoad'
+import { Checkbox } from './Checkbox'
+import { HintPopover } from './HintPopover'
+import { InfoNote } from './InfoNote'
 import { FieldRow, inputClass } from './FieldRow'
 import { NumberInput } from './NumberInput'
 import { PickHeader } from './PickHeader'
@@ -51,11 +55,12 @@ const round4 = (n: number) => Math.round(n * 10000) / 10000
 
 // Field order (BL-72): shape size fields -> Total Depth -> Tool Diameter ->
 // Method (+ Direction) -> Stepover (% + read-only mm) -> Z-Transition Mode
-// -> Helix Radius + Ramp Angle (Helix only) -> Offset X/Y — mirrors
-// Step2GeometrySurface.tsx's conventions throughout. Adaptive swaps
+// + Helix Radius + Ramp Angle (one row, helix fields only in Helix mode)
+// -> Finishing Pass + Stock to Leave (one row, BL-42) -> Offset X/Y —
+// mirrors Step2GeometrySurface.tsx's conventions throughout. Adaptive swaps
 // Stepover for Optimal Load (% ↔ mm, both editable, % stored; engagement
-// angle read-only), adds Direction next to Method and Ramp Angle under the
-// helix, and locks Z-Transition on Helix. No Tabs section, same reasoning
+// angle read-only), adds Direction next to Method, and locks Z-Transition
+// on Helix (the reason in a hint next to its label). No Tabs section, same reasoning
 // as Surface: Pocket doesn't cut through, nothing to bridge. No Offset
 // Mode picker either (unlike Outline) — Pocket is always an inside
 // cut, there's no other physically meaningful mode.
@@ -83,6 +88,7 @@ export function Step2GeometryPocket({ params, onChange, machine, toolDiameters, 
     { syncWhenBlurred: true },
   )
   const rampAngleField = useNumberField(pocket.rampAngleDeg, (v) => updatePocket({ rampAngleDeg: v }))
+  const stockToLeaveField = useNumberField(pocket.stockToLeave, (v) => updatePocket({ stockToLeave: v }))
 
   const isRect = pocket.shape !== 'circle'
   const isAdaptive = pocket.method === 'adaptive'
@@ -255,33 +261,36 @@ export function Step2GeometryPocket({ params, onChange, machine, toolDiameters, 
             </p>
           )}
           {loadValid && compensated && (
-            <p className="text-sm text-muted">
-              Chip thinning ×{fmt(round2(thinning))} — Feedrate XY ({params.feeds.feedrateXY} mm/min) is already compensated
-              from {pocket.chipThinningBaseFeed} mm/min.
-            </p>
+            <InfoNote id="pocket-chip-thinning" title={`Chip thinning ×${fmt(round2(thinning))}`}>
+              Feedrate XY ({params.feeds.feedrateXY} mm/min) is already compensated from {pocket.chipThinningBaseFeed}{' '}
+              mm/min.
+            </InfoNote>
           )}
           {loadValid && !compensated && (
-            <div className="flex items-start gap-3">
-              <p className="min-w-0 flex-1 text-sm text-muted">
-                Chip thinning ×{fmt(round2(thinning))} — at this load each chip is thinner than the feed per tooth. To keep
-                the chip load {thinningBase} mm/min was chosen for, consider {suggestedFeed} mm/min.
-              </p>
-              <button
-                type="button"
-                // Keep focus where it is — applying the suggestion shouldn't
-                // yank the user out of whatever field they were in.
-                onMouseDown={(e) => e.preventDefault()}
-                onClick={() =>
-                  onChange({
-                    feeds: { ...params.feeds, feedrateXY: suggestedFeed },
-                    pocket: { ...pocket, chipThinningBaseFeed: thinningBase },
-                  })
-                }
-                className="shrink-0 rounded-md border border-border px-2.5 py-1 text-xs font-medium text-muted transition hover:border-field-border hover:text-fg"
-              >
-                Apply
-              </button>
-            </div>
+            <InfoNote
+              id="pocket-chip-thinning"
+              title={`Chip thinning ×${fmt(round2(thinning))}`}
+              action={
+                <button
+                  type="button"
+                  // Keep focus where it is — applying the suggestion shouldn't
+                  // yank the user out of whatever field they were in.
+                  onMouseDown={(e) => e.preventDefault()}
+                  onClick={() =>
+                    onChange({
+                      feeds: { ...params.feeds, feedrateXY: suggestedFeed },
+                      pocket: { ...pocket, chipThinningBaseFeed: thinningBase },
+                    })
+                  }
+                  className="shrink-0 rounded-md border border-border px-2.5 py-1 text-xs font-medium text-muted transition hover:border-field-border hover:text-fg"
+                >
+                  Apply
+                </button>
+              }
+            >
+              At this load each chip is thinner than the feed per tooth. To keep the chip load {thinningBase} mm/min was
+              chosen for, consider {suggestedFeed} mm/min.
+            </InfoNote>
           )}
         </div>
       ) : (
@@ -311,9 +320,16 @@ export function Step2GeometryPocket({ params, onChange, machine, toolDiameters, 
       )}
 
       <div className="flex flex-col gap-4">
+        {/* Z-Transition + Helix Radius + Ramp Angle on one row; the helix
+            fields leave their cells empty in Plunge mode. */}
         <div className="flex gap-4">
           <div className="flex min-w-0 flex-1 flex-col gap-1">
-            <span className="text-sm font-medium text-value">Z-Transition Mode</span>
+            <span className="flex items-center gap-1.5 text-sm font-medium text-value">
+              Z-Transition
+              {isAdaptive && (
+                <HintPopover text="Adaptive always enters with a Helix — constant engagement can't grow outward from a plunged hole the size of the tool." />
+              )}
+            </span>
             <TextToggle
               options={Z_TRANSITION_MODE_OPTIONS}
               value={zMode}
@@ -321,26 +337,18 @@ export function Step2GeometryPocket({ params, onChange, machine, toolDiameters, 
               onChange={(v) => updatePocket({ zTransitionMode: v })}
             />
           </div>
-          {zMode === 'helix' && (
-            <div className="min-w-0 flex-1">
-              <FieldRow label="Helix Radius [mm]">
+          <div className="min-w-0 flex-1">
+            {zMode === 'helix' && (
+              <FieldRow label="Helix R. [mm]">
                 <NumberInput type="number" step="0.1" min="0" className={inputClass} {...helixRadiusField} />
               </FieldRow>
-            </div>
-          )}
-        </div>
-        {isAdaptive && (
-          <p className="text-sm text-muted">
-            Adaptive always enters with a Helix — constant engagement can't grow outward from a plunged hole the size of
-            the tool.
-          </p>
-        )}
-        {zMode === 'helix' && (
-          <div className="flex gap-4">
-            <div className="min-w-0 flex-1">
+            )}
+          </div>
+          <div className="min-w-0 flex-1">
+            {zMode === 'helix' && (
               <FieldRow
-                label="Ramp Angle [°]"
-                hint="How steeply the entry helix descends. Independent of Stepdown, so a deep pass still enters gently — typical 1–3°. Every level after the first starts just above the previous floor, so only the new depth is ramped."
+                label="Ramp [°]"
+                hint="Ramp Angle — how steeply the entry helix descends. Independent of Stepdown, so a deep pass still enters gently — typical 1–3°. Every level after the first starts just above the previous floor, so only the new depth is ramped."
               >
                 <NumberInput
                   type="number"
@@ -351,10 +359,9 @@ export function Step2GeometryPocket({ params, onChange, machine, toolDiameters, 
                   {...rampAngleField}
                 />
               </FieldRow>
-            </div>
-            <div className="min-w-0 flex-1" />
+            )}
           </div>
-        )}
+        </div>
         {!isPocketRampAngleValid(pocket) && (
           <p className="text-sm text-status-error">
             Ramp angle must be between {MIN_RAMP_ANGLE_DEG}° and {MAX_RAMP_ANGLE_DEG}°.
@@ -367,10 +374,10 @@ export function Step2GeometryPocket({ params, onChange, machine, toolDiameters, 
           </p>
         )}
         {isPocketHelixRadiusSmall(pocket) && isPocketHelixRadiusValid(pocket) && (
-          <p className="text-sm text-muted">
+          <InfoNote id="pocket-small-helix" title="Small helix radius">
             A small helix means many helix turns at this ramp angle and very dense first passes — a radius around a
             quarter to half of the tool diameter enters faster.
-          </p>
+          </InfoNote>
         )}
         {!isPocketToolpathWithinLimits(params) && (
           <p className="text-sm text-status-error">
@@ -379,6 +386,40 @@ export function Step2GeometryPocket({ params, onChange, machine, toolDiameters, 
               : zMode === 'helix'
                 ? 'Too many helix turns or passes — the toolpath would be cut short by its safety limit. Raise the Ramp Angle, Helix Radius or Stepover.'
                 : 'Stepover is too small for this pocket — too many passes, the toolpath would be cut short by its safety limit.'}
+          </p>
+        )}
+      </div>
+
+      <div className="flex flex-col gap-4 border-t border-border pt-4">
+        {/* Checkbox and Stock to Leave on one row — the checkbox sits on the
+            input's line (h-[38px] = inputClass height). */}
+        <div className="flex items-end gap-4">
+          <div className="flex h-[38px] min-w-0 flex-1 items-center">
+            <Checkbox
+              checked={pocket.finishingEnabled}
+              // Finish Feed starts from the current Feed XY on every enable,
+              // like Outline's Tabs start from their Settings defaults.
+              onChange={(enabled) =>
+                updatePocket(enabled ? { finishingEnabled: true, finishFeed: params.feeds.feedrateXY } : { finishingEnabled: false })
+              }
+              label="Finishing Pass"
+              className="text-sm font-medium text-value"
+            >
+              <HintPopover text="Roughing stops Stock to Leave short of the walls; after the whole pocket is roughed, one clean lap per Stepdown level takes that last layer off the walls at the Finish Feed (Step 3), entering and leaving along a tangent arc. Walls only — the floor is always cut to full depth." />
+            </Checkbox>
+          </div>
+          <div className="min-w-0 flex-1">
+            {pocket.finishingEnabled && (
+              <FieldRow label="Stock to Leave [mm]">
+                <NumberInput type="number" step="0.05" min="0" className={inputClass} {...stockToLeaveField} />
+              </FieldRow>
+            )}
+          </div>
+        </div>
+        {!isPocketStockToLeaveValid(pocket) && (
+          <p className="text-sm text-status-error">
+            Stock to Leave must be greater than 0, at most the tool's radius ({fmt(round4(pocket.toolDiameter / 2))} mm),
+            and leave room inside the walls for roughing.
           </p>
         )}
       </div>

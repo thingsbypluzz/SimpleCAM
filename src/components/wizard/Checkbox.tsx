@@ -28,7 +28,11 @@ interface CheckboxProps {
 // already-calibrated per-theme color instead of a new one.
 export function Checkbox({ checked, onChange, label, className, children }: CheckboxProps) {
   return (
-    <label className={`flex cursor-pointer items-center gap-2 ${className ?? ''}`}>
+    // `relative` contains the sr-only (position: absolute) native input: without
+    // a positioned ancestor it lands at its static offset relative to the page,
+    // and in a tall, scrolled step panel that extends the whole document
+    // below the viewport.
+    <label className={`relative flex cursor-pointer items-center gap-2 ${className ?? ''}`}>
       <input
         type="checkbox"
         checked={checked}

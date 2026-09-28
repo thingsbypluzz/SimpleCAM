@@ -36,7 +36,8 @@ Opis stanu obecnego — historia w `CHANGELOG.md`.
 ## Wspólna lista ruchów (`toolpath.ts`)
 
 Każdy silnik buduje jedną listę ruchów (`ToolpathBuilder`: linia/łuk ×
-`rapid`/`cut`/`plunge`/`link`), z której powstaje G-code
+`rapid`/`cut`/`plunge`/`link`/`finish` — `finish` = cięcie z posuwem
+`feeds.finish`, rysowane jak `cut`), z której powstaje G-code
 (`toolpathToGcode()` — jedyny formatter: `G0` tylko zmienianych osi albo
 jawnie `xy`/`z`, `G1 Z… F<plunge>`, `G1 X Y Z F`, `G2/G3 … I J F`) i podgląd
 3D (`toolpathLines3D()`, `movePoints()` próbkuje łuki tak samo jak G1 —
@@ -142,19 +143,22 @@ zaczyna od `zTo('rapid', startZ)`; końcowy retrakt robi `assembleProgram()`.
 ## Pocket (`pocket*.ts`)
 
 - Kształty Rectangle Cornered/Centered i Circle; metody **Spiral** i
-  **Adaptive** (każda dla każdego kształtu). Roughing only (`BL-42` —
-  przejazd wykończeniowy), bez mostków. Zapisane dawne `'raster'` nie
+  **Adaptive** (każda dla każdego kształtu), opcjonalny przejazd
+  wykończeniowy ścian (niżej), bez mostków. Zapisane dawne `'raster'` nie
   przechodzi strażnika enuma i wczytuje się jako Spiral.
-- Czyszczenie zawsze od środka na zewnątrz, CCW (climb). Ściana =
-  nominał zainsetowany o promień freza (`pocketRectWallHalfDims()`/
-  `pocketCircleWallRadius()`); środek `pocketCenter()` (origin jak
+- Czyszczenie zawsze od środka na zewnątrz, CCW (climb). Ściana
+  (wykończeniowa) = nominał zainsetowany o promień freza
+  (`pocketRectWallHalfDims()`/`pocketCircleWallRadius()`); roughing obu
+  metod czyści do **ściany roughingu** (`pocketRoughRectWallHalfDims()`/
+  `pocketRoughCircleWallRadius()` = ściana − `pocketStockToLeave()`, 0 gdy
+  finishing wyłączony); środek `pocketCenter()` (origin jak
   `rectCorners()`). Stepover jak Surface (`pocketStepoverMm()`).
 - **Wejście** w środku kieszeni (`pocketZTransition.ts`): Plunge w środku,
   Helix startuje w `(centerX + helixRadius, centerY)`
   (`pocketEntryPoint()` — pierwszy łuk musi zaczynać się na własnym
   okręgu, inaczej GRBL error 33), pod Ramp Angle, zakończony płaskim
   obrotem czyszczącym na `toZ`. Helix Radius ≤ promień freza i ≤ ściana
-  (`pocketMaxHelixRadius()`) — większy zostawiłby słupek w środku.
+  roughingu (`pocketMaxHelixRadius()`) — większy zostawiłby słupek w środku.
 - **Poziomy Z** jak Surface (`buildLevelDescents()`/`levelEntryZ()`).
 
 ### Spiral (`pocketSpiral.ts`)
@@ -215,10 +219,32 @@ symulacji materiału.
   **Przejazdy łączące** zawsze G1 z **Linking Feed** (`linkingFeed`), nigdy
   G0 poniżej Safe Z. **Bez retraktu między poziomami** — powrót do startu
   helixa na Linking Feed; retrakt dopiero na końcu. Stepdown: podpowiedź
-  przy < 1×D, Apply = 1.5×D (`suggestedAdaptiveStepdown()`). Ściany bez
-  przejazdu wykończeniowego (`BL-42`).
+  przy < 1×D, Apply = 1.5×D (`suggestedAdaptiveStepdown()`).
 - `adaptiveExceedsLimits()` — czy któraś pętla trafiłaby w limit
   bezpieczeństwa (liczy tylko sekwencje).
+
+### Finishing Pass (`pocketFinish.ts`)
+
+- `finishingEnabled` + `stockToLeave` (mm, domyślnie 0.3) + `finishFeed`
+  (Krok 3). Tylko ściany — dno zawsze do `-totalDepth`.
+- `appendPocketFinish()` po **całym** roughingu (Spiral w tym samym
+  builderze, Adaptive przez `pocketFinishMoves()` doklejane do jego listy):
+  retrakt Safe Z → `G0` nad start lead-in → `G0` Start Z; na każdy poziom
+  `buildLevelDescents()`: plunge do `toZ` (w wyciętym obszarze), lead-in,
+  pełne okrążenie ściany wykończeniowej, lead-out, prosty powrót do startu
+  lead-in (poza ostatnim poziomem — końcowy retrakt startuje z końca
+  lead-outu) — bez retraktu między poziomami. Wszystko ruchami `finish`.
+- Wejście: środek dłuższego boku (prostokąt; przy równych — dolny) albo
+  punkt 0° (okrąg). Kierunek: Spiral CCW, Adaptive wg `cutDirection`.
+  Okrążenie prostokąta po narożnikach (G1), okręgu pełnym łukiem (G2/G3
+  wg przełącznika).
+- Lead-in/out: ćwierćłuk styczny o promieniu jak najbliżej promienia
+  freza, w przedziale, w którym oba końce leżą w obszarze roughingu
+  (`quarterLeadRange()`); gdy przedział pusty — półłuk ze środka kieszeni
+  (wraca do środka, bez powrotu prostego).
+- Walidacja: `isPocketStockToLeaveValid()` (`0 < stock ≤ D/2`, ściana
+  roughingu > 0), `isPocketFinishFeedValid()`; obie prawdziwe przy
+  wyłączonym.
 
 ## Walidacja (`validation.ts`)
 
@@ -299,7 +325,9 @@ Surface/Pocket Spiral — stepover, Adaptive — Optimal Load.
   `isWizardParamsValid()` muszą dać G-code spełniający niezmienniki (G0 w
   XY tylko na Safe Z, F > 0, brak NaN, najniższe Z = −totalDepth, spójne
   łuki, brak łuków przy G1 w Kroku 4, ostatnia linia M30/M2, ścieżka w
-  granicach Surface/ścian Pocket). `GCODE_FUZZ_SCALE`/`GCODE_FUZZ_SEED`.
+  granicach Surface/ścian Pocket; roughing Pocket w ścianie roughingu, a
+  finishing dotyka ściany — na liście ruchów). `GCODE_FUZZ_SCALE`/
+  `GCODE_FUZZ_SEED`.
 - `gcodeTestUtils.ts::arcRadiusMismatches()` — spójność G2/G3 (GRBL error
   33). `pocketAdaptiveSim.ts` — symulacja materiału na siatce (tylko
   testy).

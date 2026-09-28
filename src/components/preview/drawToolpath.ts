@@ -8,7 +8,7 @@ import { surfaceNominalBounds, surfaceStepoverMm, surfaceToolBounds, type Surfac
 import { computeRasterLines, zigzagWaypoints, type RasterLine } from '../../lib/surfaceRaster'
 import { pocketCenter } from '../../lib/pocketGeometry'
 import { buildPocketToolpath } from '../../lib/pocket'
-import { movePoints, type Toolpath } from '../../lib/toolpath'
+import { movePoints, type MoveKind, type Toolpath } from '../../lib/toolpath'
 import type { Point2D, PocketMethodType, PocketShape, WizardParams } from '../../types/wizard'
 import type { ThemeId } from '../../types/theme'
 import { type Camera2D, type DataBounds, worldToScreen } from './camera2d'
@@ -302,12 +302,14 @@ function drawToolpathMoves(
   let current = toolpath.start
   let i = 0
   const moves = toolpath.moves
+  // The finishing pass (Pocket, BL-42) is a cut at another feed — drawn as one.
+  const styleOf = (kind: MoveKind) => (kind === 'finish' ? 'cut' : kind)
   while (i < moves.length) {
-    const kind = moves[i].kind
+    const kind = styleOf(moves[i].kind)
     ctx.beginPath()
     const [sx, sy] = toPx(current.x, current.y)
     ctx.moveTo(sx, sy)
-    while (i < moves.length && moves[i].kind === kind) {
+    while (i < moves.length && styleOf(moves[i].kind) === kind) {
       for (const p of movePoints(current, moves[i])) {
         const [x, y] = toPx(p.x, p.y)
         ctx.lineTo(x, y)

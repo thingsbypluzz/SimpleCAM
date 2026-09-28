@@ -16,8 +16,10 @@ export function pocketCenter(pocket: Pick<PocketParams, 'shape' | 'width' | 'hei
 // Tool-center wall half-dimensions for Rectangle — the nominal rectangle
 // INSET by the tool radius on all sides (opposite sign from Surface's
 // surfaceToolBounds, which grows outward for overtravel: Pocket's wall is
-// a hard limit, not an overtravel margin). Roughing-only in v1 (see
-// CLAUDE.md) — this IS the final wall, not a rough-then-finish boundary.
+// a hard limit, not an overtravel margin). This is the FINAL wall — the
+// finishing pass runs on it (BL-42); roughing stops at
+// pocketRoughRectWallHalfDims() below, which is the same wall unless a
+// finishing pass is enabled.
 export function pocketRectWallHalfDims(
   pocket: Pick<PocketParams, 'width' | 'height' | 'toolDiameter'>,
 ): { halfWidth: number; halfHeight: number } {
@@ -29,6 +31,29 @@ export function pocketRectWallHalfDims(
 // pocketRectWallHalfDims, just for the round shape.
 export function pocketCircleWallRadius(pocket: Pick<PocketParams, 'diameter' | 'toolDiameter'>): number {
   return pocket.diameter / 2 - pocket.toolDiameter / 2
+}
+
+// Radial stock the roughing leaves on the walls for the finishing pass
+// (BL-42) — 0 when finishing is off, so roughing runs to the final wall.
+// Walls only: the floor is always roughed to full depth.
+export function pocketStockToLeave(pocket: Pick<PocketParams, 'finishingEnabled' | 'stockToLeave'>): number {
+  return pocket.finishingEnabled ? pocket.stockToLeave : 0
+}
+
+type RoughWallFields = 'finishingEnabled' | 'stockToLeave' | 'toolDiameter'
+
+// Tool-center wall the ROUGHING (Spiral, Adaptive) clears to — the final
+// wall inset by pocketStockToLeave().
+export function pocketRoughRectWallHalfDims(
+  pocket: Pick<PocketParams, 'width' | 'height' | RoughWallFields>,
+): { halfWidth: number; halfHeight: number } {
+  const { halfWidth, halfHeight } = pocketRectWallHalfDims(pocket)
+  const stock = pocketStockToLeave(pocket)
+  return { halfWidth: halfWidth - stock, halfHeight: halfHeight - stock }
+}
+
+export function pocketRoughCircleWallRadius(pocket: Pick<PocketParams, 'diameter' | RoughWallFields>): number {
+  return pocketCircleWallRadius(pocket) - pocketStockToLeave(pocket)
 }
 
 // Single source-of-truth stepover-% -> mm conversion — same mechanism as

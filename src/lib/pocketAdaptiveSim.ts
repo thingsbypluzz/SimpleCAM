@@ -10,7 +10,8 @@ export interface SimResult {
   maxLinkEngagementDeg: number
   // Material cells deeper than `wallTolerance` inside the reachable pocket
   // still uncut after the whole toolpath (scallops thinner than that on
-  // the walls are accepted by design — no finishing pass, BL-42).
+  // the walls are accepted by design — the roughing itself; the optional
+  // finishing pass, BL-42, is off in these runs).
   uncutInteriorCells: number
   // Largest distance a tool-center sample strayed outside the allowed
   // tool-center region.

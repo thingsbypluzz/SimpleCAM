@@ -217,6 +217,16 @@ export function ChevronDownIcon({ className }: IconProps) {
   )
 }
 
+// Disclosure triangle for collapsible notes (InfoNote) — points right,
+// rotated 90° by the caller when expanded.
+export function DisclosureIcon({ className }: IconProps) {
+  return (
+    <svg viewBox="0 0 24 24" fill="currentColor" className={className}>
+      <path d="M8 5l10 7-10 7z" />
+    </svg>
+  )
+}
+
 export function CheckIcon({ className }: IconProps) {
   return (
     <svg {...base} className={className}>

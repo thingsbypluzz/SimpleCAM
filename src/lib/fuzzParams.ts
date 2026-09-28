@@ -179,6 +179,16 @@ export function randomPocket(rng: Rng, method: 'spiral' | 'adaptive'): WizardPar
     rampAngleDeg: rng.range(1, 10, 1),
     cutDirection: rng.pick(['climb', 'conventional'] as const),
     linkingFeed: rng.int(500, 3000),
+    finishingEnabled: false,
+    stockToLeave: DEFAULT_WIZARD_PARAMS.pocket.stockToLeave,
+    finishFeed: DEFAULT_WIZARD_PARAMS.pocket.finishFeed,
+  }
+  // Finishing pass (BL-42) on about half the samples, drawn before the
+  // helix radius: its ceiling is the roughing wall, which stock narrows.
+  if (rng.pick([false, true])) {
+    pocket.finishingEnabled = true
+    pocket.stockToLeave = rng.range(0.05, pocket.toolDiameter / 2, 2)
+    pocket.finishFeed = rng.int(200, 3000)
   }
   // Helix radius as a fraction of its own ceiling, so most samples are valid.
   const helixRadius = Number((pocketMaxHelixRadius(pocket) * rng.range(0.2, 1, 2)).toFixed(3))

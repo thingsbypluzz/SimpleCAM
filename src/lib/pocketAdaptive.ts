@@ -1,5 +1,5 @@
 import { computeDepthPasses, exceedsPassLimit } from './depthPasses'
-import { pocketCenter, pocketCircleWallRadius, pocketRectWallHalfDims } from './pocketGeometry'
+import { pocketCenter, pocketRoughCircleWallRadius, pocketRoughRectWallHalfDims } from './pocketGeometry'
 import { engagementAngleFor, largestStepWithin, maxArcEngagement, nextConstantEngagementRadius } from './pocketAdaptiveMath'
 import { pocketEntryPoint } from './pocketZTransition'
 import { buildLevelDescents, helixPitchForRampAngle } from './surfaceZTransition'
@@ -252,10 +252,10 @@ export function adaptiveExceedsLimits(params: Pick<WizardParams, 'pocket' | 'fee
   }
 
   if (pocket.shape === 'circle') {
-    const wallRadius = pocketCircleWallRadius(pocket)
+    const wallRadius = pocketRoughCircleWallRadius(pocket)
     return wallRadius > 0 && !phaseARadii(toolRadius, theta, helixRadius, wallRadius).complete
   }
-  const { halfWidth, halfHeight } = pocketRectWallHalfDims(pocket)
+  const { halfWidth, halfHeight } = pocketRoughRectWallHalfDims(pocket)
   const hu = Math.max(halfWidth, halfHeight)
   const hv = Math.min(halfWidth, halfHeight)
   if (!(hv > 0)) return false
@@ -288,8 +288,8 @@ export function buildAdaptiveToolpath(params: Pick<WizardParams, 'pocket' | 'fee
   const pitch = helixPitchForRampAngle(helixRadius, pocket.rampAngleDeg)
 
   const isCircle = pocket.shape === 'circle'
-  const wallRadius = pocketCircleWallRadius(pocket)
-  const { halfWidth, halfHeight } = pocketRectWallHalfDims(pocket)
+  const wallRadius = pocketRoughCircleWallRadius(pocket)
+  const { halfWidth, halfHeight } = pocketRoughRectWallHalfDims(pocket)
   const longAxisIsX = halfWidth >= halfHeight
   const hu = Math.max(halfWidth, halfHeight)
   const hv = Math.min(halfWidth, halfHeight)

@@ -35,7 +35,8 @@ interface Step2GeometrySurfaceProps {
 
 // Field order (BL-72): Width/Height -> Depth to Remove -> Tool Diameter ->
 // Method + Raster Direction -> Stepover (% + read-only mm) -> Z-Transition
-// Mode -> Helix Radius + Ramp Angle (Helix only) -> Offset X/Y — see
+// Mode + Helix Radius + Ramp Angle (one row, helix fields only in Helix
+// mode) -> Offset X/Y — see
 // CLAUDE.md's Surface design
 // notes. Mirrors Step2GeometryOutline.tsx's conventions throughout
 // (FieldRow/useNumberField, flex-row pairs, border-t section dividers). No
@@ -139,30 +140,25 @@ export function Step2GeometrySurface({ params, onChange, machine, toolDiameters,
       </div>
 
       <div className="flex flex-col gap-4">
+        {/* Z-Transition + Helix Radius + Ramp Angle on one row, same as
+            Pocket; the helix fields leave their cells empty in Plunge mode. */}
         <div className="flex gap-4">
           <div className="flex min-w-0 flex-1 flex-col gap-1">
-            <span className="text-sm font-medium text-value">Z-Transition Mode</span>
+            <span className="text-sm font-medium text-value">Z-Transition</span>
             <TextToggle options={Z_TRANSITION_MODE_OPTIONS} value={surface.zTransitionMode} onChange={(v) => updateSurface({ zTransitionMode: v })} />
           </div>
-          {surface.zTransitionMode === 'helix' && (
-            <div className="min-w-0 flex-1">
-              <FieldRow label="Helix Radius [mm]">
+          <div className="min-w-0 flex-1">
+            {surface.zTransitionMode === 'helix' && (
+              <FieldRow label="Helix R. [mm]">
                 <NumberInput type="number" step="0.1" min="0" className={inputClass} {...helixRadiusField} />
               </FieldRow>
-            </div>
-          )}
-        </div>
-        {surface.zTransitionMode === 'helix' && !isSurfaceHelixRadiusValid(surface) && (
-          <p className="text-sm text-status-error">
-            Helix radius must be greater than 0 and can't exceed the stepover ({fmt(surfaceStepoverMm(surface))}mm).
-          </p>
-        )}
-        {surface.zTransitionMode === 'helix' && (
-          <div className="flex gap-4">
-            <div className="min-w-0 flex-1">
+            )}
+          </div>
+          <div className="min-w-0 flex-1">
+            {surface.zTransitionMode === 'helix' && (
               <FieldRow
-                label="Ramp Angle [°]"
-                hint="How steeply the entry helix descends. Independent of Stepdown, so a deep pass still enters gently — typical 1–3°. Every level after the first starts just above the previous floor, so only the new depth is ramped."
+                label="Ramp [°]"
+                hint="Ramp Angle — how steeply the entry helix descends. Independent of Stepdown, so a deep pass still enters gently — typical 1–3°. Every level after the first starts just above the previous floor, so only the new depth is ramped."
               >
                 <NumberInput
                   type="number"
@@ -173,9 +169,13 @@ export function Step2GeometrySurface({ params, onChange, machine, toolDiameters,
                   {...rampAngleField}
                 />
               </FieldRow>
-            </div>
-            <div className="min-w-0 flex-1" />
+            )}
           </div>
+        </div>
+        {surface.zTransitionMode === 'helix' && !isSurfaceHelixRadiusValid(surface) && (
+          <p className="text-sm text-status-error">
+            Helix radius must be greater than 0 and can't exceed the stepover ({fmt(surfaceStepoverMm(surface))}mm).
+          </p>
         )}
         {!isSurfaceRampAngleValid(surface) && (
           <p className="text-sm text-status-error">

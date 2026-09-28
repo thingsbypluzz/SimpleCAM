@@ -13,12 +13,19 @@ import { arcRadiusMismatches } from './gcodeTestUtils'
 import { generateHelix } from './helix'
 import { forcedLinearReason } from './interpolation'
 import { generateOutline } from './outline'
-import { generatePocketAdaptive, generatePocketSpiral } from './pocket'
-import { pocketCenter, pocketCircleWallRadius, pocketRectWallHalfDims } from './pocketGeometry'
+import { buildPocketToolpath, generatePocketAdaptive, generatePocketSpiral } from './pocket'
+import {
+  pocketCenter,
+  pocketCircleWallRadius,
+  pocketRectWallHalfDims,
+  pocketRoughCircleWallRadius,
+  pocketRoughRectWallHalfDims,
+} from './pocketGeometry'
 import { endOfProgramCode } from './program'
 import { generateStandardHole } from './standardHole'
 import { generateSurfaceUnidirectional, generateSurfaceZigzag } from './surface'
 import { surfaceToolBounds } from './surfaceGeometry'
+import { movePoints, type Point3D } from './toolpath'
 import { activeTotalDepth, isWizardParamsValid } from './validation'
 
 // The app's tsconfig has no Node types; vitest runs under Node regardless.
@@ -141,6 +148,44 @@ function containmentProblems(params: WizardParams, below: TracedPoint[]): string
   return []
 }
 
+// Pocket finishing pass (BL-42): roughing (every non-finish move below Z0)
+// stays inside the roughing wall, and with finishing on the finish laps
+// actually reach the final wall — checked on the engine's move list, which
+// tells the two apart (the G-code only differs by feed).
+function pocketFinishProblems(params: WizardParams): string[] {
+  if (params.operation !== 'pocket') return []
+  const { pocket } = params
+  const c = pocketCenter(pocket)
+  const isCircle = pocket.shape === 'circle'
+  const rough = isCircle ? pocketRoughCircleWallRadius(pocket) : pocketRoughRectWallHalfDims(pocket)
+  const inRough = (p: Point3D) =>
+    typeof rough === 'number'
+      ? Math.hypot(p.x - c.x, p.y - c.y) <= rough + EPS
+      : Math.abs(p.x - c.x) <= rough.halfWidth + EPS && Math.abs(p.y - c.y) <= rough.halfHeight + EPS
+  // Distance from the final wall (0 = on it).
+  const wallGap = (p: Point3D) => {
+    if (isCircle) return pocketCircleWallRadius(pocket) - Math.hypot(p.x - c.x, p.y - c.y)
+    const { halfWidth, halfHeight } = pocketRectWallHalfDims(pocket)
+    return Math.min(halfWidth - Math.abs(p.x - c.x), halfHeight - Math.abs(p.y - c.y))
+  }
+  const toolpath = buildPocketToolpath(params)
+  let current = toolpath.start
+  let finishOnWall = 0
+  for (const move of toolpath.moves) {
+    for (const p of movePoints(current, move)) {
+      if (move.kind === 'finish') {
+        if (Math.abs(wallGap(p)) < 1e-3) finishOnWall++
+      } else if (move.kind !== 'rapid' && p.z < -EPS && !inRough(p)) {
+        return [`${move.kind} move past the roughing wall at (${p.x.toFixed(4)}, ${p.y.toFixed(4)}, ${p.z.toFixed(4)})`]
+      }
+    }
+    current = move.to
+  }
+  if (pocket.finishingEnabled && finishOnWall === 0) return ['finishing pass never reaches the final wall']
+  if (!pocket.finishingEnabled && toolpath.moves.some((m) => m.kind === 'finish')) return ['finish moves with finishing off']
+  return []
+}
+
 // ---------- suites ----------
 
 interface Suite {
@@ -176,7 +221,7 @@ describe('G-code invariants for every valid parameter set (BL-62)', () => {
         const machine = randomMachine(rng)
         const lines = suite.generate(params, machine)
         const { problems, below } = checkProgram(lines, params, machine)
-        problems.push(...containmentProblems(params, below))
+        problems.push(...containmentProblems(params, below), ...pocketFinishProblems(params))
         if (problems.length > 0) failures.push(`${problems.join('; ')}\n  params: ${JSON.stringify(params)}`)
       }
       // A generator that rejects almost everything would make the suite

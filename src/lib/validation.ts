@@ -12,7 +12,13 @@ import { entryHelixExceedsTurnLimit } from './surfaceZTransition'
 import { MAX_OPTIMAL_LOAD_PERCENT, MIN_OPTIMAL_LOAD_PERCENT } from './pocketAdaptiveMath'
 import { exceedsPassLimit, MAX_PASSES } from './depthPasses'
 import { exceedsLineLimit, rasterExceedsLineLimit } from './surfaceRaster'
-import { pocketCircleWallRadius, pocketRectWallHalfDims, pocketStepoverMm } from './pocketGeometry'
+import {
+  pocketCircleWallRadius,
+  pocketRectWallHalfDims,
+  pocketRoughCircleWallRadius,
+  pocketRoughRectWallHalfDims,
+  pocketStepoverMm,
+} from './pocketGeometry'
 import { adaptiveExceedsLimits } from './pocketAdaptive'
 
 // Strict (BL-49): a tool exactly as wide as the hole leaves a zero-radius
@@ -131,9 +137,9 @@ export function isPocketToolpathWithinLimits(params: WizardParams): boolean {
   const stepoverMm = pocketStepoverMm(pocket)
   if (pocket.shape === 'circle') {
     const startRadius = pocket.zTransitionMode === 'helix' ? pocket.helixRadius : 0
-    return !exceedsLineLimit(startRadius, pocketCircleWallRadius(pocket), stepoverMm)
+    return !exceedsLineLimit(startRadius, pocketRoughCircleWallRadius(pocket), stepoverMm)
   }
-  const { halfWidth, halfHeight } = pocketRectWallHalfDims(pocket)
+  const { halfWidth, halfHeight } = pocketRoughRectWallHalfDims(pocket)
   return !exceedsLineLimit(0, Math.max(halfWidth, halfHeight), stepoverMm)
 }
 
@@ -410,6 +416,23 @@ export function isSurfaceRampAngleValid(surface: SurfaceParams): boolean {
   return isRampAngleInRange(surface.rampAngleDeg)
 }
 
+// Finishing pass (BL-42) — vacuously valid when off. Stock to Leave must be
+// positive (0 would be a second identical lap on the roughed wall), at most
+// the tool radius (a finishing lap takes a narrow, even cut, not a slot),
+// and leave the roughing a wall of its own to clear to.
+export function isPocketStockToLeaveValid(pocket: PocketParams): boolean {
+  if (!pocket.finishingEnabled) return true
+  if (!(pocket.stockToLeave > 0) || pocket.stockToLeave > pocket.toolDiameter / 2) return false
+  if (pocket.shape === 'circle') return pocketRoughCircleWallRadius(pocket) > 0
+  const { halfWidth, halfHeight } = pocketRoughRectWallHalfDims(pocket)
+  return halfWidth > 0 && halfHeight > 0
+}
+
+export function isPocketFinishFeedValid(pocket: PocketParams): boolean {
+  if (!pocket.finishingEnabled) return true
+  return pocket.finishFeed > 0
+}
+
 export function isPocketLinkingFeedValid(pocket: PocketParams): boolean {
   if (pocket.method !== 'adaptive') return true
   return pocket.linkingFeed > 0
@@ -433,12 +456,13 @@ export function isAdaptiveStepdownShallow(pocket: PocketParams, stepdown: number
   return pocket.method === 'adaptive' && stepdown > 0 && stepdown < pocket.toolDiameter
 }
 
-// The tool-center wall's nearest distance from the pocket's own center —
+// The roughing wall's nearest distance from the pocket's own center —
 // the hard ceiling for a centered Helix entry (it must land inside the
-// first ring, not past the wall).
+// first ring, not past the wall — nor into the stock left for the
+// finishing pass).
 function pocketMinWallExtent(pocket: PocketParams): number {
-  if (pocket.shape === 'circle') return pocketCircleWallRadius(pocket)
-  const { halfWidth, halfHeight } = pocketRectWallHalfDims(pocket)
+  if (pocket.shape === 'circle') return pocketRoughCircleWallRadius(pocket)
+  const { halfWidth, halfHeight } = pocketRoughRectWallHalfDims(pocket)
   return Math.min(halfWidth, halfHeight)
 }
 
@@ -619,6 +643,8 @@ export const OPERATION_RULES: Record<OperationType, OperationRules> = {
       isPocketOptimalLoadValid(p.pocket) &&
       isPocketRampAngleValid(p.pocket) &&
       isPocketLinkingFeedValid(p.pocket) &&
+      isPocketStockToLeaveValid(p.pocket) &&
+      isPocketFinishFeedValid(p.pocket) &&
       isPocketToolpathWithinLimits(p),
     footprint: (p) => pocketFootprint(p.pocket),
     zSpan: (p) => pocketZSpan(p.pocket, p.feeds),
