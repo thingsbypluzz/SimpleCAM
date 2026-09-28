@@ -9,6 +9,7 @@ import { computeRasterLines, zigzagWaypoints, type RasterLine } from '../../lib/
 import { pocketCenter } from '../../lib/pocketGeometry'
 import { buildPocketToolpath } from '../../lib/pocket'
 import { movePoints, type MoveKind, type Toolpath } from '../../lib/toolpath'
+import { overlaySheetVoids, type SheetVoid } from '../../lib/overlayStock'
 import type { Point2D, PocketMethodType, PocketShape, WizardParams } from '../../types/wizard'
 import type { ThemeId } from '../../types/theme'
 import { type Camera2D, type DataBounds, worldToScreen } from './camera2d'
@@ -493,9 +494,6 @@ function onLineRectEdges(pattern: Extract<ResolvedPattern, { kind: 'outlineRect'
   return { inner: corners(innerWidth, innerHeight), outer: corners(outerWidth, outerHeight) }
 }
 
-// A void cut out of the stock sheet (see fillStockSheet).
-type SheetVoid = { circle: Point2D; radius: number } | { polygon: Point2D[] }
-
 // Offscreen layer for the stock sheet — reused between frames.
 let sheetLayer: HTMLCanvasElement | null = null
 
@@ -504,15 +502,18 @@ let sheetLayer: HTMLCanvasElement | null = null
 // cleared out of it, no outline on the sheet's own edge. Drawn on an
 // offscreen layer so overlapping voids (e.g. a dense hole grid) simply
 // union instead of flipping back to filled the way an even-odd path
-// would; the layer shares the canvas's device-pixel transform.
+// would; the layer shares the canvas's device-pixel transform. A null
+// sheet draws nothing — in Overlay the shared sheet is drawn once for all
+// presets instead (BL-75, see drawToolpath()).
 function fillStockSheet(
   ctx: CanvasRenderingContext2D,
   toPx: (x: number, y: number) => [number, number],
   scale: number,
-  sheet: StockSheet,
+  sheet: StockSheet | null,
   color: string,
-  voids: SheetVoid[],
+  voids: readonly SheetVoid[],
 ) {
+  if (!sheet) return
   sheetLayer ??= document.createElement('canvas')
   const layer = sheetLayer
   if (layer.width !== ctx.canvas.width || layer.height !== ctx.canvas.height) {
@@ -580,7 +581,7 @@ function drawHolesGeometry(
   arrowSize: number,
   showStock: boolean,
   showToolpath: boolean,
-  sheet: StockSheet,
+  sheet: StockSheet | null,
 ) {
   const { points, holeRadius, toolPathRadius, params } = pattern
   const { geometry } = params
@@ -655,7 +656,7 @@ function drawOutlineCircleGeometry(
   arrowSize: number,
   showStock: boolean,
   showToolpath: boolean,
-  sheet: StockSheet,
+  sheet: StockSheet | null,
 ) {
   const { center, nominalRadius, toolRadius, tabRanges, params } = pattern
   const [px, py] = toPx(center.x, center.y)
@@ -707,7 +708,7 @@ function drawOutlineRectGeometry(
   arrowSize: number,
   showStock: boolean,
   showToolpath: boolean,
-  sheet: StockSheet,
+  sheet: StockSheet | null,
 ) {
   const { nominalCorners, toolCorners, sideTabRanges, params } = pattern
 
@@ -858,7 +859,7 @@ function drawPocketGeometry(
   arrowSize: number,
   showStock: boolean,
   showToolpath: boolean,
-  sheet: StockSheet,
+  sheet: StockSheet | null,
 ) {
   const { center, nominal, toolpath, params } = pattern
   const [cx, cy] = toPx(center.x, center.y)
@@ -920,7 +921,7 @@ function drawPatternGeometry(
   arrowSize: number,
   showStock: boolean,
   showToolpath: boolean,
-  sheet: StockSheet,
+  sheet: StockSheet | null,
 ) {
   switch (pattern.kind) {
     case 'holes':
@@ -1063,12 +1064,18 @@ export function drawToolpath(
   ctx.font = '10px ui-monospace, monospace'
 
   // One stock sheet for every drawn pattern — the 3D material plane's
-  // footprint. In overlay mode each preset fills it with its own voids
-  // cut out, so the overlapping translucent layers compose into the
-  // combined "what's left of the plate" picture (BL-74).
+  // footprint. The live pattern cuts its own voids out of it (BL-74). In
+  // Overlay the presets share ONE sheet with every preset's voids cut out,
+  // drawn once here — or none, when any preset is a solid of its own
+  // (Outline Outside/On-line, Surface), same rule as 3D (BL-75).
   const sheet = stockSheetRect(patternFootprint(allPatterns))
+  const isOverlay = overlayParams.length > 0 && !showActivePattern
+  if (isOverlay && showStock) {
+    const voids = overlaySheetVoids(overlayParams)
+    if (voids) fillStockSheet(ctx, toPx, camera.scale, sheet, theme.holeFill, voids)
+  }
   for (const pattern of allPatterns) {
-    drawPatternGeometry(ctx, toPx, camera.scale, pattern, theme, arrowSize, showStock, showToolpath, sheet)
+    drawPatternGeometry(ctx, toPx, camera.scale, pattern, theme, arrowSize, showStock, showToolpath, isOverlay ? null : sheet)
   }
 
   // Origin marker

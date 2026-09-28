@@ -23,9 +23,17 @@ grepować `.position.set(` z `p.x`/`p.y`.
 - **Stock cap** (`buildStockCapObject()`): płaska podkładka na Z=0,
   `THREE.Shape` + `shape.holes` (bez CSG), zasięg = siatka/płaszczyzna.
   Hole(s) — jedna z N otworami; Outline Inside — otwór nominalny; Outside —
-  brak; On-line — otwór na zewnętrznej krawędzi. Tylko dla żywego wzorca
-  (w Overlay pominięta — `BL-75`); `null` dla Surface. Mostki ignorowane
-  przez bryły i cap.
+  brak; On-line — otwór na zewnętrznej krawędzi; `null` dla Surface.
+  Mostki ignorowane przez bryły i cap. Materiał/kolejność wspólne w
+  `stockCapMesh()`.
+- **Overlay** (żywy wzorzec ukryty): jeden wspólny cap
+  (`buildOverlayStockCapObject()`) z pustkami wszystkich presetów
+  (`overlaySheetVoids()`, `lib/overlayStock.ts`), nachodzące pustki
+  scalane przez `sheetMinusVoids()` (`polygon-clipping` — `THREE.Shape`
+  nie znosi nachodzących otworów; wyspy zamknięte pierścieniem pustek
+  jako osobne kształty). Brak capu, gdy któryś preset jest litą bryłą
+  (Outline Outside/On-line, Surface) — wtedy każdy pokazuje zasięg
+  własnymi ścianami. Ta sama reguła w 2D.
 - **Surface:** blok „pozostały materiał” przez `buildRectWallMesh()`
   (zamknięty), górna ściana na `Z = -totalDepth`, wysokość = `feeds.safeZ`.
 - Bryły i cap zawsze od **Z=0**, wysokość `totalDepth` — Start Z ich nie

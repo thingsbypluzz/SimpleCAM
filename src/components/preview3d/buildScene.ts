@@ -17,6 +17,7 @@ import { buildPocketToolpath } from '../../lib/pocket'
 import { movePoints, type MoveKind, type Toolpath } from '../../lib/toolpath'
 import { pocketCenter } from '../../lib/pocketGeometry'
 import { stockSheetRect } from '../preview/drawToolpath'
+import { overlaySheetVoids, sheetMinusVoids } from '../../lib/overlayStock'
 import type { Point2D, PocketShape, WizardParams } from '../../types/wizard'
 import type { ThemeId } from '../../types/theme'
 import type { Grid3DLabelSize } from '../../types/appearance'
@@ -1105,14 +1106,54 @@ function buildStockCapObject(
   outer.lineTo(centerCNC.x - half, centerCNC.y + half)
   outer.closePath()
   outer.holes = holePaths
+  return stockCapMesh([outer], theme)
+}
 
+// BL-75: the one shared stock cap in Overlay — the plane-sized sheet with
+// every overlaid preset's voids cut out (overlaySheetVoids()), overlapping
+// voids unioned first (sheetMinusVoids(), polygon-clipping) since
+// THREE.Shape can't take overlapping holes. Null when any preset is a
+// solid of its own (Outline Outside/On-line, Surface) — then, as BL-3
+// decided, every preset shows its extent through its own walls only.
+function buildOverlayStockCapObject(
+  overlayParams: readonly WizardParams[],
+  theme: Theme,
+  planeSize: number,
+  centerCNC: Point2D,
+): THREE.Object3D | null {
+  const voids = overlaySheetVoids(overlayParams)
+  if (!voids) return null
+  const half = planeSize / 2
+  const polygons = sheetMinusVoids(
+    { minX: centerCNC.x - half, minY: centerCNC.y - half, maxX: centerCNC.x + half, maxY: centerCNC.y + half },
+    voids,
+  )
+  // polygon-clipping closes every ring by repeating its first point; THREE
+  // closes paths itself, so the duplicate is dropped.
+  const toPoints = (ring: [number, number][]) => {
+    const [fx, fy] = ring[0]
+    const [lx, ly] = ring[ring.length - 1]
+    const open = ring.length > 1 && fx === lx && fy === ly ? ring.slice(0, -1) : ring
+    return open.map(([x, y]) => new THREE.Vector2(x, y))
+  }
+  const shapes = polygons.map(([outerRing, ...holeRings]) => {
+    const shape = new THREE.Shape(toPoints(outerRing))
+    shape.holes = holeRings.map((ring) => new THREE.Path(toPoints(ring)))
+    return shape
+  })
+  return stockCapMesh(shapes, theme)
+}
+
+// The translucent stock-cap mesh shared by the live pattern's cap and the
+// Overlay one — shapes in raw CNC (x, y), see buildStockCapObject().
+function stockCapMesh(shapes: THREE.Shape[], theme: Theme): THREE.Object3D {
   // Same color/opacity as the wall meshes (theme.hole, 0.3) — not
   // theme.material/materialOpacity as first tried. theme.material equals
   // the scene's own background color, so a semi-transparent plane of "the
   // background color" over the background was barely visible in practice;
   // matching the wall exactly is what actually reads as "this is stock".
   const cap = new THREE.Mesh(
-    new THREE.ShapeGeometry(outer),
+    new THREE.ShapeGeometry(shapes),
     new THREE.MeshBasicMaterial({
       color: theme.hole,
       transparent: true,
@@ -1246,19 +1287,21 @@ export function buildToolpathScene(
   ;(grid.material as THREE.Material).depthWrite = false
   objects.push(grid)
 
-  // Illusory stock cap (BL-28) — only for the live/active pattern, never
-  // for BL-3 overlay presets (each already shows its own footprint via its
-  // own wall; a shared cap across presets with different startZ/geometry
-  // has no single obvious answer — deferred per the BL-28 grill-me).
-  // allPatterns always pushes the active pattern last when
-  // showActivePattern is true (see the array literal above), so this is
-  // always exactly resolvePattern(params), never an overlay entry.
-  if (showActivePattern && showStock) {
+  // Illusory stock cap (BL-28). The live/active pattern gets its own;
+  // allPatterns always pushes it last when showActivePattern is true (see
+  // the array literal above). In Overlay (live pattern hidden) the presets
+  // share one cap with all their voids cut out — or none, when any of them
+  // is a solid of its own (BL-75, buildOverlayStockCapObject()).
+  if (showStock) {
     // Inverse of toThree's CNC->world Z mapping (world.z = -CNC.y), so the
     // cap's outer boundary can be built directly in CNC (x, y) coordinates,
     // matching the grid/plane's own (now step-snapped) center and size.
     const centerCNC: Point2D = { x: gridCenterX, y: -gridCenterZ }
-    const cap = buildStockCapObject(allPatterns[allPatterns.length - 1], theme, gridSize, centerCNC)
+    const cap = showActivePattern
+      ? buildStockCapObject(allPatterns[allPatterns.length - 1], theme, gridSize, centerCNC)
+      : overlayParams.length > 0
+        ? buildOverlayStockCapObject(overlayParams, theme, gridSize, centerCNC)
+        : null
     if (cap) objects.push(cap)
   }
 

@@ -1,7 +1,7 @@
 {
   "name": "simplecam",
   "private": true,
-  "version": "0.23.0",
+  "version": "0.24.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -13,6 +13,7 @@
     "test": "vitest"
   },
   "dependencies": {
+    "polygon-clipping": "^0.15.7",
     "react": "^19.2.8",
     "react-dom": "^19.2.8",
     "three": "^0.185.1"

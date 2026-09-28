@@ -7,6 +7,23 @@ zgodne z [SemVer](https://semver.org/). Ten plik pozostaje głównym, czytelnym
 thingsbypluzz/SimpleCAM), ale to infrastruktura pod izolację pracy
 (branch/worktree per zadanie), nie zamiennik tego changeloga.
 
+## [0.24.0] — 2026-09-29
+
+### Zmieniono
+
+- **Overlay: wspólna podkładka materiału, gdy nie ma litej bryły**
+  (`BL-75`). Dotąd w 3D Overlay nałożone presety nie miały podkładki
+  (świadoma decyzja z `BL-3`, `[0.13.5]` — każdy pokazuje zasięg własną
+  ścianą), więc same otwory i kieszenie wisiały w powietrzu; w 2D każdy
+  preset rysował własny półprzezroczysty arkusz, a warstwy się sumowały.
+  Teraz, jeśli żaden nałożony preset nie jest litą bryłą (Outline
+  Outside, Outline On-line, Surface), 2D i 3D rysują **jedną wspólną
+  podkładkę** z wyciętymi pustkami wszystkich presetów (otwory Hole(s),
+  kieszenie Pocket, Outline Inside). Gdy lita bryła jest — bez podkładki,
+  jak ustalono w `BL-3` (także w 2D). Nachodzące pustki różnych presetów
+  w 3D scalane nową zależnością `polygon-clipping`; w 2D canvas scala je
+  sam. Poza Overlay bez zmian.
+
 ## [0.23.0] — 2026-09-28
 
 ### Dodano

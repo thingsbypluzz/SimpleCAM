@@ -314,6 +314,10 @@ Surface/Pocket Spiral — stepover, Adaptive — Optimal Load.
 
 - `format.ts` — liczby w G-code: 4 miejsca, bez zbędnych zer i `-0`.
 - `download.ts::buildFilename()` — `op-<pattern|shape slug>-<data>.gcode`.
+- `overlayStock.ts` — wspólna podkładka Overlay dla obu podglądów:
+  `stockVoids()` (pustki presetu albo `null` dla litej bryły),
+  `overlaySheetVoids()`, `sheetMinusVoids()` (arkusz minus suma pustek,
+  `polygon-clipping`, okręgi po 72 odcinki).
 - `overlayParams.ts::deriveOverlayParams()` — parametry nałożonych presetów
   w stałej kolejności `[1]…[5]`; bez zaznaczeń zawsze ta sama zamrożona
   pusta tablica (nowa referencja = zmiana selekcji dla podglądów).
