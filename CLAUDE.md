@@ -865,6 +865,24 @@ G0, niezwiązany z pozycją bryły. Dotyczy tylko Hole(s) i Outline —
 Surface ma osobną, już wcześniej ustaloną logikę bryły "pozostałego
 materiału" (patrz sekcja Surface w "Kluczowe decyzje projektowe" wyżej).
 
+**2D Preview stosuje tę samą regułę** (`drawToolpath.ts`): materiał to
+„arkusz” (`stockSheetRect()`, ten sam zasięg co płaszczyzna/siatka/
+podkładka w 3D — `buildToolpathScene()` woła tę samą funkcję; dane + 25%
+marginesu, z originem, kwadrat domknięty do `niceStep()`), wypełniony
+kolorem `holeFill`, bez obrysu własnej krawędzi. Pustki (otwory Hole(s),
+Outline Inside, Pocket) są z niego wycięte i mają tylko obrys; Outline
+Outside to wypełniona wyspa bez arkusza wokół; On-line — arkusz wycięty na
+zewnętrznej krawędzi + wypełniona wewnętrzna wyspa, obie krawędzie
+obrysowane (przerwy mostków z tych samych kątów/ułamków co ścieżka).
+Wycinanie idzie przez warstwę offscreen (`fillStockSheet()`,
+`destination-out`), więc nachodzące na siebie otwory sumują się zamiast
+odwracać wypełnienie jak ścieżka even-odd. Surface bez zmian (jego
+wypełnienie to już „pozostały materiał”). W Overlay każdy preset rysuje
+własny arkusz ze swoimi pustkami na tym samym wspólnym zasięgu —
+półprzezroczyste warstwy składają się w obraz tego, co zostaje z płyty
+(inaczej niż 3D, które w Overlay pomija podkładkę — `BL-75`). Hide Stock
+chowa też arkusz.
+
 Podkładka renderuje się `SOLID_CAP_Z_LIFT` (0.02mm) powyżej `Z=0`, nie
 dokładnie na nim — inaczej podkładka i płaszczyzna materiału (zawsze
 `Y=0`) lądowałyby dokładnie w tej samej płaszczyźnie, co z-fightuje
@@ -1633,6 +1651,10 @@ src/
                                `lib/positioning.ts`. `drawGappedCircle()`/
                                `drawGappedRectangle()` — przerywana linia
                                na łuku/odcinku mostka, gdy tabs włączone.
+                               `stockSheetRect()` — zasięg arkusza materiału
+                               (wspólny z 3D), `fillStockSheet()` — arkusz z
+                               wyciętymi pustkami (patrz "Otwarta/zamknięta
+                               geometria..." wyżej).
                                `niceStep()` (ciąg 1-2-5-10-20-50... dla
                                kroku siatki) eksportowana i reużywana
                                przez `preview3d/buildScene.ts`, żeby

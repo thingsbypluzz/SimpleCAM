@@ -1,8 +1,8 @@
 import { getFixedColors, getPaletteAccents, type PaletteId } from '../../config/palettes'
 import { resolvePoints } from '../../lib/positioning'
 import { computeTabRanges, type TabRange } from '../../lib/tabs'
-import { circleOutlineRadiusAndDirection } from '../../lib/outlineCircle'
-import { rectCorners, rectToolDimensions } from '../../lib/outlineRectangleGeometry'
+import { circleOutlineRadiusAndDirection, onLineCircleEdges } from '../../lib/outlineCircle'
+import { onLineRectDimensions, rectCorners, rectToolDimensions } from '../../lib/outlineRectangleGeometry'
 import { sideRangesFor, type SideTabRange } from '../../lib/outlineRectangleTabs'
 import { surfaceNominalBounds, surfaceStepoverMm, surfaceToolBounds, type SurfaceBounds } from '../../lib/surfaceGeometry'
 import { computeRasterLines, zigzagWaypoints, type RasterLine } from '../../lib/surfaceRaster'
@@ -207,6 +207,41 @@ export function niceStep(rawStep: number): number {
   return niceFraction * 10 ** exponent
 }
 
+// BL-74: the square "stock sheet" behind every cut-through shape — the
+// same footprint as the 3D Preview's material plane/grid/stock cap
+// (buildScene.ts calls this too): the data footprint padded by 25% of its
+// span, stretched to reach the origin, made square, centered on a
+// multiple of a niceStep() and sized in whole steps. `footprint` is the
+// XY extent of the drawn shapes WITHOUT the origin forced in (null when
+// there is nothing to draw).
+export interface StockSheet {
+  centerX: number
+  centerY: number
+  size: number
+  step: number
+  halfCells: number
+}
+
+export function stockSheetRect(footprint: DataBounds | null): StockSheet {
+  const f = footprint ?? { dataMinX: 0, dataMaxX: 0, dataMinY: 0, dataMaxY: 0 }
+  const dataSpan = Math.max(f.dataMaxX - f.dataMinX, f.dataMaxY - f.dataMinY, 10)
+  const pad = dataSpan * 0.25
+  const minX = Math.min(f.dataMinX - pad, 0)
+  const maxX = Math.max(f.dataMaxX + pad, 0)
+  const minY = Math.min(f.dataMinY - pad, 0)
+  const maxY = Math.max(f.dataMaxY + pad, 0)
+  const planeSize = Math.max(maxX - minX, maxY - minY, 10)
+  const step = niceStep(planeSize / 8)
+  const halfCells = Math.ceil(planeSize / 2 / step)
+  return {
+    centerX: Math.round((minX + maxX) / 2 / step) * step,
+    centerY: Math.round((minY + maxY) / 2 / step) * step,
+    size: halfCells * 2 * step,
+    step,
+    halfCells,
+  }
+}
+
 // Discriminated by operation/shape — Hole(s) is a repeated point pattern,
 // Outline is a single shape (circle, or a 4-corner rectangle). Each
 // variant carries exactly what its own draw function needs; bounds
@@ -369,12 +404,14 @@ function resolvePattern(params: WizardParams): ResolvedPattern {
   return { kind: 'holes', params, points, holeRadius, toolPathRadius }
 }
 
-// Bounds spanning every rendered pattern (BL-3 overlay) — each pattern's
-// own extent is padded by its own radius/corner set, since overlaid
-// presets can differ in dimensions from the active one.
-function computeCombinedBounds(patterns: ResolvedPattern[]): DataBounds {
-  const allX = [0]
-  const allY = [0]
+// XY extent of every rendered pattern (BL-3 overlay), without the origin —
+// each pattern's own extent is padded by its own radius/corner set, since
+// overlaid presets can differ in dimensions from the active one. Same
+// footprint as the 3D Preview's expandBoundsForPattern() (nominal shape,
+// tool path and On-line's outer edge), so the stock sheet matches 3D.
+function patternFootprint(patterns: ResolvedPattern[]): DataBounds | null {
+  const allX: number[] = []
+  const allY: number[] = []
   for (const pattern of patterns) {
     if (pattern.kind === 'holes') {
       for (const p of pattern.points) {
@@ -385,11 +422,12 @@ function computeCombinedBounds(patterns: ResolvedPattern[]): DataBounds {
       // Whichever of nominal/tool radius is larger is the true physical
       // extent — Outside grows the tool path beyond nominal, Inside
       // shrinks it below nominal, On-line keeps them equal.
-      const r = Math.max(pattern.nominalRadius, pattern.toolRadius)
+      let r = Math.max(pattern.nominalRadius, pattern.toolRadius)
+      if (pattern.params.outline.offsetMode === 'onLine') r = Math.max(r, onLineCircleEdges(pattern.params.outline).outerRadius)
       allX.push(pattern.center.x - r, pattern.center.x + r)
       allY.push(pattern.center.y - r, pattern.center.y + r)
     } else if (pattern.kind === 'outlineRect') {
-      for (const p of [...pattern.nominalCorners, ...pattern.toolCorners]) {
+      for (const p of [...pattern.nominalCorners, ...pattern.toolCorners, ...onLineRectEdges(pattern).outer]) {
         allX.push(p.x)
         allY.push(p.y)
       }
@@ -397,19 +435,32 @@ function computeCombinedBounds(patterns: ResolvedPattern[]): DataBounds {
       // Nominal boundary is always >= the tool-center wall (inset), so it's
       // the true physical extent — same reasoning as outlineFootprint()'s
       // Inside case in lib/validation.ts.
-      const r = pattern.nominal.shape === 'circle' ? pattern.nominal.radius : Math.max(pattern.nominal.halfWidth, pattern.nominal.halfHeight)
-      allX.push(pattern.center.x - r, pattern.center.x + r)
-      allY.push(pattern.center.y - r, pattern.center.y + r)
+      const hw = pattern.nominal.shape === 'circle' ? pattern.nominal.radius : pattern.nominal.halfWidth
+      const hh = pattern.nominal.shape === 'circle' ? pattern.nominal.radius : pattern.nominal.halfHeight
+      allX.push(pattern.center.x - hw, pattern.center.x + hw)
+      allY.push(pattern.center.y - hh, pattern.center.y + hh)
     } else {
       allX.push(pattern.bounds.minX, pattern.bounds.maxX)
       allY.push(pattern.bounds.minY, pattern.bounds.maxY)
     }
   }
+  if (allX.length === 0) return null
   return {
     dataMinX: Math.min(...allX),
     dataMaxX: Math.max(...allX),
     dataMinY: Math.min(...allY),
     dataMaxY: Math.max(...allY),
+  }
+}
+
+// Footprint plus the origin — what Fit View frames.
+function computeCombinedBounds(patterns: ResolvedPattern[]): DataBounds {
+  const f = patternFootprint(patterns) ?? { dataMinX: 0, dataMaxX: 0, dataMinY: 0, dataMaxY: 0 }
+  return {
+    dataMinX: Math.min(f.dataMinX, 0),
+    dataMaxX: Math.max(f.dataMaxX, 0),
+    dataMinY: Math.min(f.dataMinY, 0),
+    dataMaxY: Math.max(f.dataMaxY, 0),
   }
 }
 
@@ -428,11 +479,96 @@ export function computeToolpathDataBounds(
   return computeCombinedBounds(allPatterns)
 }
 
-// Hole(s): rapid traverse between holes, then each hole's bore
-// outline (fill) + tool-center toolpath (stroke) + offset vector. The
-// fill stays a full disc even with tabs (rough "material removed here"
-// indicator, not literal — same simplification as the 3D bore cylinder
-// mesh); the outline and toolpath strokes get real gaps.
+// On-line Rectangle's two real edges (inner island, outer wall of the
+// surrounding stock) — empty for Inside/Outside. Same geometry as the 3D
+// walls (onLineRectDimensions()).
+function onLineRectEdges(pattern: Extract<ResolvedPattern, { kind: 'outlineRect' }>): { inner: Point2D[]; outer: Point2D[] } {
+  const { outline } = pattern.params
+  if (outline.offsetMode !== 'onLine' || outline.shape === 'circle') return { inner: [], outer: [] }
+  const { innerWidth, innerHeight, outerWidth, outerHeight } = onLineRectDimensions(outline.width, outline.height, outline.toolDiameter)
+  const corners = (w: number, h: number) =>
+    rectCorners(outline.shape as 'rectCornered' | 'rectCentered', outline.width, outline.height, w, h, outline.offsetX, outline.offsetY, 'ccw')
+  return { inner: corners(innerWidth, innerHeight), outer: corners(outerWidth, outerHeight) }
+}
+
+// A void cut out of the stock sheet (see fillStockSheet).
+type SheetVoid = { circle: Point2D; radius: number } | { polygon: Point2D[] }
+
+// Offscreen layer for the stock sheet — reused between frames.
+let sheetLayer: HTMLCanvasElement | null = null
+
+// BL-74: the material around a cut-through shape, like the 3D stock cap —
+// the stock sheet (stockSheetRect()) filled with the stock tint, every void
+// cleared out of it, no outline on the sheet's own edge. Drawn on an
+// offscreen layer so overlapping voids (e.g. a dense hole grid) simply
+// union instead of flipping back to filled the way an even-odd path
+// would; the layer shares the canvas's device-pixel transform.
+function fillStockSheet(
+  ctx: CanvasRenderingContext2D,
+  toPx: (x: number, y: number) => [number, number],
+  scale: number,
+  sheet: StockSheet,
+  color: string,
+  voids: SheetVoid[],
+) {
+  sheetLayer ??= document.createElement('canvas')
+  const layer = sheetLayer
+  if (layer.width !== ctx.canvas.width || layer.height !== ctx.canvas.height) {
+    layer.width = ctx.canvas.width
+    layer.height = ctx.canvas.height
+  }
+  const lctx = layer.getContext('2d')
+  if (!lctx) return
+  lctx.setTransform(1, 0, 0, 1, 0, 0)
+  lctx.clearRect(0, 0, layer.width, layer.height)
+  lctx.setTransform(ctx.getTransform())
+
+  const half = sheet.size / 2
+  const [x0, y0] = toPx(sheet.centerX - half, sheet.centerY + half)
+  const [x1, y1] = toPx(sheet.centerX + half, sheet.centerY - half)
+  lctx.fillStyle = color
+  lctx.fillRect(x0, y0, x1 - x0, y1 - y0)
+
+  lctx.globalCompositeOperation = 'destination-out'
+  lctx.fillStyle = '#000'
+  for (const v of voids) {
+    lctx.beginPath()
+    if ('circle' in v) {
+      const [px, py] = toPx(v.circle.x, v.circle.y)
+      lctx.arc(px, py, Math.max(0, v.radius) * scale, 0, Math.PI * 2)
+    } else {
+      v.polygon.forEach((p, i) => {
+        const [x, y] = toPx(p.x, p.y)
+        if (i === 0) lctx.moveTo(x, y)
+        else lctx.lineTo(x, y)
+      })
+      lctx.closePath()
+    }
+    lctx.fill()
+  }
+  lctx.globalCompositeOperation = 'source-over'
+
+  ctx.save()
+  ctx.setTransform(1, 0, 0, 1, 0, 0)
+  ctx.drawImage(layer, 0, 0)
+  ctx.restore()
+}
+
+function fillPolygon(ctx: CanvasRenderingContext2D, toPx: (x: number, y: number) => [number, number], corners: Point2D[]) {
+  ctx.beginPath()
+  corners.forEach((p, i) => {
+    const [x, y] = toPx(p.x, p.y)
+    if (i === 0) ctx.moveTo(x, y)
+    else ctx.lineTo(x, y)
+  })
+  ctx.closePath()
+  ctx.fill()
+}
+
+// Hole(s): stock sheet with every hole cut out (BL-74), rapid traverse
+// between holes, then each hole's outline + tool-center toolpath (stroke)
+// + offset vector. The stock ignores tabs (same simplification as the 3D
+// stock cap); the outline and toolpath strokes get real gaps.
 function drawHolesGeometry(
   ctx: CanvasRenderingContext2D,
   toPx: (x: number, y: number) => [number, number],
@@ -442,9 +578,16 @@ function drawHolesGeometry(
   arrowSize: number,
   showStock: boolean,
   showToolpath: boolean,
+  sheet: StockSheet,
 ) {
   const { points, holeRadius, toolPathRadius, params } = pattern
   const { geometry } = params
+
+  // Stock sheet with every hole cut out (BL-74) — the holes themselves
+  // are voids, so only their outline is drawn below.
+  if (showStock) {
+    fillStockSheet(ctx, toPx, scale, sheet, theme.holeFill, points.map((p) => ({ circle: p, radius: holeRadius })))
+  }
 
   // Rapid traverse between holes, through each hole's actual descent-start
   // XY (center + toolPathRadius on +X) — matches the real G-code
@@ -475,10 +618,6 @@ function drawHolesGeometry(
     const [px, py] = toPx(p.x, p.y)
 
     if (showStock) {
-      ctx.beginPath()
-      ctx.arc(px, py, holeRadius * scale, 0, Math.PI * 2)
-      ctx.fillStyle = theme.holeFill
-      ctx.fill()
       ctx.strokeStyle = theme.holeStroke
       ctx.lineWidth = 1
       drawGappedCircle(ctx, px, py, holeRadius * scale, tabRanges)
@@ -499,8 +638,12 @@ function drawHolesGeometry(
   drawOffsetVector(ctx, toPx, geometry.offsetX, geometry.offsetY, theme, arrowSize)
 }
 
-// Circle Outline: nominal shape boundary (fill) + tool-center toolpath
-// (stroke), both with tab gaps, same layering convention as Hole(s).
+// Circle Outline: material by offset mode, same rule as the 3D walls
+// (BL-74) — Inside: stock sheet with the shape cut out (a void); Outside:
+// the shape itself filled (a kept island, no stock around it); On-line:
+// stock sheet cut at the outer edge plus the filled inner island, a
+// tool-wide empty ring between them. Edges stroked with tab gaps, then the
+// tool-center toolpath on top.
 function drawOutlineCircleGeometry(
   ctx: CanvasRenderingContext2D,
   toPx: (x: number, y: number) => [number, number],
@@ -510,18 +653,29 @@ function drawOutlineCircleGeometry(
   arrowSize: number,
   showStock: boolean,
   showToolpath: boolean,
+  sheet: StockSheet,
 ) {
   const { center, nominalRadius, toolRadius, tabRanges, params } = pattern
   const [px, py] = toPx(center.x, center.y)
 
   if (showStock) {
-    ctx.beginPath()
-    ctx.arc(px, py, nominalRadius * scale, 0, Math.PI * 2)
-    ctx.fillStyle = theme.holeFill
-    ctx.fill()
+    const { offsetMode } = params.outline
+    const edges =
+      offsetMode === 'onLine'
+        ? [onLineCircleEdges(params.outline).innerRadius, onLineCircleEdges(params.outline).outerRadius]
+        : [nominalRadius]
+    if (offsetMode !== 'outside') {
+      fillStockSheet(ctx, toPx, scale, sheet, theme.holeFill, [{ circle: center, radius: edges[edges.length - 1] }])
+    }
+    if (offsetMode !== 'inside') {
+      ctx.beginPath()
+      ctx.arc(px, py, edges[0] * scale, 0, Math.PI * 2)
+      ctx.fillStyle = theme.holeFill
+      ctx.fill()
+    }
     ctx.strokeStyle = theme.holeStroke
     ctx.lineWidth = 1
-    drawGappedCircle(ctx, px, py, nominalRadius * scale, tabRanges)
+    for (const r of edges) drawGappedCircle(ctx, px, py, r * scale, tabRanges)
   }
 
   if (showToolpath) {
@@ -538,32 +692,37 @@ function drawOutlineCircleGeometry(
   drawOffsetVector(ctx, toPx, params.outline.offsetX, params.outline.offsetY, theme, arrowSize)
 }
 
-// Rectangle Outline: same nominal-boundary-fill + tool-path-stroke
-// layering as Circle Outline, walking 4 corners instead of a radius.
+// Rectangle Outline: same offset-mode material rule as Circle Outline
+// (BL-74), walking 4 corners instead of a radius. On-line's edges reuse
+// the tool path's tab fractions — a tab sits at the same relative spot on
+// every parallel edge.
 function drawOutlineRectGeometry(
   ctx: CanvasRenderingContext2D,
   toPx: (x: number, y: number) => [number, number],
+  scale: number,
   pattern: Extract<ResolvedPattern, { kind: 'outlineRect' }>,
   theme: Theme,
   arrowSize: number,
   showStock: boolean,
   showToolpath: boolean,
+  sheet: StockSheet,
 ) {
   const { nominalCorners, toolCorners, sideTabRanges, params } = pattern
 
   if (showStock) {
-    ctx.beginPath()
-    nominalCorners.forEach((p, i) => {
-      const [x, y] = toPx(p.x, p.y)
-      if (i === 0) ctx.moveTo(x, y)
-      else ctx.lineTo(x, y)
-    })
-    ctx.closePath()
-    ctx.fillStyle = theme.holeFill
-    ctx.fill()
+    const { offsetMode } = params.outline
+    const onLine = onLineRectEdges(pattern)
+    const edges = offsetMode === 'onLine' ? [onLine.inner, onLine.outer] : [nominalCorners]
+    if (offsetMode !== 'outside') {
+      fillStockSheet(ctx, toPx, scale, sheet, theme.holeFill, [{ polygon: edges[edges.length - 1] }])
+    }
+    if (offsetMode !== 'inside') {
+      ctx.fillStyle = theme.holeFill
+      fillPolygon(ctx, toPx, edges[0])
+    }
     ctx.strokeStyle = theme.holeStroke
     ctx.lineWidth = 1
-    drawGappedRectangle(ctx, toPx, nominalCorners, sideTabRanges)
+    for (const corners of edges) drawGappedRectangle(ctx, toPx, corners, sideTabRanges)
   }
 
   if (showToolpath) {
@@ -697,18 +856,20 @@ function drawPocketGeometry(
   arrowSize: number,
   showStock: boolean,
   showToolpath: boolean,
+  sheet: StockSheet,
 ) {
   const { center, nominal, toolpath, params } = pattern
   const [cx, cy] = toPx(center.x, center.y)
 
+  // The pocket is a void (BL-74): stock sheet with its outline cut out,
+  // the outline itself only stroked.
   if (showStock) {
-    ctx.fillStyle = theme.holeFill
     ctx.strokeStyle = theme.holeStroke
     ctx.lineWidth = 1
     if (nominal.shape === 'circle') {
+      fillStockSheet(ctx, toPx, scale, sheet, theme.holeFill, [{ circle: center, radius: nominal.radius }])
       ctx.beginPath()
       ctx.arc(cx, cy, nominal.radius * scale, 0, Math.PI * 2)
-      ctx.fill()
       ctx.stroke()
     } else {
       const corners: Point2D[] = [
@@ -717,6 +878,7 @@ function drawPocketGeometry(
         { x: center.x + nominal.halfWidth, y: center.y + nominal.halfHeight },
         { x: center.x - nominal.halfWidth, y: center.y + nominal.halfHeight },
       ]
+      fillStockSheet(ctx, toPx, scale, sheet, theme.holeFill, [{ polygon: corners }])
       ctx.beginPath()
       corners.forEach((p, i) => {
         const [x, y] = toPx(p.x, p.y)
@@ -724,7 +886,6 @@ function drawPocketGeometry(
         else ctx.lineTo(x, y)
       })
       ctx.closePath()
-      ctx.fill()
       ctx.stroke()
     }
   }
@@ -757,22 +918,23 @@ function drawPatternGeometry(
   arrowSize: number,
   showStock: boolean,
   showToolpath: boolean,
+  sheet: StockSheet,
 ) {
   switch (pattern.kind) {
     case 'holes':
-      drawHolesGeometry(ctx, toPx, scale, pattern, theme, arrowSize, showStock, showToolpath)
+      drawHolesGeometry(ctx, toPx, scale, pattern, theme, arrowSize, showStock, showToolpath, sheet)
       break
     case 'outlineCircle':
-      drawOutlineCircleGeometry(ctx, toPx, scale, pattern, theme, arrowSize, showStock, showToolpath)
+      drawOutlineCircleGeometry(ctx, toPx, scale, pattern, theme, arrowSize, showStock, showToolpath, sheet)
       break
     case 'outlineRect':
-      drawOutlineRectGeometry(ctx, toPx, pattern, theme, arrowSize, showStock, showToolpath)
+      drawOutlineRectGeometry(ctx, toPx, scale, pattern, theme, arrowSize, showStock, showToolpath, sheet)
       break
     case 'surface':
       drawSurfaceGeometry(ctx, toPx, pattern, theme, arrowSize, showStock, showToolpath)
       break
     case 'pocket':
-      drawPocketGeometry(ctx, toPx, scale, pattern, theme, arrowSize, showStock, showToolpath)
+      drawPocketGeometry(ctx, toPx, scale, pattern, theme, arrowSize, showStock, showToolpath, sheet)
       break
   }
 }
@@ -898,8 +1060,13 @@ export function drawToolpath(
   ctx.fillText('Y', originPxX + 5, EDGE_MARGIN - 5)
   ctx.font = '10px ui-monospace, monospace'
 
+  // One stock sheet for every drawn pattern — the 3D material plane's
+  // footprint. In overlay mode each preset fills it with its own voids
+  // cut out, so the overlapping translucent layers compose into the
+  // combined "what's left of the plate" picture (BL-74).
+  const sheet = stockSheetRect(patternFootprint(allPatterns))
   for (const pattern of allPatterns) {
-    drawPatternGeometry(ctx, toPx, camera.scale, pattern, theme, arrowSize, showStock, showToolpath)
+    drawPatternGeometry(ctx, toPx, camera.scale, pattern, theme, arrowSize, showStock, showToolpath, sheet)
   }
 
   // Origin marker

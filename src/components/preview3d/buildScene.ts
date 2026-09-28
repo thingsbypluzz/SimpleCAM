@@ -16,7 +16,7 @@ import { buildSurfaceToolpath } from '../../lib/surface'
 import { buildPocketToolpath } from '../../lib/pocket'
 import { movePoints, type MoveKind, type Toolpath } from '../../lib/toolpath'
 import { pocketCenter } from '../../lib/pocketGeometry'
-import { niceStep } from '../preview/drawToolpath'
+import { stockSheetRect } from '../preview/drawToolpath'
 import type { Point2D, PocketShape, WizardParams } from '../../types/wizard'
 import type { ThemeId } from '../../types/theme'
 import type { Grid3DLabelSize } from '../../types/appearance'
@@ -1179,55 +1179,30 @@ export function buildToolpathScene(
   // BL-31), so nothing that scales relative to it should shrink either.
   const span = Math.max(size.x, size.z, 10)
 
-  // Grid/plane footprint — a SEPARATE box, data-only (no forced origin),
-  // padded around the data itself, then extended just enough to reach the
-  // origin with zero extra margin on that side. NOT one flat symmetric
-  // padding around the origin+data centroid (`bounds` above) — that always
-  // bled space into empty quadrants whenever the pattern sat entirely on
-  // one side of the origin (reported against an N-Holes-on-Circle pattern
-  // sitting wholly in quadrant I). If the origin already falls inside the
-  // padded data box (the common case — most patterns sit at or around the
-  // origin already), the final expandByPoint is a no-op and this produces
-  // essentially the same footprint as before.
+  // Grid/plane footprint — data-only (no forced origin), padded around the
+  // data itself, then extended just enough to reach the origin, made
+  // square and snapped to a "nice" CNC step (niceStep(), same helper and
+  // same ~8-divisions target as the 2D grid) so every grid line lands on a
+  // real, nameable coordinate. NOT one flat symmetric padding around the
+  // origin+data centroid (`bounds` above) — that bled space into empty
+  // quadrants whenever the pattern sat entirely on one side of the origin.
+  // stockSheetRect() (drawToolpath.ts) is the one implementation — the 2D
+  // Preview's stock sheet uses it too, so both show the same plate
+  // (BL-74). World Z is -CNC Y (toThree()).
   const dataBounds = new THREE.Box3()
   for (const pattern of allPatterns) {
     expandBoundsForPattern(dataBounds, pattern)
   }
-  if (dataBounds.isEmpty()) dataBounds.expandByPoint(toThree(0, 0, 0))
-  const dataSize = new THREE.Vector3()
-  dataBounds.getSize(dataSize)
-  const dataSpan = Math.max(dataSize.x, dataSize.z, 10)
-  const dataPadding = dataSpan * 0.25
-  const gridBounds = dataBounds
-    .clone()
-    .expandByVector(new THREE.Vector3(dataPadding, 0, dataPadding))
-    .expandByPoint(toThree(0, 0, 0))
-  const gridBoundsSize = new THREE.Vector3()
-  gridBounds.getSize(gridBoundsSize)
-  const planeSize = Math.max(gridBoundsSize.x, gridBoundsSize.z, 10)
-  const center = new THREE.Vector3()
-  gridBounds.getCenter(center)
-
-  // "Nice" grid step (1-2-5-10-20-50... sequence), same helper and same
-  // "aim for ~8 divisions across" target as the 2D preview's grid
-  // (drawToolpath.ts) — planeSize/2 is the 3D equivalent of 2D's
-  // half-visible-width. Snapping the grid/plane's center to a multiple of
-  // that step (instead of the raw gridBounds center) means every grid line
-  // lands on a real, nameable CNC coordinate (0, 5, 10, ...) instead of an
-  // arbitrary offset — a prerequisite for the coordinate labels added
-  // below, and a byproduct is the grid stops being purely decorative. The
-  // snap shifts the center by at most half a step, imperceptible against
-  // the plane's own padding margin. `GridHelper` below is always a square,
-  // so whichever of X/Z needs more room to reach its own padded data (and
-  // possibly the origin) sets `planeSize` for both — the shorter axis gets
-  // symmetric filler around its own (already-correct) center, not around
-  // some unrelated point; the longer axis's own edges are unaffected by
-  // that filler.
-  const gridStep = niceStep(planeSize / 8)
-  const gridCenterX = Math.round(center.x / gridStep) * gridStep
-  const gridCenterZ = Math.round(center.z / gridStep) * gridStep
-  const gridHalfCells = Math.ceil(planeSize / 2 / gridStep)
-  const gridSize = gridHalfCells * 2 * gridStep
+  const sheet = stockSheetRect(
+    dataBounds.isEmpty()
+      ? null
+      : { dataMinX: dataBounds.min.x, dataMaxX: dataBounds.max.x, dataMinY: -dataBounds.max.z, dataMaxY: -dataBounds.min.z },
+  )
+  const gridStep = sheet.step
+  const gridCenterX = sheet.centerX
+  const gridCenterZ = -sheet.centerY
+  const gridHalfCells = sheet.halfCells
+  const gridSize = sheet.size
   const gridDivisions = gridHalfCells * 2
 
   // Material surface (CNC Z = 0). This plane (and the grid below) is meant

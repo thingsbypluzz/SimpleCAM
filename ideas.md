@@ -257,7 +257,7 @@ faktycznym.
   przypadek użycia nie uzasadniał go obok Spiral/Adaptive (wygląd dna w
   drewnie to raczej `BL-42`). Pełny opis: `CHANGELOG.md`, `[0.22.1]` i
   `[0.22.2]`.
-- **`BL-74`** *(Otwarty)* 🟠 — **2D Preview: bryła/obrys materiału nie
+- **`BL-74`** *(Zrealizowany, 2026-09-28)* 🟠 — **2D Preview: bryła/obrys materiału nie
   respektuje reguły otwarte/zamknięte z 3D.** W 3D Preview (`CLAUDE.md`,
   „Otwarta/zamknięta geometria bryły Outline w 3D”) Outside to zamknięta
   bryła, Inside pustka z podkładką z otworem, On-line hybryda (wewnętrzna
@@ -265,7 +265,39 @@ faktycznym.
   rysowany jako zamknięty obiekt, niezależnie od Inside/Outside/On-line
   (Outline) — podgląd 2D sugeruje inne zachowanie niż 3D. Do ujednolicenia
   w `drawToolpath.ts` (wypełnienie kształtu vs. materiał wokół otworu),
-  spójnie też dla Hole(s) i Pocket.
+  spójnie też dla Hole(s) i Pocket. Rozstrzygnięte sesją `/grill-me`
+  (2026-09-28): arkusz materiału o zasięgu płaszczyzny 3D bez obrysu,
+  pustki wycięte, Outside jako wyspa, On-line jak w 3D, w Overlay każdy
+  preset rysuje swój arkusz. Pełny opis: `CHANGELOG.md`, `[0.22.9]`.
+- **`BL-75`** *(Otwarty)* 🟠 — **Overlay presetów w 3D pokazuje tylko
+  brzegi.** W trybie Overlay 3D pomija podkładkę (stock cap) — każdy
+  preset ma tylko swoje ściany/bryły, więc nie widać, co zostaje z płyty.
+  W 2D (`BL-74`) każdy preset rysuje własny półprzezroczysty arkusz z
+  wyciętymi pustkami i złożenie warstw daje ten obraz. Do rozważenia to
+  samo w 3D (podkładka per preset na wspólnym zasięgu) albo jedna wspólna
+  podkładka z pustkami wszystkich presetów. Zgłoszone przy `/grill-me`
+  `BL-74` (2026-09-28).
+- **`BL-76`** *(Otwarty)* 🟢 — **Podgląd nie pamięta widoku po
+  przełączeniu zakładki.** Przełączenie 2D ↔ 3D (albo na G-Code i z
+  powrotem) resetuje oba widoki: 3D wraca do kamery Front z auto-fitem, 2D
+  do Fit View — utracone są obrót/zoom/pan ustawione przez użytkownika.
+  Przyczyna: zakładki są renderowane warunkowo, więc `Scene3D` i
+  `ToolpathCanvas` odmontowują się, a stan kamery żyje wewnątrz nich.
+  Rozwiązanie: zapamiętać ostatnią kamerę każdego podglądu poza
+  komponentem (np. ref/stan w `App.tsx` — 2D `Camera2D`, 3D pozycja +
+  target) i odtwarzać ją przy ponownym zamontowaniu, zamiast trzymać oba
+  podglądy zamontowane (kontekst WebGL, `BL-63`). Do ustalenia: czy
+  pamięć ma przetrwać odświeżenie strony. Zgłoszone 2026-09-28.
+- **`BL-77`** *(Otwarty)* 🔴 — **Overlay: jedna wspólna bryła materiału
+  ze wszystkich presetów.** Dziś w Overlay każdy preset rysuje własny
+  materiał (2D: półprzezroczysty arkusz z pustkami, `BL-74`; 3D: tylko
+  bryły/ściany, `BL-75`), a „co zostaje z płyty” widać tylko ze złożenia
+  warstw. Docelowo Overlay byłby świadomy wszystkich dołączonych stocków i
+  budował z nich jedną spójną bryłę — operacje boolowskie: suma (union)
+  materiału albo odjęcie wszystkich pustek od największego arkusza.
+  Wymaga geometrii boolowskiej na wielokątach/okręgach (2D) i bryłach (3D,
+  CSG — dziś świadomie bez, podkładka to `THREE.Shape` + `holes`), więc
+  duży zakres; do przemyślenia razem z `BL-75`. Zgłoszone 2026-09-28.
 
 **`BL-17` zamknięte — "Interface Anatomy"**, Artifact z umownymi nazwami
 elementów UI, dziś aktywnie używany w `CLAUDE.md`:
