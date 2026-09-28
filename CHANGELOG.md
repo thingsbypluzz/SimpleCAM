@@ -7,6 +7,27 @@ zgodne z [SemVer](https://semver.org/). Ten plik pozostaje głównym, czytelnym
 thingsbypluzz/SimpleCAM), ale to infrastruktura pod izolację pracy
 (branch/worktree per zadanie), nie zamiennik tego changeloga.
 
+## [0.22.9] — 2026-09-28
+
+### Zmieniono
+
+- **2D Preview pokazuje materiał tak jak 3D** (`BL-74`, sesja `/grill-me`
+  2026-09-28). Dotąd każdy kształt był wypełnionym obiektem, niezależnie od
+  tego, czy jest pustką, czy zachowaną częścią. Teraz materiał to arkusz o
+  tym samym zasięgu co płaszczyzna i podkładka w 3D (wspólna funkcja
+  `stockSheetRect()`), bez obrysu krawędzi:
+  - otwory Hole(s), Outline Inside i Pocket są z arkusza wycięte (tylko
+    obrys),
+  - Outline Outside to wypełniona wyspa bez materiału wokół,
+  - Outline On-line — arkusz wycięty na zewnętrznej krawędzi, wypełniona
+    wewnętrzna wyspa, pusty pierścień szerokości freza między nimi.
+  - W Overlay każdy preset rysuje swój arkusz na wspólnym zasięgu —
+    półprzezroczyste warstwy składają się w obraz tego, co zostaje z płyty.
+  - Surface bez zmian. Hide Stock chowa też arkusz.
+- Zasięg Fit View w 2D liczony dokładniej: prostokątny Pocket po
+  rzeczywistych bokach (nie kwadrat z dłuższego), Outline On-line z
+  zewnętrzną krawędzią.
+
 ## [0.22.8] — 2026-09-28
 
 ### Zmieniono
