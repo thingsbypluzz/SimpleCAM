@@ -342,7 +342,7 @@ faktycznym.
   `finishFeed`; hint Finish Feed w Kroku 3 do aktualizacji; testy w
   `feedCalc.test.ts`/`operationMeta.test.ts`. Pełny opis: `CHANGELOG.md`,
   `[0.25.0]`.
-- **`BL-79`** *(Otwarty)* 🟠 — **Spindle RPM widoczne w wizardzie (z
+- **`BL-79`** *(Zrealizowany, 2026-09-30)* 🟠 — **Spindle RPM widoczne w wizardzie (z
   pozycją pokrętła routera).** Feedrate Calculator proponuje RPM, a Apply
   zapisuje je do Settings → Machine (`machine.spindleSpeed`, globalne), ale
   potem w wizardzie nigdzie go nie widać — żeby sprawdzić, jakie obroty
@@ -355,7 +355,9 @@ faktycznym.
   przed Generate, komentarz w nagłówku G-code?), czy edytowalne z
   wizarda (zapis do globalnego Settings) czy tylko podgląd z linkiem do
   Settings/kalkulatora, zachowanie bez wybranego routera (samo RPM) i przy
-  Marlinie (`S` jako PWM).
+  Marlinie (`S` jako PWM). Wdrożone: edytowalne pole w Kroku 3 (zapis do
+  Settings) + MiniStat SPINDLE w Step 3 Summary. Pełny opis:
+  `CHANGELOG.md`, `[0.26.0]`.
 - **`BL-80`** *(Otwarty)* 🟠 — **Helix Hole(s)/Outline Circle: brak Ramp
   Angle, kalkulator liczy Stepdown jak dla szczeliny.** Do przejrzenia
   (zgłoszone 2026-09-30). W Hole(s) (i Outline Circle) skok spirali =

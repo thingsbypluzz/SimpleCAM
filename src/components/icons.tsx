@@ -104,6 +104,17 @@ export function StartZIcon({ className }: IconProps) {
   )
 }
 
+// Spindle Speed (BL-79): a tool seen from above with a rotation arrow.
+export function SpindleIcon({ className }: IconProps) {
+  return (
+    <svg {...base} className={className}>
+      <circle cx="12" cy="12" r="2.5" />
+      <path d="M19 12a7 7 0 1 1-2.05-4.95" />
+      <path d="M17.5 3.5v3.8h-3.8" />
+    </svg>
+  )
+}
+
 export function StepdownIcon({ className }: IconProps) {
   return (
     <svg {...base} className={className}>

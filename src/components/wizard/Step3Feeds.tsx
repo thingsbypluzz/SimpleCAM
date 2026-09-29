@@ -21,6 +21,8 @@ import {
 import { isFeedChipThinningCompensated } from '../../lib/pocketAdaptiveMath'
 import { fmt } from '../../lib/format'
 import { CalculatorIcon } from '../icons'
+import { routerDialHint, ROUTERS } from '../../config/routers'
+import { RouterDial } from './RouterDial'
 import { FieldRow, inputClass } from './FieldRow'
 import { InfoNote } from './InfoNote'
 import { NumberInput } from './NumberInput'
@@ -36,9 +38,12 @@ interface Step3FeedsProps {
   stepdownLabel: string
   // BL-68: opens the Feedrate Calculator modal (App.tsx).
   onOpenCalculator: () => void
+  // BL-79: Spindle Speed lives in Settings → Machine (global, every preset);
+  // Step 3 edits it through the same save.
+  onSaveMachine: (next: MachineSettings) => void
 }
 
-export function Step3Feeds({ params, onChange, machine, stepdownLabel, onOpenCalculator }: Step3FeedsProps) {
+export function Step3Feeds({ params, onChange, machine, stepdownLabel, onOpenCalculator, onSaveMachine }: Step3FeedsProps) {
   const { feeds, pocket } = params
   const isPocketAdaptive = params.operation === 'pocket' && pocket.method === 'adaptive'
   const isPocketFinishing = params.operation === 'pocket' && pocket.finishingEnabled
@@ -63,6 +68,12 @@ export function Step3Feeds({ params, onChange, machine, stepdownLabel, onOpenCal
   const startZField = useNumberField(feeds.startZ, (v) => updateFeeds({ startZ: v }))
   const safeZField = useNumberField(feeds.safeZ, (v) => updateFeeds({ safeZ: v }))
   const linkingFeedField = useNumberField(pocket.linkingFeed, (v) => onChange({ pocket: { ...pocket, linkingFeed: v } }))
+  // Global (Settings → Machine); only a positive value is saved, like the
+  // Settings field. The calculator's Apply remounts this step.
+  const spindleField = useNumberField(machine.spindleSpeed, (v) => {
+    if (v > 0 && v !== machine.spindleSpeed) onSaveMachine({ ...machine, spindleSpeed: v })
+  })
+  const dial = routerDialHint(machine.router, machine.spindleSpeed)
   // Step 2's Finishing Pass checkbox resets it to Feed XY on every enable.
   const finishFeedField = useNumberField(pocket.finishFeed, (v) => onChange({ pocket: { ...pocket, finishFeed: v } }), {
     syncWhenBlurred: true,
@@ -70,6 +81,31 @@ export function Step3Feeds({ params, onChange, machine, stepdownLabel, onOpenCal
 
   return (
     <div className="flex flex-col gap-4">
+      {/* Spindle (narrow) with the router's dial beside it — the same
+          widget as the Feedrate Calculator, suggested position highlighted. */}
+      <div className="flex items-end gap-4">
+        <div className={dial ? 'w-36 shrink-0' : 'min-w-0 flex-1'}>
+          <FieldRow
+            label="Spindle [RPM]"
+            hint={`Global — the same value as Settings → Machine, shared by every preset. Emitted as S only when "Start spindle" is on in Step 4.${
+              machine.dialect === 'marlin' ? ' On Marlin, S is often PWM 0–255 or a percentage — set what your firmware expects.' : ''
+            }`}
+          >
+            <NumberInput type="number" step="100" min="0" className={inputClass} {...spindleField} />
+          </FieldRow>
+        </div>
+        {dial && machine.router && (
+          <div className="flex min-w-0 flex-1 flex-col gap-1">
+            <span
+              className="truncate text-xs text-muted"
+              title={`${dial.label} dial${dial.approximate ? ' (estimated between the ends)' : ''}: position ${dial.position} ≈ ${dial.rpm} RPM`}
+            >
+              {dial.label} dial{dial.approximate ? ' (est.)' : ''}
+            </span>
+            <RouterDial dial={ROUTERS[machine.router].dial} position={dial.position} />
+          </div>
+        )}
+      </div>
       <FieldRow
         label="Feedrate XY [mm/min]"
         annotation={
