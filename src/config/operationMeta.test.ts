@@ -90,4 +90,11 @@ describe('OPERATION_META calculator hooks (BL-68)', () => {
     const spiral = OPERATION_META.pocket.withCalc(p, { method: 'spiral', toolDiameter: 6, widthPercent: 40 })
     expect(spiral.pocket).toMatchObject({ stepoverPercent: 40, optimalLoadPercent: p.pocket.optimalLoadPercent })
   })
+
+  it('writes the Finishing Pass Stock to Leave and Finish Feed for any Pocket method (BL-78)', () => {
+    const spiral = OPERATION_META.pocket.withCalc(p, { method: 'spiral', toolDiameter: 6, stockToLeave: 0.3, finishFeed: 2500 })
+    expect(spiral.pocket).toMatchObject({ stockToLeave: 0.3, finishFeed: 2500 })
+    const untouched = OPERATION_META.pocket.withCalc(p, { method: 'adaptive', toolDiameter: 6 })
+    expect(untouched.pocket).toMatchObject({ stockToLeave: p.pocket.stockToLeave, finishFeed: p.pocket.finishFeed })
+  })
 })

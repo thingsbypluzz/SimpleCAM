@@ -50,14 +50,17 @@ export interface CalcMethodOption {
 
 // What the Feedrate Calculator writes back into the operation's own
 // section (BL-68): the method and tool it computed for, always, plus the
-// width (stepover / optimal load) and Adaptive's linking feed and
-// chip-thinning base when those results were selected.
+// width (stepover / optimal load), Adaptive's linking feed and
+// chip-thinning base, and Pocket's Finishing Pass Stock to Leave and Finish
+// Feed (BL-78) when those results were selected.
 export interface CalcPatch {
   method: string
   toolDiameter: number
   widthPercent?: number
   linkingFeed?: number
   chipThinningBaseFeed?: number
+  stockToLeave?: number
+  finishFeed?: number
 }
 
 // Everything the UI does differently per operation, in one entry per
@@ -278,6 +281,8 @@ export const OPERATION_META: Record<OperationType, OperationMeta> = {
       } else if (c.widthPercent !== undefined) {
         pocket.stepoverPercent = c.widthPercent
       }
+      if (c.stockToLeave !== undefined) pocket.stockToLeave = c.stockToLeave
+      if (c.finishFeed !== undefined) pocket.finishFeed = c.finishFeed
       return { pocket }
     },
   },

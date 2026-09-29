@@ -2,7 +2,7 @@ import { useState, type ReactNode } from 'react'
 import { MATERIAL_IDS, MATERIALS, type MaterialId } from '../config/materials'
 import { nearestDialPosition, ROUTERS } from '../config/routers'
 import { OPERATION_META, type CalcPatch } from '../config/operationMeta'
-import { computeFeeds, rigidityFactor, suggestedChipLoad, tableChipLoad, type ToolMaterial } from '../lib/feedCalc'
+import { computeFeeds, rigidityFactor, suggestedChipLoad, suggestedFinishStock, tableChipLoad, type ToolMaterial } from '../lib/feedCalc'
 import { isValidFluteCount, MAX_FLUTES, type FeedCalcSettings } from '../lib/feedCalcStorage'
 import { fmt } from '../lib/format'
 import { resolveToolDiameterSelectOptions } from '../lib/toolDiameterOptions'
@@ -32,7 +32,7 @@ interface FeedCalculatorModalProps {
   onClose: () => void
 }
 
-type ResultKey = 'rpm' | 'feed' | 'plunge' | 'stepdown' | 'width' | 'linking'
+type ResultKey = 'rpm' | 'feed' | 'plunge' | 'stepdown' | 'width' | 'linking' | 'finishStock' | 'finishFeed'
 
 const TOOL_MATERIAL_OPTIONS = [
   { value: 'carbide', label: 'Carbide' },
@@ -67,6 +67,8 @@ export function FeedCalculatorModal({ params, machine, settings, toolDiameters, 
     stepdown: true,
     width: true,
     linking: true,
+    finishStock: true,
+    finishFeed: true,
   })
 
   const material = MATERIALS[settings.material]
@@ -89,6 +91,13 @@ export function FeedCalculatorModal({ params, machine, settings, toolDiameters, 
     engagement.kind === 'stepover' ? material.aeStepover : engagement.kind === 'optimalLoad' ? material.aeAdaptive : null
   const widthInEffect = checks.width && suggestedWidth !== null ? suggestedWidth : (currentWidth ?? 100)
 
+  // Pocket Finishing Pass (BL-78): Stock to Leave from the material table,
+  // and the finish feed for the stock in effect (suggested when taken,
+  // otherwise the current one) — like the width above.
+  const isFinishing = params.operation === 'pocket' && draft.pocket.finishingEnabled
+  const suggestedStock = suggestedFinishStock(material, toolDiameter)
+  const stockInEffect = isFinishing ? (checks.finishStock ? suggestedStock : draft.pocket.stockToLeave) : null
+
   const inputsValid = toolDiameter > 0 && isValidFluteCount(settings.flutes) && (chipLoadOverride ?? tableLoad) > 0
   const r = computeFeeds({
     material,
@@ -101,6 +110,7 @@ export function FeedCalculatorModal({ params, machine, settings, toolDiameters, 
     currentRpm: machine.spindleSpeed,
     useSuggestedRpm: checks.rpm,
     machine,
+    finishStock: stockInEffect,
   })
   const isAdaptive = engagement.kind === 'optimalLoad'
   const widthLabel = isAdaptive ? 'Optimal Load [%]' : 'Stepover [%]'
@@ -130,6 +140,20 @@ export function FeedCalculatorModal({ params, machine, settings, toolDiameters, 
       : []),
     ...(r.linkingFeed !== null
       ? [{ key: 'linking' as const, label: 'Linking Feed [mm/min]', current: fmt(draft.pocket.linkingFeed), proposed: String(r.linkingFeed) }]
+      : []),
+    ...(isFinishing
+      ? [
+          { key: 'finishStock' as const, label: 'Stock to Leave [mm]', current: fmt(draft.pocket.stockToLeave), proposed: fmt(suggestedStock) },
+          {
+            key: 'finishFeed' as const,
+            label: 'Finish Feed [mm/min]',
+            current: fmt(draft.pocket.finishFeed),
+            proposed: String(r.finishFeed ?? '—'),
+            note: r.finishFeedClampedToMax
+              ? `Limited to Max Feed (${machine.maxFeed} mm/min) — the finishing chip is thinner than fz.`
+              : undefined,
+          },
+        ]
       : []),
   ]
 
@@ -163,6 +187,8 @@ export function FeedCalculatorModal({ params, machine, settings, toolDiameters, 
     // Tell Step 2/3 the feed is already chip-thinning compensated, so its
     // own Apply doesn't multiply it a second time.
     if (isAdaptive && checks.feed) calc.chipThinningBaseFeed = r.baseFeed
+    if (isFinishing && checks.finishStock) calc.stockToLeave = suggestedStock
+    if (isFinishing && checks.finishFeed && r.finishFeed !== null) calc.finishFeed = r.finishFeed
     const feeds = {
       ...params.feeds,
       ...(checks.feed ? { feedrateXY: r.feed } : {}),
@@ -400,6 +426,14 @@ export function FeedCalculatorModal({ params, machine, settings, toolDiameters, 
                     {fmt(r.stepdown)} mm
                   </li>
                   {r.linkingFeed !== null && <li>Linking Feed = 2 × Feed, at most Max Feed = {r.linkingFeed} mm/min</li>}
+                  {stockInEffect !== null && r.finishChipThinning !== null && (
+                    <li>
+                      Finish Feed = {r.rpm} × {settings.flutes} × {chipLoadText(r.chipLoad)} ×{' '}
+                      {fmt(Math.round(r.finishChipThinning * 100) / 100)} (chip thinning for Stock to Leave {fmt(stockInEffect)} mm ={' '}
+                      {fmt(Math.round((stockInEffect / toolDiameter) * 1000) / 10)}% of ⌀){r.finishFeedClampedToMax ? ', at most Max Feed' : ''}{' '}
+                      = {r.finishFeed} mm/min. Stock to Leave: {fmt(material.finishStock)} mm (table), at most the tool radius
+                    </li>
+                  )}
                 </ul>
                 <p className="mt-3">
                   Table values are conservative starting points for a carbide tool — the machine, the tool's stick-out
@@ -412,7 +446,8 @@ export function FeedCalculatorModal({ params, machine, settings, toolDiameters, 
               <summary className="cursor-pointer font-medium text-value">Material table</summary>
               <p className="mt-2">
                 Starting values for a carbide tool, before the rigidity factor. fz in mm/tooth for a 3 / 6 / 8+ mm tool
-                (in between: linear); Stepdown ×⌀ for a slot / stepover / Adaptive; widths in % of ⌀.
+                (in between: linear); Stepdown ×⌀ for a slot / stepover / Adaptive; widths in % of ⌀; Pocket
+                Finishing Pass Stock to Leave in mm.
               </p>
               <div className="mt-2 overflow-x-auto">
                 <table className="w-full text-right tabular-nums">
@@ -423,7 +458,8 @@ export function FeedCalculatorModal({ params, machine, settings, toolDiameters, 
                       <th className="px-1 py-1 font-medium">fz 3/6/8</th>
                       <th className="px-1 py-1 font-medium">Plunge</th>
                       <th className="px-1 py-1 font-medium">Stepdown ×⌀</th>
-                      <th className="py-1 pl-1 font-medium">Stepover / Load %</th>
+                      <th className="px-1 py-1 font-medium">Stepover / Load %</th>
+                      <th className="py-1 pl-1 font-medium">Finish stock mm</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -443,9 +479,10 @@ export function FeedCalculatorModal({ params, machine, settings, toolDiameters, 
                           <td className="px-1 py-1">
                             {fmt(m.ap.slot)} / {fmt(m.ap.stepover)} / {fmt(m.ap.optimalLoad)}
                           </td>
-                          <td className="py-1 pl-1">
+                          <td className="px-1 py-1">
                             {m.aeStepover} / {m.aeAdaptive}
                           </td>
+                          <td className="py-1 pl-1">{fmt(m.finishStock)}</td>
                         </tr>
                       )
                     })}

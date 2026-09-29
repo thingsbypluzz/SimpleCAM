@@ -12,6 +12,7 @@ import {
   suggestedChipLoad,
   tableChipLoad,
   type FeedCalcInput,
+  suggestedFinishStock,
 } from './feedCalc'
 
 const machine = { spindleMinRpm: 0, spindleMaxRpm: 60000, maxFeed: 50000, rigidity: 'medium' as const }
@@ -207,5 +208,33 @@ describe('router dials (BL-69)', () => {
     }
     expect(ROUTERS.dewaltDwp611.dial[0]).toBe(16000)
     expect(ROUTERS.dewaltDwp611.dial[5]).toBe(27000)
+  })
+})
+
+describe('Pocket Finishing Pass (BL-78)', () => {
+  it('suggests the material Stock to Leave, at most the tool radius', () => {
+    expect(suggestedFinishStock(MATERIALS.mdf, 6)).toBe(0.3)
+    expect(suggestedFinishStock(MATERIALS.brass, 6)).toBe(0.1)
+    expect(suggestedFinishStock(MATERIALS.mdf, 0.4)).toBeCloseTo(0.2)
+  })
+
+  it('keeps fz on the narrow finishing cut with chip thinning', () => {
+    const r = computeFeeds(input({ finishStock: 0.3 }))
+    // 0.3 mm on a 6 mm tool = 5% of ⌀ → θ = arccos(0.9) ≈ 25.84°, × 1/sin ≈ 2.294.
+    expect(r.finishChipThinning).toBeCloseTo(2.294, 3)
+    expect(r.finishFeed).toBe(Math.round(23900 * 2 * 0.15 * r.finishChipThinning!))
+    expect(r.finishFeedClampedToMax).toBe(false)
+  })
+
+  it('clamps the finish feed to Max Feed', () => {
+    const r = computeFeeds(input({ finishStock: 0.3, useSuggestedRpm: false, currentRpm: 18000, machine: { ...machine, maxFeed: 6000 } }))
+    expect(r.finishFeed).toBe(6000)
+    expect(r.finishFeedClampedToMax).toBe(true)
+  })
+
+  it('has no finish feed without a Finishing Pass', () => {
+    const r = computeFeeds(input())
+    expect(r.finishFeed).toBeNull()
+    expect(r.finishChipThinning).toBeNull()
   })
 })

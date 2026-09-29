@@ -29,6 +29,8 @@ export interface MaterialSpec {
   // load for Adaptive.
   aeStepover: number
   aeAdaptive: number
+  // Suggested Stock to Leave for Pocket's Finishing Pass [mm] (BL-78).
+  finishStock: number
   note?: string
 }
 
@@ -77,6 +79,16 @@ export function effectiveChipLoad(feed: number, rpm: number, flutes: number, eng
   return feed / (rpm * flutes * engagementChipThinning(engagement))
 }
 
+const FINISH_STOCK_STEP = 0.05
+
+// Stock to Leave the calculator suggests: the material's value, at most the
+// tool radius (the Finishing Pass's own validation limit), on a 0.05 mm grid.
+export function suggestedFinishStock(material: MaterialSpec, toolDiameter: number): number {
+  const stock = Math.min(material.finishStock, toolDiameter / 2)
+  const snapped = Math.round(Math.floor(stock / FINISH_STOCK_STEP + 1e-9) * FINISH_STOCK_STEP * 100) / 100
+  return Math.max(FINISH_STOCK_STEP, snapped)
+}
+
 export interface FeedCalcInput {
   material: MaterialSpec
   toolMaterial: ToolMaterial
@@ -91,6 +103,9 @@ export interface FeedCalcInput {
   // replaces it (then it may also be lowered to respect Max Feed).
   currentRpm: number
   useSuggestedRpm: boolean
+  // Pocket Finishing Pass: the Stock to Leave in effect [mm] — the finishing
+  // lap's cut width; null when there is no Finishing Pass (BL-78).
+  finishStock?: number | null
   machine: Pick<MachineSettings, 'spindleMinRpm' | 'spindleMaxRpm' | 'maxFeed' | 'rigidity'>
 }
 
@@ -115,6 +130,11 @@ export interface FeedCalcResult {
   stepdown: number
   suggestedWidthPercent: number | null
   linkingFeed: number | null
+  // Pocket Finishing Pass (BL-78): same RPM and fz, chip thinning for a cut
+  // as wide as the Stock to Leave; null without a Finishing Pass.
+  finishChipThinning: number | null
+  finishFeed: number | null
+  finishFeedClampedToMax: boolean
 }
 
 const RPM_STEP = 100
@@ -163,6 +183,13 @@ export function computeFeeds(input: FeedCalcInput): FeedCalcResult {
         ? material.aeAdaptive
         : null
 
+  // Finishing lap: a narrow cut (width = Stock to Leave) thins the chip,
+  // so the feed is compensated to keep fz, like any narrow stepover.
+  const finishStock = input.finishStock ?? null
+  const finishChipThinning =
+    finishStock !== null && d > 0 ? engagementChipThinning({ kind: 'stepover', percent: (finishStock / d) * 100 }) : null
+  const rawFinishFeed = finishChipThinning !== null ? rpm * flutes * chipLoad * finishChipThinning : null
+
   return {
     vc,
     idealRpm,
@@ -180,5 +207,8 @@ export function computeFeeds(input: FeedCalcInput): FeedCalcResult {
     stepdown: Math.max(0.05, Math.round(stepdownRaw * 20) / 20),
     suggestedWidthPercent,
     linkingFeed: input.engagementKind === 'optimalLoad' ? Math.min(machine.maxFeed, Math.round(feed * LINKING_FEED_FACTOR)) : null,
+    finishChipThinning,
+    finishFeed: rawFinishFeed !== null ? Math.round(Math.min(rawFinishFeed, machine.maxFeed)) : null,
+    finishFeedClampedToMax: rawFinishFeed !== null && rawFinishFeed > machine.maxFeed,
   }
 }
