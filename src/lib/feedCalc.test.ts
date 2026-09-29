@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { MATERIALS } from '../config/materials'
-import { nearestDialPosition, ROUTERS } from '../config/routers'
+import { nearestDialPosition, routerDialHint, ROUTERS } from '../config/routers'
 import { DEFAULT_MACHINE_SETTINGS } from '../types/machine'
 import { DEFAULT_WIZARD_PARAMS } from '../types/wizard'
 import { chipThinningFactor } from './pocketAdaptiveMath'
@@ -236,5 +236,20 @@ describe('Pocket Finishing Pass (BL-78)', () => {
     const r = computeFeeds(input())
     expect(r.finishFeed).toBeNull()
     expect(r.finishChipThinning).toBeNull()
+  })
+})
+
+describe('routerDialHint (BL-79)', () => {
+  it('gives the nearest dial position of the selected router', () => {
+    expect(routerDialHint('makitaRt0700c', 18000)).toEqual({
+      label: ROUTERS.makitaRt0700c.label,
+      position: 3,
+      rpm: 17000,
+      approximate: false,
+    })
+  })
+
+  it('is null without a router', () => {
+    expect(routerDialHint(null, 18000)).toBeNull()
   })
 })

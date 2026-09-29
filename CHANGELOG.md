@@ -7,6 +7,22 @@ zgodne z [SemVer](https://semver.org/). Ten plik pozostaje głównym, czytelnym
 thingsbypluzz/SimpleCAM), ale to infrastruktura pod izolację pracy
 (branch/worktree per zadanie), nie zamiennik tego changeloga.
 
+## [0.26.0] — 2026-09-30
+
+### Dodano
+
+- **Spindle Speed w Kroku 3 i w jego podsumowaniu** (`BL-79`). Dotąd RPM
+  zaproponowane przez Feedrate Calculator trafiało do Settings → Machine
+  i w wizardzie nie było go widać — żeby sprawdzić obroty, trzeba było
+  wracać do kalkulatora. Teraz Krok 3 zaczyna się polem „Spindle [RPM]” —
+  edytowalnym, zapis prosto do Settings → Machine (wspólne dla wszystkich
+  presetów, tylko wartość > 0), z podpowiedzią o `S` przy Marlinie. Gdy w
+  Settings wybrany jest router z pokrętłem, w tym samym wierszu po prawej
+  stoi ten sam wizualny rząd pozycji pokrętła co w kalkulatorze (pozycja
+  najbliższa RPM wyróżniona; wspólny komponent `RouterDial`). Zwinięty
+  Krok 3 pokazuje nowy MiniStat SPINDLE (RPM albo „dial N”, pełne dane w
+  tooltipie).
+
 ## [0.25.0] — 2026-09-30
 
 ### Dodano

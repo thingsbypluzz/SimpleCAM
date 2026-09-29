@@ -12,6 +12,7 @@ import type { MachineSettings, Rigidity } from '../types/machine'
 import type { ToolDiameterOption } from '../types/toolDiameters'
 import type { WizardParams } from '../types/wizard'
 import { Checkbox } from './wizard/Checkbox'
+import { RouterDial } from './wizard/RouterDial'
 import { inputClass } from './wizard/FieldRow'
 import { NumberInput } from './wizard/NumberInput'
 import { TextToggle } from './wizard/TextToggle'
@@ -318,20 +319,7 @@ export function FeedCalculatorModal({ params, machine, settings, toolDiameters, 
                   <span>
                     {router.label} dial{router.approximate ? ' (estimated between the ends)' : ''}:
                   </span>
-                  <div className="flex gap-1">
-                    {router.dial.map((rpm, i) => (
-                      <span
-                        key={i}
-                        title={`${rpm} RPM`}
-                        className={`flex min-w-0 flex-1 flex-col items-center rounded border px-1 py-0.5 tabular-nums ${
-                          i + 1 === dialPosition ? 'border-selected-border text-selected-fg' : 'border-border'
-                        }`}
-                      >
-                        <span className="font-semibold">{i + 1}</span>
-                        <span className="text-[10px]">{Math.round(rpm / 1000)}k</span>
-                      </span>
-                    ))}
-                  </div>
+                  <RouterDial dial={router.dial} position={dialPosition} />
                 </div>
               )}
               <span>

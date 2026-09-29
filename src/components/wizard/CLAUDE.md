@@ -45,6 +45,13 @@
   zewnątrz — wczytanie presetu podbija `paramsLoadGeneration` (`key` Kroków
   2/3) w `App.tsx`. `NumberInput` chowa natywny spinner, dwa przyciski obok
   siebie, tokeny motywu.
+- **Krok 3:** pierwszy wiersz Spindle [RPM] — edytuje
+  `machine.spindleSpeed` z Settings → Machine przez `handleSaveMachine()`
+  (tylko wartość > 0); przy wybranym routerze pole jest wąskie, a obok
+  `RouterDial.tsx` (rząd pozycji pokrętła, najbliższa wyróżniona —
+  `routerDialHint()`, `config/routers.ts`; ten sam komponent w Feedrate
+  Calculator). Step 3 Summary: MiniStat SPINDLE (RPM, a z routerem
+  „dial N”).
 - `Checkbox.tsx` — natywny input `sr-only`, własny box z `CheckIcon`, kolory
   zaznaczenia `selected-*` (jak zaznaczona opcja, nie `--accent`),
   `peer-focus-visible` dla fokusu klawiatury; `<label>` jest `relative`,

@@ -4,6 +4,7 @@ import { Step2Geometry } from './components/wizard/Step2Geometry'
 import { Step3Feeds } from './components/wizard/Step3Feeds'
 import { Step4Output } from './components/wizard/Step4Output'
 import { MiniStat } from './components/wizard/MiniStat'
+import { routerDialHint } from './config/routers'
 import { ToolpathCanvas, type Saved2DView } from './components/preview/ToolpathCanvas'
 import type { Saved3DView } from './components/preview3d/Scene3D'
 import { SettingsModal } from './components/SettingsModal'
@@ -24,6 +25,7 @@ import {
   CheckIcon,
   EyeIcon,
   FeedIcon,
+  SpindleIcon,
   PencilIcon,
   PlungeIcon,
   StartZIcon,
@@ -234,6 +236,9 @@ function App() {
   // OutlineMethodMeta has no `generate` of its own (see lib/outline.ts).
   const operationMeta = OPERATION_META[params.operation]
   const activeMethodDisplay = operationMeta.method(params)
+  // BL-79: Step 3 Summary shows the global spindle speed — as the router's
+  // dial position when a hand-set router is selected in Settings.
+  const spindleDial = routerDialHint(machine.router, machine.spindleSpeed)
   const isGeometryValid = isWizardParamsValid(params)
   const fitWarnings = machineFitWarnings(params, machine)
   // Shown next to the machine-fit warnings in Step 4, but kept out of
@@ -697,6 +702,7 @@ function App() {
                       machine={machine}
                       stepdownLabel={activeMethodDisplay.stepdown.fieldLabel}
                       onOpenCalculator={() => setIsFeedCalcOpen(true)}
+                      onSaveMachine={handleSaveMachine}
                     />
                   )}
                   {step.id === 4 && (
@@ -797,6 +803,13 @@ function App() {
                     <span className="text-[10px] font-semibold uppercase text-muted">
                       {step.title}
                     </span>
+                    <MiniStat
+                      icon={<SpindleIcon className="h-8 w-8" />}
+                      label="SPINDLE"
+                      value={spindleDial ? `dial ${spindleDial.position}` : `${machine.spindleSpeed}`}
+                      unit={spindleDial ? undefined : 'RPM'}
+                      title={`Spindle Speed: ${machine.spindleSpeed} RPM${spindleDial ? ` — ${spindleDial.label} dial ${spindleDial.position} (≈ ${spindleDial.rpm} RPM)` : ''} (global, Settings → Machine)`}
+                    />
                     <MiniStat
                       icon={<FeedIcon className="h-8 w-8" />}
                       label="FEED"

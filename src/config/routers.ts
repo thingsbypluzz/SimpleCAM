@@ -49,6 +49,15 @@ export function isRouterId(value: unknown): value is RouterId {
   return typeof value === 'string' && value in ROUTERS
 }
 
+// BL-79: the selected router's dial setting for `rpm` (Step 3 and its
+// summary), or null without a router.
+export function routerDialHint(router: RouterId | null, rpm: number): { label: string; position: number; rpm: number; approximate: boolean } | null {
+  if (!router) return null
+  const spec = ROUTERS[router]
+  const position = nearestDialPosition(spec.dial, rpm)
+  return { label: spec.label, position, rpm: spec.dial[position - 1], approximate: spec.approximate }
+}
+
 // Dial position (1-based) whose RPM is closest to `rpm`.
 export function nearestDialPosition(dial: number[], rpm: number): number {
   let best = 0
