@@ -321,6 +321,61 @@ faktycznym.
   wspólną podkładkę z pustkami, ale tylko gdy w Overlay nie ma litej
   bryły; ta pozycja rozszerza to o łączenie materiału z litymi bryłami
   (Outline Outside/On-line, Surface). Zgłoszone 2026-09-28.
+- **`BL-78`** *(Zrealizowany, 2026-09-30)* 🟢 — **Feedrate Calculator: Finish Feed i Stock
+  to Leave dla Pocket Finishing Pass.** Dziś kalkulator ich nie liczy —
+  Finish Feed startuje z bieżącego Feed XY (`BL-42`). Ustalenia (rozmowa
+  2026-09-29):
+  - **Finish Feed = RPM × z × fz × chip thinning** dla szerokości cięcia
+    = Stock to Leave (wąski pas → cieńszy wiór; kompensacja utrzymuje
+    fz — zwykle wyżej niż roughing, np. 0.3 mm przy Ø6 → ×~2.3), to samo
+    RPM co reszta wyników, docięte do Max Feed (z notką);
+  - **Stock to Leave z tabeli materiałów** — nowe `finishStock` [mm] w
+    `config/materials.ts` (np. drewno/MDF 0.3, tworzywa 0.2–0.25,
+    aluminium 0.15, mosiądz 0.1), przycięte do D/2, siatka 0.05 mm.
+  Zakres mały — wzorzec istniejącego Linking Feed: nowe pola w
+  `feedCalc.ts` (`MaterialSpec`, `FeedCalcInput`/`FeedCalcResult`,
+  `suggestedFinishStock()`), dwa wiersze z checkboxami w
+  `FeedCalculatorModal.tsx` tylko przy włączonym Finishing Pass (stock w
+  mocy = sugerowany, gdy zaznaczony, jak `widthInEffect`), linia w „How
+  it's calculated” i kolumna w „Material table”, `CalcPatch` +
+  `OPERATION_META.pocket.withCalc()` zapisują `stockToLeave`/
+  `finishFeed`; hint Finish Feed w Kroku 3 do aktualizacji; testy w
+  `feedCalc.test.ts`/`operationMeta.test.ts`. Pełny opis: `CHANGELOG.md`,
+  `[0.25.0]`.
+- **`BL-79`** *(Otwarty)* 🟠 — **Spindle RPM widoczne w wizardzie (z
+  pozycją pokrętła routera).** Feedrate Calculator proponuje RPM, a Apply
+  zapisuje je do Settings → Machine (`machine.spindleSpeed`, globalne), ale
+  potem w wizardzie nigdzie go nie widać — żeby sprawdzić, jakie obroty
+  ustawić, trzeba wracać do kalkulatora. Potrzebne miejsce w UI na
+  bieżące RPM oraz, gdy w Settings wybrany jest router z pokrętłem
+  (`machine.router`, `config/routers.ts`), zalecaną pozycję pokrętła (np.
+  „Makita RT0700C: 3 (≈ 17 000 RPM)” — ta sama logika co w kalkulatorze,
+  `nearestDialPosition()`). Zgłoszone 2026-09-30. Do ustalenia: miejsce
+  (Krok 3 obok posuwów — wiersz tylko do odczytu, Step 3 Summary, Krok 4
+  przed Generate, komentarz w nagłówku G-code?), czy edytowalne z
+  wizarda (zapis do globalnego Settings) czy tylko podgląd z linkiem do
+  Settings/kalkulatora, zachowanie bez wybranego routera (samo RPM) i przy
+  Marlinie (`S` jako PWM).
+- **`BL-80`** *(Otwarty)* 🟠 — **Helix Hole(s)/Outline Circle: brak Ramp
+  Angle, kalkulator liczy Stepdown jak dla szczeliny.** Do przejrzenia
+  (zgłoszone 2026-09-30). W Hole(s) (i Outline Circle) skok spirali =
+  Stepdown, osobnego Ramp Angle nie ma (Surface/Pocket go mają, skok z
+  kąta — `helixPitchForRampAngle()`). Kalkulator traktuje Hole(s)/Outline
+  jako szczelinę (`OPERATION_RULES[op].engagement` → `slot`), więc
+  Stepdown = D × `ap.slot` × sztywność. Przykład użytkownika: Delrin, frez
+  6 mm, otwór 8 mm → Stepdown 0.75 × 6 = **4.5 mm**; promień ścieżki
+  (8 − 6)/2 = 1 mm, obwód 6.28 mm → zejście atan(4.5 / 6.28) ≈ **36°**
+  — praktycznie wiercenie na posuwie XY. `descentWarnings()` ostrzega od
+  10° (`MAX_RECOMMENDED_DESCENT_DEG`), ale kalkulator tego nie bierze pod
+  uwagę. Opcje do rozstrzygnięcia:
+  - kalkulator dla metod Helix/Ramp ogranicza sugerowany Stepdown do
+    skoku dającego ≤ docelowy kąt (`2π·r·tan(kąt)`), z notką „ograniczone
+    przez kąt zejścia”;
+  - albo osobne pole Ramp Angle dla Helix Hole(s)/Outline Circle (i
+    Outline Rectangle Ramp), niezależne od Stepdown — jak Surface/Pocket;
+  - przy małym promieniu helixa (otwór ledwie większy od freza) łagodny
+    kąt = bardzo wiele obrotów na poziom — ewentualne ostrzeżenie albo
+    sugestia metody Standard.
 
 **`BL-17` zamknięte — "Interface Anatomy"**, Artifact z umownymi nazwami
 elementów UI, dziś aktywnie używany w `CLAUDE.md`:
@@ -398,6 +453,18 @@ Pocket, 2026-09-21, i dla Adaptive, 2026-09-25; historia implementacji w
   wycinków (reużycie Spiral/Adaptive wymaga dowolnego wielokąta — dziś
   silniki znają tylko prostokąt i okrąg), liczba ramion dla prostokąta
   (2 przekątne = 4 trójkąty; więcej?), podglądy 2D/3D, walidacja.
+- **`OP-7` — Facing (nie mylić z Surface).** Zgłoszone 2026-09-30.
+  Nowa operacja albo wariant istniejącej — **pierwsze pytanie sesji
+  `/grill-me`**: czy to w ogóle osobna operacja, czy da się ją uzyskać
+  z Surface/Outline z jakąś zmianą. Do rozstrzygnięcia: co dokładnie
+  znaczy „facing” w tym projekcie i czym różni się od Surface (dziś:
+  planowanie prostokąta rastrem z overtravelem o promień freza) — np.
+  wyrównanie krawędzi/boków materiału (cięcie boczne wzdłuż prostej, jeden
+  lub kilka boków) albo inny wariant obróbki czoła; reużycie istniejących
+  silników (Outline Rectangle Outside z wyborem boków, Surface z inną
+  strategią) vs nowy silnik; parametry (długość, naddatek do zebrania,
+  kierunek, wejście/wyjście poza materiałem), podglądy 2D/3D, walidacja,
+  miejsce w Kroku 1.
 
 **Każda z `OP-#` wymaga własnej, pełnej sesji `/grill-me` przed
 napisaniem jakiegokolwiek kodu** — nieporównywalnie większy zakres

@@ -108,7 +108,7 @@ export function Step3Feeds({ params, onChange, machine, stepdownLabel, onOpenCal
       {isPocketFinishing && (
         <FieldRow
           label="Finish Feed [mm/min]"
-          hint="Feed for the Finishing Pass laps on the pocket walls (Step 2), including their tangent lead-in and lead-out arcs. Not set by the Feedrate Calculator."
+          hint="Feed for the Finishing Pass laps on the pocket walls (Step 2), including their tangent lead-in and lead-out arcs. The Feedrate Calculator suggests it (and Stock to Leave) from the chip load, compensated for the narrow finishing cut."
         >
           <NumberInput type="number" step="1" className={inputClass} {...finishFeedField} />
         </FieldRow>

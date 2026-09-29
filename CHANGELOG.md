@@ -7,6 +7,23 @@ zgodne z [SemVer](https://semver.org/). Ten plik pozostaje głównym, czytelnym
 thingsbypluzz/SimpleCAM), ale to infrastruktura pod izolację pracy
 (branch/worktree per zadanie), nie zamiennik tego changeloga.
 
+## [0.25.0] — 2026-09-30
+
+### Dodano
+
+- **Feedrate Calculator sugeruje Stock to Leave i Finish Feed** dla Pocket
+  z włączonym Finishing Pass (`BL-78`). Dotąd Finish Feed startował z
+  bieżącego Feed XY, a Stock to Leave trzeba było dobrać samemu.
+  - **Stock to Leave** z tabeli materiałów (nowa kolumna „Finish stock”:
+    drewno/MDF/sklejka 0.3 mm, POM/HDPE/PVC 0.25, akryl 0.2, aluminium
+    0.15, mosiądz 0.1), najwyżej promień freza.
+  - **Finish Feed** = RPM × z × fz × chip thinning dla szerokości cięcia
+    równej Stock to Leave — wąski pas daje cieńszy wiór, więc posuw jest
+    kompensowany, żeby utrzymać fz (np. 0.3 mm przy Ø6 → × ~2.3); to samo
+    RPM co reszta wyników, najwyżej Max Feed (z notką, gdy docięty).
+  - Dwa nowe wiersze z checkboxami (tylko przy włączonym Finishing Pass),
+    wyliczenie w „How it's calculated”; Apply zapisuje oba do Pocket.
+
 ## [0.24.0] — 2026-09-29
 
 ### Zmieniono

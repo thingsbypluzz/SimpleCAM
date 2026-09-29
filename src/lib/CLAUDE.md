@@ -305,7 +305,10 @@ RPM × z × fz × chip thinning. Powyżej Max Feed — najpierw RPM w dół (nie
 poniżej Min RPM), potem docięcie posuwu. Plunge = posuw bez chip thinning
 × współczynnik materiału; Stepdown = D × `ap` (szczelina / stepover /
 Adaptive) × sztywność (Adaptive bez sztywności), siatka 0.05 mm; Linking
-Feed = 2 × Feed (≤ Max Feed). Rodzaj zaangażowania z
+Feed = 2 × Feed (≤ Max Feed). Pocket Finishing Pass: Stock to Leave =
+`finishStock` materiału [mm] ≤ D/2, siatka 0.05 (`suggestedFinishStock()`);
+Finish Feed = RPM × z × fz × chip thinning dla szerokości = Stock to Leave
+w mocy (`FeedCalcInput.finishStock`), ≤ Max Feed. Rodzaj zaangażowania z
 `OPERATION_RULES[op].engagement()`: Hole(s)/Outline — szczelina,
 Surface/Pocket Spiral — stepover, Adaptive — Optimal Load.
 `effectiveChipLoad()` — rzeczywiste fz w Kroku 2.

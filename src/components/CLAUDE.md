@@ -55,14 +55,17 @@
   maszyny.
 - Wyniki „bieżąca → sugerowana” z checkboxami (domyślnie wszystkie):
   Spindle Speed (globalne), Feedrate XY, Plunge Rate, Stepdown, Stepover %
-  albo Optimal Load % (brak dla szczeliny), Linking Feed (Adaptive).
+  albo Optimal Load % (brak dla szczeliny), Linking Feed (Adaptive), Stock
+  to Leave i Finish Feed (tylko Pocket z Finishing Pass; Finish Feed
+  liczony dla Stock to Leave w mocy — sugerowanego, gdy zaznaczony).
   Ostrzeżenia (docięcia RPM/posuwu), rozwijane „How it's calculated” z
   wartościami pośrednimi i „Material table”. Router z pokrętłem: pozycje
   tylko do odczytu, najbliższa RPM wyróżniona (`nearestDialPosition()`).
   Model — `lib/CLAUDE.md`.
 - **Apply selected** (`handleApplyFeedCalc()` w `App.tsx`): metoda i
   średnica zawsze (kontekst wyliczenia), szerokość/Linking Feed przez
-  `OPERATION_META[op].withCalc()`, posuwy i Stepdown do `feeds`, RPM
+  `OPERATION_META[op].withCalc()` (Pocket także Stock to Leave i Finish
+  Feed), posuwy i Stepdown do `feeds`, RPM
   nadpisuje `machine.spindleSpeed`. Dla Adaptive zapis Feed XY ustawia też
   `pocket.chipThinningBaseFeed` na posuw bez kompensacji. Kroki 2 i 3
   przemontowują się (`paramsLoadGeneration`).
