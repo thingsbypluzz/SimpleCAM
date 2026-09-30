@@ -411,6 +411,38 @@ faktycznym.
   `geometry`/`outline`/`surface`/`pocket.rampAngleDeg`. Do ustalenia:
   wartości per materiał, czy uwzględnić promień helixa (liczba obrotów),
   zachowanie przy Adaptive (wejście zawsze Helix).
+- **`BL-82`** *(Otwarty)* 🟠 — **Outline po trójkącie / wycinku
+  (przelotowe okna).** Z sesji `/grill-me` `OP-6` (2026-09-30): Lightening
+  Pocket zawsze wybiera całą komórkę, a przy cięciu na wylot
+  oszczędniejszy byłby sam kontur Inside po trójkącie/wycinku (środek
+  wypada, potrzebne mostki). Nowe kształty Outline reużywające geometrię
+  komórek `OP-6` (te same układy X-grid/Triangles/Spokes), albo tryb
+  „Contour only” w kształtach Lightened. Do ustalenia po etapie 1 `OP-6`.
+- **`BL-83`** *(Otwarty)* 🔴 — **Adaptive dla kształtów Lightened (etap 2
+  `OP-6`).** Etap 1 wybiera komórki tylko metodą Spiral (offset). Adaptive
+  liczy stałe zaangażowanie analitycznie wyłącznie dla okręgu i
+  prostokąta — trójkąty o ostrych kątach i wycinki pierścienia to nowe
+  przypadki geometryczne (rozmiar zbliżony do `OP-5`). Wymaga własnej
+  sesji `/grill-me` po sprawdzeniu geometrii komórek z etapu 1.
+- **`BL-84`** *(Zrealizowany, 2026-09-30)* 🟠 — **Lightened: obrys zewnętrzny i znaczenie
+  wymiarów.** Zgłoszone 2026-09-30 przy testach `OP-6`. Podglądy
+  Rectangle/Circle Lightened pokazują tylko komórki — nie widać obrysu
+  zewnętrznego elementu, więc przy dokładanej ramce (Rim Width) nie wiadomo,
+  jaki rozmiar właściwie się podaje. Do przedyskutowania i przemyślenia:
+  - czy Width/Height/Diameter to **wymiar zewnętrzny elementu** (dziś:
+    komórki w obszarze pomniejszonym o Rim Width), czy **obszar kieszeni**,
+    a Rim Width leży na zewnątrz (element = wymiar + 2×Rim);
+  - jak pokazać obrys zewnętrzny w 2D/3D (linia, krawędź arkusza, osobny
+    kolor) i czy wpływa na footprint / dopasowanie do maszyny;
+  - etykiety pól i podpowiedzi, żeby znaczenie wymiaru było jednoznaczne;
+    zgodność zapisanych presetów przy ewentualnej zmianie znaczenia.
+  **Rozstrzygnięte (2026-09-30):** Rim Width usunięty. Tak jak w
+  pozostałych kształtach Pocket, wymiar opisuje dokładnie to, co jest
+  wybierane — komórki dochodzą do granicy Width × Height / Diameter.
+  OnlyPaths zakłada odpowiedzialność operatora: margines pod późniejszy
+  Outline wlicza on sam w wymiary i sprawdza w Overlay (np. Outline
+  Outside + Lightened). Hub i Rib Width zostają (materiał wewnątrz
+  obszaru). Przed wydaniem `0.30.0`, więc bez migracji presetów.
 
 **`BL-17` zamknięte — "Interface Anatomy"**, Artifact z umownymi nazwami
 elementów UI, dziś aktywnie używany w `CLAUDE.md`:
@@ -488,6 +520,37 @@ Pocket, 2026-09-21, i dla Adaptive, 2026-09-25; historia implementacji w
   wycinków (reużycie Spiral/Adaptive wymaga dowolnego wielokąta — dziś
   silniki znają tylko prostokąt i okrąg), liczba ramion dla prostokąta
   (2 przekątne = 4 trójkąty; więcej?), podglądy 2D/3D, walidacja.
+  **Ustalenia `/grill-me` (2026-09-30), stan: etap 1 zrealizowany
+  (`0.30.0`), etap 2 = `BL-83`:**
+  - Zawsze pełne wybranie komórki; o przelocie decyduje Total Depth; bez
+    mostków (kontur po trójkącie przy przelocie → `BL-82`).
+  - Nowe kształty w **Pocket** (nie osobna operacja): **Rectangle
+    Lightened** i **Circle Lightened**, origin w środku.
+  - Prostokąt, pole **Layout**: **X-grid N×M** (komórki z przekątnymi,
+    1×1 = X) albo **Triangles N×M** (M rzędów zygzaku, N = liczba
+    ukośnych ramion w rzędzie, rząd ma N+1 komórek; M = 1
+    = Warren, M ≥ 2 = isogrid). N wzdłuż X, M wzdłuż Y, trójkąty
+    dopasowane do prostokąta, na końcach rzędów połówki/trapezy.
+  - **Rib Width** (mm); Width/Height/Diameter = obszar wybierany przez
+    komórki, bez ramki (`BL-84`). Narożniki komórek automatycznie =
+    promień freza.
+  - Okrąg: **Spokes**, **Hub Diameter**, **Start Angle** (0° = +X);
+    komórki = wycinki pierścienia między piastą a obwodem.
+  - Etap 1: tylko **Spiral (offset)** — kontury równoległe co Stepover z
+    Ramp Length (`BL-41`), offsety analityczne (wielokąt wypukły,
+    wycinek pierścienia), bez biblioteki. Adaptive → etap 2 (`BL-83`).
+  - Z-Transition jak Pocket; Helix w środku okręgu wpisanego komórki,
+    jeden Helix Radius walidowany względem najmniejszej komórki.
+  - Finishing Pass w etapie 1 (okrążenie nominalnego konturu na poziom,
+    wejście łukiem stycznym na środku najdłuższej krawędzi).
+  - Komórka po komórce do pełnej głębokości, retrakt między komórkami,
+    kolejność wężem (okrąg: kolejno CCW).
+  - Komórka za mała dla freza (okrąg wpisany ≤ promień freza, z Stock to
+    Leave) blokuje Generate, błąd przy polach, które ją powodują.
+  - Przy implementacji: N, M 1–20; Spokes 3–24 (2 szprychy leżą na
+    jednej prostej — komórki przestają być wycinkami); Rib > 0, 0 ≤ Hub < Diameter; domyślnie Rect 120×40 Triangles
+    4×1, Circle Ø80 / 5 szprych / Hub 16 / 90°, Rib 4 (Rim usunięty — `BL-84`); podglądy —
+    komórki jako pustki (reguła Pocket); plik `op-rect-lightened-…`.
 - **`OP-7` — Facing (nie mylić z Surface).** Zgłoszone 2026-09-30.
   Nowa operacja albo wariant istniejącej — **pierwsze pytanie sesji
   `/grill-me`**: czy to w ogóle osobna operacja, czy da się ją uzyskać

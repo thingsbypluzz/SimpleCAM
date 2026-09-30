@@ -472,3 +472,31 @@ export function PocketCircleIcon({ className }: IconProps) {
     </svg>
   )
 }
+
+// Pocket Rectangle Lightened (OP-6): a wide frame with a Warren zigzag of
+// ribs — the material left between the cut-out triangles — origin dot in
+// the center.
+export function PocketRectLightenedIcon({ className }: IconProps) {
+  return (
+    <svg {...base} className={className}>
+      <path d="M3 7h18v10H3z" strokeWidth={1} />
+      <path d="M3 17L7.5 7L12 17L16.5 7L21 17" strokeWidth={0.7} />
+      <circle cx="12" cy="12" r="1.5" fill="currentColor" stroke="none" />
+    </svg>
+  )
+}
+
+// Pocket Circle Lightened (OP-6): rim, hub and five spokes — the material
+// left between the cut-out sectors.
+export function PocketCircleLightenedIcon({ className }: IconProps) {
+  return (
+    <svg {...base} className={className}>
+      <circle cx="12" cy="12" r="8" strokeWidth={1} />
+      <circle cx="12" cy="12" r="2" strokeWidth={0.7} />
+      <path
+        d="M12 10L12 4M10.1 11.38L4.39 9.53M10.82 13.62L7.3 18.47M13.18 13.62L16.7 18.47M13.9 11.38L19.61 9.53"
+        strokeWidth={0.7}
+      />
+    </svg>
+  )
+}

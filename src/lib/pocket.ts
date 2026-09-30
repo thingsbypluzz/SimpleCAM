@@ -4,7 +4,9 @@ import { assembleProgram } from './program'
 import { buildLevelDescents, levelEntryZ } from './surfaceZTransition'
 import { appendPocketZTransition, pocketEntryPoint } from './pocketZTransition'
 import { buildAdaptiveToolpath } from './pocketAdaptive'
-import { appendPocketFinish, pocketFinishMoves } from './pocketFinish'
+import { appendCellFinish, appendPocketFinish, pocketFinishMoves } from './pocketFinish'
+import { cellInscribed, isLightenedShape, lightenedCells } from './pocketLightened'
+import { appendCellSpiral } from './pocketCellSpiral'
 import {
   appendCircleRing,
   appendRectRing,
@@ -15,6 +17,7 @@ import {
 } from './pocketSpiral'
 import {
   pocketCenter,
+  pocketStockToLeave,
   pocketRoughCircleWallRadius,
   pocketRoughRectWallHalfDims,
   pocketStepoverMm,
@@ -81,8 +84,11 @@ const LEVEL_CLEAR: Record<Exclude<PocketMethodType, 'adaptive'>, (pocket: Wizard
 // Both methods rough to the roughing wall; the optional finishing wall
 // pass (lib/pocketFinish.ts, BL-42) follows the whole roughing.
 export function buildPocketToolpath(params: WizardParams, method = params.pocket.method): Toolpath {
-  const { pocket, feeds, output } = params
+  const { pocket, feeds } = params
   const center = pocketCenter(pocket)
+
+  // Lightened shapes are Spiral-only (OP-6 stage 1), whatever is stored.
+  if (isLightenedShape(pocket.shape)) return buildLightenedToolpath(params)
 
   if (method === 'adaptive') {
     const adaptive = buildAdaptiveToolpath(params)
@@ -96,7 +102,20 @@ export function buildPocketToolpath(params: WizardParams, method = params.pocket
   const levelClear = LEVEL_CLEAR[method](pocket)
   const b = new ToolpathBuilder({ x: entry.x, y: entry.y, z: feeds.safeZ })
   b.zTo('rapid', feeds.startZ)
+  appendSpiralLevels(b, params, center, (toZ) => levelClear(b, center.x, center.y, toZ, params))
+  appendPocketFinish(b, params)
 
+  return b.build()
+}
+
+// The Spiral level loop around one entry center: level 0 continues from
+// Start Z; every later level retracts to Safe Z, rapids back over the entry
+// point and down to just above the previous floor (levelEntryZ()); then the
+// Plunge/Helix entry and the level's clearing. The tool starts over the
+// entry point at Start Z.
+function appendSpiralLevels(b: ToolpathBuilder, params: WizardParams, center: Point2D, clearLevel: (toZ: number) => void): void {
+  const { pocket, feeds, output } = params
+  const entry = pocketEntryPoint(center.x, center.y, pocket.zTransitionMode, pocket.helixRadius)
   let previousToZ = feeds.startZ
   buildLevelDescents(feeds.startZ, pocket.totalDepth, feeds.stepdown).forEach(({ toZ }, idx) => {
     const entryZ = levelEntryZ(idx, previousToZ, feeds.startZ)
@@ -118,10 +137,45 @@ export function buildPocketToolpath(params: WizardParams, method = params.pocket
       centerX: center.x,
       centerY: center.y,
     })
-    levelClear(b, center.x, center.y, toZ, params)
+    clearLevel(toZ)
   })
-  appendPocketFinish(b, params)
+}
 
+// Lightened shapes (OP-6): every cell is a Spiral pocket of its own, cut to
+// full depth (all levels, then its finishing laps) before moving on —
+// Safe Z, rapid over the next cell's entry point, down to Start Z. Cells in
+// lightenedCells()' order (snake / CCW around the circle).
+function buildLightenedToolpath(params: WizardParams): Toolpath {
+  const { pocket, feeds } = params
+  const cells = lightenedCells(pocket)
+  const isHelix = pocket.zTransitionMode === 'helix'
+  const roughWallDepth = pocket.toolDiameter / 2 + pocketStockToLeave(pocket)
+  const entryOf = (i: number) => {
+    const c = cellInscribed(cells[i]).center
+    return pocketEntryPoint(c.x, c.y, pocket.zTransitionMode, pocket.helixRadius)
+  }
+  const first = cells.length > 0 ? entryOf(0) : pocketCenter(pocket)
+  const b = new ToolpathBuilder({ x: first.x, y: first.y, z: feeds.safeZ })
+  cells.forEach((cell, i) => {
+    const center = cellInscribed(cell).center
+    if (i > 0) {
+      const entry = entryOf(i)
+      b.zTo('rapid', feeds.safeZ)
+      b.rapidXY(entry.x, entry.y)
+    }
+    b.zTo('rapid', feeds.startZ)
+    appendSpiralLevels(b, params, center, (toZ) =>
+      appendCellSpiral(b, cell, {
+        roughWallDepth,
+        stepover: pocketStepoverMm(pocket),
+        startRadius: isHelix ? pocket.helixRadius : 0,
+        helixEnd: isHelix ? { x: center.x + pocket.helixRadius, y: center.y } : null,
+        z: toZ,
+        rampLengthFactor: pocket.rampLengthFactor,
+      }),
+    )
+    appendCellFinish(b, cell, params)
+  })
   return b.build()
 }
 

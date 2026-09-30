@@ -9,9 +9,10 @@ import { computeRasterLines, zigzagWaypoints, type RasterLine } from '../../lib/
 import { pocketCenter } from '../../lib/pocketGeometry'
 import { buildPocketToolpath } from '../../lib/pocket'
 import { movePoints, type MoveKind, type Toolpath } from '../../lib/toolpath'
-import { overlaySheetVoids, type SheetVoid } from '../../lib/overlayStock'
+import { overlaySheetVoids, pocketVoids, type SheetVoid } from '../../lib/overlayStock'
 import type { Point2D, PocketMethodType, PocketShape, WizardParams } from '../../types/wizard'
 import type { ThemeId } from '../../types/theme'
+import { cellInscribed, isLightenedShape, lightenedCells } from '../../lib/pocketLightened'
 import { type Camera2D, type DataBounds, worldToScreen } from './camera2d'
 
 interface Theme {
@@ -331,7 +332,7 @@ function resolvePattern(params: WizardParams): ResolvedPattern {
   if (params.operation === 'pocket') {
     const { pocket } = params
     const center = pocketCenter(pocket)
-    const isCircle = pocket.shape === 'circle'
+    const isCircle = pocket.shape === 'circle' || pocket.shape === 'circleLightened'
     const nominal: Extract<ResolvedPattern, { kind: 'pocket' }>['nominal'] = isCircle
       ? { shape: 'circle', radius: pocket.diameter / 2 }
       : { shape: 'rect', halfWidth: pocket.width / 2, halfHeight: pocket.height / 2 }
@@ -865,11 +866,26 @@ function drawPocketGeometry(
   const [cx, cy] = toPx(center.x, center.y)
 
   // The pocket is a void (BL-74): stock sheet with its outline cut out,
-  // the outline itself only stroked.
+  // the outline itself only stroked. Lightened (OP-6): one void per cell.
+  const lightened = isLightenedShape(params.pocket.shape)
   if (showStock) {
     ctx.strokeStyle = theme.holeStroke
     ctx.lineWidth = 1
-    if (nominal.shape === 'circle') {
+    if (lightened) {
+      const voids = pocketVoids(params.pocket)
+      fillStockSheet(ctx, toPx, scale, sheet, theme.holeFill, voids)
+      for (const v of voids) {
+        if (!('polygon' in v)) continue
+        ctx.beginPath()
+        v.polygon.forEach((p, i) => {
+          const [x, y] = toPx(p.x, p.y)
+          if (i === 0) ctx.moveTo(x, y)
+          else ctx.lineTo(x, y)
+        })
+        ctx.closePath()
+        ctx.stroke()
+      }
+    } else if (nominal.shape === 'circle') {
       fillStockSheet(ctx, toPx, scale, sheet, theme.holeFill, [{ circle: center, radius: nominal.radius }])
       ctx.beginPath()
       ctx.arc(cx, cy, nominal.radius * scale, 0, Math.PI * 2)
@@ -896,13 +912,15 @@ function drawPocketGeometry(
   if (showToolpath) {
     drawToolpathMoves(ctx, toPx, toolpath, theme)
 
-    // Entry point marker — always the pocket's own center, regardless of
-    // method/shape (see CLAUDE.md's Pocket design notes: entry is always
-    // centered).
-    ctx.beginPath()
-    ctx.arc(cx, cy, 2, 0, Math.PI * 2)
+    // Entry point marker — the pocket's own center (see CLAUDE.md's Pocket
+    // design notes: entry is always centered), or every cell's center.
+    const entries = lightened ? lightenedCells(params.pocket).map((c) => toPx(cellInscribed(c).center.x, cellInscribed(c).center.y)) : [[cx, cy]]
     ctx.fillStyle = theme.toolpath
-    ctx.fill()
+    for (const [ex, ey] of entries) {
+      ctx.beginPath()
+      ctx.arc(ex, ey, 2, 0, Math.PI * 2)
+      ctx.fill()
+    }
   }
 
   drawOffsetVector(ctx, toPx, params.pocket.offsetX, params.pocket.offsetY, theme, arrowSize)
