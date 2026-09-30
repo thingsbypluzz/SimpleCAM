@@ -107,6 +107,7 @@ export interface PocketParams {
   offsetX: number
   offsetY: number
   stepoverPercent: number // 1-100, single source of truth — mm value is derived
+  rampLengthFactor: number // Spiral only (BL-41) — ring-to-ring ramp arc length as a multiple of the ring spacing, 1-10
   zTransitionMode: ZTransitionMode
   helixRadius: number // only enforced/shown when zTransitionMode === 'helix' (always, for Adaptive)
   optimalLoadPercent: number // Adaptive only, 1-30, single source of truth — mm and engagement angle are derived
@@ -219,6 +220,7 @@ export const DEFAULT_WIZARD_PARAMS: WizardParams = {
     offsetX: 0,
     offsetY: 0,
     stepoverPercent: 40,
+    rampLengthFactor: 3,
     zTransitionMode: 'plunge',
     helixRadius: 1,
     optimalLoadPercent: 10,

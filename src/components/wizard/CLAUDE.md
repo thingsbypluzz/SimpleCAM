@@ -14,7 +14,8 @@
   Direction → Stepover → Z-Transition + Helix Radius + Ramp Angle (jeden
   wiersz) → Offset.
   Pocket: wymiary + Total Depth → Tool Diameter → Method (+ Direction) →
-  Optimal Load albo Stepover → Z-Transition + Helix Radius + Ramp Angle
+  Optimal Load albo Stepover + Ramp Length (Spiral, pod wierszem odczyt
+  Engagement) → Z-Transition + Helix Radius + Ramp Angle
   (jeden wiersz) → Finishing Pass + Stock to Leave (jeden wiersz) →
   Offset. Błąd pod polem, którego dotyczy.
 - **Błędne pola:** ten sam warunek, który pokazuje tekst błędu
@@ -34,6 +35,7 @@
   Depth, Tabs Height/Width/Count, Surface Method + Raster Direction, Pocket
   Method + Direction (Method `shrink-0`, drugi toggle po odstępie; "Conv."/
   "Climb" z pełną nazwą w tooltipie), Optimal Load %/mm/Engagement,
+  Pocket Stepover %/mm/Ramp Length,
   Z-Transition + Helix Radius + Ramp Angle w Surface i Pocket (trzy
   kolumny, puste komórki, gdy nie Helix; skrócone etykiety „Helix R.”/
   „Ramp”; w Pocket powód blokady Helix w Adaptive pod Hint Button przy

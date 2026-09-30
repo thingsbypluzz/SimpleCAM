@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
+  spiralRampEngagementDeg,
   pocketCenter,
   pocketCircleWallRadius,
   pocketRectWallHalfDims,
@@ -49,5 +50,19 @@ describe('pocketCircleWallRadius', () => {
 describe('pocketStepoverMm', () => {
   it('converts stepover % of tool diameter to mm', () => {
     expect(pocketStepoverMm(pocket({ toolDiameter: 10, stepoverPercent: 40 }))).toBe(4)
+  })
+})
+
+describe('spiralRampEngagementDeg (BL-41)', () => {
+  it('ring engagement from Stepover, plus atan(1/Ramp Length) while ramping out', () => {
+    const { ring, ramp } = spiralRampEngagementDeg({ stepoverPercent: 40, rampLengthFactor: 3 })
+    expect(ring).toBeCloseTo((Math.acos(0.2) * 180) / Math.PI, 9) // ≈ 78.46°
+    expect(ramp - ring).toBeCloseTo((Math.atan(1 / 3) * 180) / Math.PI, 9) // ≈ 18.43°
+    const steep = spiralRampEngagementDeg({ stepoverPercent: 40, rampLengthFactor: 1 })
+    expect(steep.ramp - steep.ring).toBeCloseTo(45, 9)
+  })
+
+  it('never reports more than a full slot (180°)', () => {
+    expect(spiralRampEngagementDeg({ stepoverPercent: 100, rampLengthFactor: 1 }).ramp).toBe(180)
   })
 })

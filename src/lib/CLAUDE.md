@@ -173,11 +173,18 @@ zaczyna od `zTo('rapid', startZ)`; końcowy retrakt robi `assembleProgram()`.
 
 - Każdy pierścień = **ramp** (zawsze G1 — dialekt nie ma G2/G3 o
   zmiennym promieniu) + **pełny płaski obrót** (nigdy pomijany).
-- **Circle:** kąt rampy per pierścień `rampSweepDegFor()` — stała jest
-  **długość łuku** rampy = `RAMP_LENGTH_FACTOR` (3, `BL-41`) × Δr tej
-  transycji, dzielona przez średni promień; stosunek Δr/łuk stały na każdym
-  promieniu. Sufit 360° defensywny (maksimum realne ≈ 343.8° przy
-  `radiusFrom = 0`). Kąt startowy kolejnego rampu = poprzedni + sweep, bez
+- **Ramp Length** (`pocket.rampLengthFactor`, 1–10, domyślnie 3 —
+  `DEFAULT_RAMP_LENGTH_FACTOR`, walidacja `isPocketRampLengthValid()`,
+  tylko Spiral): rampa to przejście **promieniowe w XY na stałym Z**, nie
+  zejście. Długość jej łuku = mnożnik × Δr, więc frez odchodzi na
+  zewnątrz pod `atan(1/mnożnik)` do stycznej na każdym promieniu.
+  Odczyt w Kroku 2: `spiralRampEngagementDeg()` (`pocketGeometry.ts`) —
+  pierścień `engagementAngleFor(stepover)`, rampa + `atan(1/mnożnik)`
+  (przybliżenie: ściana lokalnie prosta, najwyżej 180°).
+- **Circle:** kąt rampy per pierścień `rampSweepDegFor(from, to, factor)`
+  = mnożnik × Δr tej transycji / średni promień; stosunek Δr/łuk stały na
+  każdym promieniu. Sufit 360° (pierwszy pierścień od środka ≈ 114.6° ×
+  mnożnik, więc od ~3.14 trafia w sufit). Kąt startowy kolejnego rampu = poprzedni + sweep, bez
   zawijania. Pełny obrót respektuje G2/G3 vs G1.
 - **Rectangle:** ten sam mechanizm na obwodzie — `fraction` 0–1
   (`rectPointAtPerimeterFraction()`, CCW od lewego dolnego rogu, każdy bok

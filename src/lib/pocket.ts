@@ -33,7 +33,7 @@ function spiralCircleLevel(b: ToolpathBuilder, cx: number, cy: number, toZ: numb
   const radii = pocketCircleRingRadii(startRadius, pocketRoughCircleWallRadius(pocket), pocketStepoverMm(pocket))
   let angle = 0
   for (let i = 1; i < radii.length; i++) {
-    angle = appendCircleRing(b, radii[i - 1], radii[i], angle, cx, cy, toZ)
+    angle = appendCircleRing(b, radii[i - 1], radii[i], angle, cx, cy, toZ, pocket.rampLengthFactor)
   }
 }
 
@@ -53,7 +53,7 @@ function spiralRectLevel(b: ToolpathBuilder, cx: number, cy: number, toZ: number
     : { halfWidth: 0, halfHeight: 0 }
   let fraction = isHelix ? RECT_HELIX_ENTRY_FRACTION : 0
   for (const dims of rings) {
-    fraction = appendRectRing(b, prevDims, dims, fraction, cx, cy, toZ)
+    fraction = appendRectRing(b, prevDims, dims, fraction, cx, cy, toZ, pocket.rampLengthFactor)
     prevDims = dims
   }
 }

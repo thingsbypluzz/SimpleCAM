@@ -197,7 +197,7 @@ faktycznym.
   Settings (dialekt/travel/G-code/mostki) i wszystkie sloty presetów
   łącznie z ukrytym `"0"`. Osobna pozycja Settings Nav "Reset" (między
   "Privacy" a "About"). Pełny opis: `CHANGELOG.md`, `[0.17.2]`.
-- **`BL-41`** *(Otwarty)* 🟢 — **Konfigurowalna długość rampy dla Pocket
+- **`BL-41`** *(Zrealizowany, 2026-09-30)* 🟢 — **Konfigurowalna długość rampy dla Pocket
   Spiral.** Z sesji `/grill-me` `OP-2`, zrewidowane sesją weryfikacji
   wizualnej (2026-09-21): kąt rampy między pierścieniami Circle nie jest
   już stały — wyliczany per pierścień (`rampSweepDegFor()`) tak, żeby
@@ -206,6 +206,9 @@ faktycznym.
   Mogłaby stać się polem liczbowym (jak Helix Radius) do dostrajania per
   materiał/narzędzie — mechanizm już istnieje, to tylko odsłonięcie
   `RAMP_LENGTH_FACTOR` jako parametru + walidacja zakresu.
+  Wdrożone: pole „Ramp Length [×]” (1–10, domyślnie 3) w wierszu
+  Stepover (tylko Spiral) + odczyt Engagement (pierścień i szczyt na
+  rampie, `+atan(1/mnożnik)`). Pełny opis: `CHANGELOG.md`, `[0.29.0]`.
 - **`BL-42`** *(Zrealizowany, 2026-09-28)* 🟠 — **Finishing wall pass / stock-to-leave dla
   Pocket.** Z sesji `/grill-me` `OP-2`: v1 to roughing-only (zewnętrzny
   pierścień JEST ścianą). Osobny, dokładny przejazd

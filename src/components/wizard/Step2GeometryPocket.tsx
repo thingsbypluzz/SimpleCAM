@@ -7,6 +7,9 @@ import {
   isPocketRampAngleValid,
   isPocketSizeValid,
   isPocketStepoverValid,
+  isPocketRampLengthValid,
+  MAX_RAMP_LENGTH_FACTOR,
+  MIN_RAMP_LENGTH_FACTOR,
   isPocketStockToLeaveValid,
   isPocketToolDiameterValid,
   isPocketToolpathWithinLimits,
@@ -25,7 +28,7 @@ import {
   optimalLoadPercentFromMm,
 } from '../../lib/pocketAdaptiveMath'
 import { effectivePocketZTransitionMode } from '../../lib/pocketZTransition'
-import { pocketStepoverMm } from '../../lib/pocketGeometry'
+import { pocketStepoverMm, spiralRampEngagementDeg } from '../../lib/pocketGeometry'
 import { fmt } from '../../lib/format'
 import { resolveToolDiameterSelectOptions } from '../../lib/toolDiameterOptions'
 import type { ToolDiameterOption } from '../../types/toolDiameters'
@@ -54,7 +57,8 @@ const round2 = (n: number) => Math.round(n * 100) / 100
 const round4 = (n: number) => Math.round(n * 10000) / 10000
 
 // Field order (BL-72): shape size fields -> Total Depth -> Tool Diameter ->
-// Method (+ Direction) -> Stepover (% + read-only mm) -> Z-Transition Mode
+// Method (+ Direction) -> Stepover (% + read-only mm) + Ramp Length (one
+// row, BL-41, engagement readout below it) -> Z-Transition Mode
 // + Helix Radius + Ramp Angle (one row, helix fields only in Helix mode)
 // -> Finishing Pass + Stock to Leave (one row, BL-42) -> Offset X/Y —
 // mirrors Step2GeometrySurface.tsx's conventions throughout. Adaptive swaps
@@ -74,6 +78,7 @@ export function Step2GeometryPocket({ params, onChange, machine, toolDiameters, 
   const heightField = useNumberField(pocket.height, (v) => updatePocket({ height: v }))
   const diameterField = useNumberField(pocket.diameter, (v) => updatePocket({ diameter: v }))
   const stepoverField = useNumberField(pocket.stepoverPercent, (v) => updatePocket({ stepoverPercent: v }))
+  const rampLengthField = useNumberField(pocket.rampLengthFactor, (v) => updatePocket({ rampLengthFactor: v }))
   const helixRadiusField = useNumberField(pocket.helixRadius, (v) => updatePocket({ helixRadius: v }))
   const offsetXField = useNumberField(pocket.offsetX, (v) => updatePocket({ offsetX: v }))
   const offsetYField = useNumberField(pocket.offsetY, (v) => updatePocket({ offsetY: v }))
@@ -110,6 +115,8 @@ export function Step2GeometryPocket({ params, onChange, machine, toolDiameters, 
   const diameterInvalid = !(pocket.diameter > 0) || toolInvalid
   const depthInvalid = !(pocket.totalDepth > 0)
   const stepoverInvalid = !isPocketStepoverValid(pocket)
+  const rampLengthInvalid = !isPocketRampLengthValid(pocket)
+  const spiralEngagement = spiralRampEngagementDeg(pocket)
   const rampInvalid = !isPocketRampAngleValid(pocket)
   const helixRadiusInvalid = zMode === 'helix' && !isPocketHelixRadiusValid(pocket)
   const limitInvalid = !isPocketToolpathWithinLimits(params)
@@ -348,9 +355,36 @@ export function Step2GeometryPocket({ params, onChange, machine, toolDiameters, 
               />
             </FieldRow>
           </div>
+          <div className="min-w-0 flex-1">
+            <FieldRow
+              label="Ramp Length [×]"
+              hint="How far the tool travels around while stepping out to the next ring: the ramp's length = this × the ring spacing (Stepover). Lower is a shorter, more aggressive step-out (1 ≈ 45° outward), higher a gentler one (10 ≈ 6°). The readout below shows what it does to the engagement. Default 3."
+            >
+              <NumberInput
+                type="number"
+                step="0.5"
+                min={MIN_RAMP_LENGTH_FACTOR}
+                max={MAX_RAMP_LENGTH_FACTOR}
+                className={inputClass}
+                aria-invalid={rampLengthInvalid}
+                {...rampLengthField}
+              />
+            </FieldRow>
+          </div>
         </div>
         {stepoverInvalid && (
           <p className="text-sm text-status-error">Stepover must be between 1% and 100% of the tool diameter.</p>
+        )}
+        {rampLengthInvalid && (
+          <p className="text-sm text-status-error">
+            Ramp Length must be between {MIN_RAMP_LENGTH_FACTOR}× and {MAX_RAMP_LENGTH_FACTOR}×.
+          </p>
+        )}
+        {!stepoverInvalid && !rampLengthInvalid && (
+          <p className="text-sm text-muted">
+            Engagement: {Math.round(spiralEngagement.ring)}° on each ring, up to {Math.round(spiralEngagement.ramp)}° while
+            ramping out to the next one.
+          </p>
         )}
       </div>
       )}

@@ -7,6 +7,23 @@ zgodne z [SemVer](https://semver.org/). Ten plik pozostaje głównym, czytelnym
 thingsbypluzz/SimpleCAM), ale to infrastruktura pod izolację pracy
 (branch/worktree per zadanie), nie zamiennik tego changeloga.
 
+## [0.29.0] — 2026-09-30
+
+### Dodano
+
+- **Ramp Length dla Pocket Spiral** (`BL-41`). Przejście między
+  pierścieniami Spiral to rampa w XY (na stałym Z), której długość była
+  stałą w kodzie: 3 × odstęp pierścieni. Teraz to pole **„Ramp Length
+  [×]”** (1–10, domyślnie 3) jako trzecia kolumna wiersza Stepover [%] |
+  Stepover [mm], tylko dla Spiral. Mniejsza wartość = krótsza, bardziej
+  agresywna rampa (1 ≈ frez odchodzi na zewnątrz pod 45°), większa =
+  łagodniejsza (10 ≈ 6°).
+  - Pod wierszem odczyt **Engagement** (w stopniach, jak w Adaptive):
+    zaangażowanie na pierścieniu ze Stepover i szczytowe podczas rampy —
+    rampa dokłada `atan(1/Ramp Length)` (przy 40% i 3×: 78° → 97°).
+  - Hint Button z instrukcją; wartość poza zakresem blokuje Generate
+    (czerwone pole). Istniejące presety dostają 3 — ścieżka bez zmian.
+
 ## [0.28.0] — 2026-09-30
 
 ### Dodano

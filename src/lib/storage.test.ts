@@ -241,6 +241,11 @@ describe('field validation on load (BL-57)', () => {
     expect(outline.rampAngleDeg).toBe(2)
   })
 
+  it('gives a Pocket saved before Ramp Length the default 3× (BL-41)', () => {
+    storeAutoSave({ pocket: { shape: 'circle', method: 'spiral', diameter: 30 } })
+    expect(loadSlot(AUTO_SAVE_SLOT)!.pocket.rampLengthFactor).toBe(3)
+  })
+
   it('keeps chipThinningBaseFeed null or numeric', () => {
     storeAutoSave({ pocket: { chipThinningBaseFeed: 700 } })
     expect(loadSlot(AUTO_SAVE_SLOT)!.pocket.chipThinningBaseFeed).toBe(700)

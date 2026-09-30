@@ -2,7 +2,8 @@ import { fullTurn, toolpathToGcode, ToolpathBuilder } from './toolpath'
 import { computeLinePositions } from './surfaceRaster'
 import type { InterpolationMode, Point2D } from '../types/wizard'
 
-// How many multiples of this ring transition's OWN radial delta (Δr,
+// Ramp Length (BL-41, `pocket.rampLengthFactor`, Step 2): how many
+// multiples of this ring transition's OWN radial delta (Δr,
 // normally ≈ stepover, but the first/last ring can differ — see
 // pocketCircleRingRadii()) its ramp's arc length spans. A fixed ramp
 // ANGLE (the original, since-corrected design — see CLAUDE.md's Pocket
@@ -13,17 +14,18 @@ import type { InterpolationMode, Point2D } from '../types/wizard'
 // steep near the center, near-invisible at the outer wall (confirmed by
 // a second round of visual QA, no machine access). Fixing the ARC LENGTH
 // instead — proportional to Δr, via this factor — keeps that engagement
-// rate constant at every radius: arcLength = RAMP_LENGTH_FACTOR × Δr, and
-// sweepRad = arcLength / avgRadius, so Δr / arcLength = 1 / RAMP_LENGTH_FACTOR
-// regardless of ring size. 3 is a moderate choice (gentler than 1:1,
-// without inflating ramp length past what's still a small fraction of
-// the ring's own circumference at any reasonable stepover) — not derived
-// from a physical constant, same category of judgment call as
-// SEGMENTS_PER_TURN-style sampling density elsewhere in this codebase.
-const RAMP_LENGTH_FACTOR = 3
+// rate constant at every radius: arcLength = factor × Δr, and
+// sweepRad = arcLength / avgRadius, so Δr / arcLength = 1 / factor
+// regardless of ring size — the tool steps outward at atan(1/factor) to
+// the ring's tangent, which is also what the ramp adds to the ring's
+// engagement angle (spiralRampEngagementDeg(), pocketGeometry.ts). The
+// default 3 is a moderate choice (gentler than 1:1, without inflating
+// ramp length past a small fraction of the ring's own circumference at
+// any reasonable stepover) — a judgment call, now user-tunable 1–10.
+export const DEFAULT_RAMP_LENGTH_FACTOR = 3
 
 // Ramp sweep angle (degrees) for one ring transition — see
-// RAMP_LENGTH_FACTOR above. Uses the transition's own average radius
+// DEFAULT_RAMP_LENGTH_FACTOR above. Uses the transition's own average radius
 // (radiusFrom+radiusTo)/2, not radiusTo alone: for the very first ring
 // (radiusFrom = 0 for Plunge entry, or a small helixRadius for Helix),
 // this pulls the effective radius down further, correctly demanding an
@@ -35,11 +37,11 @@ const RAMP_LENGTH_FACTOR = 3
 // end point, never around the rest of the circle, exactly the same
 // reasoning as pocketZTransitionMoves()'s Helix flat-finishing-pass fix
 // (lib/pocketZTransition.ts) just above this in the session history.
-export function rampSweepDegFor(radiusFrom: number, radiusTo: number): number {
+export function rampSweepDegFor(radiusFrom: number, radiusTo: number, factor = DEFAULT_RAMP_LENGTH_FACTOR): number {
   const deltaR = radiusTo - radiusFrom
   const avgRadius = (radiusFrom + radiusTo) / 2
   if (avgRadius <= 0) return 360
-  const sweepRad = (RAMP_LENGTH_FACTOR * deltaR) / avgRadius
+  const sweepRad = (factor * deltaR) / avgRadius
   return Math.min(360, (sweepRad * 180) / Math.PI)
 }
 
@@ -70,8 +72,9 @@ export function circleRingRampPoints(
   startAngleDeg: number,
   centerX: number,
   centerY: number,
+  factor = DEFAULT_RAMP_LENGTH_FACTOR,
 ): Point2D[] {
-  const sweepDeg = rampSweepDegFor(radiusFrom, radiusTo)
+  const sweepDeg = rampSweepDegFor(radiusFrom, radiusTo, factor)
   const segments = rampSegmentCountFor(sweepDeg)
   const startRad = (startAngleDeg * Math.PI) / 180
   const sweepRad = (sweepDeg * Math.PI) / 180
@@ -105,11 +108,12 @@ export function appendCircleRing(
   centerX: number,
   centerY: number,
   z: number,
+  factor = DEFAULT_RAMP_LENGTH_FACTOR,
 ): number {
-  for (const p of circleRingRampPoints(radiusFrom, radiusTo, startAngleDeg, centerX, centerY)) {
+  for (const p of circleRingRampPoints(radiusFrom, radiusTo, startAngleDeg, centerX, centerY, factor)) {
     builder.lineTo('cut', p.x, p.y, z)
   }
-  const nextAngleDeg = startAngleDeg + rampSweepDegFor(radiusFrom, radiusTo)
+  const nextAngleDeg = startAngleDeg + rampSweepDegFor(radiusFrom, radiusTo, factor)
   const endRad = (nextAngleDeg * Math.PI) / 180
   const from = { x: centerX + radiusTo * Math.cos(endRad), y: centerY + radiusTo * Math.sin(endRad) }
   builder.arc('cut', { x: centerX, y: centerY }, 'ccw', fullTurn, z, { from, radius: radiusTo })
@@ -254,13 +258,13 @@ export function rectPointAtPerimeterFraction(
 // Capped at 1 (one full loop) for the same defensive reason as Circle's
 // 360° cap — reachable here: the from-zero/square case lands just over
 // 100% before the cap (see pocketSpiral.test.ts).
-export function rectRampSweepFor(fromDims: RectRingDims, toDims: RectRingDims): number {
+export function rectRampSweepFor(fromDims: RectRingDims, toDims: RectRingDims, factor = DEFAULT_RAMP_LENGTH_FACTOR): number {
   const deltaHW = toDims.halfWidth - fromDims.halfWidth
   const deltaHH = toDims.halfHeight - fromDims.halfHeight
   const deltaK = Math.sqrt(deltaHW * deltaHW + deltaHH * deltaHH)
   const avgPerimeter = (rectPerimeter(fromDims.halfWidth, fromDims.halfHeight) + rectPerimeter(toDims.halfWidth, toDims.halfHeight)) / 2
   if (avgPerimeter <= 0) return 1
-  const rampLength = RAMP_LENGTH_FACTOR * deltaK
+  const rampLength = factor * deltaK
   return Math.min(1, rampLength / avgPerimeter)
 }
 
@@ -277,8 +281,9 @@ export function rectRingRampPoints(
   startFraction: number,
   centerX: number,
   centerY: number,
+  factor = DEFAULT_RAMP_LENGTH_FACTOR,
 ): Point2D[] {
-  const sweep = rectRampSweepFor(fromDims, toDims)
+  const sweep = rectRampSweepFor(fromDims, toDims, factor)
   const segments = rampSegmentCountFor(sweep * 360)
   const points: Point2D[] = []
   for (let step = 1; step <= segments; step++) {
@@ -356,10 +361,11 @@ export function appendRectRing(
   centerX: number,
   centerY: number,
   z: number,
+  factor = DEFAULT_RAMP_LENGTH_FACTOR,
 ): number {
-  const nextFraction = startFraction + rectRampSweepFor(fromDims, toDims)
+  const nextFraction = startFraction + rectRampSweepFor(fromDims, toDims, factor)
   const points = [
-    ...rectRingRampPoints(fromDims, toDims, startFraction, centerX, centerY),
+    ...rectRingRampPoints(fromDims, toDims, startFraction, centerX, centerY, factor),
     ...rectFullLapPoints(centerX, centerY, toDims, nextFraction).slice(1),
   ]
   for (const p of points) builder.lineTo('cut', p.x, p.y, z)
