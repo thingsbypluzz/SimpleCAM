@@ -20,6 +20,7 @@ const base: GeometryParams = {
   tabHeight: 1,
   tabWidth: 3,
   tabCount: 4,
+  rampAngleDeg: 2,
 }
 
 // cos/sin at non-trivial angles (e.g. 90°) leave floating-point epsilon

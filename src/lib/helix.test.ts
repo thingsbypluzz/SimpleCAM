@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { generateHelix } from './helix'
+import { buildHelixCircleToolpath, generateHelix, holeCircleOptions } from './helix'
 import { DEFAULT_MACHINE_SETTINGS } from '../types/machine'
 import { DEFAULT_WIZARD_PARAMS, type WizardParams } from '../types/wizard'
 
@@ -16,7 +16,10 @@ function buildParams(overrides: {
 } = {}): WizardParams {
   return {
     ...DEFAULT_WIZARD_PARAMS,
-    geometry: { ...DEFAULT_WIZARD_PARAMS.geometry, ...overrides.geometry },
+    // 30° keeps the Ramp Angle out of the way (8 mm hole, 3.175 tool: 30°
+    // allows ~8.8 mm/turn), so the pitch is Stepdown — the BL-80 tests at
+    // the bottom set a gentle angle explicitly.
+    geometry: { ...DEFAULT_WIZARD_PARAMS.geometry, rampAngleDeg: 30, ...overrides.geometry },
     feeds: { ...DEFAULT_WIZARD_PARAMS.feeds, ...overrides.feeds },
     output: { ...DEFAULT_WIZARD_PARAMS.output, ...overrides.output },
   }
@@ -220,6 +223,49 @@ describe('generateHelix', () => {
       const beforeBand = lines.slice(0, firstBandPlungeIdx)
       const linesAtBandTop = beforeBand.filter((l) => l.startsWith('G1 X') && l.includes('Z-4 '))
       expect(linesAtBandTop).toHaveLength(73)
+    })
+  })
+
+  describe('Ramp Angle (BL-80)', () => {
+    it('caps the pitch at 2πr·tan(angle) when that is gentler than Stepdown', () => {
+      const params = buildParams({ geometry: { totalDepth: 4, rampAngleDeg: 2 }, feeds: { stepdown: 1 }, output: { interpolation: 'arc' } })
+      const radius = (8 - 3.175) / 2
+      const pitch = 2 * Math.PI * radius * Math.tan((2 * Math.PI) / 180)
+      expect(holeCircleOptions(params).pitch).toBeCloseTo(pitch, 9)
+      const arcLines = generate(params).filter((l) => l.startsWith('G3'))
+      // spiral turns + the flat finishing pass
+      expect(arcLines).toHaveLength(Math.ceil(4 / pitch) + 1)
+      expect(arcLines[arcLines.length - 1]).toContain('Z-4')
+    })
+
+    it('keeps Stepdown as the pitch when the angle allows more', () => {
+      const params = buildParams({ geometry: { rampAngleDeg: 30 }, feeds: { stepdown: 0.8 } })
+      expect(holeCircleOptions(params).pitch).toBe(0.8)
+    })
+
+    it('never descends steeper than the Ramp Angle', () => {
+      const params = buildParams({ geometry: { holeDiameter: 8, toolDiameter: 6, totalDepth: 6, rampAngleDeg: 3 }, feeds: { stepdown: 4.5 } })
+      const toolpath = buildHelixCircleToolpath(0, 0, holeCircleOptions(params))
+      const tan = Math.tan((3 * Math.PI) / 180)
+      let prev = toolpath.start
+      for (const move of toolpath.moves) {
+        if (move.kind === 'cut' && move.type === 'arc') {
+          const radius = Math.hypot(prev.x - move.center.x, prev.y - move.center.y)
+          expect((prev.z - move.to.z) / (move.sweep * radius)).toBeLessThanOrEqual(tan + 1e-9)
+        }
+        prev = move.to
+      }
+    })
+
+    it('keeps the tab-band passes at Stepdown, not the pitch', () => {
+      const lines = generate(
+        buildParams({
+          geometry: { totalDepth: 4, tabsEnabled: true, tabHeight: 1, tabCount: 3, tabWidth: 1, rampAngleDeg: 1 },
+          feeds: { stepdown: 0.5 },
+        }),
+      )
+      expect(lines).toContain('G1 Z-3.5 F300')
+      expect(lines).toContain('G1 Z-4 F300')
     })
   })
 })

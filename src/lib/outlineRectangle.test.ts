@@ -109,41 +109,66 @@ describe('generateRectOutlineStandard / Ramp — single-shape cut, not a repeate
 })
 
 describe('generateRectOutlineRamp — untabbed', () => {
-  it('ramps along the longer edge, flat on the other 3, one stepdown per lap, plus a flat cleanup lap', () => {
+  // BL-80: each lap is a "rectangular helix" — the Z drop is spread over all
+  // 4 edges in proportion to their length, so every edge has the same slope.
+  it('descends one pitch per lap spread over all 4 edges, plus a flat cleanup lap', () => {
     const params = buildParams('rectCornered', {
-      outline: { offsetMode: 'inside', width: 40, height: 20, toolDiameter: 0, totalDepth: 3 },
+      outline: { offsetMode: 'inside', width: 40, height: 20, toolDiameter: 0, totalDepth: 3, rampAngleDeg: 30 },
       feeds: { stepdown: 1 },
     })
     const lines = generateRectOutlineRamp(params, DEFAULT_MACHINE_SETTINGS)
-    // 3 stepdown laps + 1 flat cleanup lap = 4 laps * 4 edges = 16 G1 X lines.
+    // 30° over a 120 mm perimeter allows ~69 mm per lap, so the pitch is
+    // Stepdown: 3 laps + 1 flat cleanup lap = 4 laps * 4 edges.
     const cutLines = lines.filter((l) => l.startsWith('G1 X'))
     expect(cutLines).toHaveLength(16)
-    // The ramp edge (width = 40, the longer dimension) is the first line of
-    // every lap, and it alone carries the Z drop: lap 1 goes from the
-    // (implicit) start Z=0 down to -1 while moving along the width edge.
-    expect(cutLines[0]).toBe('G1 X40 Y0 Z-1 F800')
-    // Final (cleanup) lap: ramp edge re-cut flat at the final depth.
-    expect(cutLines[12]).toBe('G1 X40 Y0 Z-3 F800')
-    // No separate straight plunge before the very first lap — the ramp
-    // edge's own G1 line is the initial descent (no bare `G1 Z..` line
-    // appears before the first cut line).
+    // Lap 1 from Z0: 40/120, 60/120, 100/120 and 120/120 of the pitch.
+    expect(cutLines.slice(0, 4)).toEqual([
+      'G1 X40 Y0 Z-0.3333 F800',
+      'G1 X40 Y20 Z-0.5 F800',
+      'G1 X0 Y20 Z-0.8333 F800',
+      'G1 X0 Y0 Z-1 F800',
+    ])
+    // Final (cleanup) lap: flat at the final depth all the way round.
+    expect(cutLines.slice(12).every((l) => l.includes('Z-3 '))).toBe(true)
+    // No separate straight plunge before the very first lap — the ramp is
+    // the initial descent.
     expect(lines.filter((l) => /^G1 Z-?[\d.]+ F/.test(l))).toHaveLength(0)
   })
 
-  it('picks the height edge as the ramp edge when height is the longer dimension', () => {
+  it('caps the pitch at perimeter·tan(Ramp Angle), never steeper on any edge', () => {
     const params = buildParams('rectCornered', {
-      outline: { offsetMode: 'inside', width: 20, height: 40, toolDiameter: 0, totalDepth: 1 },
+      outline: { offsetMode: 'inside', width: 40, height: 20, toolDiameter: 0, totalDepth: 3, rampAngleDeg: 0.5 },
+      feeds: { stepdown: 3 },
+    })
+    const lines = generateRectOutlineRamp(params, DEFAULT_MACHINE_SETTINGS)
+    const pitch = 120 * Math.tan((0.5 * Math.PI) / 180)
+    const cutLines = lines.filter((l) => l.startsWith('G1 X'))
+    expect(cutLines).toHaveLength((Math.ceil(3 / pitch) + 1) * 4)
+    const tan = Math.tan((0.5 * Math.PI) / 180)
+    let prev = { x: 0, y: 0, z: 0 }
+    for (const line of cutLines) {
+      const [x, y, z] = ['X', 'Y', 'Z'].map((axis) => Number(line.match(new RegExp(`${axis}(-?[\\d.]+)`))![1]))
+      const xy = Math.hypot(x - prev.x, y - prev.y)
+      expect((prev.z - z) / xy).toBeLessThanOrEqual(tan + 1e-3) // 4-decimal G-code rounding
+      prev = { x, y, z }
+    }
+    expect(cutLines[cutLines.length - 1]).toContain('Z-3 ')
+  })
+
+  it('starts each lap at the corner that begins the longer edge', () => {
+    const params = buildParams('rectCornered', {
+      outline: { offsetMode: 'inside', width: 20, height: 40, toolDiameter: 0, totalDepth: 1, rampAngleDeg: 30 },
       feeds: { stepdown: 1 },
     })
     const lines = generateRectOutlineRamp(params, DEFAULT_MACHINE_SETTINGS)
     // Height (40) is now longer. rectCorners' ccw order is
     // (0,0),(20,0),(20,40),(0,40) — the height edge is corners[1]->corners[2]
     // (index 1), so longerEdgeIndex rotates the walk to start there: G0
-    // rapids to corners[1]=(20,0), then the first cut ramps along the
-    // height edge to corners[2]=(20,40).
+    // rapids to corners[1]=(20,0), then the first cut runs up the height
+    // edge to corners[2]=(20,40), 40/120 of the way down the first lap.
     expect(lines).toContain('G0 X20 Y0')
     const firstCut = lines.find((l) => l.startsWith('G1 X'))
-    expect(firstCut).toBe('G1 X20 Y40 Z-1 F800')
+    expect(firstCut).toBe('G1 X20 Y40 Z-0.3333 F800')
   })
 })
 

@@ -7,6 +7,39 @@ zgodne z [SemVer](https://semver.org/). Ten plik pozostaje głównym, czytelnym
 thingsbypluzz/SimpleCAM), ale to infrastruktura pod izolację pracy
 (branch/worktree per zadanie), nie zamiennik tego changeloga.
 
+## [0.27.0] — 2026-09-30
+
+### Dodano
+
+- **Ramp Angle dla Hole(s) Helix i Outline Helix/Ramp** (`BL-80`). Dotąd
+  skok spirali w Hole(s) i Outline Circle był równy Stepdown, a Outline
+  Rectangle Ramp schodził o cały Stepdown na jednym, dłuższym boku. Przy
+  Stepdown z Feedrate Calculatora (liczonym jak dla szczeliny) i małym
+  promieniu helixa dawało to strome zejście — np. Delrin, frez 6 mm, otwór
+  8 mm: 4.5 mm na obrót ≈ 36°, praktycznie wiercenie na posuwie XY.
+  - Nowy wiersz **Ramp [°]** (0.5–30°, domyślnie 2° — jak w Surface/Pocket)
+    + read-only **Pitch [mm/turn]** / **[mm/lap]**, widoczny tylko przy
+    metodzie Helix (Hole(s), Outline Circle) albo Ramp (Outline Rectangle).
+  - Skok = mniejsza z wartości: Stepdown albo długość obrotu/okrążenia ×
+    tan(kąt) — Stepdown zostaje górnym limitem, kąt pilnuje łagodnego
+    zejścia. Przejścia w paśmie mostków nadal co Stepdown.
+  - **Rectangle Ramp jako „prostokątny helix”:** każde okrążenie schodzi o
+    skok rozłożony na wszystkie 4 boki proporcjonalnie do długości (stałe
+    nachylenie), zamiast całego zejścia na jednym boku.
+  - Nowe ostrzeżenie w Kroku 3/4, gdy przy małym promieniu helixa zejście o
+    jeden Stepdown wymaga ponad 10 obrotów (sugestia metody Standard);
+    ostrzeżenie o kącie > 10° dotyczy teraz efektywnego skoku (więc tylko
+    Ramp > 10°). Zbyt wiele obrotów (limit 5000) blokuje Generate.
+  - Etykiety Stepdown: „Stepdown [max mm per turn]” / „[max mm per lap]”,
+    MiniStat Kroku 3 dla Helix „STEP” zamiast „PITCH”.
+
+### Zmieniono
+
+- **Istniejące presety i auto-save** z Helix/Ramp dostają Ramp Angle 2° —
+  przy dużym Stepdown oznacza to więcej obrotów/okrążeń niż wcześniej
+  (łagodniejsze zejście, dłuższy program). Poprzednie zachowanie ≈ Ramp
+  ustawiony tak wysoko, żeby nie ograniczał (np. 30°).
+
 ## [0.26.0] — 2026-09-30
 
 ### Dodano

@@ -1,6 +1,11 @@
 import { describe, expect, it } from 'vitest'
 import {
   descentAngleDeg,
+  isRampAngleValid,
+  isRampTurnCountWithinLimit,
+  isWizardParamsValid,
+  rampDescent,
+  rampTurnsPerStepdown,
   isStartZAboveCut,
   minStartZ,
   descentWarnings,
@@ -51,7 +56,7 @@ import {
   surfaceZSpan,
   zSpan,
 } from './validation'
-import { DEFAULT_WIZARD_PARAMS } from '../types/wizard'
+import { DEFAULT_WIZARD_PARAMS, type WizardParams } from '../types/wizard'
 import { DEFAULT_MACHINE_SETTINGS } from '../types/machine'
 
 describe('isToolDiameterValid', () => {
@@ -665,14 +670,18 @@ describe('safety-limit validators (BL-55)', () => {
 })
 
 describe('descent-angle warning (BL-50)', () => {
-  it('computes the Hole(s) helix angle (review repro: hole 3.5, tool 3.175, stepdown 1 -> ~44°)', () => {
+  it('computes the Hole(s) helix angle from the effective pitch (review repro: hole 3.5, tool 3.175, stepdown 1)', () => {
     const params = {
       ...DEFAULT_WIZARD_PARAMS,
       method: 'helix' as const,
-      geometry: { ...DEFAULT_WIZARD_PARAMS.geometry, holeDiameter: 3.5, toolDiameter: 3.175 },
+      geometry: { ...DEFAULT_WIZARD_PARAMS.geometry, holeDiameter: 3.5, toolDiameter: 3.175, rampAngleDeg: 30 },
     }
-    expect(descentAngleDeg(params)).toBeCloseTo(44.4, 0)
-    expect(descentWarnings(params)).toHaveLength(1)
+    // Stepdown alone would give ~44°; the 30° Ramp Angle caps it (BL-80).
+    expect(descentAngleDeg(params)).toBeCloseTo(30, 5)
+    expect(descentWarnings(params).some((w) => w.includes('30°'))).toBe(true)
+    // The default 2° keeps it gentle.
+    const gentle = { ...params, geometry: { ...params.geometry, rampAngleDeg: 2 } }
+    expect(descentAngleDeg(gentle)).toBeCloseTo(2, 5)
   })
 
   it('stays quiet for the defaults, including a switched-on Helix entry', () => {
@@ -690,15 +699,62 @@ describe('descent-angle warning (BL-50)', () => {
     expect(descentAngleDeg({ ...DEFAULT_WIZARD_PARAMS, operation: 'pocket' })).toBeNull()
   })
 
-  it('uses the longer tool-path edge for an Outline Rectangle ramp', () => {
+  it('spreads an Outline Rectangle ramp over the whole tool-path perimeter', () => {
     const params = {
       ...DEFAULT_WIZARD_PARAMS,
       operation: 'outline' as const,
-      outline: { ...DEFAULT_WIZARD_PARAMS.outline, method: 'ramp' as const, width: 6, height: 4, toolDiameter: 3, offsetMode: 'inside' as const },
+      outline: { ...DEFAULT_WIZARD_PARAMS.outline, method: 'ramp' as const, width: 6, height: 4, toolDiameter: 3, offsetMode: 'inside' as const, rampAngleDeg: 30 },
       feeds: { ...DEFAULT_WIZARD_PARAMS.feeds, stepdown: 3 },
     }
-    // Inside: tool-path 3 x 1, ramp along the 3 mm edge -> atan(3/3) = 45°.
-    expect(descentAngleDeg(params)).toBeCloseTo(45, 5)
+    // Inside: tool-path 3 x 1, perimeter 8 -> atan(3/8) ≈ 20.6° (under 30°).
+    expect(descentAngleDeg(params)).toBeCloseTo((Math.atan(3 / 8) * 180) / Math.PI, 5)
+  })
+})
+
+describe('Ramp Angle for Hole(s)/Outline (BL-80)', () => {
+  const holes = (geometry: Partial<WizardParams['geometry']>, stepdown: number) => ({
+    ...DEFAULT_WIZARD_PARAMS,
+    method: 'helix' as const,
+    geometry: { ...DEFAULT_WIZARD_PARAMS.geometry, ...geometry },
+    feeds: { ...DEFAULT_WIZARD_PARAMS.feeds, stepdown },
+  })
+
+  it('warns when a small helix radius needs many turns per Stepdown (Delrin repro: hole 8, tool 6, stepdown 4.5)', () => {
+    const params = holes({ holeDiameter: 8, toolDiameter: 6, totalDepth: 10 }, 4.5)
+    // Pitch 2π·1·tan 2° ≈ 0.22 mm -> ~20 turns per Stepdown.
+    expect(rampTurnsPerStepdown(params)).toBeCloseTo(4.5 / (2 * Math.PI * Math.tan((2 * Math.PI) / 180)), 5)
+    expect(descentWarnings(params).some((w) => w.includes('Standard method'))).toBe(true)
+    expect(isWizardParamsValid(params)).toBe(true)
+  })
+
+  it('stays quiet about turns for the defaults and for Standard', () => {
+    expect(descentWarnings(holes({}, 1))).toEqual([])
+    expect(rampTurnsPerStepdown({ ...holes({ holeDiameter: 8, toolDiameter: 6 }, 4.5), method: 'standard' })).toBeNull()
+  })
+
+  it('rejects a Ramp Angle outside 0.5–30° only for Helix', () => {
+    expect(isRampAngleValid(holes({ rampAngleDeg: 0.4 }, 1))).toBe(false)
+    expect(isRampAngleValid(holes({ rampAngleDeg: 31 }, 1))).toBe(false)
+    expect(isRampAngleValid(holes({ rampAngleDeg: 30 }, 1))).toBe(true)
+    expect(isRampAngleValid({ ...holes({ rampAngleDeg: 0 }, 1), method: 'standard' })).toBe(true)
+  })
+
+  it('blocks a helix that would need more than MAX_PASSES turns', () => {
+    const params = holes({ holeDiameter: 3.2, toolDiameter: 3.175, totalDepth: 15, rampAngleDeg: 0.5 }, 1)
+    expect(isRampTurnCountWithinLimit(params)).toBe(false)
+    expect(isWizardParamsValid(params)).toBe(false)
+  })
+
+  it('reports the rectangle ramp per lap', () => {
+    const params = {
+      ...DEFAULT_WIZARD_PARAMS,
+      operation: 'outline' as const,
+      outline: { ...DEFAULT_WIZARD_PARAMS.outline, method: 'ramp' as const, width: 50, height: 30, toolDiameter: 3.175 },
+    }
+    const descent = rampDescent(params)
+    expect(descent?.unit).toBe('lap')
+    expect(descent?.pathLength).toBeCloseTo(2 * (50 - 3.175 + 30 - 3.175), 9)
+    expect(rampDescent({ ...params, outline: { ...params.outline, method: 'standard' } })).toBeNull()
   })
 })
 

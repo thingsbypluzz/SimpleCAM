@@ -1,6 +1,7 @@
 import { computeDepthPasses, exceedsPassLimit } from './depthPasses'
 import { fullTurn, toolpathToGcode, ToolpathBuilder } from './toolpath'
 import type { InterpolationMode, RasterDirection, ZTransitionMode } from '../types/wizard'
+import { pitchForRampAngle } from './rampPitch'
 
 export interface ZTransitionOptions {
   fromZ: number
@@ -102,7 +103,7 @@ export function zTransitionMoves(opts: ZTransitionOptions): string[] {
 // `radius` — the turn's path length × tan(angle). Shared by every entry
 // helix (Surface, Pocket Raster/Spiral, Pocket Adaptive).
 export function helixPitchForRampAngle(radius: number, rampAngleDeg: number): number {
-  return 2 * Math.PI * radius * Math.tan((rampAngleDeg * Math.PI) / 180)
+  return pitchForRampAngle(2 * Math.PI * radius, rampAngleDeg)
 }
 
 // Clearance kept above the previous level's floor when rapiding back down
