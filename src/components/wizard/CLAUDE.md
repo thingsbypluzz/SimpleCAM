@@ -57,7 +57,10 @@
   tekst oddzielony od zatwierdzonej wartości (pole da się wyczyścić), commit
   przy każdym klawiszu dającym skończoną liczbę, `onBlur` resynchronizuje
   tekst. `{ syncWhenBlurred: true }` — para pól tej samej wielkości (Optimal
-  Load % ↔ mm). `onAdjust(delta)` dla przycisków góra/dół,
+  Load % ↔ mm). `onAdjust(delta)` dla przycisków góra/dół (przytrzymanie
+  powtarza krok: pierwszy od razu, po 400 ms co 75 ms, do puszczenia albo
+  zjechania z przycisku — `useHoldRepeat()` w `NumberInput.tsx`, zawsze
+  najnowszy `onAdjust` przez ref),
   `roundToStepPrecision()` (1/100 mm). Tekst nie śledzi wartości z
   zewnątrz — wczytanie presetu podbija `paramsLoadGeneration` (`key` Kroków
   2/3) w `App.tsx`. `NumberInput` chowa natywny spinner, dwa przyciski obok

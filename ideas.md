@@ -122,14 +122,16 @@ faktycznym.
   presetu.** Zakres dopracowany sesją `/grill-me`, wdrożony tego samego
   dnia — pełny opis w `CHANGELOG.md`, `[0.17.0]`, i w `CLAUDE.md` (sekcja
   "localStorage — auto-save + presety").
-- **`BL-26`** *(Otwarty)* — **Przytrzymanie przycisku `NumberInput` (auto-repeat).**
+- **`BL-26`** *(Zrealizowany, 2026-09-30)* — **Przytrzymanie przycisku `NumberInput` (auto-repeat).**
   Dziś klik na strzałkę góra/dół (`src/components/wizard/NumberInput.tsx`,
   `useNumberField.onAdjust`) to zawsze dokładnie jeden krok — świadomie
   pominięte przy pierwszym wdrożeniu (zgłoszenie dotyczyło wyglądu
   natywnego spinnera, nie zachowania). Przytrzymanie mogłoby powtarzać
   krok co interwał, jak natywny spinner przeglądarki — wymaga
   timera/interwału uruchamianego na `onMouseDown`, czyszczonego na
-  `onMouseUp`/`onMouseLeave`.
+  `onMouseUp`/`onMouseLeave`. Wdrożone: zdarzenia pointer (mysz i
+  dotyk), pierwszy krok od razu, po 400 ms powtarzanie co 75 ms, stop na
+  puszczeniu/zjechaniu z przycisku; działa też w Settings Modal.
 - **`BL-27`** *(Odrzucony, 2026-09-12)* — **Glow (bloom) na toolpath/osiach w motywach Arcade
   Studio.** Specy `design-arcade-restrained.md`/`design_arcade_full_neon.md`
   przewidują `path-glow` na toolpath i osiach — świadomie pominięte przy
