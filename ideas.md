@@ -241,6 +241,10 @@ faktycznym.
   `SURFACE_METHOD_META`, `POCKET_METHOD_META` — ikony, tytuły, `description`),
   żeby Help nie rozjechał się z UI; brakujące opisy operacji do dopisania w
   `OPERATION_META`.
+  **Termin: jak najpóźniej** — dopiero gdy projekt osiągnie większą
+  dojrzałość i zestaw operacji/metod się ustabilizuje; wcześniej Help
+  wymagałby ciągłego poprawiania przy każdej zmianie (adnotacja
+  2026-09-30).
 - **`BL-71`** *(Zrealizowany, 2026-09-28)* 🟢 — **Średnica freza w Feedrate Calculator z
   listy Settings.** Dziś kalkulator ma zwykłe pole liczbowe, więc można
   wpisać średnicę spoza listy i Apply zapisze ją do Kroku 2. Ma być tym
