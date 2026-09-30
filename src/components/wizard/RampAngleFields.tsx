@@ -25,6 +25,8 @@ export function RampAngleFields({ params, rampAngleDeg, onChange }: RampAngleFie
   const rampAngleField = useNumberField(rampAngleDeg, onChange)
   const descent = rampDescent(params)
   if (descent === null) return null
+  const angleInvalid = !isRampAngleValid(params)
+  const turnLimitInvalid = !isRampTurnCountWithinLimit(params)
 
   return (
     <div className="flex flex-col gap-4">
@@ -40,6 +42,7 @@ export function RampAngleFields({ params, rampAngleDeg, onChange }: RampAngleFie
               min={MIN_RAMP_ANGLE_DEG}
               max={MAX_RAMP_ANGLE_DEG}
               className={inputClass}
+              aria-invalid={angleInvalid || turnLimitInvalid}
               {...rampAngleField}
             />
           </FieldRow>
@@ -56,12 +59,12 @@ export function RampAngleFields({ params, rampAngleDeg, onChange }: RampAngleFie
           </FieldRow>
         </div>
       </div>
-      {!isRampAngleValid(params) && (
+      {angleInvalid && (
         <p className="text-sm text-status-error">
           Ramp angle must be between {MIN_RAMP_ANGLE_DEG}° and {MAX_RAMP_ANGLE_DEG}°.
         </p>
       )}
-      {!isRampTurnCountWithinLimit(params) && (
+      {turnLimitInvalid && (
         <p className="text-sm text-status-error">
           Too many {descent.unit}s — the {descent.unit === 'turn' ? 'helix' : 'ramp'} would be cut short by its safety
           limit. Raise the Ramp Angle, or use the Standard method.

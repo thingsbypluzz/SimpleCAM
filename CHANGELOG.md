@@ -7,6 +7,31 @@ zgodne z [SemVer](https://semver.org/). Ten plik pozostaje głównym, czytelnym
 thingsbypluzz/SimpleCAM), ale to infrastruktura pod izolację pracy
 (branch/worktree per zadanie), nie zamiennik tego changeloga.
 
+## [0.28.0] — 2026-09-30
+
+### Dodano
+
+- **Wyróżnienie pól, które nie przeszły walidacji** (`BL-66`). Dotąd błąd
+  był tylko czerwonym tekstem pod polem, a samo pole wyglądało poprawnie —
+  przy kilku błędach naraz trudno było wskazać winowajcę. Teraz pole
+  dostaje ramkę i ring w kolorze błędu motywu (w Arcade także poświatę,
+  nowy token `--glow-error`), również gdy ma fokus.
+  - Ten sam warunek, który pokazuje komunikat, oznacza pola; przy relacji
+    kilku pól — wszystkie w tym samym panelu (np. Tool Diameter i Hole
+    Diameter, Tab Width i Tab Count, Start Z i Safe Z, Ramp i Helix
+    Radius przy limicie obrotów). Błędy międzykrokowe (np. Stepdown
+    względem głębokości) oznaczają tylko pole w kroku z komunikatem.
+  - Kroki 2 i 3 we wszystkich operacjach, Feedrate Calculator (średnica,
+    Flutes, chip load) i Settings → Tool Diameters („New diameter”).
+  - Oznaczenie przez `aria-invalid`, więc stan błędu jest też dostępny dla
+    czytników ekranu, nie tylko kolorem.
+
+### Poprawiono
+
+- **Feedrate Calculator:** wpisana niepoprawna liczba ostrzy (np. 0) nie
+  pokazywała komunikatu błędu, bo pole zatwierdza tylko poprawne wartości —
+  teraz pokazuje.
+
 ## [0.27.0] — 2026-09-30
 
 ### Dodano

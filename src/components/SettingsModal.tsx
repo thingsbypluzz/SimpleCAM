@@ -578,6 +578,8 @@ export function SettingsModal({
                       step="0.01"
                       min="0"
                       className={`${inputClass} w-32`}
+                      // BL-66: the list-full error isn't about the typed value.
+                      aria-invalid={newDiameterError !== null && toolDiameters.length < MAX_TOOL_DIAMETER_COUNT}
                       value={newDiameterText}
                       onChange={(e) => {
                         setNewDiameterText(e.target.value)

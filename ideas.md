@@ -217,7 +217,7 @@ faktycznym.
   Adaptive, okrążenie co Stepdown po całym roughingu, wejście/wyjście
   łukiem stycznym, osobny Finish Feed. Pełny opis: `CHANGELOG.md`,
   `[0.23.0]`.
-- **`BL-66`** *(Otwarty)* 🟠 — **Wyróżnienie pól, które nie przeszły
+- **`BL-66`** *(Zrealizowany, 2026-09-30)* 🟠 — **Wyróżnienie pól, które nie przeszły
   walidacji.** Dziś błąd to wyłącznie czerwony tekst pod polem — samo
   pole (`NumberInput`/`<select>`/textarea) wygląda tak samo jak poprawne,
   więc przy kilku błędach naraz trudno wskazać, które pole je powoduje.
@@ -227,6 +227,11 @@ faktycznym.
   (lub polami — np. frez vs średnica otworu, Tab Count × Width), np. prop
   `invalid` w `FieldRow`/`NumberInput`, spójnie w Krokach 2 i 3 oraz w
   Settings.
+  Wdrożone: `aria-invalid` na polach (ten sam warunek co tekst błędu,
+  relacje — wszystkie pola w panelu, błędy międzykrokowe — tylko w kroku z
+  komunikatem), styl w `inputClass` (ramka + ring `status-error`,
+  `--glow-error` w Arcade); Kroki 2–3, Feedrate Calculator, Settings →
+  Tool Diameters. Pełny opis: `CHANGELOG.md`, `[0.28.0]`.
 - **`BL-70`** *(Otwarty)* 🟠 — **Sekcja Help w Settings Modal.** Część
   treści z Artifactu Interface Anatomy przeniesiona do appki jako nowy
   Settings Nav Item „Help”: rodzaje operacji (Hole(s), Outline, Surface,

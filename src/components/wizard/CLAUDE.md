@@ -17,6 +17,16 @@
   Optimal Load albo Stepover → Z-Transition + Helix Radius + Ramp Angle
   (jeden wiersz) → Finishing Pass + Stock to Leave (jeden wiersz) →
   Offset. Błąd pod polem, którego dotyczy.
+- **Błędne pola:** ten sam warunek, który pokazuje tekst błędu
+  (`<p className="text-sm text-status-error">`), ustawia `aria-invalid`
+  na polach, których dotyczy — przy relacji kilku pól na wszystkich
+  uczestniczących w tym samym panelu (np. Tool Diameter + Hole Diameter,
+  Tab Width + Tab Count, Start Z + Safe Z), przy błędzie międzykrokowym
+  tylko na polu w kroku z komunikatem. Warunek wyciągnięty do stałej
+  (`toolInvalid`, `limitInvalid`…) na górze komponentu. Styl w jednym
+  miejscu — warianty `aria-invalid:` w `inputClass` (`FieldRow.tsx`):
+  ramka + ring `status-error`, `--glow-error` w Arcade, kolor błędu także
+  przy fokusie; pola tylko do odczytu bez oznaczenia.
 - **Pary pól w jednym wierszu** (`flex gap-4`, `min-w-0 flex-1` —
   `min-w-0` konieczne, input ma min-content podłogę): Grid X/Y, Offset
   X/Y, Hole Diameter + Total Depth, Circle Count/Diameter/Start Angle,

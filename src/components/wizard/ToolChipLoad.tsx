@@ -42,7 +42,7 @@ export function ToolChipLoad({ params, machine, flutes, onFlutesChange, children
         <div className="min-w-0 flex-1">{children}</div>
         <div className="w-24 shrink-0">
           <FieldRow label="Flutes">
-            <NumberInput type="number" step="1" min="1" max={MAX_FLUTES} className={inputClass} {...flutesField} />
+            <NumberInput type="number" step="1" min="1" max={MAX_FLUTES} className={inputClass} aria-invalid={showError} {...flutesField} />
           </FieldRow>
         </div>
         <div className="w-28 shrink-0">

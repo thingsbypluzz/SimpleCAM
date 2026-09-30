@@ -116,7 +116,7 @@ export function Step3Feeds({ params, onChange, machine, stepdownLabel, onOpenCal
       >
         <div className="flex items-center gap-2">
           <div className="min-w-0 flex-1">
-            <NumberInput type="number" step="1" className={inputClass} {...feedrateXYField} />
+            <NumberInput type="number" step="1" className={inputClass} aria-invalid={!isFeedrateXYValid(feeds)} {...feedrateXYField} />
           </div>
           <button
             type="button"
@@ -135,7 +135,7 @@ export function Step3Feeds({ params, onChange, machine, stepdownLabel, onOpenCal
           label="Linking Feed [mm/min]"
           hint="Feed for moves through already-cleared area — returns between arcs, hops between corners and back to the center before each new level. Always G1 (never a rapid below Safe Z); can safely be higher than Feedrate XY."
         >
-          <NumberInput type="number" step="1" className={inputClass} {...linkingFeedField} />
+          <NumberInput type="number" step="1" className={inputClass} aria-invalid={!isPocketLinkingFeedValid(pocket)} {...linkingFeedField} />
         </FieldRow>
       )}
       {isPocketAdaptive && !isPocketLinkingFeedValid(pocket) && (
@@ -146,18 +146,24 @@ export function Step3Feeds({ params, onChange, machine, stepdownLabel, onOpenCal
           label="Finish Feed [mm/min]"
           hint="Feed for the Finishing Pass laps on the pocket walls (Step 2), including their tangent lead-in and lead-out arcs. The Feedrate Calculator suggests it (and Stock to Leave) from the chip load, compensated for the narrow finishing cut."
         >
-          <NumberInput type="number" step="1" className={inputClass} {...finishFeedField} />
+          <NumberInput type="number" step="1" className={inputClass} aria-invalid={!isPocketFinishFeedValid(pocket)} {...finishFeedField} />
         </FieldRow>
       )}
       {isPocketFinishing && !isPocketFinishFeedValid(pocket) && (
         <p className="text-sm text-status-error">Finish Feed must be greater than 0.</p>
       )}
       <FieldRow label="Plunge Rate [mm/min]">
-        <NumberInput type="number" step="1" className={inputClass} {...plungeRateField} />
+        <NumberInput type="number" step="1" className={inputClass} aria-invalid={!isPlungeRateValid(feeds)} {...plungeRateField} />
       </FieldRow>
       {!isPlungeRateValid(feeds) && <p className="text-sm text-status-error">Plunge Rate must be greater than 0.</p>}
       <FieldRow label={stepdownLabel}>
-        <NumberInput type="number" step="0.05" className={inputClass} {...stepdownField} />
+        <NumberInput
+          type="number"
+          step="0.05"
+          className={inputClass}
+          aria-invalid={!isStepdownValid(feeds) || !isPassCountWithinLimit(params)}
+          {...stepdownField}
+        />
       </FieldRow>
       {!isStepdownValid(feeds) && (
         <p className="text-sm text-status-error">
@@ -198,7 +204,14 @@ export function Step3Feeds({ params, onChange, machine, stepdownLabel, onOpenCal
         </InfoNote>
       )}
       <FieldRow label="Start Z [mm]">
-        <NumberInput type="number" step="0.1" min="0" className={inputClass} {...startZField} />
+        <NumberInput
+          type="number"
+          step="0.1"
+          min="0"
+          className={inputClass}
+          aria-invalid={!isStartZValid(feeds) || !isStartZAboveCut(params)}
+          {...startZField}
+        />
       </FieldRow>
       {!isStartZValid(feeds) && (
         <p className="text-sm text-status-error">
@@ -223,6 +236,7 @@ export function Step3Feeds({ params, onChange, machine, stepdownLabel, onOpenCal
           min="0"
           max={machine.travelZ}
           className={inputClass}
+          aria-invalid={!isSafeZValid(feeds) || !isStartZValid(feeds)}
           {...safeZField}
         />
       </FieldRow>

@@ -101,6 +101,20 @@ export function Step2GeometryPocket({ params, onChange, machine, toolDiameters, 
   const suggestedFeed = chipThinnedFeed(thinningBase, pocket.optimalLoadPercent)
   const compensated = isFeedChipThinningCompensated(params.feeds.feedrateXY, pocket.chipThinningBaseFeed, pocket.optimalLoadPercent)
 
+  // BL-66: the same conditions that show the errors below also mark the
+  // fields they concern (aria-invalid -> error styling in inputClass).
+  const toolInvalid = !isPocketToolDiameterValid(pocket)
+  const widthIsShorter = pocket.width <= pocket.height
+  const widthInvalid = !(pocket.width > 0) || (toolInvalid && widthIsShorter)
+  const heightInvalid = !(pocket.height > 0) || (toolInvalid && !widthIsShorter)
+  const diameterInvalid = !(pocket.diameter > 0) || toolInvalid
+  const depthInvalid = !(pocket.totalDepth > 0)
+  const stepoverInvalid = !isPocketStepoverValid(pocket)
+  const rampInvalid = !isPocketRampAngleValid(pocket)
+  const helixRadiusInvalid = zMode === 'helix' && !isPocketHelixRadiusValid(pocket)
+  const limitInvalid = !isPocketToolpathWithinLimits(params)
+  const stockInvalid = !isPocketStockToLeaveValid(pocket)
+
   return (
     <div className="flex flex-col gap-6">
       <PickHeader params={params} />
@@ -117,6 +131,7 @@ export function Step2GeometryPocket({ params, onChange, machine, toolDiameters, 
                     min="0"
                     max={machine.travelX}
                     className={inputClass}
+                    aria-invalid={widthInvalid}
                     {...widthField}
                   />
                 </FieldRow>
@@ -129,6 +144,7 @@ export function Step2GeometryPocket({ params, onChange, machine, toolDiameters, 
                     min="0"
                     max={machine.travelY}
                     className={inputClass}
+                    aria-invalid={heightInvalid}
                     {...heightField}
                   />
                 </FieldRow>
@@ -141,6 +157,7 @@ export function Step2GeometryPocket({ params, onChange, machine, toolDiameters, 
                 min="0"
                 max={machine.travelZ}
                 className={inputClass}
+                aria-invalid={depthInvalid}
                 {...totalDepthField}
               />
             </FieldRow>
@@ -156,6 +173,7 @@ export function Step2GeometryPocket({ params, onChange, machine, toolDiameters, 
                   min="0"
                   max={Math.min(machine.travelX, machine.travelY)}
                   className={inputClass}
+                  aria-invalid={diameterInvalid}
                   {...diameterField}
                 />
               </FieldRow>
@@ -168,6 +186,7 @@ export function Step2GeometryPocket({ params, onChange, machine, toolDiameters, 
                   min="0"
                   max={machine.travelZ}
                   className={inputClass}
+                  aria-invalid={depthInvalid}
                   {...totalDepthField}
                 />
               </FieldRow>
@@ -182,6 +201,7 @@ export function Step2GeometryPocket({ params, onChange, machine, toolDiameters, 
           <FieldRow label="Tool Diameter [mm]">
             <select
               className={inputClass}
+              aria-invalid={toolInvalid}
               value={pocket.toolDiameter}
               onChange={(e) => updatePocket({ toolDiameter: Number(e.target.value) })}
             >
@@ -193,7 +213,7 @@ export function Step2GeometryPocket({ params, onChange, machine, toolDiameters, 
             </select>
           </FieldRow>
         </ToolChipLoad>
-        {!isPocketToolDiameterValid(pocket) && (
+        {toolInvalid && (
           <p className="text-sm text-status-error">
             {isRect
               ? 'Tool diameter must be smaller than the shorter side.'
@@ -231,13 +251,21 @@ export function Step2GeometryPocket({ params, onChange, machine, toolDiameters, 
                   min={MIN_OPTIMAL_LOAD_PERCENT}
                   max={MAX_OPTIMAL_LOAD_PERCENT}
                   className={inputClass}
+                  aria-invalid={!loadValid || limitInvalid}
                   {...optimalLoadPercentField}
                 />
               </FieldRow>
             </div>
             <div className="min-w-0 flex-1">
               <FieldRow label="Opt. Load [mm]">
-                <NumberInput type="number" step="0.05" min="0" className={inputClass} {...optimalLoadMmField} />
+                <NumberInput
+                  type="number"
+                  step="0.05"
+                  min="0"
+                  className={inputClass}
+                  aria-invalid={!loadValid || limitInvalid}
+                  {...optimalLoadMmField}
+                />
               </FieldRow>
             </div>
             <div className="min-w-0 flex-1">
@@ -298,7 +326,15 @@ export function Step2GeometryPocket({ params, onChange, machine, toolDiameters, 
         <div className="flex gap-4">
           <div className="min-w-0 flex-1">
             <FieldRow label="Stepover [%]">
-              <NumberInput type="number" step="1" min="1" max="100" className={inputClass} {...stepoverField} />
+              <NumberInput
+                type="number"
+                step="1"
+                min="1"
+                max="100"
+                className={inputClass}
+                aria-invalid={stepoverInvalid || limitInvalid}
+                {...stepoverField}
+              />
             </FieldRow>
           </div>
           <div className="min-w-0 flex-1">
@@ -313,7 +349,7 @@ export function Step2GeometryPocket({ params, onChange, machine, toolDiameters, 
             </FieldRow>
           </div>
         </div>
-        {!isPocketStepoverValid(pocket) && (
+        {stepoverInvalid && (
           <p className="text-sm text-status-error">Stepover must be between 1% and 100% of the tool diameter.</p>
         )}
       </div>
@@ -340,7 +376,14 @@ export function Step2GeometryPocket({ params, onChange, machine, toolDiameters, 
           <div className="min-w-0 flex-1">
             {zMode === 'helix' && (
               <FieldRow label="Helix R. [mm]">
-                <NumberInput type="number" step="0.1" min="0" className={inputClass} {...helixRadiusField} />
+                <NumberInput
+                  type="number"
+                  step="0.1"
+                  min="0"
+                  className={inputClass}
+                  aria-invalid={helixRadiusInvalid || limitInvalid}
+                  {...helixRadiusField}
+                />
               </FieldRow>
             )}
           </div>
@@ -356,18 +399,19 @@ export function Step2GeometryPocket({ params, onChange, machine, toolDiameters, 
                   min={MIN_RAMP_ANGLE_DEG}
                   max={MAX_RAMP_ANGLE_DEG}
                   className={inputClass}
+                  aria-invalid={rampInvalid || limitInvalid}
                   {...rampAngleField}
                 />
               </FieldRow>
             )}
           </div>
         </div>
-        {!isPocketRampAngleValid(pocket) && (
+        {rampInvalid && (
           <p className="text-sm text-status-error">
             Ramp angle must be between {MIN_RAMP_ANGLE_DEG}° and {MAX_RAMP_ANGLE_DEG}°.
           </p>
         )}
-        {zMode === 'helix' && !isPocketHelixRadiusValid(pocket) && (
+        {helixRadiusInvalid && (
           <p className="text-sm text-status-error">
             Helix radius must be greater than 0 and at most {fmt(round2(pocketMaxHelixRadius(pocket)))} mm — no more than
             the tool's radius (a wider helix leaves an uncut post in the center) and inside the pocket's own wall.
@@ -379,7 +423,7 @@ export function Step2GeometryPocket({ params, onChange, machine, toolDiameters, 
             quarter to half of the tool diameter enters faster.
           </InfoNote>
         )}
-        {!isPocketToolpathWithinLimits(params) && (
+        {limitInvalid && (
           <p className="text-sm text-status-error">
             {isAdaptive
               ? 'This pocket needs too many helix turns or passes — the toolpath would be cut short by its safety limit. Raise the Ramp Angle, Helix Radius or Optimal Load, or lower Stepdown.'
@@ -411,12 +455,12 @@ export function Step2GeometryPocket({ params, onChange, machine, toolDiameters, 
           <div className="min-w-0 flex-1">
             {pocket.finishingEnabled && (
               <FieldRow label="Stock to Leave [mm]">
-                <NumberInput type="number" step="0.05" min="0" className={inputClass} {...stockToLeaveField} />
+                <NumberInput type="number" step="0.05" min="0" className={inputClass} aria-invalid={stockInvalid} {...stockToLeaveField} />
               </FieldRow>
             )}
           </div>
         </div>
-        {!isPocketStockToLeaveValid(pocket) && (
+        {stockInvalid && (
           <p className="text-sm text-status-error">
             Stock to Leave must be greater than 0, at most the tool's radius ({fmt(round4(pocket.toolDiameter / 2))} mm),
             and leave room inside the walls for roughing.

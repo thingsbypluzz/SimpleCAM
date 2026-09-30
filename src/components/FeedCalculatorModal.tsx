@@ -100,6 +100,11 @@ export function FeedCalculatorModal({ params, machine, settings, toolDiameters, 
   const stockInEffect = isFinishing ? (checks.finishStock ? suggestedStock : draft.pocket.stockToLeave) : null
 
   const inputsValid = toolDiameter > 0 && isValidFluteCount(settings.flutes) && (chipLoadOverride ?? tableLoad) > 0
+  // BL-66: mark the inputs behind the error below. Flutes only commits a
+  // valid count, so a typed invalid one is caught from its text.
+  const flutesInvalid =
+    !isValidFluteCount(settings.flutes) || (flutesField.value !== '' && !isValidFluteCount(Number(flutesField.value)))
+  const chipLoadInvalid = !((chipLoadOverride ?? tableLoad) > 0)
   const r = computeFeeds({
     material,
     toolMaterial: settings.toolMaterial,
@@ -260,7 +265,12 @@ export function FeedCalculatorModal({ params, machine, settings, toolDiameters, 
             <div className="flex gap-4">
               <div className="min-w-0 flex-1">
                 <Field label="Tool ⌀ [mm]">
-                  <select className={inputClass} value={toolDiameter} onChange={(e) => setToolDiameter(Number(e.target.value))}>
+                  <select
+                    className={inputClass}
+                    aria-invalid={!(toolDiameter > 0)}
+                    value={toolDiameter}
+                    onChange={(e) => setToolDiameter(Number(e.target.value))}
+                  >
                     {/* The current Step 2 value stays selectable even if it
                         was removed from the list — same as Step 2's own
                         dropdown (resolveToolDiameterSelectOptions). */}
@@ -274,7 +284,7 @@ export function FeedCalculatorModal({ params, machine, settings, toolDiameters, 
               </div>
               <div className="min-w-0 flex-1">
                 <Field label="Flutes">
-                  <NumberInput type="number" step="1" min="1" max={MAX_FLUTES} className={inputClass} {...flutesField} />
+                  <NumberInput type="number" step="1" min="1" max={MAX_FLUTES} className={inputClass} aria-invalid={flutesInvalid} {...flutesField} />
                 </Field>
               </div>
             </div>
@@ -286,7 +296,7 @@ export function FeedCalculatorModal({ params, machine, settings, toolDiameters, 
               />
             </Field>
             <Field label="Chip Load fz [mm/tooth]">
-              <NumberInput type="number" step="0.005" min="0" className={inputClass} {...chipLoadField} />
+              <NumberInput type="number" step="0.005" min="0" className={inputClass} aria-invalid={chipLoadInvalid} {...chipLoadField} />
             </Field>
             <p className="-mt-2 flex items-center gap-2 text-xs text-muted">
               {chipLoadOverride === null ? (
@@ -304,7 +314,7 @@ export function FeedCalculatorModal({ params, machine, settings, toolDiameters, 
                 </>
               )}
             </p>
-            {!inputsValid && (
+            {(!inputsValid || flutesInvalid) && (
               <p className="text-sm text-status-error">
                 Chip load must be greater than 0, flutes a whole number from 1 to {MAX_FLUTES}.
               </p>

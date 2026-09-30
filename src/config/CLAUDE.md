@@ -40,6 +40,10 @@
   aliasy akcentu). Tylko Arcade: `--glow-*`/`--frame-glow`/
   `--preview-inset` (box-shadow przez `shadow-[var(--glow-…)]`), `--scan`
   (Full Neon), `--ui-font` (Space Grotesk z Google Fonts w `index.html`).
+  W pozostałych motywach glow = `none`, z wyjątkiem `--glow-error`
+  (poświata błędnego pola): łączy się z ringiem w jedną listę
+  `box-shadow`, gdzie `none` unieważniłoby też ring, więc neutralnie
+  `0 0 #0000`.
   Wordmark dwukolorowy (`--wordmark-only`/`--wordmark-paths`).
 - Dark mode domyślny niezależnie od systemu (klasa `.dark` na `<html>`,
   `@custom-variant dark`).

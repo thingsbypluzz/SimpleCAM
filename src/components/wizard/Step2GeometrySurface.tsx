@@ -56,6 +56,14 @@ export function Step2GeometrySurface({ params, onChange, machine, toolDiameters,
   const offsetXField = useNumberField(surface.offsetX, (v) => updateSurface({ offsetX: v }))
   const offsetYField = useNumberField(surface.offsetY, (v) => updateSurface({ offsetY: v }))
 
+  // BL-66: the same conditions that show the errors below also mark the
+  // fields they concern (aria-invalid -> error styling in inputClass).
+  const stepoverValid = isSurfaceStepoverValid(surface)
+  const lineLimitInvalid = stepoverValid && !isSurfaceLineCountWithinLimit(surface)
+  const helixRadiusInvalid = surface.zTransitionMode === 'helix' && !isSurfaceHelixRadiusValid(surface)
+  const rampInvalid = !isSurfaceRampAngleValid(surface)
+  const entryLimitInvalid = !isSurfaceEntryHelixWithinLimit(params)
+
   return (
     <div className="flex flex-col gap-6">
       <PickHeader params={params} />
@@ -64,12 +72,12 @@ export function Step2GeometrySurface({ params, onChange, machine, toolDiameters,
         <div className="flex gap-4">
           <div className="min-w-0 flex-1">
             <FieldRow label="Width [mm]">
-              <NumberInput type="number" step="0.1" min="0" max={machine.travelX} className={inputClass} {...widthField} />
+              <NumberInput type="number" step="0.1" min="0" max={machine.travelX} className={inputClass} aria-invalid={!(surface.width > 0)} {...widthField} />
             </FieldRow>
           </div>
           <div className="min-w-0 flex-1">
             <FieldRow label="Height [mm]">
-              <NumberInput type="number" step="0.1" min="0" max={machine.travelY} className={inputClass} {...heightField} />
+              <NumberInput type="number" step="0.1" min="0" max={machine.travelY} className={inputClass} aria-invalid={!(surface.height > 0)} {...heightField} />
             </FieldRow>
           </div>
         </div>
@@ -80,6 +88,7 @@ export function Step2GeometrySurface({ params, onChange, machine, toolDiameters,
             min="0"
             max={machine.travelZ}
             className={inputClass}
+            aria-invalid={!(surface.totalDepth > 0)}
             {...totalDepthField}
           />
         </FieldRow>
@@ -119,7 +128,15 @@ export function Step2GeometrySurface({ params, onChange, machine, toolDiameters,
         <div className="flex gap-4">
           <div className="min-w-0 flex-1">
             <FieldRow label="Stepover [%]">
-              <NumberInput type="number" step="1" min="1" max="100" className={inputClass} {...stepoverField} />
+              <NumberInput
+                type="number"
+                step="1"
+                min="1"
+                max="100"
+                className={inputClass}
+                aria-invalid={!stepoverValid || lineLimitInvalid || (helixRadiusInvalid && surface.helixRadius > 0)}
+                {...stepoverField}
+              />
             </FieldRow>
           </div>
           <div className="min-w-0 flex-1">
@@ -128,10 +145,10 @@ export function Step2GeometrySurface({ params, onChange, machine, toolDiameters,
             </FieldRow>
           </div>
         </div>
-        {!isSurfaceStepoverValid(surface) && (
+        {!stepoverValid && (
           <p className="text-sm text-status-error">Stepover must be between 1% and 100% of the tool diameter.</p>
         )}
-        {isSurfaceStepoverValid(surface) && !isSurfaceLineCountWithinLimit(surface) && (
+        {lineLimitInvalid && (
           <p className="text-sm text-status-error">
             Stepover is too small for this area — more than {MAX_LINES} raster lines, part of the surface would be left
             uncut.
@@ -150,7 +167,14 @@ export function Step2GeometrySurface({ params, onChange, machine, toolDiameters,
           <div className="min-w-0 flex-1">
             {surface.zTransitionMode === 'helix' && (
               <FieldRow label="Helix R. [mm]">
-                <NumberInput type="number" step="0.1" min="0" className={inputClass} {...helixRadiusField} />
+                <NumberInput
+                  type="number"
+                  step="0.1"
+                  min="0"
+                  className={inputClass}
+                  aria-invalid={helixRadiusInvalid || entryLimitInvalid}
+                  {...helixRadiusField}
+                />
               </FieldRow>
             )}
           </div>
@@ -166,23 +190,24 @@ export function Step2GeometrySurface({ params, onChange, machine, toolDiameters,
                   min={MIN_RAMP_ANGLE_DEG}
                   max={MAX_RAMP_ANGLE_DEG}
                   className={inputClass}
+                  aria-invalid={rampInvalid || entryLimitInvalid}
                   {...rampAngleField}
                 />
               </FieldRow>
             )}
           </div>
         </div>
-        {surface.zTransitionMode === 'helix' && !isSurfaceHelixRadiusValid(surface) && (
+        {helixRadiusInvalid && (
           <p className="text-sm text-status-error">
             Helix radius must be greater than 0 and can't exceed the stepover ({fmt(surfaceStepoverMm(surface))}mm).
           </p>
         )}
-        {!isSurfaceRampAngleValid(surface) && (
+        {rampInvalid && (
           <p className="text-sm text-status-error">
             Ramp angle must be between {MIN_RAMP_ANGLE_DEG}° and {MAX_RAMP_ANGLE_DEG}°.
           </p>
         )}
-        {!isSurfaceEntryHelixWithinLimit(params) && (
+        {entryLimitInvalid && (
           <p className="text-sm text-status-error">
             Too many helix turns per level — the entry would be cut short by its safety limit. Raise the Ramp Angle or
             Helix Radius.

@@ -75,6 +75,16 @@ export function Step2GeometryHoles({ params, onChange, machine, toolDiameters, f
   const tabWidthField = useNumberField(geometry.tabWidth, (v) => updateGeometry({ tabWidth: v }))
   const tabCountField = useNumberField(geometry.tabCount, (v) => updateGeometry({ tabCount: v }))
 
+  // BL-66: the same conditions that show the errors below also mark the
+  // fields they concern (aria-invalid -> error styling in inputClass).
+  const circleCountInvalid = !isCircleHoleCountValid(geometry)
+  const customPointsInvalid = customParse.invalidLines.length > 0 || customParse.points.length === 0
+  const sizeInvalid = !isHolesSizeValid(geometry)
+  const toolInvalid = !isToolDiameterValid(geometry)
+  const tabHeightInvalid = !isTabHeightValid(geometry)
+  const tabWidthInvalid = !isTabWidthValid(geometry)
+  const tabCountInvalid = !isTabCountValid(geometry)
+
   return (
     <div className="flex flex-col gap-6">
       <PickHeader params={params} />
@@ -121,6 +131,7 @@ export function Step2GeometryHoles({ params, onChange, machine, toolDiameters, f
                   min="0"
                   max={MAX_CIRCLE_HOLE_COUNT}
                   className={inputClass}
+                  aria-invalid={circleCountInvalid}
                   {...circleHoleCountField}
                 />
               </FieldRow>
@@ -143,7 +154,7 @@ export function Step2GeometryHoles({ params, onChange, machine, toolDiameters, f
               </FieldRow>
             </div>
           </div>
-          {!isCircleHoleCountValid(geometry) && (
+          {circleCountInvalid && (
             <p className="text-sm text-status-error">
               Hole count can't exceed {MAX_CIRCLE_HOLE_COUNT}.
             </p>
@@ -156,6 +167,7 @@ export function Step2GeometryHoles({ params, onChange, machine, toolDiameters, f
           <FieldRow label="Points (X,Y per line)" hint="e.g. 10,10 — comma, semicolon or space">
             <textarea
               className={`${inputClass} h-28 font-mono`}
+              aria-invalid={customPointsInvalid}
               value={geometry.customPointsText}
               onChange={(e) => handleCustomPointsChange(e.target.value)}
             />
@@ -177,7 +189,13 @@ export function Step2GeometryHoles({ params, onChange, machine, toolDiameters, f
         <div className="flex gap-4">
           <div className="min-w-0 flex-1">
             <FieldRow label="Hole Diameter [mm]">
-              <NumberInput type="number" step="0.1" className={inputClass} {...holeDiameterField} />
+              <NumberInput
+                type="number"
+                step="0.1"
+                className={inputClass}
+                aria-invalid={!(geometry.holeDiameter > 0) || toolInvalid}
+                {...holeDiameterField}
+              />
             </FieldRow>
           </div>
           <div className="min-w-0 flex-1">
@@ -188,12 +206,13 @@ export function Step2GeometryHoles({ params, onChange, machine, toolDiameters, f
                 min="0"
                 max={machine.travelZ}
                 className={inputClass}
+                aria-invalid={!(geometry.totalDepth > 0) || (geometry.tabsEnabled && geometry.tabHeight >= geometry.totalDepth)}
                 {...totalDepthField}
               />
             </FieldRow>
           </div>
         </div>
-        {!isHolesSizeValid(geometry) && <p className="text-sm text-status-error">Dimensions and depth must be greater than 0.</p>}
+        {sizeInvalid && <p className="text-sm text-status-error">Dimensions and depth must be greater than 0.</p>}
       </div>
 
       <div className="flex flex-col gap-4">
@@ -201,6 +220,7 @@ export function Step2GeometryHoles({ params, onChange, machine, toolDiameters, f
           <FieldRow label="Tool Diameter [mm]">
             <select
               className={inputClass}
+              aria-invalid={toolInvalid}
               value={geometry.toolDiameter}
               onChange={(e) => updateGeometry({ toolDiameter: Number(e.target.value) })}
             >
@@ -212,7 +232,7 @@ export function Step2GeometryHoles({ params, onChange, machine, toolDiameters, f
             </select>
           </FieldRow>
         </ToolChipLoad>
-        {!isToolDiameterValid(geometry) && (
+        {toolInvalid && (
           <p className="text-sm text-status-error">
             Tool diameter must be smaller than the hole diameter.
           </p>
@@ -260,12 +280,12 @@ export function Step2GeometryHoles({ params, onChange, machine, toolDiameters, f
             <div className="flex gap-4">
               <div className="min-w-0 flex-1">
                 <FieldRow label="Height [mm]">
-                  <NumberInput type="number" step="0.1" min="0" className={inputClass} {...tabHeightField} />
+                  <NumberInput type="number" step="0.1" min="0" className={inputClass} aria-invalid={tabHeightInvalid} {...tabHeightField} />
                 </FieldRow>
               </div>
               <div className="min-w-0 flex-1">
                 <FieldRow label="Width [mm]">
-                  <NumberInput type="number" step="0.1" min="0" className={inputClass} {...tabWidthField} />
+                  <NumberInput type="number" step="0.1" min="0" className={inputClass} aria-invalid={tabWidthInvalid} {...tabWidthField} />
                 </FieldRow>
               </div>
               <div className="min-w-0 flex-1">
@@ -276,22 +296,23 @@ export function Step2GeometryHoles({ params, onChange, machine, toolDiameters, f
                     min="1"
                     max={MAX_TAB_COUNT}
                     className={inputClass}
+                    aria-invalid={tabCountInvalid || tabWidthInvalid}
                     {...tabCountField}
                   />
                 </FieldRow>
               </div>
             </div>
-            {!isTabHeightValid(geometry) && (
+            {tabHeightInvalid && (
               <p className="text-sm text-status-error">
                 Tab height must be greater than 0 and less than Total Depth.
               </p>
             )}
-            {!isTabWidthValid(geometry) && (
+            {tabWidthInvalid && (
               <p className="text-sm text-status-error">
                 Tab count × width can't reach the toolpath's full circumference.
               </p>
             )}
-            {!isTabCountValid(geometry) && (
+            {tabCountInvalid && (
               <p className="text-sm text-status-error">
                 Tab count must be a whole number from 1 to {MAX_TAB_COUNT}.
               </p>

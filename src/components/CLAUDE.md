@@ -21,7 +21,8 @@
   walidacja co w wizardzie). **Tool Diameters:** edytowalna lista (dodaj/
   usuń, sufit `MAX_TOOL_DIAMETER_COUNT`, blokada usunięcia ostatniej, Reset
   to Default z potwierdzeniem; wpisy użytkownika z etykietą `"<wartość>
-  mm"`). **Appearance:** Theme (karty ze swatchami, `aria-pressed`),
+  mm"`; błąd dodania oznacza pole „New diameter” przez `aria-invalid`,
+  poza błędem pełnej listy). **Appearance:** Theme (karty ze swatchami, `aria-pressed`),
   Preview Color Palette, Grid Labels 3D (checkbox + rozmiar).
 - **Privacy:** statyczny tekst — brak backendu/kont/trackingu/cookies,
   dane tylko w `localStorage`; jawnie ujawniony jedyny wyjątek: arkusz
@@ -61,7 +62,9 @@
   Ostrzeżenia (docięcia RPM/posuwu), rozwijane „How it's calculated” z
   wartościami pośrednimi i „Material table”. Router z pokrętłem: pozycje
   tylko do odczytu, najbliższa RPM wyróżniona (`nearestDialPosition()`).
-  Model — `lib/CLAUDE.md`.
+  Model — `lib/CLAUDE.md`. Błędne wejścia (średnica, Flutes — także
+  wpisana, jeszcze niezatwierdzona liczba — chip load) z `aria-invalid`,
+  jak w wizardzie.
 - **Apply selected** (`handleApplyFeedCalc()` w `App.tsx`): metoda i
   średnica zawsze (kontekst wyliczenia), szerokość/Linking Feed przez
   `OPERATION_META[op].withCalc()` (Pocket także Stock to Leave i Finish
