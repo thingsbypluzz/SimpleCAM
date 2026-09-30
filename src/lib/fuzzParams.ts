@@ -176,6 +176,7 @@ export function randomPocket(rng: Rng, method: 'spiral' | 'adaptive'): WizardPar
     offsetX: rng.range(-20, 20, 1),
     offsetY: rng.range(-20, 20, 1),
     stepoverPercent: rng.int(20, 90),
+    rampLengthFactor: rng.range(1, 10, 1),
     zTransitionMode: rng.pick(['plunge', 'helix'] as const),
     optimalLoadPercent: rng.int(5, 30),
     rampAngleDeg: rng.range(1, 10, 1),

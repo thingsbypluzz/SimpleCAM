@@ -155,3 +155,19 @@ describe('generatePocketSpiral — multi-level retract', () => {
     expect(lines.filter((l) => l === 'G1 Z-2 F300')).toHaveLength(1)
   })
 })
+
+describe('Spiral Ramp Length (BL-41)', () => {
+  it('a longer ramp emits more ramp segments; the default matches the old fixed factor', () => {
+    const count = (rampLengthFactor: number) =>
+      generatePocketSpiral(
+        buildParams({
+          pocket: { shape: 'rectCornered', width: 40, height: 30, toolDiameter: 2, stepoverPercent: 40, totalDepth: 1, rampLengthFactor },
+          feeds: { stepdown: 1 },
+        }),
+        DEFAULT_MACHINE_SETTINGS,
+      ).filter((l) => l.startsWith('G1 X')).length
+    expect(DEFAULT_WIZARD_PARAMS.pocket.rampLengthFactor).toBe(3)
+    expect(count(6)).toBeGreaterThan(count(3))
+    expect(count(3)).toBeGreaterThan(count(1))
+  })
+})

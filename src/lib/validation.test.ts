@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   descentAngleDeg,
+  isPocketRampLengthValid,
   isRampAngleValid,
   isRampTurnCountWithinLimit,
   isWizardParamsValid,
@@ -786,5 +787,21 @@ describe('Start Z floor (found by the BL-62 invariant test)', () => {
       feeds: { ...DEFAULT_WIZARD_PARAMS.feeds, startZ: -0.3 },
     }
     expect(isStartZAboveCut(surface)).toBe(false)
+  })
+})
+
+describe('Pocket Spiral Ramp Length (BL-41)', () => {
+  const pocket = (patch: Partial<WizardParams['pocket']>) => ({ ...DEFAULT_WIZARD_PARAMS.pocket, ...patch })
+
+  it('accepts 1–10 for Spiral and blocks Generate outside it', () => {
+    expect(isPocketRampLengthValid(pocket({ rampLengthFactor: 1 }))).toBe(true)
+    expect(isPocketRampLengthValid(pocket({ rampLengthFactor: 10 }))).toBe(true)
+    expect(isPocketRampLengthValid(pocket({ rampLengthFactor: 0.5 }))).toBe(false)
+    expect(isPocketRampLengthValid(pocket({ rampLengthFactor: 11 }))).toBe(false)
+    expect(isWizardParamsValid({ ...DEFAULT_WIZARD_PARAMS, operation: 'pocket', pocket: pocket({ rampLengthFactor: 11 }) })).toBe(false)
+  })
+
+  it('ignores it for Adaptive', () => {
+    expect(isPocketRampLengthValid(pocket({ method: 'adaptive', rampLengthFactor: 0 }))).toBe(true)
   })
 })

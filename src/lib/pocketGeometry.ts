@@ -1,4 +1,5 @@
 import type { PocketParams, Point2D } from '../types/wizard'
+import { engagementAngleFor } from './pocketAdaptiveMath'
 
 // Center of the pocket in program coordinates — mirrors rectCorners()'s
 // origin convention (outlineRectangleGeometry.ts): 'rectCornered' has its
@@ -61,4 +62,22 @@ export function pocketRoughCircleWallRadius(pocket: Pick<PocketParams, 'diameter
 // read-only mm preview field, and Helix Radius ceiling validation.
 export function pocketStepoverMm(pocket: Pick<PocketParams, 'toolDiameter' | 'stepoverPercent'>): number {
   return pocket.toolDiameter * (pocket.stepoverPercent / 100)
+}
+
+// BL-41: Spiral's engagement, in degrees of the tool's edge in contact
+// with material (same measure as Adaptive's Engagement). On a ring the
+// cut is Stepover wide: acos(1 − ae/R) (engagementAngleFor()). Ramping out
+// to the next ring the tool ends at that same width but moves outward at
+// atan(1/Ramp Length) to the tangent, which turns that much more of the
+// leading edge into the material — so the ramp peaks at ring + that angle.
+// An approximation (the cleared wall treated as locally straight; the
+// first ring out of the center and ramps capped at a full turn differ),
+// meant as a readout, not an input to the toolpath.
+export function spiralRampEngagementDeg(pocket: Pick<PocketParams, 'stepoverPercent' | 'rampLengthFactor'>): {
+  ring: number
+  ramp: number
+} {
+  const ring = (engagementAngleFor(pocket.stepoverPercent) * 180) / Math.PI
+  const outward = pocket.rampLengthFactor > 0 ? (Math.atan(1 / pocket.rampLengthFactor) * 180) / Math.PI : 90
+  return { ring, ramp: Math.min(180, ring + outward) }
 }

@@ -207,3 +207,18 @@ describe('rectRingMoves', () => {
     expect(lines[0]).not.toBe('G1 X-5 Y-3 Z-1 F800')
   })
 })
+
+describe('Ramp Length factor (BL-41)', () => {
+  it('scales the circle ramp sweep with the factor, still capped at 360°', () => {
+    expect(rampSweepDegFor(10, 13, 6)).toBeCloseTo(2 * rampSweepDegFor(10, 13, 3), 9)
+    expect(rampSweepDegFor(10, 13, 1)).toBeCloseTo(rampSweepDegFor(10, 13) / 3, 9)
+    expect(rampSweepDegFor(0, 5, 10)).toBe(360)
+  })
+
+  it('scales the rectangle ramp sweep with the factor, still capped at one loop', () => {
+    const from = { halfWidth: 10, halfHeight: 3 }
+    const to = { halfWidth: 10, halfHeight: 6 }
+    expect(rectRampSweepFor(from, to, 6)).toBeCloseTo(2 * rectRampSweepFor(from, to), 9)
+    expect(rectRampSweepFor({ halfWidth: 0, halfHeight: 0 }, { halfWidth: 5, halfHeight: 5 }, 10)).toBe(1)
+  })
+})

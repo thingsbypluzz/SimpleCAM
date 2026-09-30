@@ -458,6 +458,15 @@ export function isPocketStepoverValid(pocket: PocketParams): boolean {
   return pocket.stepoverPercent >= 1 && pocket.stepoverPercent <= 100
 }
 
+// Spiral's ring-to-ring Ramp Length (BL-41) — Adaptive never uses it.
+export const MIN_RAMP_LENGTH_FACTOR = 1
+export const MAX_RAMP_LENGTH_FACTOR = 10
+
+export function isPocketRampLengthValid(pocket: PocketParams): boolean {
+  if (pocket.method !== 'spiral') return true
+  return pocket.rampLengthFactor >= MIN_RAMP_LENGTH_FACTOR && pocket.rampLengthFactor <= MAX_RAMP_LENGTH_FACTOR
+}
+
 export function isPocketOptimalLoadValid(pocket: PocketParams): boolean {
   if (pocket.method !== 'adaptive') return true
   return pocket.optimalLoadPercent >= MIN_OPTIMAL_LOAD_PERCENT && pocket.optimalLoadPercent <= MAX_OPTIMAL_LOAD_PERCENT
@@ -715,6 +724,7 @@ export const OPERATION_RULES: Record<OperationType, OperationRules> = {
       isPocketToolDiameterValid(p.pocket) &&
       isPocketSizeValid(p.pocket) &&
       isPocketStepoverValid(p.pocket) &&
+      isPocketRampLengthValid(p.pocket) &&
       isPocketHelixRadiusValid(p.pocket) &&
       isPocketOptimalLoadValid(p.pocket) &&
       isPocketRampAngleValid(p.pocket) &&
