@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest'
 import {
   descentAngleDeg,
+  isPocketLightCellsValid,
+  isPocketLightParamsValid,
+  pocketMaxHelixRadius,
   isPocketRampLengthValid,
   isRampAngleValid,
   isRampTurnCountWithinLimit,
@@ -803,5 +806,48 @@ describe('Pocket Spiral Ramp Length (BL-41)', () => {
 
   it('ignores it for Adaptive', () => {
     expect(isPocketRampLengthValid(pocket({ method: 'adaptive', rampLengthFactor: 0 }))).toBe(true)
+  })
+})
+
+describe('Lightened Pocket (OP-6)', () => {
+  const rect = (patch: Partial<WizardParams['pocket']>) => ({
+    ...DEFAULT_WIZARD_PARAMS.pocket,
+    shape: 'rectLightened' as const,
+    width: 120,
+    height: 40,
+    ...patch,
+  })
+  const asParams = (pocket: WizardParams['pocket']) => ({ ...DEFAULT_WIZARD_PARAMS, operation: 'pocket' as const, pocket })
+
+  it('the defaults are valid for both shapes', () => {
+    expect(isWizardParamsValid(asParams(rect({})))).toBe(true)
+    expect(isWizardParamsValid(asParams({ ...DEFAULT_WIZARD_PARAMS.pocket, shape: 'circleLightened', diameter: 80 }))).toBe(true)
+  })
+
+  it('checks the pattern ranges', () => {
+    expect(isPocketLightParamsValid(rect({ lightCountX: 0 }))).toBe(false)
+    expect(isPocketLightParamsValid(rect({ lightCountX: 2.5 }))).toBe(false)
+    expect(isPocketLightParamsValid(rect({ lightCountY: 21 }))).toBe(false)
+    expect(isPocketLightParamsValid(rect({ ribWidth: 0 }))).toBe(false)
+    const circle = { ...DEFAULT_WIZARD_PARAMS.pocket, shape: 'circleLightened' as const, diameter: 80 }
+    expect(isPocketLightParamsValid({ ...circle, spokeCount: 2 })).toBe(false)
+    expect(isPocketLightParamsValid({ ...circle, hubDiameter: 80 })).toBe(false)
+  })
+
+  it('blocks Generate when a cell is too small for the tool (plus Stock to Leave)', () => {
+    expect(isPocketLightCellsValid(rect({ lightCountX: 20, lightCountY: 5 }))).toBe(false)
+    expect(isPocketLightCellsValid(rect({ toolDiameter: 25 }))).toBe(false)
+    expect(isWizardParamsValid(asParams(rect({ toolDiameter: 25 })))).toBe(false)
+  })
+
+  it('rejects the Lightened + Adaptive pair', () => {
+    expect(isWizardParamsValid(asParams(rect({ method: 'adaptive' })))).toBe(false)
+  })
+
+  it('bounds the helix by the smallest cell and caps its turns over all cells', () => {
+    const pocket = rect({ zTransitionMode: 'helix' })
+    expect(pocketMaxHelixRadius(pocket)).toBeLessThanOrEqual(pocket.toolDiameter / 2)
+    const tiny = { ...pocket, helixRadius: 0.01, rampAngleDeg: 0.5 }
+    expect(isPocketToolpathWithinLimits(asParams(tiny))).toBe(false)
   })
 })

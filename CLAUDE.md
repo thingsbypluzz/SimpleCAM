@@ -50,7 +50,10 @@ Cztery operacje (`WizardParams.operation`):
   kierunek rastra X/Y, stepover % średnicy, wejście Plunge/Helix.
 - **Pocket** — kieszeń Rectangle Cornered / Centered / Circle; metody
   Spiral i Adaptive (stałe zaangażowanie); opcjonalny przejazd
-  wykończeniowy ścian (Stock to Leave, Finish Feed).
+  wykończeniowy ścian (Stock to Leave, Finish Feed). Kieszenie odciążające
+  **Rectangle Lightened** (X-grid N×M / Triangles N×M) i **Circle
+  Lightened** (szprychy, piasta) — każda komórka osobna kieszeń, tylko
+  Spiral.
 
 ## Kluczowe decyzje (przekrojowe)
 
@@ -194,7 +197,7 @@ src/
     helix.ts, standardHole.ts, tabs.ts     Hole(s) i Outline Circle, mostki
     outline.ts, outlineCircle.ts, outlineRectangle*.ts   Outline
     surface*.ts                            Surface
-    pocket*.ts                             Pocket (Spiral, Adaptive, wejście Z)
+    pocket*.ts                             Pocket (Spiral, Adaptive, Lightened, wejście Z)
     depthPasses.ts, interpolation.ts, format.ts
     validation.ts        OPERATION_RULES, walidacja, ostrzeżenia
     feedCalc.ts          model Feedrate Calculator

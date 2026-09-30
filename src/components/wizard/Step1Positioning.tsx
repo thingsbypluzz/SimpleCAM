@@ -3,6 +3,7 @@ import type { WizardParams } from '../../types/wizard'
 import { POSITIONING_LIST } from '../../config/positioningMeta'
 import { OUTLINE_SHAPE_LIST } from '../../config/outlineMeta'
 import { SURFACE_SHAPE_LIST } from '../../config/surfaceMeta'
+import { isLightenedShape } from '../../lib/pocketLightened'
 import { POCKET_SHAPE_LIST } from '../../config/pocketMeta'
 
 interface Step1PositioningProps {
@@ -141,7 +142,8 @@ export function Step1Positioning({ params, onChange }: Step1PositioningProps) {
             onClick={() =>
               onChange({
                 operation: 'pocket',
-                pocket: { ...pocket, shape: opt.value },
+                // Lightened shapes are Spiral-only (OP-6 stage 1).
+                pocket: { ...pocket, shape: opt.value, ...(isLightenedShape(opt.value) ? { method: 'spiral' as const } : {}) },
               })
             }
             Icon={opt.Icon}

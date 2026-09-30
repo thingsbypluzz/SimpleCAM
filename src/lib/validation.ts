@@ -10,7 +10,7 @@ import { rectOutlineOptions } from './outlineRectangle'
 import { holeCircleOptions } from './helix'
 import { surfaceStepoverMm, surfaceToolBounds } from './surfaceGeometry'
 import { effectivePocketZTransitionMode } from './pocketZTransition'
-import { entryHelixExceedsTurnLimit } from './surfaceZTransition'
+import { entryHelixExceedsTurnLimit, entryHelixTurnCount } from './surfaceZTransition'
 import { MAX_OPTIMAL_LOAD_PERCENT, MIN_OPTIMAL_LOAD_PERCENT } from './pocketAdaptiveMath'
 import { exceedsPassLimit, MAX_PASSES } from './depthPasses'
 import { exceedsLineLimit, rasterExceedsLineLimit } from './surfaceRaster'
@@ -20,7 +20,19 @@ import {
   pocketRoughCircleWallRadius,
   pocketRoughRectWallHalfDims,
   pocketStepoverMm,
+  pocketStockToLeave,
 } from './pocketGeometry'
+import {
+  cellInscribed,
+  isLightenedShape,
+  lightenedCells,
+  lightenedCellsOrNull,
+  MAX_LIGHT_COUNT,
+  MAX_SPOKES,
+  MIN_LIGHT_COUNT,
+  MIN_SPOKES,
+  type LightCell,
+} from './pocketLightened'
 import { adaptiveExceedsLimits } from './pocketAdaptive'
 
 // Strict (BL-49): a tool exactly as wide as the hole leaves a zero-radius
@@ -137,6 +149,21 @@ export function isPocketToolpathWithinLimits(params: WizardParams): boolean {
   )
     return false
   const stepoverMm = pocketStepoverMm(pocket)
+  if (isLightenedShape(pocket.shape)) {
+    const cells = lightenedCells(pocket)
+    const isHelix = pocket.zTransitionMode === 'helix'
+    // Every cell repeats the entry helix — cap the turns over all of them.
+    if (
+      isHelix &&
+      isPocketRampAngleValid(pocket) &&
+      cells.length *
+        entryHelixTurnCount(params.feeds.startZ, pocket.totalDepth, params.feeds.stepdown, pocket.helixRadius, pocket.rampAngleDeg) >
+        MAX_PASSES
+    )
+      return false
+    const startRadius = isHelix ? pocket.helixRadius : 0
+    return cells.every((cell) => !exceedsLineLimit(startRadius, lightCellRoughReach(pocket, cell), stepoverMm))
+  }
   if (pocket.shape === 'circle') {
     const startRadius = pocket.zTransitionMode === 'helix' ? pocket.helixRadius : 0
     return !exceedsLineLimit(startRadius, pocketRoughCircleWallRadius(pocket), stepoverMm)
@@ -275,7 +302,42 @@ export function isSurfaceSizeValid(surface: SurfaceParams): boolean {
 
 export function isPocketSizeValid(pocket: PocketParams): boolean {
   if (!(pocket.totalDepth > 0)) return false
-  return pocket.shape === 'circle' ? pocket.diameter > 0 : pocket.width > 0 && pocket.height > 0
+  return pocket.shape === 'circle' || pocket.shape === 'circleLightened'
+    ? pocket.diameter > 0
+    : pocket.width > 0 && pocket.height > 0
+}
+
+// Lightened shapes (OP-6): the pattern's own ranges — whole counts, a rib
+// wider than 0, a hub of at least 0 smaller than the circle.
+export function isPocketLightParamsValid(pocket: PocketParams): boolean {
+  if (!isLightenedShape(pocket.shape)) return true
+  const whole = (n: number, min: number, max: number) => Number.isInteger(n) && n >= min && n <= max
+  if (!(pocket.ribWidth > 0)) return false
+  if (pocket.shape === 'circleLightened') {
+    return (
+      whole(pocket.spokeCount, MIN_SPOKES, MAX_SPOKES) &&
+      pocket.hubDiameter >= 0 &&
+      pocket.hubDiameter < pocket.diameter
+    )
+  }
+  return (
+    whole(pocket.lightCountX, MIN_LIGHT_COUNT, MAX_LIGHT_COUNT) &&
+    whole(pocket.lightCountY, MIN_LIGHT_COUNT, MAX_LIGHT_COUNT)
+  )
+}
+
+// How far a cell's center lies inside its roughing wall (tool radius plus
+// Stock to Leave in from the cell's edge) — the room its rings grow into.
+export function lightCellRoughReach(pocket: PocketParams, cell: LightCell): number {
+  return cellInscribed(cell).radius - pocket.toolDiameter / 2 - pocketStockToLeave(pocket)
+}
+
+// Every cell must survive the ribs and still fit the tool (plus Stock to
+// Leave) — a cell the tool can't enter would silently stay uncut.
+export function isPocketLightCellsValid(pocket: PocketParams): boolean {
+  if (!isLightenedShape(pocket.shape) || !isPocketLightParamsValid(pocket)) return true
+  const cells = lightenedCellsOrNull(pocket)
+  return cells.length > 0 && cells.every((c) => c !== null && lightCellRoughReach(pocket, c) > 1e-9)
 }
 
 // MAX_CIRCLE_HOLE_COUNT lives in positioning.ts (the pattern is capped
@@ -447,6 +509,8 @@ export function surfaceZSpan(surface: SurfaceParams, feeds: FeedsParams): number
 // isOutlineToolDiameterValid's 'inside' branch, since Pocket is inherently
 // always an inside cut.
 export function isPocketToolDiameterValid(pocket: PocketParams): boolean {
+  // Lightened: checked per cell (isPocketLightCellsValid).
+  if (isLightenedShape(pocket.shape)) return true
   if (pocket.shape === 'circle') return pocket.toolDiameter < pocket.diameter
   return pocket.toolDiameter < Math.min(pocket.width, pocket.height)
 }
@@ -495,6 +559,8 @@ export function isSurfaceRampAngleValid(surface: SurfaceParams): boolean {
 export function isPocketStockToLeaveValid(pocket: PocketParams): boolean {
   if (!pocket.finishingEnabled) return true
   if (!(pocket.stockToLeave > 0) || pocket.stockToLeave > pocket.toolDiameter / 2) return false
+  // Lightened: the roughing room is checked per cell (isPocketLightCellsValid).
+  if (isLightenedShape(pocket.shape)) return true
   if (pocket.shape === 'circle') return pocketRoughCircleWallRadius(pocket) > 0
   const { halfWidth, halfHeight } = pocketRoughRectWallHalfDims(pocket)
   return halfWidth > 0 && halfHeight > 0
@@ -533,6 +599,11 @@ export function isAdaptiveStepdownShallow(pocket: PocketParams, stepdown: number
 // first ring, not past the wall — nor into the stock left for the
 // finishing pass).
 function pocketMinWallExtent(pocket: PocketParams): number {
+  // Lightened: the helix sits at every cell's center — the smallest cell wins.
+  if (isLightenedShape(pocket.shape)) {
+    const reaches = lightenedCells(pocket).map((c) => lightCellRoughReach(pocket, c))
+    return reaches.length > 0 ? Math.min(...reaches) : 0
+  }
   if (pocket.shape === 'circle') return pocketRoughCircleWallRadius(pocket)
   const { halfWidth, halfHeight } = pocketRoughRectWallHalfDims(pocket)
   return Math.min(halfWidth, halfHeight)
@@ -560,6 +631,9 @@ export function isPocketHelixRadiusValid(pocket: PocketParams): boolean {
 // exactly the area machineFitWarnings() needs to check against machine
 // travel.
 export function pocketFootprint(pocket: PocketParams): { x: number; y: number } {
+  // Lightened: the outer size of the lightened area.
+  if (pocket.shape === 'circleLightened') return { x: pocket.diameter, y: pocket.diameter }
+  if (pocket.shape === 'rectLightened') return { x: pocket.width, y: pocket.height }
   if (pocket.shape === 'circle') {
     const diameter = 2 * Math.max(0, pocketCircleWallRadius(pocket))
     return { x: diameter, y: diameter }
@@ -725,6 +799,9 @@ export const OPERATION_RULES: Record<OperationType, OperationRules> = {
       isPocketSizeValid(p.pocket) &&
       isPocketStepoverValid(p.pocket) &&
       isPocketRampLengthValid(p.pocket) &&
+      isPocketLightParamsValid(p.pocket) &&
+      isPocketLightCellsValid(p.pocket) &&
+      !(isLightenedShape(p.pocket.shape) && p.pocket.method === 'adaptive') &&
       isPocketHelixRadiusValid(p.pocket) &&
       isPocketOptimalLoadValid(p.pocket) &&
       isPocketRampAngleValid(p.pocket) &&

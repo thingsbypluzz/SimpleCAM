@@ -18,7 +18,13 @@ export type RasterDirection = 'x' | 'y'
 
 export type ZTransitionMode = 'plunge' | 'helix'
 
-export type PocketShape = 'rectCornered' | 'rectCentered' | 'circle'
+// 'rectLightened'/'circleLightened' (OP-6): the area is split into cells
+// by ribs and each cell is pocketed on its own — see lib/pocketLightened.ts.
+export type PocketShape = 'rectCornered' | 'rectCentered' | 'circle' | 'rectLightened' | 'circleLightened'
+
+// Rectangle Lightened rib layout: 'xgrid' = N×M cells, each split by its
+// diagonals; 'triangles' = M rows of N zigzag diagonals (M = 1: Warren).
+export type LightLayout = 'xgrid' | 'triangles'
 
 // Both valid for every shape — see CLAUDE.md's Pocket design notes.
 export type PocketMethodType = 'spiral' | 'adaptive'
@@ -126,6 +132,16 @@ export interface PocketParams {
   finishingEnabled: boolean
   stockToLeave: number // mm, only enforced/shown when finishingEnabled
   finishFeed: number // mm/min, only enforced/shown when finishingEnabled
+  // Lightened shapes only (OP-6). Width/Height/Diameter are the area the
+  // cells fill (BL-84: like every Pocket shape, the size is what gets
+  // cleared — no rim); the ribs and the hub are the material left.
+  lightLayout: LightLayout // Rectangle Lightened
+  lightCountX: number // N — X-grid: cells along X; Triangles: diagonals per row
+  lightCountY: number // M — X-grid: cells along Y; Triangles: rows
+  ribWidth: number // mm, width of every rib
+  spokeCount: number // Circle Lightened
+  hubDiameter: number // mm, Circle Lightened center hub (0 = spokes meet)
+  spokeStartAngle: number // deg, first spoke's axis, 0 = +X, CCW
 }
 
 export interface FeedsParams {
@@ -231,6 +247,13 @@ export const DEFAULT_WIZARD_PARAMS: WizardParams = {
     finishingEnabled: false,
     stockToLeave: 0.3,
     finishFeed: 800,
+    lightLayout: 'triangles',
+    lightCountX: 4,
+    lightCountY: 1,
+    ribWidth: 4,
+    spokeCount: 5,
+    hubDiameter: 16,
+    spokeStartAngle: 90,
   },
   feeds: {
     stepdown: 1,

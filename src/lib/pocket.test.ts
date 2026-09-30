@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { generatePocketSpiral } from './pocket'
+import { buildPocketToolpath, generatePocketSpiral } from './pocket'
+import { cellInscribed, cellWallDistance, lightenedCells } from './pocketLightened'
 import { rampSweepDegFor } from './pocketSpiral'
 import { arcRadiusMismatches } from './gcodeTestUtils'
 import { DEFAULT_MACHINE_SETTINGS } from '../types/machine'
@@ -169,5 +170,52 @@ describe('Spiral Ramp Length (BL-41)', () => {
     expect(DEFAULT_WIZARD_PARAMS.pocket.rampLengthFactor).toBe(3)
     expect(count(6)).toBeGreaterThan(count(3))
     expect(count(3)).toBeGreaterThan(count(1))
+  })
+})
+
+describe('Lightened shapes (OP-6)', () => {
+  const lightened = (pocket: Partial<WizardParams['pocket']>) =>
+    buildParams({
+      pocket: { shape: 'rectLightened', lightLayout: 'triangles', lightCountX: 4, lightCountY: 1, width: 120, height: 40, ribWidth: 4, toolDiameter: 3.175, totalDepth: 2, ...pocket },
+      feeds: { stepdown: 1, safeZ: 5 },
+    })
+
+  it('cuts every cell to full depth, one after another, retracting to Safe Z in between', () => {
+    const params = lightened({})
+    const toolpath = buildPocketToolpath(params)
+    const cells = lightenedCells(params.pocket)
+    expect(cells).toHaveLength(5)
+    // Every cell's center is visited by an XY rapid (cell 1 is the start point).
+    const rapids = toolpath.moves.filter((m) => m.kind === 'rapid' && m.type === 'line' && m.axes === 'xy').map((m) => m.to)
+    for (const cell of cells.slice(1)) {
+      const c = cellInscribed(cell).center
+      expect(rapids.some((p) => Math.hypot(p.x - c.x, p.y - c.y) < 1e-9)).toBe(true)
+    }
+    expect(Math.min(...toolpath.moves.map((m) => m.to.z))).toBeCloseTo(-2, 9)
+  })
+
+  it('is Spiral-only even with Adaptive stored', () => {
+    const toolpath = buildPocketToolpath(lightened({ method: 'adaptive' }), 'adaptive')
+    expect(toolpath.moves.some((m) => m.kind === 'link')).toBe(false)
+  })
+
+  it('adds finishing laps on every cell when Finishing Pass is on', () => {
+    const params = lightened({ finishingEnabled: true, stockToLeave: 0.3 })
+    const toolpath = buildPocketToolpath(params)
+    const cells = lightenedCells(params.pocket)
+    for (const cell of cells) {
+      const onWall = toolpath.moves.some((m) => m.kind === 'finish' && Math.abs(cellWallDistance(cell, m.to) - 3.175 / 2) < 1e-6)
+      expect(onWall).toBe(true)
+    }
+  })
+
+  it('Circle Lightened: one pocket per spoke gap, G-code ends at full depth', () => {
+    const params = buildParams({
+      pocket: { shape: 'circleLightened', diameter: 80, spokeCount: 5, hubDiameter: 16, ribWidth: 4, toolDiameter: 3.175, totalDepth: 1 },
+      feeds: { stepdown: 1 },
+    })
+    const lines = generatePocketSpiral(params, DEFAULT_MACHINE_SETTINGS)
+    expect(lines.some((l) => l.includes('Z-1 '))).toBe(true)
+    expect(lightenedCells(params.pocket)).toHaveLength(5)
   })
 })

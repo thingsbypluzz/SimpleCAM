@@ -8,7 +8,9 @@
 import { describe, expect, it } from 'vitest'
 import type { MachineSettings } from '../types/machine'
 import type { WizardParams } from '../types/wizard'
-import { makeRng, randomHoles, randomMachine, randomOutline, randomPocket, randomSurface, type Rng } from './fuzzParams'
+import { makeRng, randomHoles, randomMachine, randomOutline, randomPocket, randomPocketLightened, randomSurface, type Rng } from './fuzzParams'
+import { cellWallDistance, isLightenedShape, lightenedCells } from './pocketLightened'
+import { pocketStockToLeave } from './pocketGeometry'
 import { arcRadiusMismatches } from './gcodeTestUtils'
 import { generateHelix } from './helix'
 import { forcedLinearReason } from './interpolation'
@@ -137,6 +139,12 @@ function containmentProblems(params: WizardParams, below: TracedPoint[]): string
     return outside('outside the Surface bounds', (p) => p.x >= b.minX - m && p.x <= b.maxX + m && p.y >= b.minY - m && p.y <= b.maxY + m)
   }
   if (params.operation === 'pocket') {
+    if (isLightenedShape(params.pocket.shape)) {
+      // Inside some cell's final tool-center wall (tool radius in from it).
+      const cells = lightenedCells(params.pocket)
+      const r = params.pocket.toolDiameter / 2
+      return outside('past a Lightened cell wall', (p) => cells.some((cell) => cellWallDistance(cell, p) >= r - EPS))
+    }
     const c = pocketCenter(params.pocket)
     if (params.pocket.shape === 'circle') {
       const r = pocketCircleWallRadius(params.pocket)
@@ -157,13 +165,20 @@ function pocketFinishProblems(params: WizardParams): string[] {
   const { pocket } = params
   const c = pocketCenter(pocket)
   const isCircle = pocket.shape === 'circle'
+  const lightened = isLightenedShape(pocket.shape)
+  const cells = lightened ? lightenedCells(pocket) : []
+  const toolR = pocket.toolDiameter / 2
+  const cellDepth = (p: Point3D) => Math.max(...cells.map((cell) => cellWallDistance(cell, p)))
   const rough = isCircle ? pocketRoughCircleWallRadius(pocket) : pocketRoughRectWallHalfDims(pocket)
   const inRough = (p: Point3D) =>
-    typeof rough === 'number'
-      ? Math.hypot(p.x - c.x, p.y - c.y) <= rough + EPS
-      : Math.abs(p.x - c.x) <= rough.halfWidth + EPS && Math.abs(p.y - c.y) <= rough.halfHeight + EPS
+    lightened
+      ? cellDepth(p) >= toolR + pocketStockToLeave(pocket) - EPS
+      : typeof rough === 'number'
+        ? Math.hypot(p.x - c.x, p.y - c.y) <= rough + EPS
+        : Math.abs(p.x - c.x) <= rough.halfWidth + EPS && Math.abs(p.y - c.y) <= rough.halfHeight + EPS
   // Distance from the final wall (0 = on it).
   const wallGap = (p: Point3D) => {
+    if (lightened) return cellDepth(p) - toolR
     if (isCircle) return pocketCircleWallRadius(pocket) - Math.hypot(p.x - c.x, p.y - c.y)
     const { halfWidth, halfHeight } = pocketRectWallHalfDims(pocket)
     return Math.min(halfWidth - Math.abs(p.x - c.x), halfHeight - Math.abs(p.y - c.y))
@@ -203,6 +218,7 @@ const SUITES: Suite[] = [
   { name: 'Surface Unidirectional', samples: 40, build: (r) => randomSurface(r, 'unidirectional'), generate: generateSurfaceUnidirectional },
   { name: 'Pocket Spiral', samples: 40, build: (r) => randomPocket(r, 'spiral'), generate: generatePocketSpiral },
   { name: 'Pocket Adaptive', samples: 25, build: (r) => randomPocket(r, 'adaptive'), generate: generatePocketAdaptive },
+  { name: 'Pocket Lightened', samples: 30, build: randomPocketLightened, generate: generatePocketSpiral },
 ]
 
 describe('G-code invariants for every valid parameter set (BL-62)', () => {

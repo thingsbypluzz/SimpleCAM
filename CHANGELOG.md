@@ -7,6 +7,40 @@ zgodne z [SemVer](https://semver.org/). Ten plik pozostaje głównym, czytelnym
 thingsbypluzz/SimpleCAM), ale to infrastruktura pod izolację pracy
 (branch/worktree per zadanie), nie zamiennik tego changeloga.
 
+## [0.30.0] — 2026-09-30
+
+### Dodano
+
+- **Kieszenie odciążające — Rectangle Lightened i Circle Lightened**
+  (`OP-6`, etap 1). Dwa nowe kształty w Pocket: obszar dzielony ramionami
+  na komórki, każda komórka wybierana jak osobna kieszeń; zostają ramiona
+  i (w okręgu) piasta. Ustalenia z sesji `/grill-me` w `ideas.md`.
+  - **Rectangle Lightened** (origin w środku), pole **Layout**: **X-grid
+    N×M** (komórki z przekątnymi, 1×1 = klasyczne X) albo **Triangles
+    N×M** (M rzędów, w rzędzie N ukośnych ramion zygzakiem — 1 rząd to
+    kratownica Warrena, więcej rzędów to isogrid).
+  - **Circle Lightened**: Spokes (3–24), Hub Diameter, Start Angle —
+    komórki to wycinki pierścienia między piastą a obwodem.
+  - Wspólne: **Rib Width**; narożniki komórek zaokrągla promień freza.
+  - **Wymiar = obszar wybierany** (`BL-84`), jak w każdym kształcie Pocket:
+    komórki dochodzą do granicy Width × Height / Diameter, bez osobnej
+    ramki. Margines pod późniejszy Outline wlicza się w wymiar samemu i
+    sprawdza, nakładając oba presety w Overlay.
+  - Każda komórka: Spiral od środka (Plunge albo Helix w środku okręgu
+    wpisanego), kontury równoległe co Stepover z rampą Ramp Length, do
+    pełnej głębokości; opcjonalny Finishing Pass po ścianach komórki;
+    retrakt na Safe Z między komórkami, kolejność wężem.
+  - Tylko Spiral — Adaptive dla tych kształtów wyłączony z podpowiedzią
+    (etap 2, `BL-83`).
+  - Walidacja: zakresy pól, komórka za mała dla freza (z Stock to Leave)
+    blokuje Generate i oznacza pola, które ją powodują; Helix Radius wg
+    najmniejszej komórki; limit łącznej liczby obrotów helixa we
+    wszystkich komórkach.
+  - Podglądy 2D/3D i Overlay: komórki jako pustki w arkuszu, ramiona i
+    piasta jako materiał.
+  - G-code dotychczasowych kształtów Pocket bez zmian (sprawdzone znak po
+    znaku na losowych parametrach).
+
 ## [0.29.0] — 2026-09-30
 
 ### Dodano

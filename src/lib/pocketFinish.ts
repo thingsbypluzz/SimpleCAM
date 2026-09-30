@@ -2,6 +2,8 @@ import type { PocketParams, Point2D, WizardParams } from '../types/wizard'
 import { pocketCenter, pocketCircleWallRadius, pocketRectWallHalfDims, pocketStockToLeave } from './pocketGeometry'
 import { buildLevelDescents } from './surfaceZTransition'
 import { fullTurn, ToolpathBuilder, type ArcDirection, type Move, type Point3D } from './toolpath'
+import { cellInscribed, cellLoop, cellWallDistance, loopNearestFraction, type LightCell } from './pocketLightened'
+import { lapPoints } from './pocketCellSpiral'
 
 // Pocket finishing wall pass (BL-42) — runs after the whole roughing, on
 // the final tool-center wall (pocketRectWallHalfDims()/
@@ -153,4 +155,98 @@ export function pocketFinishMoves(from: Point3D, params: Pick<WizardParams, 'poc
   const b = new ToolpathBuilder(from)
   appendPocketFinish(b, params)
   return b.moves
+}
+
+// Lightened cells (OP-6): the same finishing pass per cell, on the cell's
+// final tool-center wall (cellLoop() at the tool radius), always climb
+// (CCW). The lap enters at the middle of the wall's longest edge. The lead
+// radius is the tool radius, shrunk until both lead ends lie in the roughed
+// area; when even Stock to Leave doesn't fit, a half-arc from the deepest
+// cleared point along the edge's inward normal.
+export function appendCellFinish(b: ToolpathBuilder, cell: LightCell, params: Pick<WizardParams, 'pocket' | 'feeds'>): void {
+  const { pocket, feeds } = params
+  if (!pocket.finishingEnabled) return
+  const toolR = pocket.toolDiameter / 2
+  const stock = pocketStockToLeave(pocket)
+  const wall = cellLoop(cell, toolR)
+  if (wall.length < 2) return
+
+  const roughed = (p: Point2D) => cellWallDistance(cell, p) >= toolR + stock - 1e-9
+  // A lead at the middle of wall edge i: a quarter arc (radius the tool
+  // radius, shrunk until both ends lie in the roughed area), else a half
+  // arc from the deepest roughed point along the edge's inward normal, else
+  // none.
+  const leadAt = (i: number): { entry: Point2D; lead: Lead } | null => {
+    const a = wall[i]
+    const q = wall[(i + 1) % wall.length]
+    const len = Math.hypot(q.x - a.x, q.y - a.y)
+    if (!(len > 0)) return null
+    const entry = { x: (a.x + q.x) / 2, y: (a.y + q.y) / 2 }
+    const tangent = { x: (q.x - a.x) / len, y: (q.y - a.y) / len }
+    const normal = { x: -tangent.y, y: tangent.x }
+    const at = (inward: number, along: number) => ({
+      x: entry.x + normal.x * inward + tangent.x * along,
+      y: entry.y + normal.y * inward + tangent.y * along,
+    })
+    const quarterFits = (r: number) => roughed(at(r, -r)) && roughed(at(r, r))
+    const minR = Math.max(stock, 1e-6)
+    if (quarterFits(minR)) {
+      let r = Math.max(minR, toolR)
+      if (!quarterFits(r)) {
+        let lo = minR
+        let hi = r
+        for (let k = 0; k < 40; k++) {
+          const mid = (lo + hi) / 2
+          if (quarterFits(mid)) lo = mid
+          else hi = mid
+        }
+        r = lo
+      }
+      return { entry, lead: { center: at(r, 0), sweep: Math.PI / 2, start: at(r, -r), end: at(r, r) } }
+    }
+    const reach = 2 * cellInscribed(cell).radius
+    let depth = 0
+    for (let k = 1; k <= 200; k++) {
+      const t = (k / 200) * reach
+      if (roughed(at(t, 0)) && (depth === 0 || cellWallDistance(cell, at(t, 0)) >= cellWallDistance(cell, at(depth, 0)))) depth = t
+    }
+    if (depth === 0) return null
+    const r = depth / 2
+    return { entry, lead: { center: at(r, 0), sweep: Math.PI, start: at(2 * r, 0), end: at(2 * r, 0) } }
+  }
+  // Longest wall edge first; the cell's center (always roughed) with
+  // straight lead moves as the last resort.
+  const order = wall
+    .map((a, i) => ({ i, len: Math.hypot(wall[(i + 1) % wall.length].x - a.x, wall[(i + 1) % wall.length].y - a.y) }))
+    .sort((x, y) => y.len - x.len)
+  let chosen: { entry: Point2D; lead: Lead } | null = null
+  for (const { i } of order) {
+    chosen = leadAt(i)
+    if (chosen) break
+  }
+  if (!chosen) {
+    const center = cellInscribed(cell).center
+    const e = order.length > 0 ? wall[order[0].i] : wall[0]
+    chosen = { entry: e, lead: { center, sweep: 0, start: center, end: center } }
+  }
+  const { entry, lead } = chosen
+
+  const lap = lapPoints(wall, loopNearestFraction(wall, entry))
+  b.zTo('rapid', feeds.safeZ)
+  b.rapidXY(lead.start.x, lead.start.y)
+  b.zTo('rapid', feeds.startZ)
+  const levels = buildLevelDescents(feeds.startZ, pocket.totalDepth, feeds.stepdown)
+  levels.forEach(({ toZ }, idx) => {
+    b.zTo('plunge', toZ)
+    const leadMove = () => {
+      if (lead.sweep > 0) b.arc('finish', lead.center, 'ccw', lead.sweep)
+      else b.lineTo('finish', entry.x, entry.y)
+    }
+    leadMove()
+    for (const p of lap) b.lineTo('finish', p.x, p.y)
+    if (lead.sweep > 0) b.arc('finish', lead.center, 'ccw', lead.sweep)
+    else b.lineTo('finish', lead.end.x, lead.end.y)
+    if ((lead.sweep === 0 || lead.sweep < Math.PI) && idx < levels.length - 1 && (lead.end.x !== lead.start.x || lead.end.y !== lead.start.y))
+      b.lineTo('finish', lead.start.x, lead.start.y)
+  })
 }

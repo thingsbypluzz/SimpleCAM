@@ -150,8 +150,9 @@ zaczyna od `zTo('rapid', startZ)`; końcowy retrakt robi `assembleProgram()`.
 
 ## Pocket (`pocket*.ts`)
 
-- Kształty Rectangle Cornered/Centered i Circle; metody **Spiral** i
-  **Adaptive** (każda dla każdego kształtu), opcjonalny przejazd
+- Kształty Rectangle Cornered/Centered, Circle oraz **Rectangle
+  Lightened** / **Circle Lightened** (niżej); metody **Spiral** i
+  **Adaptive** (Lightened tylko Spiral), opcjonalny przejazd
   wykończeniowy ścian (niżej), bez mostków. Zapisane dawne `'raster'` nie
   przechodzi strażnika enuma i wczytuje się jako Spiral.
 - Czyszczenie zawsze od środka na zewnątrz, CCW (climb). Ściana
@@ -203,6 +204,57 @@ zaczyna od `zTo('rapid', startZ)`; końcowy retrakt robi `assembleProgram()`.
 - Dla `width ≠ height` pierścienie rosną per oś ze wspólnego kroku
   (`computeLinePositions()` na dłuższej połówce), oś, która osiągnie cel,
   jest zaciskana. Początkowe `(0,0)` z `computeLinePositions()` odrzucane.
+
+### Lightened (`pocketLightened.ts`, `pocketCellSpiral.ts`)
+
+- Obszar W×H / ⌀D (origin w środku) dzielony ramionami na **komórki**,
+  każda to osobna kieszeń; zostają ramiona (`ribWidth`) i piasta
+  (`hubDiameter`). **Bez ramki** (`BL-84`): jak w każdym kształcie Pocket
+  wymiar = to, co jest wybierane — komórki dochodzą do granicy W×H/⌀;
+  margines pod późniejszy Outline operator wlicza w wymiar sam. Komórki nominalne — `lightenedCellsOrNull()`
+  (null = komórka pochłonięta przez ramiona), kolejność cięcia wężem.
+  - **Rectangle Lightened**, `lightLayout`: `'xgrid'` — N×M podprostokątów,
+    każdy przekątnymi na 4 trójkąty; `'triangles'` — M rzędów, w rzędzie N
+    ukośnych ramion zygzakiem między węzłami co W/N (pierwsze od lewego
+    dolnego rogu), rząd = N+1 trójkątów (prostokątne na końcach);
+    nieparzyste rzędy lustrzane, żeby węzły się pokrywały. Krawędź-ramię
+    przesunięta do środka o Rib/2, krawędź na granicy obszaru o 0
+    (`offsetTriangle()` — odrzuca trójkąt „przewrócony” po kierunkach
+    krawędzi, nie po znaku pola).
+  - **Circle Lightened**: `spokeCount` (3–24) szprych od `spokeStartAngle`
+    (0° = +X, CCW); komórka = wycinek pierścienia Hub/2…D/2 w
+    odległości ≥ Rib/2 od osi obu szprych (`SectorCell`).
+- `LightCell` = trójkąt albo wycinek; `cellLoop(cell, d)` — kontur w
+  odległości d od ściany, CCW: trójkąt = jednokładność względem środka
+  okręgu wpisanego (dokładnie), wycinek = ta sama rodzina (`rIn+d`,
+  `rOut−d`, `s+d`), łuki co 5° (łuk przy piaście na promieniu opisanym,
+  żeby cięciwy nie wchodziły w piastę); `cellInscribed()` — środek i
+  promień wpisany; `cellWallDistance()` — odległość od ściany (dodatnia w
+  środku); `loopPointAt()`/`loopNearestFraction()`.
+- **Spiral per komórka** (`appendCellSpiral()`): pierścienie od środka
+  (Plunge) albo od konturu o promieniu wpisanym = Helix Radius (łącznik z
+  końca helixa do najbliższego punktu), co Stepover, do ściany roughingu
+  (d = R + Stock to Leave); rampa jak Rectangle (Ramp Length × Δd / średni
+  obwód, sufit 1 pętli), potem pełne okrążenie; zawsze G1.
+- Silnik (`buildLightenedToolpath()` w `pocket.ts`): komórka po komórce —
+  Safe Z, rapid nad wejście (środek okręgu wpisanego, Helix +R w X), Start
+  Z, ta sama pętla poziomów co Spiral (`appendSpiralLevels()`), potem
+  finishing tej komórki (`appendCellFinish()`: okrążenie konturu d = R,
+  wejście na środku najdłuższej krawędzi ćwierćłukiem, gdy się nie mieści —
+  kolejne krawędzie / półłuk / prosto ze środka komórki).
+- Tylko Spiral: wybór kształtu w Kroku 1 ustawia Spiral, Adaptive w
+  pickerze wyłączony, storage zamienia Lightened+Adaptive na Spiral,
+  walidacja odrzuca parę, silnik ignoruje zapisaną metodę.
+- Walidacja: `isPocketLightParamsValid()` (N, M całkowite 1–20, Spokes
+  3–24, Rib > 0, 0 ≤ Hub < Diameter),
+  `isPocketLightCellsValid()` (każda komórka istnieje i
+  `lightCellRoughReach()` > 0), Helix Radius ≤ najmniejszy zasięg
+  (`pocketMinWallExtent()`), limity: pierścienie per komórka i **łączna**
+  liczba obrotów helixa wejścia we wszystkich komórkach ≤ `MAX_PASSES`
+  (`entryHelixTurnCount()`).
+- Podglądy: pustki = kontury nominalne komórek (`pocketVoids()` w
+  `overlayStock.ts`, ostre narożniki jak prostokąt Pocket), 3D ściany per
+  komórka (`buildPolygonWallMesh()`).
 
 ### Adaptive (`pocketAdaptive.ts`, `pocketAdaptiveMath.ts`)
 
@@ -356,8 +408,9 @@ Surface/Pocket Spiral — stepover, Adaptive — Optimal Load.
   `isWizardParamsValid()` muszą dać G-code spełniający niezmienniki (G0 w
   XY tylko na Safe Z, F > 0, brak NaN, najniższe Z = −totalDepth, spójne
   łuki, brak łuków przy G1 w Kroku 4, ostatnia linia M30/M2, ścieżka w
-  granicach Surface/ścian Pocket; roughing Pocket w ścianie roughingu, a
-  finishing dotyka ściany — na liście ruchów). `GCODE_FUZZ_SCALE`/
+  granicach Surface/ścian Pocket — Lightened: w którejś komórce; roughing
+  Pocket w ścianie roughingu, a finishing dotyka ściany — na liście
+  ruchów). `GCODE_FUZZ_SCALE`/
   `GCODE_FUZZ_SEED`.
 - `gcodeTestUtils.ts::arcRadiusMismatches()` — spójność G2/G3 (GRBL error
   33). `pocketAdaptiveSim.ts` — symulacja materiału na siatce (tylko

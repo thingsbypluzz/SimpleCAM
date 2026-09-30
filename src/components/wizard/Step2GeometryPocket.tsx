@@ -8,6 +8,7 @@ import {
   isPocketSizeValid,
   isPocketStepoverValid,
   isPocketRampLengthValid,
+  isPocketLightCellsValid,
   MAX_RAMP_LENGTH_FACTOR,
   MIN_RAMP_LENGTH_FACTOR,
   isPocketStockToLeaveValid,
@@ -43,6 +44,8 @@ import { PocketMethodPicker } from './PocketMethodPicker'
 import { TextToggle } from './TextToggle'
 import { CUT_DIRECTION_OPTIONS, Z_TRANSITION_MODE_OPTIONS } from './toggleOptions'
 import { useNumberField } from './useNumberField'
+import { LightenedFields } from './LightenedFields'
+import { isLightenedShape } from '../../lib/pocketLightened'
 
 interface Step2GeometryPocketProps {
   params: WizardParams
@@ -56,7 +59,9 @@ interface Step2GeometryPocketProps {
 const round2 = (n: number) => Math.round(n * 100) / 100
 const round4 = (n: number) => Math.round(n * 10000) / 10000
 
-// Field order (BL-72): shape size fields -> Total Depth -> Tool Diameter ->
+// Field order (BL-72): shape size fields -> Total Depth -> Lightened
+// pattern (OP-6: Layout + N + M or Spokes + Hub + Start, then Rib Width —
+// LightenedFields.tsx) -> Tool Diameter ->
 // Method (+ Direction) -> Stepover (% + read-only mm) + Ramp Length (one
 // row, BL-41, engagement readout below it) -> Z-Transition Mode
 // + Helix Radius + Ramp Angle (one row, helix fields only in Helix mode)
@@ -95,7 +100,9 @@ export function Step2GeometryPocket({ params, onChange, machine, toolDiameters, 
   const rampAngleField = useNumberField(pocket.rampAngleDeg, (v) => updatePocket({ rampAngleDeg: v }))
   const stockToLeaveField = useNumberField(pocket.stockToLeave, (v) => updatePocket({ stockToLeave: v }))
 
-  const isRect = pocket.shape !== 'circle'
+  const isRect = pocket.shape !== 'circle' && pocket.shape !== 'circleLightened'
+  const isLightened = isLightenedShape(pocket.shape)
+  const cellsInvalid = !isPocketLightCellsValid(pocket)
   const isAdaptive = pocket.method === 'adaptive'
   const zMode = effectivePocketZTransitionMode(pocket)
   const loadValid = isPocketOptimalLoadValid(pocket)
@@ -203,12 +210,14 @@ export function Step2GeometryPocket({ params, onChange, machine, toolDiameters, 
         {!isPocketSizeValid(pocket) && <p className="text-sm text-status-error">Dimensions and depth must be greater than 0.</p>}
       </div>
 
+      {isLightened && <LightenedFields params={params} onChange={updatePocket} />}
+
       <div className="flex flex-col gap-4">
         <ToolChipLoad params={params} machine={machine} flutes={flutes} onFlutesChange={onFlutesChange}>
           <FieldRow label="Tool Diameter [mm]">
             <select
               className={inputClass}
-              aria-invalid={toolInvalid}
+              aria-invalid={toolInvalid || cellsInvalid}
               value={pocket.toolDiameter}
               onChange={(e) => updatePocket({ toolDiameter: Number(e.target.value) })}
             >

@@ -16,6 +16,7 @@ import { buildSurfaceToolpath } from '../../lib/surface'
 import { buildPocketToolpath } from '../../lib/pocket'
 import { movePoints, type MoveKind, type Toolpath } from '../../lib/toolpath'
 import { pocketCenter } from '../../lib/pocketGeometry'
+import { cellLoop, isLightenedShape, lightenedCells } from '../../lib/pocketLightened'
 import { stockSheetRect } from '../preview/drawToolpath'
 import { overlaySheetVoids, sheetMinusVoids } from '../../lib/overlayStock'
 import type { Point2D, PocketShape, WizardParams } from '../../types/wizard'
@@ -312,14 +313,17 @@ type ResolvedPattern =
       shape: PocketShape
       nominalRadius: number // circle only
       nominalCorners: Point2D[] // rect only, [] for circle
+      // Lightened (OP-6): every cell's nominal outline — the voids; [] otherwise.
+      cellPolygons: Point2D[][]
     }
 
 function resolvePattern(params: WizardParams): ResolvedPattern {
   if (params.operation === 'pocket') {
     const { pocket } = params
     const center = pocketCenter(pocket)
-    if (pocket.shape === 'circle') {
-      return { kind: 'pocket', params, center, shape: pocket.shape, nominalRadius: pocket.diameter / 2, nominalCorners: [] }
+    const cellPolygons = isLightenedShape(pocket.shape) ? lightenedCells(pocket).map((c) => cellLoop(c, 0)) : []
+    if (pocket.shape === 'circle' || pocket.shape === 'circleLightened') {
+      return { kind: 'pocket', params, center, shape: pocket.shape, nominalRadius: pocket.diameter / 2, nominalCorners: [], cellPolygons }
     }
     const nominalCorners: Point2D[] = [
       { x: center.x - pocket.width / 2, y: center.y - pocket.height / 2 },
@@ -327,7 +331,7 @@ function resolvePattern(params: WizardParams): ResolvedPattern {
       { x: center.x + pocket.width / 2, y: center.y + pocket.height / 2 },
       { x: center.x - pocket.width / 2, y: center.y + pocket.height / 2 },
     ]
-    return { kind: 'pocket', params, center, shape: pocket.shape, nominalRadius: 0, nominalCorners }
+    return { kind: 'pocket', params, center, shape: pocket.shape, nominalRadius: 0, nominalCorners, cellPolygons }
   }
   if (params.operation === 'surface') {
     const { surface } = params
@@ -397,7 +401,7 @@ function resolvePattern(params: WizardParams): ResolvedPattern {
 function expandBoundsForPattern(bounds: THREE.Box3, pattern: ResolvedPattern) {
   if (pattern.kind === 'pocket') {
     const { pocket, feeds } = pattern.params
-    if (pattern.shape === 'circle') {
+    if (pattern.shape === 'circle' || pattern.shape === 'circleLightened') {
       const r = pattern.nominalRadius
       bounds.expandByPoint(toThree(pattern.center.x - r, pattern.center.y - r, -pocket.totalDepth))
       bounds.expandByPoint(toThree(pattern.center.x + r, pattern.center.y + r, feeds.safeZ))
@@ -768,6 +772,29 @@ function boundingCenter(points: Point2D[]): Point2D {
 // On-line's outer edge) still needs DoubleSide — the whole point of
 // leaving it open is to see the interior wall from inside/above, which
 // means seeing that geometry's back face.
+// Open vertical walls along a closed polygon, Z=0 down to −height — a
+// Lightened cell's sides (OP-6). Same shading/transparency as the other
+// open walls.
+function buildPolygonWallMesh(polygon: Point2D[], height: number, theme: Theme): THREE.Mesh {
+  const positions: number[] = []
+  for (let i = 0; i < polygon.length; i++) {
+    const a = polygon[i]
+    const b = polygon[(i + 1) % polygon.length]
+    const at = toThree(a.x, a.y, 0)
+    const ab = toThree(a.x, a.y, -height)
+    const bt = toThree(b.x, b.y, 0)
+    const bb = toThree(b.x, b.y, -height)
+    positions.push(at.x, at.y, at.z, ab.x, ab.y, ab.z, bb.x, bb.y, bb.z, at.x, at.y, at.z, bb.x, bb.y, bb.z, bt.x, bt.y, bt.z)
+  }
+  const geometry = new THREE.BufferGeometry()
+  geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3))
+  const color = new THREE.Color(theme.hole).multiplyScalar(WALL_SHADE_FACTOR)
+  return new THREE.Mesh(
+    geometry,
+    new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.3, side: THREE.DoubleSide, depthWrite: false }),
+  )
+}
+
 function buildRectWallMesh(corners: Point2D[], boreHeight: number, centerZ: number, closed: boolean, theme: Theme): THREE.Mesh {
   const center = boundingCenter(corners)
   const width = Math.max(...corners.map((p) => p.x)) - Math.min(...corners.map((p) => p.x))
@@ -963,7 +990,7 @@ function buildPocketPatternObjects(
   showStock: boolean,
   showToolpath: boolean,
 ): THREE.Object3D[] {
-  const { center, shape, nominalRadius, nominalCorners, params } = pattern
+  const { center, shape, nominalRadius, nominalCorners, cellPolygons, params } = pattern
   const { pocket, feeds } = params
   const objects: THREE.Object3D[] = []
 
@@ -972,7 +999,13 @@ function buildPocketPatternObjects(
   if (showStock) {
     const boreHeight = pocket.totalDepth
     const boreCenterZ = -pocket.totalDepth / 2
-    if (shape === 'circle') {
+    // Lightened: one wall per cell — none while no cell is valid (e.g. a
+    // field mid-edit), never the solid shapes' fallbacks.
+    if (isLightenedShape(shape)) {
+      for (const polygon of cellPolygons) {
+        if (polygon.length >= 3) objects.push(buildPolygonWallMesh(polygon, boreHeight, theme))
+      }
+    } else if (shape === 'circle') {
       const sideColor = new THREE.Color(theme.hole).multiplyScalar(WALL_SHADE_FACTOR)
       const wall = new THREE.Mesh(
         new THREE.CylinderGeometry(nominalRadius, nominalRadius, boreHeight, 32, 1, true),
@@ -1074,9 +1107,11 @@ function buildStockCapObject(
     holePaths = pattern.points.map((p) => circlePath(p.x, p.y, pattern.holeRadius))
   } else if (pattern.kind === 'pocket') {
     holePaths =
-      pattern.shape === 'circle'
-        ? [circlePath(pattern.center.x, pattern.center.y, pattern.nominalRadius)]
-        : [rectPath(pattern.nominalCorners)]
+      isLightenedShape(pattern.shape)
+        ? pattern.cellPolygons.filter((polygon) => polygon.length >= 3).map((polygon) => rectPath(polygon))
+        : pattern.shape === 'circle'
+          ? [circlePath(pattern.center.x, pattern.center.y, pattern.nominalRadius)]
+          : [rectPath(pattern.nominalCorners)]
   } else {
     const { outline } = pattern.params
     if (outline.offsetMode === 'outside') return null

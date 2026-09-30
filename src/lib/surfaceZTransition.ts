@@ -138,6 +138,25 @@ export function entryHelixExceedsTurnLimit(
   })
 }
 
+// Total entry-helix turns over every level — Lightened Pocket (OP-6)
+// repeats the whole entry in every cell, so validation caps the sum.
+export function entryHelixTurnCount(
+  startZ: number,
+  totalDepth: number,
+  stepdown: number,
+  helixRadius: number,
+  rampAngleDeg: number,
+): number {
+  const pitch = helixPitchForRampAngle(helixRadius, rampAngleDeg)
+  if (!(pitch > 0)) return 0
+  let previousToZ = startZ
+  return buildLevelDescents(startZ, totalDepth, stepdown).reduce((sum, { toZ }, idx) => {
+    const fromZ = levelEntryZ(idx, previousToZ, startZ)
+    previousToZ = toZ
+    return sum + Math.max(0, Math.ceil((fromZ - toZ) / pitch - 1e-9))
+  }, 0)
+}
+
 export interface LevelDescent {
   toZ: number
 }

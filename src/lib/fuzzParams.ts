@@ -202,3 +202,25 @@ export function randomPocket(rng: Rng, method: 'spiral' | 'adaptive'): WizardPar
     pocket: { ...pocket, helixRadius },
   }
 }
+
+// Lightened Pocket shapes (OP-6) — Spiral only. Sizes and counts kept so a
+// fair share of samples have cells the tool fits.
+export function randomPocketLightened(rng: Rng): WizardParams {
+  const base = randomPocket(rng, 'spiral')
+  const pocket = {
+    ...base.pocket,
+    shape: rng.pick(['rectLightened', 'circleLightened'] as const),
+    width: rng.range(40, 150, 1),
+    height: rng.range(20, 80, 1),
+    diameter: rng.range(40, 120, 1),
+    lightLayout: rng.pick(['xgrid', 'triangles'] as const),
+    lightCountX: rng.int(1, 6),
+    lightCountY: rng.int(1, 3),
+    ribWidth: rng.range(1, 6, 1),
+    spokeCount: rng.int(3, 8),
+    hubDiameter: rng.range(0, 20, 1),
+    spokeStartAngle: rng.int(0, 359),
+  }
+  const helixRadius = Number((Math.max(0, pocketMaxHelixRadius(pocket)) * rng.range(0.2, 1, 2)).toFixed(3))
+  return { ...base, pocket: { ...pocket, helixRadius } }
+}

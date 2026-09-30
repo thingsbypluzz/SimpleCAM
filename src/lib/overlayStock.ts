@@ -2,11 +2,38 @@ import polygonClipping, { type MultiPolygon, type Polygon, type Ring } from 'pol
 import type { Point2D, WizardParams } from '../types/wizard'
 import { rectCorners } from './outlineRectangleGeometry'
 import { pocketCenter } from './pocketGeometry'
+import { cellLoop, isLightenedShape, lightenedCells } from './pocketLightened'
 import { resolvePoints } from './positioning'
 
 // A void cut out of the stock sheet — a circle or a closed polygon, in CNC
 // (x, y). Shared by both previews (2D fillStockSheet, 3D stock caps).
 export type SheetVoid = { circle: Point2D; radius: number } | { polygon: Point2D[] }
+
+// A Pocket's voids: its nominal boundary, or — Lightened (OP-6) — every
+// cell's nominal outline (sharp corners, like the Rectangle's), leaving the
+// ribs, rim and hub as sheet. Shared by both previews and the Overlay sheet.
+export function pocketVoids(pocket: WizardParams['pocket']): SheetVoid[] {
+  if (isLightenedShape(pocket.shape)) {
+    return lightenedCells(pocket)
+      .map((cell) => cellLoop(cell, 0))
+      .filter((polygon) => polygon.length >= 3)
+      .map((polygon) => ({ polygon }))
+  }
+  const c = pocketCenter(pocket)
+  if (pocket.shape === 'circle') return [{ circle: c, radius: pocket.diameter / 2 }]
+  const hw = pocket.width / 2
+  const hh = pocket.height / 2
+  return [
+    {
+      polygon: [
+        { x: c.x - hw, y: c.y - hh },
+        { x: c.x + hw, y: c.y - hh },
+        { x: c.x + hw, y: c.y + hh },
+        { x: c.x - hw, y: c.y + hh },
+      ],
+    },
+  ]
+}
 
 // BL-75: in Overlay, one illusory stock sheet is shared by every overlaid
 // preset — but only while none of them is a solid part of its own
@@ -14,23 +41,7 @@ export type SheetVoid = { circle: Point2D; radius: number } | { polygon: Point2D
 // material" block). Returns that preset's voids, or null for a solid.
 export function stockVoids(params: WizardParams): SheetVoid[] | null {
   if (params.operation === 'surface') return null
-  if (params.operation === 'pocket') {
-    const { pocket } = params
-    const c = pocketCenter(pocket)
-    if (pocket.shape === 'circle') return [{ circle: c, radius: pocket.diameter / 2 }]
-    const hw = pocket.width / 2
-    const hh = pocket.height / 2
-    return [
-      {
-        polygon: [
-          { x: c.x - hw, y: c.y - hh },
-          { x: c.x + hw, y: c.y - hh },
-          { x: c.x + hw, y: c.y + hh },
-          { x: c.x - hw, y: c.y + hh },
-        ],
-      },
-    ]
-  }
+  if (params.operation === 'pocket') return pocketVoids(params.pocket)
   if (params.operation === 'outline') {
     const { outline } = params
     if (outline.offsetMode !== 'inside') return null

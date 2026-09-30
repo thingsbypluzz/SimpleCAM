@@ -1,5 +1,11 @@
 import type { ComponentType } from 'react'
-import { PocketCircleIcon, PocketRectangleCenteredIcon, PocketRectangleIcon } from '../components/icons'
+import {
+  PocketCircleIcon,
+  PocketCircleLightenedIcon,
+  PocketRectangleCenteredIcon,
+  PocketRectangleIcon,
+  PocketRectLightenedIcon,
+} from '../components/icons'
 import { fmt } from '../lib/format'
 import type { PocketParams, PocketShape } from '../types/wizard'
 
@@ -29,13 +35,36 @@ export const POCKET_SHAPE_META: Record<PocketShape, PocketShapeMeta> = {
     description: 'Circular pocket, centered at the origin. Spiral or Adaptive.',
     Icon: PocketCircleIcon,
   },
+  rectLightened: {
+    value: 'rectLightened',
+    title: 'Rectangle Lightened',
+    description:
+      'Lightening pockets in a rectangle, origin at the center: triangular cells cut out between ribs, filling the Width × Height — an X-grid or a Warren/isogrid of triangles. Spiral only.',
+    Icon: PocketRectLightenedIcon,
+  },
+  circleLightened: {
+    value: 'circleLightened',
+    title: 'Circle Lightened',
+    description:
+      'Lightening pockets in a circle, centered at the origin: sector cells cut out between spokes and a center hub, filling the Diameter. Spiral only.',
+    Icon: PocketCircleLightenedIcon,
+  },
 }
 
 export const POCKET_SHAPE_LIST: PocketShapeMeta[] = [
   POCKET_SHAPE_META.rectCornered,
   POCKET_SHAPE_META.rectCentered,
   POCKET_SHAPE_META.circle,
+  POCKET_SHAPE_META.rectLightened,
+  POCKET_SHAPE_META.circleLightened,
 ]
+
+// "Triangles 4×1" / "X-grid 3×2" / "5 spokes" — the Lightened pattern in a
+// few characters.
+export function lightenedPatternLabel(pocket: PocketParams): string {
+  if (pocket.shape === 'circleLightened') return `${fmt(pocket.spokeCount)} spokes`
+  return `${pocket.lightLayout === 'xgrid' ? 'X-grid' : 'Triangles'} ${fmt(pocket.lightCountX)}×${fmt(pocket.lightCountY)}`
+}
 
 export function pocketShapeIcon(shape: PocketShape) {
   return POCKET_SHAPE_META[shape].Icon
@@ -52,6 +81,10 @@ export function pocketShapeLines(pocket: PocketParams): string[] {
       return ['POCKET', 'CENTERED', `(${fmt(pocket.width)}×${fmt(pocket.height)})`]
     case 'circle':
       return ['POCKET', `(⌀${fmt(pocket.diameter)})`]
+    case 'rectLightened':
+      return ['LIGHTENED', `(${fmt(pocket.width)}×${fmt(pocket.height)})`]
+    case 'circleLightened':
+      return ['LIGHTENED', `(⌀${fmt(pocket.diameter)})`]
   }
 }
 
@@ -69,6 +102,10 @@ export function pocketShapeLabel(pocket: PocketParams): string {
       return `Pocket Centered ${fmt(pocket.width)}×${fmt(pocket.height)}`
     case 'circle':
       return `Pocket ⌀${fmt(pocket.diameter)}`
+    case 'rectLightened':
+      return `Lightened ${fmt(pocket.width)}×${fmt(pocket.height)} ${lightenedPatternLabel(pocket)}`
+    case 'circleLightened':
+      return `Lightened ⌀${fmt(pocket.diameter)} ${lightenedPatternLabel(pocket)}`
   }
 }
 
@@ -81,5 +118,9 @@ export function pocketShapeSlug(pocket: PocketParams): string {
       return 'pocket-rectangle-centered'
     case 'circle':
       return 'pocket-circle'
+    case 'rectLightened':
+      return 'pocket-rect-lightened'
+    case 'circleLightened':
+      return 'pocket-circle-lightened'
   }
 }
