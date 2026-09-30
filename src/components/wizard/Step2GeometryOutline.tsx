@@ -55,6 +55,18 @@ export function Step2GeometryOutline({ params, onChange, machine, toolDiameters,
 
   const isRect = outline.shape !== 'circle'
 
+  // BL-66: the same conditions that show the errors below also mark the
+  // fields they concern (aria-invalid -> error styling in inputClass).
+  const toolInvalid = !isOutlineToolDiameterValid(outline)
+  const tabHeightInvalid = !isOutlineTabHeightValid(outline)
+  const tabWidthInvalid = !isOutlineTabWidthValid(outline)
+  const tabCountInvalid = !isOutlineTabCountValid(outline)
+  const widthIsShorter = outline.width <= outline.height
+  const widthInvalid = !(outline.width > 0) || (toolInvalid && widthIsShorter)
+  const heightInvalid = !(outline.height > 0) || (toolInvalid && !widthIsShorter)
+  const diameterInvalid = !(outline.diameter > 0) || toolInvalid
+  const depthInvalid = !(outline.totalDepth > 0) || (outline.tabsEnabled && outline.tabHeight >= outline.totalDepth)
+
   return (
     <div className="flex flex-col gap-6">
       <PickHeader params={params} />
@@ -71,6 +83,7 @@ export function Step2GeometryOutline({ params, onChange, machine, toolDiameters,
                     min="0"
                     max={machine.travelX}
                     className={inputClass}
+                    aria-invalid={widthInvalid}
                     {...widthField}
                   />
                 </FieldRow>
@@ -83,6 +96,7 @@ export function Step2GeometryOutline({ params, onChange, machine, toolDiameters,
                     min="0"
                     max={machine.travelY}
                     className={inputClass}
+                    aria-invalid={heightInvalid}
                     {...heightField}
                   />
                 </FieldRow>
@@ -95,6 +109,7 @@ export function Step2GeometryOutline({ params, onChange, machine, toolDiameters,
                 min="0"
                 max={machine.travelZ}
                 className={inputClass}
+                aria-invalid={depthInvalid}
                 {...totalDepthField}
               />
             </FieldRow>
@@ -110,6 +125,7 @@ export function Step2GeometryOutline({ params, onChange, machine, toolDiameters,
                   min="0"
                   max={Math.min(machine.travelX, machine.travelY)}
                   className={inputClass}
+                  aria-invalid={diameterInvalid}
                   {...diameterField}
                 />
               </FieldRow>
@@ -122,6 +138,7 @@ export function Step2GeometryOutline({ params, onChange, machine, toolDiameters,
                   min="0"
                   max={machine.travelZ}
                   className={inputClass}
+                  aria-invalid={depthInvalid}
                   {...totalDepthField}
                 />
               </FieldRow>
@@ -141,6 +158,7 @@ export function Step2GeometryOutline({ params, onChange, machine, toolDiameters,
           <FieldRow label="Tool Diameter [mm]">
             <select
               className={inputClass}
+              aria-invalid={toolInvalid}
               value={outline.toolDiameter}
               onChange={(e) => updateOutline({ toolDiameter: Number(e.target.value) })}
             >
@@ -152,7 +170,7 @@ export function Step2GeometryOutline({ params, onChange, machine, toolDiameters,
             </select>
           </FieldRow>
         </ToolChipLoad>
-        {!isOutlineToolDiameterValid(outline) && (
+        {toolInvalid && (
           <p className="text-sm text-status-error">
             {isRect
               ? "Tool diameter must be smaller than the shorter side for an Inside cut."
@@ -199,12 +217,12 @@ export function Step2GeometryOutline({ params, onChange, machine, toolDiameters,
             <div className="flex gap-4">
               <div className="min-w-0 flex-1">
                 <FieldRow label="Height [mm]">
-                  <NumberInput type="number" step="0.1" min="0" className={inputClass} {...tabHeightField} />
+                  <NumberInput type="number" step="0.1" min="0" className={inputClass} aria-invalid={tabHeightInvalid} {...tabHeightField} />
                 </FieldRow>
               </div>
               <div className="min-w-0 flex-1">
                 <FieldRow label="Width [mm]">
-                  <NumberInput type="number" step="0.1" min="0" className={inputClass} {...tabWidthField} />
+                  <NumberInput type="number" step="0.1" min="0" className={inputClass} aria-invalid={tabWidthInvalid} {...tabWidthField} />
                 </FieldRow>
               </div>
               <div className="min-w-0 flex-1">
@@ -215,24 +233,25 @@ export function Step2GeometryOutline({ params, onChange, machine, toolDiameters,
                     min="1"
                     max={MAX_TAB_COUNT}
                     className={inputClass}
+                    aria-invalid={tabCountInvalid || tabWidthInvalid}
                     {...tabCountField}
                   />
                 </FieldRow>
               </div>
             </div>
-            {!isOutlineTabHeightValid(outline) && (
+            {tabHeightInvalid && (
               <p className="text-sm text-status-error">
                 Tab height must be greater than 0 and less than Cutting Depth.
               </p>
             )}
-            {!isOutlineTabWidthValid(outline) && (
+            {tabWidthInvalid && (
               <p className="text-sm text-status-error">
                 {isRect
                   ? "Tab count × width can't reach the shortest side's length."
                   : "Tab count × width can't reach the toolpath's full circumference."}
               </p>
             )}
-            {!isOutlineTabCountValid(outline) && (
+            {tabCountInvalid && (
               <p className="text-sm text-status-error">
                 Tab count must be a whole number from 1 to {MAX_TAB_COUNT}.
               </p>

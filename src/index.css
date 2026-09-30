@@ -38,12 +38,15 @@ body {
    exists in the other blocks, not just the obvious bg, fg and accent ones.
    The Arcade Studio themes added stat-value, selected-border, selected-fg,
    several wordmark tokens, ui-font, and a family of box-shadow tokens:
-   glow-accent, glow-selected, glow-btn, glow-warn, frame-glow,
+   glow-accent, glow-selected, glow-btn, glow-warn, glow-error, frame-glow,
    preview-inset and scan. Every one of those needs a line in EVERY block
    (existing themes get a neutral value that reproduces the pre-Arcade
    look, for example none for a glow token, or accent-strong for
    selected-border), or that theme silently renders an empty or invalid
-   CSS value for it.
+   CSS value for it. glow-error is the exception to none: it is combined
+   with a ring on invalid fields, and Tailwind joins ring and shadow into
+   one box-shadow list, where none is invalid and would drop the ring too,
+   so its neutral value is the transparent 0 0 #0000.
 
    A theme that is dark-only by its own spec (see Arcade Studio below)
    still needs both a [data-theme=...] block AND its .dark pair, just with
@@ -80,6 +83,7 @@ body {
   --glow-selected: none;
   --glow-btn: none;
   --glow-warn: none;
+  --glow-error: 0 0 #0000;
   --frame-glow: none;
   --preview-inset: none;
   --scan: none;
@@ -139,6 +143,7 @@ body {
   --glow-selected: none;
   --glow-btn: none;
   --glow-warn: none;
+  --glow-error: 0 0 #0000;
   --frame-glow: none;
   --preview-inset: none;
   --scan: none;
@@ -199,6 +204,7 @@ body {
   --glow-selected: none;
   --glow-btn: none;
   --glow-warn: none;
+  --glow-error: 0 0 #0000;
   --frame-glow: none;
   --preview-inset: none;
   --scan: none;
@@ -261,6 +267,7 @@ body {
   --glow-selected: none;
   --glow-btn: none;
   --glow-warn: none;
+  --glow-error: 0 0 #0000;
   --frame-glow: none;
   --preview-inset: none;
   --scan: none;
@@ -332,6 +339,7 @@ body {
   --glow-selected: inset 0 0 6px rgba(255, 42, 133, .14);
   --glow-btn: 0 0 10px rgba(255, 42, 133, .28);
   --glow-warn: 0 0 8px rgba(255, 0, 127, .28);
+  --glow-error: 0 0 8px rgba(255, 142, 192, .30);
   --frame-glow: 0 0 0 1px rgba(0, 240, 255, .10);
   --preview-inset: inset 0 0 60px rgba(0, 240, 255, .05);
   --scan: none;
@@ -401,6 +409,7 @@ body {
   --glow-selected: inset 0 0 6px rgba(255, 42, 133, .14);
   --glow-btn: 0 0 10px rgba(255, 42, 133, .28);
   --glow-warn: 0 0 8px rgba(255, 0, 127, .28);
+  --glow-error: 0 0 8px rgba(255, 142, 192, .30);
   --frame-glow: 0 0 0 1px rgba(0, 240, 255, .10);
   --preview-inset: inset 0 0 60px rgba(0, 240, 255, .05);
   --scan: none;
@@ -477,6 +486,7 @@ body {
   --glow-selected: 0 0 10px rgba(255, 42, 133, .40), inset 0 0 8px rgba(255, 42, 133, .18);
   --glow-btn: 0 0 18px rgba(255, 42, 133, .55);
   --glow-warn: 0 0 12px rgba(255, 0, 127, .50);
+  --glow-error: 0 0 12px rgba(255, 95, 168, .50);
   --frame-glow: 0 0 0 1px rgba(0, 240, 255, .18), 0 0 44px rgba(0, 240, 255, .10);
   --preview-inset: inset 0 0 70px rgba(0, 240, 255, .07);
   --scan: repeating-linear-gradient(rgba(0, 0, 0, 0) 0 3px, rgba(0, 0, 0, .055) 3px 4px);
@@ -542,6 +552,7 @@ body {
   --glow-selected: 0 0 10px rgba(255, 42, 133, .40), inset 0 0 8px rgba(255, 42, 133, .18);
   --glow-btn: 0 0 18px rgba(255, 42, 133, .55);
   --glow-warn: 0 0 12px rgba(255, 0, 127, .50);
+  --glow-error: 0 0 12px rgba(255, 95, 168, .50);
   --frame-glow: 0 0 0 1px rgba(0, 240, 255, .18), 0 0 44px rgba(0, 240, 255, .10);
   --preview-inset: inset 0 0 70px rgba(0, 240, 255, .07);
   --scan: repeating-linear-gradient(rgba(0, 0, 0, 0) 0 3px, rgba(0, 0, 0, .055) 3px 4px);
@@ -610,7 +621,7 @@ body {
      unset, Sloppy Indigo and Shopfloor Amber do not define it, only the
      Arcade themes override it to Space Grotesk, see index.html for the
      Google Fonts link. The box-shadow tokens, glow-accent, glow-selected,
-     glow-btn, glow-warn, frame-glow, preview-inset and scan, are
+     glow-btn, glow-warn, glow-error, frame-glow, preview-inset and scan, are
      deliberately NOT registered here, they are consumed directly via a
      Tailwind arbitrary value such as shadow-[var(--glow-accent)], which
      needs no @theme entry. */
