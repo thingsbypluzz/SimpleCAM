@@ -20,6 +20,7 @@ import { HintPopover } from './HintPopover'
 import { MethodPicker } from './MethodPicker'
 import { NumberInput } from './NumberInput'
 import { PickHeader } from './PickHeader'
+import { RampAngleFields } from './RampAngleFields'
 import { useNumberField } from './useNumberField'
 
 interface Step2GeometryHolesProps {
@@ -34,7 +35,7 @@ interface Step2GeometryHolesProps {
 // Field order (BL-72, shared idea across all four Step 2 panels): where
 // and how big first, then the tool, then how to cut — Pattern (+ its
 // Grid/Circle/Custom fields) -> Hole Diameter + Total Depth -> Tool Diameter
-// -> Method -> Tabs -> Offset X/Y.
+// -> Method -> Ramp + Pitch (Helix only, BL-80) -> Tabs -> Offset X/Y.
 export function Step2GeometryHoles({ params, onChange, machine, toolDiameters, flutes, onFlutesChange }: Step2GeometryHolesProps) {
   const { geometry } = params
 
@@ -222,6 +223,8 @@ export function Step2GeometryHoles({ params, onChange, machine, toolDiameters, f
         <span className="text-sm font-medium text-value">Method</span>
         <MethodPicker params={params} onChange={onChange} />
       </div>
+
+      <RampAngleFields params={params} rampAngleDeg={geometry.rampAngleDeg} onChange={(v) => updateGeometry({ rampAngleDeg: v })} />
 
       <div className="border-t border-border pt-4">
         <Checkbox

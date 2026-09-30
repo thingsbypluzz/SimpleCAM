@@ -102,6 +102,7 @@ export function randomHoles(rng: Rng, method: 'helix' | 'standard'): WizardParam
       customPointsText: formatCustomPoints(customPoints),
       offsetX: rng.range(-20, 20, 1),
       offsetY: rng.range(-20, 20, 1),
+      rampAngleDeg: rng.range(1, 15, 1),
       ...randomTabs(rng, totalDepth),
     },
   }
@@ -127,6 +128,7 @@ export function randomOutline(rng: Rng): WizardParams {
       diameter: rng.range(5, 80, 1),
       offsetX: rng.range(-20, 20, 1),
       offsetY: rng.range(-20, 20, 1),
+      rampAngleDeg: rng.range(1, 15, 1),
       ...randomTabs(rng, totalDepth),
     },
   }

@@ -358,7 +358,7 @@ faktycznym.
   Marlinie (`S` jako PWM). Wdrożone: edytowalne pole w Kroku 3 (zapis do
   Settings) + MiniStat SPINDLE w Step 3 Summary. Pełny opis:
   `CHANGELOG.md`, `[0.26.0]`.
-- **`BL-80`** *(Otwarty)* 🟠 — **Helix Hole(s)/Outline Circle: brak Ramp
+- **`BL-80`** *(Zrealizowany, 2026-09-30)* 🟠 — **Helix Hole(s)/Outline Circle: brak Ramp
   Angle, kalkulator liczy Stepdown jak dla szczeliny.** Do przejrzenia
   (zgłoszone 2026-09-30). W Hole(s) (i Outline Circle) skok spirali =
   Stepdown, osobnego Ramp Angle nie ma (Surface/Pocket go mają, skok z
@@ -378,6 +378,25 @@ faktycznym.
   - przy małym promieniu helixa (otwór ledwie większy od freza) łagodny
     kąt = bardzo wiele obrotów na poziom — ewentualne ostrzeżenie albo
     sugestia metody Standard.
+  Wdrożone: osobne pole Ramp [°] (0.5–30°, domyślnie 2°) + read-only
+  Pitch dla Hole(s) Helix, Outline Circle Helix i Rectangle Ramp; skok =
+  `min(Stepdown, L·tan(kąt))` (`cappedRampPitch()`); Rectangle Ramp
+  rozkłada zejście na cały obwód; ostrzeżenie > 10 obrotów na Stepdown z
+  sugestią Standard; kalkulator bez zmian. Pełny opis: `CHANGELOG.md`,
+  `[0.27.0]`.
+- **`BL-81`** *(Otwarty)* 🟠 — **Feedrate Calculator sugeruje Ramp
+  Angle.** Dziś kalkulator nie proponuje kąta zejścia dla żadnej
+  operacji — Ramp Angle (Surface/Pocket, a od `BL-80` także Hole(s)
+  Helix, Outline Circle Helix i Rectangle Ramp) startuje z domyślnych 2°
+  i jest ustawiany ręcznie. Pomysł (zgłoszone 2026-09-30): kąt zależny od
+  materiału (nowa kolumna w tabeli materiałów, np. łagodniej dla
+  aluminium/mosiądzu, stromiej dla drewna/tworzyw), ewentualnie
+  skorygowany o sztywność maszyny; nowy wiersz z checkboxem w modalu
+  (tylko gdy aktywna metoda ma helix/rampę — `rampDescent()`/Z-Transition
+  Helix), zapis przez `CalcPatch` + `OPERATION_META[op].withCalc()` do
+  `geometry`/`outline`/`surface`/`pocket.rampAngleDeg`. Do ustalenia:
+  wartości per materiał, czy uwzględnić promień helixa (liczba obrotów),
+  zachowanie przy Adaptive (wejście zawsze Helix).
 
 **`BL-17` zamknięte — "Interface Anatomy"**, Artifact z umownymi nazwami
 elementów UI, dziś aktywnie używany w `CLAUDE.md`:

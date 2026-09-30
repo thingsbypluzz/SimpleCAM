@@ -59,6 +59,7 @@ export interface GeometryParams {
   tabHeight: number
   tabWidth: number
   tabCount: number
+  rampAngleDeg: number // Helix method only — caps the helix pitch below Stepdown (BL-80)
 }
 
 export interface OutlineParams {
@@ -76,6 +77,7 @@ export interface OutlineParams {
   tabHeight: number
   tabWidth: number
   tabCount: number
+  rampAngleDeg: number // Circle Helix / Rectangle Ramp only — caps the pitch per turn/lap below Stepdown (BL-80)
 }
 
 export interface SurfaceParams {
@@ -172,6 +174,7 @@ export const DEFAULT_WIZARD_PARAMS: WizardParams = {
     tabHeight: 1,
     tabWidth: 3,
     tabCount: 3,
+    rampAngleDeg: 2,
   },
   outline: {
     shape: 'rectCornered',
@@ -188,6 +191,7 @@ export const DEFAULT_WIZARD_PARAMS: WizardParams = {
     tabHeight: 1,
     tabWidth: 3,
     tabCount: 3,
+    rampAngleDeg: 2,
   },
   surface: {
     shape: 'rectCornered',

@@ -5,7 +5,9 @@ import type { Engagement } from './feedCalc'
 import { MAX_CIRCLE_HOLE_COUNT, resolvePoints } from './positioning'
 import { parseCustomPointsText } from './customPoints'
 import { rectToolDimensions } from './outlineRectangleGeometry'
-import { circleOutlineRadiusAndDirection } from './outlineCircle'
+import { circleOutlineOptions, circleOutlineRadiusAndDirection } from './outlineCircle'
+import { rectOutlineOptions } from './outlineRectangle'
+import { holeCircleOptions } from './helix'
 import { surfaceStepoverMm, surfaceToolBounds } from './surfaceGeometry'
 import { effectivePocketZTransitionMode } from './pocketZTransition'
 import { entryHelixExceedsTurnLimit } from './surfaceZTransition'
@@ -143,54 +145,115 @@ export function isPocketToolpathWithinLimits(params: WizardParams): boolean {
   return !exceedsLineLimit(0, Math.max(halfWidth, halfHeight), stepoverMm)
 }
 
-// BL-50: the Hole(s)/Outline helix and ramp drop a full Stepdown per
-// turn/lap at Feedrate XY, so a small radius or a short ramp edge makes it
-// close to a plunge at cutting feed. Surface/Pocket entry helixes descend
-// at their own Ramp Angle, which is reported as is.
-// Non-blocking by design — only flagged above this angle.
+// BL-50: a helix or ramp descending steeply at Feedrate XY is close to a
+// plunge at cutting feed. Hole(s)/Outline descend at most one Stepdown per
+// turn/lap and never steeper than their Ramp Angle (BL-80), Surface/Pocket
+// entry helixes at their Ramp Angle — so this only fires for a Ramp Angle
+// set above it. Non-blocking by design.
 export const MAX_RECOMMENDED_DESCENT_DEG = 10
+
+// The Hole(s)/Outline helix or rectangle ramp of the active method, or null
+// (Standard methods, Surface/Pocket). Read from the engines' own options
+// builders, so validation, warnings and Step 2's Pitch readout see exactly
+// the pitch the toolpath uses.
+export interface RampDescent {
+  unit: 'turn' | 'lap'
+  pathLength: number // one turn/lap
+  pitch: number // depth per turn/lap — Stepdown capped by the Ramp Angle
+  stepdown: number
+  depth: number // from Start Z (when above Z0) to the cut floor
+  rampAngleDeg: number
+}
+
+export function rampDescent(params: WizardParams): RampDescent | null {
+  return OPERATION_RULES[params.operation].rampDescent(params)
+}
+
+function descentFromStartZ(params: WizardParams): number {
+  return activeTotalDepth(params) + Math.max(0, params.feeds.startZ)
+}
+
+function holesRampDescent(params: WizardParams): RampDescent | null {
+  if (params.method !== 'helix') return null
+  const opts = holeCircleOptions(params)
+  return {
+    unit: 'turn',
+    pathLength: 2 * Math.PI * opts.radius,
+    pitch: opts.pitch,
+    stepdown: opts.stepdown,
+    depth: descentFromStartZ(params),
+    rampAngleDeg: params.geometry.rampAngleDeg,
+  }
+}
+
+function outlineRampDescent(params: WizardParams): RampDescent | null {
+  const { outline } = params
+  const common = { stepdown: params.feeds.stepdown, depth: descentFromStartZ(params), rampAngleDeg: outline.rampAngleDeg }
+  if (outline.shape === 'circle') {
+    if (outline.method !== 'helix') return null
+    const opts = circleOutlineOptions(params)
+    return { unit: 'turn', pathLength: 2 * Math.PI * opts.radius, pitch: opts.pitch, ...common }
+  }
+  if (outline.method !== 'ramp') return null
+  const opts = rectOutlineOptions(params)
+  return { unit: 'lap', pathLength: 2 * (opts.toolWidth + opts.toolHeight), pitch: opts.rampPitch, ...common }
+}
+
+// Blocks Generate: the Ramp Angle's range is the same as Surface/Pocket's.
+export function isRampAngleValid(params: WizardParams): boolean {
+  const descent = rampDescent(params)
+  return descent === null || isRampAngleInRange(descent.rampAngleDeg)
+}
+
+// A gentle Ramp Angle on a tiny helix radius takes many turns — past
+// MAX_PASSES the helix would stop short of the floor. Blocks Generate.
+export function isRampTurnCountWithinLimit(params: WizardParams): boolean {
+  const descent = rampDescent(params)
+  if (descent === null || !isRampAngleInRange(descent.rampAngleDeg)) return true
+  return !exceedsPassLimit(descent.depth, descent.pitch)
+}
+
+function rampDescentAngleDeg(descent: RampDescent | null): number | null {
+  if (descent === null) return null
+  const pitch = Math.min(descent.pitch, descent.depth)
+  if (!(pitch > 0) || !(descent.pathLength > 0)) return null
+  return (Math.atan(pitch / descent.pathLength) * 180) / Math.PI
+}
 
 // Steepest helix/ramp descent angle of the active operation, in degrees, or
 // null when it has no helix/ramp (Standard methods, Plunge entries).
 export function descentAngleDeg(params: WizardParams): number | null {
-  const pitch = Math.min(params.feeds.stepdown, activeTotalDepth(params) + Math.max(0, params.feeds.startZ))
-  if (!(pitch > 0)) return null
-  const angleFor = (pathLength: number) =>
-    pathLength > 0 ? (Math.atan(pitch / pathLength) * 180) / Math.PI : null
-  const helix = (radius: number) => angleFor(2 * Math.PI * radius)
+  return OPERATION_RULES[params.operation].descentAngleDeg(params)
+}
 
-  switch (params.operation) {
-    case 'holes': {
-      const { geometry } = params
-      return params.method === 'helix' ? helix((geometry.holeDiameter - geometry.toolDiameter) / 2) : null
-    }
-    case 'outline': {
-      const { outline } = params
-      if (outline.shape === 'circle') {
-        return outline.method === 'helix' ? helix(circleOutlineRadiusAndDirection(outline).radius) : null
-      }
-      if (outline.method !== 'ramp') return null
-      // The ramp drops the full step along the longer tool-path edge.
-      const { toolWidth, toolHeight } = rectToolDimensions(outline.width, outline.height, outline.toolDiameter, outline.offsetMode)
-      return angleFor(Math.max(toolWidth, toolHeight))
-    }
-    case 'surface':
-      return params.surface.zTransitionMode === 'helix' ? params.surface.rampAngleDeg : null
-    case 'pocket':
-      return effectivePocketZTransitionMode(params.pocket) === 'helix' ? params.pocket.rampAngleDeg : null
-  }
+// BL-80: when the Ramp Angle, not Stepdown, limits the pitch on a short
+// path (a bore barely wider than the tool), descending one Stepdown takes
+// many turns — slow, and the Standard method is usually the better choice.
+// Non-blocking.
+export const MAX_RECOMMENDED_TURNS_PER_STEPDOWN = 10
+
+export function rampTurnsPerStepdown(params: WizardParams): number | null {
+  const descent = rampDescent(params)
+  if (descent === null || !(descent.pitch > 0)) return null
+  return Math.min(descent.stepdown, descent.depth) / descent.pitch
 }
 
 export function descentWarnings(params: WizardParams): string[] {
+  const warnings: string[] = []
   const angle = descentAngleDeg(params)
-  if (angle === null || angle <= MAX_RECOMMENDED_DESCENT_DEG) return []
-  return [
-    `The helix/ramp descends at about ${Math.round(angle)}° (more than ${MAX_RECOMMENDED_DESCENT_DEG}°) while moving at Feedrate XY — close to plunging at cutting feed. ${
-      params.operation === 'surface' || params.operation === 'pocket'
-        ? 'A lower Ramp Angle makes it gentler.'
-        : 'A smaller Stepdown or a larger helix radius / ramp length makes it gentler.'
-    }`,
-  ]
+  if (angle !== null && angle > MAX_RECOMMENDED_DESCENT_DEG) {
+    warnings.push(
+      `The helix/ramp descends at about ${Math.round(angle)}° (more than ${MAX_RECOMMENDED_DESCENT_DEG}°) while moving at Feedrate XY — close to plunging at cutting feed. A lower Ramp Angle makes it gentler.`,
+    )
+  }
+  const turns = rampTurnsPerStepdown(params)
+  const descent = rampDescent(params)
+  if (descent !== null && turns !== null && turns > MAX_RECOMMENDED_TURNS_PER_STEPDOWN) {
+    warnings.push(
+      `At this Ramp Angle the ${descent.unit === 'turn' ? 'helix' : 'ramp'} needs about ${Math.round(turns)} ${descent.unit}s to descend one Stepdown — the path is short. The Standard method is usually faster here.`,
+    )
+  }
+  return warnings
 }
 
 // BL-46: sizes and depth must be positive — a zero depth still emitted a
@@ -583,6 +646,9 @@ interface OperationRules {
   isValid: (params: WizardParams) => boolean
   footprint: (params: WizardParams) => { x: number; y: number }
   zSpan: (params: WizardParams) => number
+  // The Hole(s)/Outline helix or rectangle ramp (BL-80), or null.
+  rampDescent: (params: WizardParams) => RampDescent | null
+  descentAngleDeg: (params: WizardParams) => number | null
   // How the tool meets the material with the current method and width —
   // the Feedrate Calculator's model and Step 2's live chip load (BL-68).
   engagement: (params: WizardParams) => Engagement
@@ -599,9 +665,13 @@ export const OPERATION_RULES: Record<OperationType, OperationRules> = {
       isCustomPointsValid(p.geometry) &&
       isTabHeightValid(p.geometry) &&
       isTabWidthValid(p.geometry) &&
-      isTabCountValid(p.geometry),
+      isTabCountValid(p.geometry) &&
+      isRampAngleValid(p) &&
+      isRampTurnCountWithinLimit(p),
     footprint: (p) => patternSpan(p.geometry),
     zSpan: (p) => zSpan(p.geometry, p.feeds),
+    rampDescent: holesRampDescent,
+    descentAngleDeg: (p) => rampDescentAngleDeg(holesRampDescent(p)),
     engagement: () => ({ kind: 'slot' }),
   },
   outline: {
@@ -612,9 +682,13 @@ export const OPERATION_RULES: Record<OperationType, OperationRules> = {
       isOutlineSizeValid(p.outline) &&
       isOutlineTabHeightValid(p.outline) &&
       isOutlineTabWidthValid(p.outline) &&
-      isOutlineTabCountValid(p.outline),
+      isOutlineTabCountValid(p.outline) &&
+      isRampAngleValid(p) &&
+      isRampTurnCountWithinLimit(p),
     footprint: (p) => outlineFootprint(p.outline),
     zSpan: (p) => outlineZSpan(p.outline, p.feeds),
+    rampDescent: outlineRampDescent,
+    descentAngleDeg: (p) => rampDescentAngleDeg(outlineRampDescent(p)),
     engagement: () => ({ kind: 'slot' }),
   },
   surface: {
@@ -630,6 +704,8 @@ export const OPERATION_RULES: Record<OperationType, OperationRules> = {
       isSurfaceEntryHelixWithinLimit(p),
     footprint: (p) => surfaceFootprint(p.surface),
     zSpan: (p) => surfaceZSpan(p.surface, p.feeds),
+    rampDescent: () => null,
+    descentAngleDeg: (p) => (p.surface.zTransitionMode === 'helix' ? p.surface.rampAngleDeg : null),
     engagement: (p) => ({ kind: 'stepover', percent: p.surface.stepoverPercent }),
   },
   pocket: {
@@ -648,6 +724,8 @@ export const OPERATION_RULES: Record<OperationType, OperationRules> = {
       isPocketToolpathWithinLimits(p),
     footprint: (p) => pocketFootprint(p.pocket),
     zSpan: (p) => pocketZSpan(p.pocket, p.feeds),
+    rampDescent: () => null,
+    descentAngleDeg: (p) => (effectivePocketZTransitionMode(p.pocket) === 'helix' ? p.pocket.rampAngleDeg : null),
     engagement: (p) =>
       p.pocket.method === 'adaptive'
         ? { kind: 'optimalLoad', percent: p.pocket.optimalLoadPercent }

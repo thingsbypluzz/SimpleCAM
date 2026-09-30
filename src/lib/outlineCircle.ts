@@ -3,6 +3,7 @@ import type { OutlineParams, WizardParams } from '../types/wizard'
 import { assembleProgram } from './program'
 import { helixCircleToolpath, type CircleToolpathOptions } from './helix'
 import { standardCircleToolpath } from './standardHole'
+import { cappedRampPitch } from './rampPitch'
 
 // Circle Outline reuses the exact Helix/Standard math from Hole(s)
 // (helixCircleToolpath/standardCircleToolpath in helix.ts/standardHole.ts) —
@@ -51,6 +52,7 @@ export function circleOutlineOptions(params: WizardParams): CircleToolpathOption
     radius,
     totalDepth: outline.totalDepth,
     stepdown: feeds.stepdown,
+    pitch: cappedRampPitch(2 * Math.PI * radius, feeds.stepdown, outline.rampAngleDeg),
     safeZ: feeds.safeZ,
     startZ: feeds.startZ,
     feedrateXY: feeds.feedrateXY,

@@ -16,6 +16,7 @@ import { FieldRow, inputClass } from './FieldRow'
 import { HintPopover } from './HintPopover'
 import { NumberInput } from './NumberInput'
 import { PickHeader } from './PickHeader'
+import { RampAngleFields } from './RampAngleFields'
 import { OffsetModePicker } from './OffsetModePicker'
 import { OutlineMethodPicker } from './OutlineMethodPicker'
 import { useNumberField } from './useNumberField'
@@ -30,7 +31,8 @@ interface Step2GeometryOutlineProps {
 }
 
 // Field order (BL-72): shape size fields -> Cutting Depth -> Offset Mode ->
-// Tool Diameter -> Method -> Tabs -> Offset X/Y — see CLAUDE.md's Outline design
+// Tool Diameter -> Method -> Ramp + Pitch (Helix/Ramp only, BL-80) -> Tabs ->
+// Offset X/Y — see CLAUDE.md's Outline design
 // notes. Mirrors Step2GeometryHoles.tsx's conventions throughout
 // (FieldRow/useNumberField/HintPopover, flex-row pairs for X/Y-like
 // fields, border-t section dividers).
@@ -163,6 +165,8 @@ export function Step2GeometryOutline({ params, onChange, machine, toolDiameters,
         <span className="text-sm font-medium text-value">Method</span>
         <OutlineMethodPicker params={params} onChange={onChange} />
       </div>
+
+      <RampAngleFields params={params} rampAngleDeg={outline.rampAngleDeg} onChange={(v) => updateOutline({ rampAngleDeg: v })} />
 
       <div className="border-t border-border pt-4">
         <Checkbox

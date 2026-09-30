@@ -66,8 +66,10 @@ zaczyna od `zTo('rapid', startZ)`; końcowy retrakt robi `assembleProgram()`.
   `parseCustomPointsText()` (`customPoints.ts`): linia = dokładnie dwie
   liczby rozdzielone `,`/`;`/spacją; błędna linia albo pusta lista blokuje
   Generate (`isCustomPointsValid()`) — nigdy cichy otwór w (0,0).
-- **Helix:** spirala od Start Z do `-totalDepth`, skok = Stepdown na obrót,
-  potem płaski obrót czyszczący. **Standard:** `G1 Z` o Stepdown + płaski
+- **Helix:** spirala od Start Z do `-totalDepth`, potem płaski obrót
+  czyszczący. Skok na obrót `pitch` = `cappedRampPitch()` (`rampPitch.ts`)
+  = `min(Stepdown, 2π·r·tan(Ramp Angle))` — `geometry.rampAngleDeg`
+  (0.5–30°, domyślnie 2°); Stepdown zostaje górnym limitem. **Standard:** `G1 Z` o Stepdown + płaski
   pełny obrót, powtarzane. Promień ścieżki `(holeDiameter − toolDiameter)/2`,
   zawsze CCW (pod M3 wewnątrz otworu = climb). Opcje w
   `CircleToolpathOptions` (`holeCircleOptions()`), `appendFullTurn()`,
@@ -86,8 +88,13 @@ zaczyna od `zTo('rapid', startZ)`; końcowy retrakt robi `assembleProgram()`.
 - Circle reużywa silnika Hole(s) z `circleOutlineOptions()` (promień/
   kierunek z `circleOutlineRadiusAndDirection()`). `onLineCircleEdges()` —
   dwie krawędzie On-line (tylko podglądy).
-- Rectangle: **Ramp** (ciągłe zejście wzdłuż dłuższego boku,
-  `longerEdgeIndex()`, potem okrążenie czyszczące) i **Standard** (plunge +
+- Circle Helix i Rectangle Ramp mają własny Ramp Angle
+  (`outline.rampAngleDeg`), skok jak w Hole(s) (`cappedRampPitch()`).
+- Rectangle: **Ramp** („prostokątny helix”: każde okrążenie schodzi o
+  `rampPitch` = `min(Stepdown, obwód·tan(kąt))` rozłożone na wszystkie 4
+  boki proporcjonalnie do długości — `rampLap(fromZ, toZ)`, stałe
+  nachylenie; okrążenia startują w narożniku dłuższego boku,
+  `longerEdgeIndex()`; potem płaskie okrążenie czyszczące) i **Standard** (plunge +
   płaskie okrążenie na poziom). Zawsze G1. `rectOutlineOptions()`,
   `rectCorners()`, `rectToolDimensions()`, `onLineRectDimensions()`.
 - `generateOutline()` rozgałęzia po kształcie; nieprawidłowa para
@@ -100,8 +107,9 @@ zaczyna od `zTo('rapid', startZ)`; końcowy retrakt robi `assembleProgram()`.
 - Płycej niż `totalDepth − tabHeight` — bez zmian. W paśmie mostków płaskie
   przejścia co Stepdown z pominięciem mostka: podniesienie do góry pasma,
   przejazd, zejście — zawsze pionowo przy stałym XY, nigdy po przekątnej.
-  Helix: spirala kończy się na górze pasma + jeden płaski obrót czyszczący,
-  dopiero potem przejścia z mostkami.
+  Helix/Ramp: spirala (skok z Ramp Angle) kończy się na górze pasma + jeden
+  płaski obrót czyszczący, dopiero potem przejścia z mostkami — te zawsze
+  co Stepdown, nie co skok.
 - Rozstawienie równomierne, przesunięte o pół kroku (start przejścia nigdy
   w mostku). `computeTabRanges()`/`appendTabbedCirclePass()` (`tabs.ts`) i
   `computeRectTabRanges()`/`appendTabbedRectanglePass()`/`sideRangesFor()`
@@ -249,21 +257,30 @@ symulacji materiału.
 ## Walidacja (`validation.ts`)
 
 - `OPERATION_RULES` — rejestr per operacja (walidacja Generate, głębokość,
-  mostki, footprint do ostrzeżeń o maszynie, `engagement()` dla Feedrate
-  Calculator). `isWizardParamsValid()` — cała reguła Generate (i live-save
+  mostki, footprint do ostrzeżeń o maszynie, `rampDescent()`/
+  `descentAngleDeg()`, `engagement()` dla Feedrate Calculator).
+  `rampDescent()` — helix/rampa Hole(s)/Outline aktywnej metody (`unit`
+  turn/lap, długość ścieżki, `pitch`, Stepdown, głębokość, kąt) wprost z
+  `holeCircleOptions()`/`circleOutlineOptions()`/`rectOutlineOptions()`;
+  z niego walidacja, ostrzeżenia i read-only Pitch w Kroku 2. `isWizardParamsValid()` — cała reguła Generate (i live-save
   Edit Mode), jedno źródło prawdy dla `App.tsx` i testu niezmienników.
 - Blokujące (inline error w Kroku 2/3): frez ostro mniejszy od
   otworu/krótszego boku (`isToolDiameterValid`, `isOutlineToolDiameterValid`,
   `isSurfaceToolDiameterValid`, `isPocketToolDiameterValid`), Stepdown, Safe
   Z/Feed XY/Plunge > 0, wymiary i głębokość > 0 (`is*SizeValid`), Start Z
   powyżej dna cięcia (z mostkami — powyżej pasma; `minStartZ()`/
-  `isStartZAboveCut()`), mostki, stepover, Helix Radius, Ramp Angle,
+  `isStartZAboveCut()`), mostki, stepover, Helix Radius, Ramp Angle
+  (Hole(s)/Outline: `isRampAngleValid()`, limit obrotów
+  `isRampTurnCountWithinLimit()`),
   Optimal Load, Linking Feed, `MAX_CIRCLE_HOLE_COUNT`, Custom List, limity
   pętli (`isPassCountWithinLimit`, `isSurfaceLineCountWithinLimit`,
   `isPocketToolpathWithinLimits` — ścieżka nie może trafić w limit, bo
   zostałaby obcięta).
 - Nieblokujące: `feedsWarnings()` (Start Z < 0), `descentWarnings()` (kąt
-  zejścia helixa/rampy > `MAX_RECOMMENDED_DESCENT_DEG` = 10°),
+  zejścia helixa/rampy > `MAX_RECOMMENDED_DESCENT_DEG` = 10° — przy
+  Hole(s)/Outline z efektywnego skoku, więc tylko przy Ramp > 10°; oraz
+  `rampTurnsPerStepdown()` > `MAX_RECOMMENDED_TURNS_PER_STEPDOWN` = 10 —
+  mały promień helixa, sugestia metody Standard),
   `isPocketHelixRadiusSmall`, `isAdaptiveStepdownShallow`,
   `machineFitWarnings()` (rozpiętość wzorca/głębokości > skok maszyny —
   `patternSpan()`/`zSpan()`, footprinty per operacja; steruje kolorem

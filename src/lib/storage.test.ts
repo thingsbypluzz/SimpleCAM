@@ -234,6 +234,13 @@ describe('field validation on load (BL-57)', () => {
     expect(pocket.finishFeed).toBe(DEFAULT_WIZARD_PARAMS.pocket.finishFeed)
   })
 
+  it('gives Hole(s)/Outline saved before the Ramp Angle the default 2° (BL-80)', () => {
+    storeAutoSave({ geometry: { holeDiameter: 8 }, outline: { shape: 'circle', method: 'helix' } })
+    const { geometry, outline } = loadSlot(AUTO_SAVE_SLOT)!
+    expect(geometry.rampAngleDeg).toBe(2)
+    expect(outline.rampAngleDeg).toBe(2)
+  })
+
   it('keeps chipThinningBaseFeed null or numeric', () => {
     storeAutoSave({ pocket: { chipThinningBaseFeed: 700 } })
     expect(loadSlot(AUTO_SAVE_SLOT)!.pocket.chipThinningBaseFeed).toBe(700)

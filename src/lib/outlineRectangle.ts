@@ -2,6 +2,7 @@ import type { MachineSettings } from '../types/machine'
 import type { OffsetMode, OutlineShape, Point2D, WizardParams } from '../types/wizard'
 import { assembleProgram } from './program'
 import { computeDepthPasses } from './depthPasses'
+import { cappedRampPitch } from './rampPitch'
 import { longerEdgeIndex, rectCorners, rectToolDimensions } from './outlineRectangleGeometry'
 import { appendTabbedRectanglePass, sideRangesFor } from './outlineRectangleTabs'
 import { ToolpathBuilder, toolpathToGcode, type Toolpath } from './toolpath'
@@ -23,7 +24,11 @@ export interface RectToolpathOptions {
   toolWidth: number
   toolHeight: number
   totalDepth: number
+  // Depth of each flat pass (Standard, tab band) and the ramp's ceiling.
   stepdown: number
+  // Depth per ramp lap — Stepdown capped by the Ramp Angle over the whole
+  // perimeter (cappedRampPitch, BL-80). Standard ignores it.
+  rampPitch: number
   safeZ: number
   startZ: number
   feedrateXY: number
@@ -41,20 +46,23 @@ export function outlineDirectionForOffsetMode(offsetMode: OffsetMode): 'cw' | 'c
   return offsetMode === 'inside' ? 'ccw' : 'cw'
 }
 
-// One lap around `ordered` (4 corners, already rotated so ordered[0] is the
-// ramp edge's start — see buildRectRampToolpath), descending to `nextZ`.
-// The ramp edge (ordered[0] -> ordered[1]) carries the full Z drop in a
-// single move — a straight G1 X.. Y.. Z.. is already a linear ramp in 3D from
-// wherever the tool currently is, no segmentation needed the way a
-// circular ramp needs (helix.ts) and no need to know the starting Z
-// explicitly. The other 3 edges are flat at `nextZ`. Calling this with the
-// tool already sitting at `nextZ` (i.e. no real descent this lap) turns it
-// into a pure flat lap — used both for Standard-style flat passes
-// elsewhere and for Ramp's own cleanup lap below.
-function rampLap(b: ToolpathBuilder, ordered: Point2D[], nextZ: number) {
+// One lap around `ordered` (4 corners, starting at ordered[0] — see
+// buildRectRampToolpath), descending from `fromZ` to `toZ` evenly over the
+// whole perimeter — a "rectangular helix" (BL-80): each corner's Z is
+// proportional to the distance walked, so every edge has the same slope
+// (rampPitch / perimeter ≤ tan(Ramp Angle)). Each edge is a straight G1
+// X.. Y.. Z.., already a linear ramp in 3D; the last corner lands exactly on
+// `toZ`. Called with fromZ === toZ it is a pure flat lap — Ramp's own
+// cleanup lap below.
+function rampLap(b: ToolpathBuilder, ordered: Point2D[], fromZ: number, toZ: number) {
+  const edgeLengths = ordered.map((p, i) => Math.hypot(ordered[(i + 1) % 4].x - p.x, ordered[(i + 1) % 4].y - p.y))
+  const perimeter = edgeLengths.reduce((sum, len) => sum + len, 0)
+  let walked = 0
   for (let i = 0; i < 4; i++) {
     const p = ordered[(i + 1) % 4]
-    b.lineTo('cut', p.x, p.y, nextZ)
+    walked += edgeLengths[i]
+    const z = i === 3 || !(perimeter > 0) ? toZ : fromZ - ((fromZ - toZ) * walked) / perimeter
+    b.lineTo('cut', p.x, p.y, z)
   }
 }
 
@@ -87,10 +95,10 @@ export function buildRectStandardToolpath(cx: number, cy: number, opts: RectTool
 }
 
 // Rectangle's Ramp method: mirrors helix.ts's two-branch (tabbed/untabbed)
-// structure. The ramp edge is fixed (always the longer of width/height,
-// resolved once via longerEdgeIndex) and is the same physical edge every
-// lap — corners are rotated once so that edge is always "edge 0" of the
-// per-lap walk, keeping rampLap() itself agnostic to which edge that is.
+// structure — each lap descends `rampPitch` spread over all 4 edges (see
+// rampLap). Laps start at the corner that begins the longer edge (resolved
+// once via longerEdgeIndex); corners are rotated once so that corner is
+// always ordered[0].
 export function buildRectRampToolpath(cx: number, cy: number, opts: RectToolpathOptions): Toolpath {
   const corners = rectCorners(opts.shape, opts.width, opts.height, opts.toolWidth, opts.toolHeight, cx, cy, opts.direction)
   const rampEdge = longerEdgeIndex(opts.toolWidth, opts.toolHeight, opts.direction)
@@ -105,21 +113,17 @@ export function buildRectRampToolpath(cx: number, cy: number, opts: RectToolpath
     const rampDepth = opts.totalDepth + opts.startZ - opts.tabs.tabHeight
     const sideRanges = sideRangesFor(ordered, opts.tabs.tabCount, opts.tabs.tabWidth)
 
-    for (const turnDepth of computeDepthPasses(rampDepth, opts.stepdown)) {
+    for (const turnDepth of computeDepthPasses(rampDepth, opts.rampPitch)) {
+      const fromZ = currentZ
       currentZ -= turnDepth
-      rampLap(b, ordered, currentZ)
+      rampLap(b, ordered, fromZ, currentZ)
     }
 
-    // Square off the ramp edge's own remnant before descending into the
-    // tabbed passes — same idea as helix.ts's cleanup pass, narrower in
-    // scope. Unlike a spiral (where the WHOLE circle ramps continuously
-    // each turn, leaving every angle but the seam short of target), only
-    // the ramp edge itself is sloped after a lap — the other 3 edges are
-    // already flat at `currentZ` by construction (rampLap only puts a Z
-    // change on the ramp edge's own line). So this lap's first line (the
-    // ramp edge, walked again at the now-unchanged `currentZ`) re-cuts
-    // that one sloped edge flat; the other 3 lines are a no-op repeat.
-    rampLap(b, ordered, currentZ)
+    // Square off the ramp before descending into the tabbed passes — same
+    // idea as helix.ts's cleanup pass: the last lap slopes all the way
+    // round, reaching the tab-band top only back at the start corner, so
+    // one flat lap at `currentZ` re-cuts that ledge flat.
+    rampLap(b, ordered, currentZ, currentZ)
 
     for (const passDepth of computeDepthPasses(opts.tabs.tabHeight, opts.stepdown)) {
       currentZ -= passDepth
@@ -127,16 +131,15 @@ export function buildRectRampToolpath(cx: number, cy: number, opts: RectToolpath
       appendTabbedRectanglePass(b, { corners: ordered, sideRanges, cutZ: currentZ, liftZ: tabBandTopZ })
     }
   } else {
-    for (const turnDepth of computeDepthPasses(opts.totalDepth + opts.startZ, opts.stepdown)) {
+    for (const turnDepth of computeDepthPasses(opts.totalDepth + opts.startZ, opts.rampPitch)) {
+      const fromZ = currentZ
       currentZ -= turnDepth
-      rampLap(b, ordered, currentZ)
+      rampLap(b, ordered, fromZ, currentZ)
     }
 
-    // Flat finishing lap at full depth — re-cuts the ramp edge's own
-    // remnant from the last lap flat, same reasoning as the tabbed
-    // branch's cleanup lap above (see its comment for the full
-    // explanation of why only the ramp edge needs this, not all 4).
-    rampLap(b, ordered, currentZ)
+    // Flat finishing lap at full depth — re-cuts the last lap's slope
+    // flat, same reasoning as the tabbed branch's cleanup lap above.
+    rampLap(b, ordered, currentZ, currentZ)
   }
 
   return b.build()
@@ -161,6 +164,7 @@ export function rectOutlineOptions(params: WizardParams): RectToolpathOptions {
     toolHeight,
     totalDepth: outline.totalDepth,
     stepdown: feeds.stepdown,
+    rampPitch: cappedRampPitch(2 * (toolWidth + toolHeight), feeds.stepdown, outline.rampAngleDeg),
     safeZ: feeds.safeZ,
     startZ: feeds.startZ,
     feedrateXY: feeds.feedrateXY,

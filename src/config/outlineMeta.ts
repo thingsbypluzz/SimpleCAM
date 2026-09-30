@@ -72,9 +72,9 @@ export const OUTLINE_METHOD_LIST: Record<'rect' | 'circle', OutlineMethodMeta[]>
       title: 'Ramp',
       shortLabel: 'Ramp',
       description:
-        'Continuous descent along the longer edge, one stepdown per lap — mirrors Helix, adapted for a straight-sided shape.',
+        'Continuous descent around the whole perimeter, no steeper than the Ramp Angle and at most one Stepdown per lap — mirrors Helix, adapted for a straight-sided shape.',
       Icon: HelixIcon,
-      stepdown: { fieldLabel: 'Stepdown [mm per lap]', shortLabel: 'STEP' },
+      stepdown: { fieldLabel: 'Stepdown [max mm per lap]', shortLabel: 'STEP' },
     },
     {
       value: 'standard',

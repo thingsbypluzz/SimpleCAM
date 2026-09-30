@@ -2,6 +2,7 @@ import type { MachineSettings } from '../types/machine'
 import type { InterpolationMode, WizardParams } from '../types/wizard'
 import { assembleProgram } from './program'
 import { computeDepthPasses } from './depthPasses'
+import { cappedRampPitch } from './rampPitch'
 import { appendTabbedCirclePass, computeTabRanges } from './tabs'
 import { fullTurn, ToolpathBuilder, toolpathToGcode, type Toolpath } from './toolpath'
 
@@ -14,7 +15,11 @@ export interface CircleTabsOptions {
 export interface CircleToolpathOptions {
   radius: number
   totalDepth: number
+  // Depth of each flat pass (Standard, tab band) and the helix's ceiling.
   stepdown: number
+  // Depth per helical turn — Stepdown capped by the Ramp Angle
+  // (cappedRampPitch, BL-80). Standard ignores it.
+  pitch: number
   safeZ: number
   startZ: number
   feedrateXY: number
@@ -47,7 +52,8 @@ export function circleToolpathGcode(toolpath: Toolpath, opts: CircleToolpathOpti
 }
 
 // Spiral ramping: the tool sweeps a full 360° turn while descending by
-// `stepdown` (the pitch), repeating until the target depth is reached, then
+// `pitch` (Stepdown, or less when the Ramp Angle is the gentler limit —
+// BL-80), repeating until the target depth is reached, then
 // one flat full-circle pass at the bottom to clean the bore floor. The
 // spiral starts at `startZ` — the approach margin above the stock top (Z0),
 // cut at feed in case zeroing is a little off, not extra material (BL-37) —
@@ -82,7 +88,7 @@ export function buildHelixCircleToolpath(cx: number, cy: number, opts: CircleToo
     const spiralDepth = opts.totalDepth + opts.startZ - tabs.tabHeight
     const tabRanges = computeTabRanges(tabs.tabCount, tabs.tabWidth, radius)
 
-    for (const turnDepth of computeDepthPasses(spiralDepth, opts.stepdown)) {
+    for (const turnDepth of computeDepthPasses(spiralDepth, opts.pitch)) {
       currentZ -= turnDepth
       appendFullTurn(b, cx, cy, radius, opts.direction, currentZ)
     }
@@ -93,7 +99,7 @@ export function buildHelixCircleToolpath(cx: number, cy: number, opts: CircleToo
     // after the seam angle, reaching the true tabBandTopZ only back at the
     // seam itself). Without this cleanup pass, the first tab-band pass
     // below bites unevenly: a correct `stepdown` right at the seam, but up
-    // to 2x that on the far side of the ramp, since it's cutting into
+    // to `stepdown + pitch` on the far side of the ramp, since it's cutting into
     // whatever the spiral left rather than a flat surface one stepdown
     // above its target. Same idea as the untabbed path's flat finishing
     // pass below (a pure cleanup revolution) — just needed at this new
@@ -116,7 +122,7 @@ export function buildHelixCircleToolpath(cx: number, cy: number, opts: CircleToo
       })
     }
   } else {
-    for (const turnDepth of computeDepthPasses(opts.totalDepth + opts.startZ, opts.stepdown)) {
+    for (const turnDepth of computeDepthPasses(opts.totalDepth + opts.startZ, opts.pitch)) {
       currentZ -= turnDepth
       appendFullTurn(b, cx, cy, radius, opts.direction, currentZ)
     }
@@ -135,10 +141,12 @@ export function helixCircleToolpath(cx: number, cy: number, opts: CircleToolpath
 // Hole(s)' options for one hole — shared by both methods and the 3D preview.
 export function holeCircleOptions(params: WizardParams): CircleToolpathOptions {
   const { geometry, feeds, output } = params
+  const radius = (geometry.holeDiameter - geometry.toolDiameter) / 2
   return {
-    radius: (geometry.holeDiameter - geometry.toolDiameter) / 2,
+    radius,
     totalDepth: geometry.totalDepth,
     stepdown: feeds.stepdown,
+    pitch: cappedRampPitch(2 * Math.PI * radius, feeds.stepdown, geometry.rampAngleDeg),
     safeZ: feeds.safeZ,
     startZ: feeds.startZ,
     feedrateXY: feeds.feedrateXY,

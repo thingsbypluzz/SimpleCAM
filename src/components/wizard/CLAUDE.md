@@ -7,8 +7,9 @@
   pliku): pierwszy wiersz `PickHeader.tsx` („Pattern: …” / „Shape: …” z
   `OPERATION_META[op].pickKind` + `pick()`, opis pod Hint Button przy
   prawej krawędzi). Hole(s): pola wzorca → Hole Diameter + Total Depth →
-  Tool Diameter → Method → Tabs → Offset. Outline: wymiary + Cutting Depth
-  → Offset Mode → Tool Diameter → Method → Tabs → Offset. Surface:
+  Tool Diameter → Method → Ramp + Pitch (tylko Helix) → Tabs → Offset.
+  Outline: wymiary + Cutting Depth → Offset Mode → Tool Diameter → Method
+  → Ramp + Pitch (tylko Circle Helix / Rectangle Ramp) → Tabs → Offset. Surface:
   Width/Height + Depth to Remove → Tool Diameter → Method + Raster
   Direction → Stepover → Z-Transition + Helix Radius + Ramp Angle (jeden
   wiersz) → Offset.
@@ -27,7 +28,11 @@
   kolumny, puste komórki, gdy nie Helix; skrócone etykiety „Helix R.”/
   „Ramp”; w Pocket powód blokady Helix w Adaptive pod Hint Button przy
   „Z-Transition”), Pocket
-  Finishing Pass + Stock to Leave (checkbox na linii inputu). Reszta w
+  Finishing Pass + Stock to Leave (checkbox na linii inputu), Ramp + Pitch
+  w Hole(s)/Outline (`RampAngleFields.tsx` — wspólny komponent, renderuje
+  się tylko gdy `rampDescent()` ≠ null; Pitch read-only z tej samej
+  funkcji, jednostka mm/turn albo mm/lap; błędy zakresu i limitu obrotów
+  pod wierszem). Reszta w
   jednej kolumnie.
 - `ToolChipLoad.tsx` — wiersz Tool Diameter + Flutes (ta sama pamięć co
   Feedrate Calculator, całkowita 1–6, błąd pod wierszem) + fz tylko do

@@ -24,12 +24,12 @@ export const METHOD_META: Record<MethodType, MethodMeta> = {
     title: 'Helix Hole',
     shortLabel: 'Helix',
     description:
-      'Spiral ramping — the tool descends in a helical motion on X, Y and Z at once. Chip-friendly, easy on the tool.',
+      'Spiral ramping — the tool descends in a helical motion on X, Y and Z at once, no steeper than the Ramp Angle and at most one Stepdown per turn. Chip-friendly, easy on the tool.',
     Icon: HelixIcon,
     generate: generateHelix,
     stepdown: {
-      fieldLabel: 'Stepdown / Pitch [mm per 360° turn]',
-      shortLabel: 'PITCH',
+      fieldLabel: 'Stepdown [max mm per turn]',
+      shortLabel: 'STEP',
     },
   },
   standard: {
