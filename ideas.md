@@ -536,6 +536,36 @@ Waga z review w nawiasie kwadratowym.
   to see the toolpath”. Dotyczy wszystkich operacji. Do ustalenia: czy
   także zakładka G-Code, zachowanie w Overlay, alternatywa — niepoprawna
   ścieżka w kolorze błędu (nowy kolor w paletach).
+- **`BL-92`** *(Otwarty)* 🟠 — **Hole(s) Custom List: dodatkowe kolumny
+  per punkt (średnica i/lub głębokość).** Zgłoszone 2026-10-01, do
+  rozważenia — **sesja `/grill-me` obowiązkowa**. Dziś linia Custom List to
+  dokładnie `X,Y`, a Hole Diameter i Total Depth są wspólne dla wszystkich
+  punktów. Pomysł wyjściowy: trzecia wartość = głębokość (`10,15,5` = otwór
+  w X=10, Y=15 o głębokości 5). Wątpliwość zgłaszającego: dlaczego
+  głębokość, a nie średnica — może trzecia kolumna powinna być średnicą, a
+  Total Depth zostaje wspólny? Do przegadania:
+  - co jest częstsze w praktyce: różne średnice (jedno narzędzie, kilka
+    rozmiarów otworów — Helix to umożliwia) czy różne głębokości (otwory
+    nieprzelotowe obok przelotowych);
+  - format: jedna opcjonalna kolumna czy dwie (`X,Y[,D[,Depth]]`), kolejność,
+    jednoznaczność przy trzech liczbach, puste = wartość wspólna z pól;
+  - walidacja per punkt: frez < każda średnica, Start Z/limity przejść i
+    kąt zejścia Helix per otwór, mostki (obwód zależy od średnicy);
+  - podglądy 2D/3D (różne promienie i głębokości brył), `patternSpan()`,
+    etykieta presetu, Feedrate Calculator (bez zmian?);
+  - czy tylko Custom List, czy także inne wzorce; zgodność zapisanych
+    presetów (`customPointsText`/`customPoints`).
+- **`BL-93`** *(Otwarty)* 🟢 — **Krok 2: Width, Height i Total Depth w
+  jednym wierszu.** Zgłoszone 2026-10-01. Wszędzie tam, gdzie kształt/
+  wzorzec ma wymiary Width, Height i Total Depth — trzy pola w jednym
+  wierszu (dziś Total Depth stoi osobno). Wyjątki:
+  - **Hole(s) Single** — bez zmian;
+  - **Hole(s) N-Holes on Circle** — osobny układ: wiersz 1 = Hole Count,
+    Diameter (okręgu), Total Depth; wiersz 2 = Hole Diameter, Start Angle;
+  - **Hole(s) Custom List** — bez zmian (układ rozstrzygnie `BL-92`);
+  - **Outline Circle**, **Pocket Circle**, **Pocket Circle Lightened** —
+    bez zmian.
+  Po zmianie zaktualizować kolejność pól w `src/components/wizard/CLAUDE.md`.
 - **`BL-61`** *(Zrealizowany, 2026-09-27)* 🔴 **[Low, kosztowne w czasie]**
   — **Podglądy duplikują geometrię silnika** — jedna lista ruchów (jak
   Adaptive) dla G-code i podglądu 3D, po jednej operacji na raz. Etapy 1–2
