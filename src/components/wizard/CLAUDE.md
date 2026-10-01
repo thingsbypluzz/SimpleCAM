@@ -48,7 +48,9 @@
   funkcji, jednostka mm/turn albo mm/lap; błędy zakresu i limitu obrotów
   pod wierszem). Reszta w
   jednej kolumnie.
-- `ToolChipLoad.tsx` — wiersz Tool Diameter + Flutes (ta sama pamięć co
+- `ToolChipLoad.tsx` — wiersz Tool Diameter (etykieta skrócona do „Tool
+  Diam. [mm]”, pola wyrównane do dołu wiersza `items-end` — inputy w
+  jednej linii, nawet gdy etykieta się zawinie) + Flutes (ta sama pamięć co
   Feedrate Calculator, całkowita 1–6, błąd pod wierszem) + fz tylko do
   odczytu (`effectiveChipLoad()`, z Hint Button).
 - Pickery metod (`MethodPicker`, `OutlineMethodPicker`,
