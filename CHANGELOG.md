@@ -7,6 +7,28 @@ zgodne z [SemVer](https://semver.org/). Ten plik pozostaje głównym, czytelnym
 thingsbypluzz/SimpleCAM), ale to infrastruktura pod izolację pracy
 (branch/worktree per zadanie), nie zamiennik tego changeloga.
 
+## [0.31.0] — 2026-10-01
+
+### Dodano
+
+- **Adaptive dla Rectangle Lightened** (`BL-83`, etap 2 `OP-6`). Komórki
+  prostokąta (X-grid i Triangles) to zawsze trójkąty, a okrąg wpisany
+  trójkąta dotyka wszystkich trzech boków — więc Adaptive w komórce to
+  rosnące okręgi o stałym zaangażowaniu od helixa do okręgu wpisanego, a
+  potem obieranie trzech narożników łukami dopasowanymi do kąta narożnika
+  (także ostrego, ~20–30°), aż do ostrego narożnika ścieżki narzędzia.
+  - Te same pola co zwykły Adaptive (Optimal Load, Direction, Linking
+    Feed), wejście zawsze Helix w środku komórki, bez retraktu między
+    poziomami w komórce, retrakt między komórkami; Finishing Pass komórki
+    zgodny z Direction (Climb/Conventional).
+  - Walidacja blokuje komórki, w których obieranie przekroczyłoby limit
+    kroków.
+  - Circle Lightened zostaje przy Spiral — Adaptive dla wycinków to
+    `BL-85`.
+  - Sprawdzone symulacją materiału (nic nie zostaje, narzędzie nie
+    wychodzi poza ścianę, łączniki nie zbierają materiału) i testem
+    losowym; G-code dotychczasowych kształtów Pocket bez zmian.
+
 ## [0.30.0] — 2026-09-30
 
 ### Dodano

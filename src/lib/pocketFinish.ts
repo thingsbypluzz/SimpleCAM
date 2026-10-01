@@ -168,7 +168,11 @@ export function appendCellFinish(b: ToolpathBuilder, cell: LightCell, params: Pi
   if (!pocket.finishingEnabled) return
   const toolR = pocket.toolDiameter / 2
   const stock = pocketStockToLeave(pocket)
-  const wall = cellLoop(cell, toolR)
+  // Climb = CCW (Spiral always; Adaptive per its Direction, BL-83); CW walks
+  // the same wall reversed, with the inward normal on the right.
+  const direction = finishDirection(pocket)
+  const ccwWall = cellLoop(cell, toolR)
+  const wall = direction === 'ccw' ? ccwWall : [...ccwWall].reverse()
   if (wall.length < 2) return
 
   const roughed = (p: Point2D) => cellWallDistance(cell, p) >= toolR + stock - 1e-9
@@ -183,7 +187,7 @@ export function appendCellFinish(b: ToolpathBuilder, cell: LightCell, params: Pi
     if (!(len > 0)) return null
     const entry = { x: (a.x + q.x) / 2, y: (a.y + q.y) / 2 }
     const tangent = { x: (q.x - a.x) / len, y: (q.y - a.y) / len }
-    const normal = { x: -tangent.y, y: tangent.x }
+    const normal = direction === 'ccw' ? { x: -tangent.y, y: tangent.x } : { x: tangent.y, y: -tangent.x }
     const at = (inward: number, along: number) => ({
       x: entry.x + normal.x * inward + tangent.x * along,
       y: entry.y + normal.y * inward + tangent.y * along,
@@ -239,12 +243,12 @@ export function appendCellFinish(b: ToolpathBuilder, cell: LightCell, params: Pi
   levels.forEach(({ toZ }, idx) => {
     b.zTo('plunge', toZ)
     const leadMove = () => {
-      if (lead.sweep > 0) b.arc('finish', lead.center, 'ccw', lead.sweep)
+      if (lead.sweep > 0) b.arc('finish', lead.center, direction, lead.sweep)
       else b.lineTo('finish', entry.x, entry.y)
     }
     leadMove()
     for (const p of lap) b.lineTo('finish', p.x, p.y)
-    if (lead.sweep > 0) b.arc('finish', lead.center, 'ccw', lead.sweep)
+    if (lead.sweep > 0) b.arc('finish', lead.center, direction, lead.sweep)
     else b.lineTo('finish', lead.end.x, lead.end.y)
     if ((lead.sweep === 0 || lead.sweep < Math.PI) && idx < levels.length - 1 && (lead.end.x !== lead.start.x || lead.end.y !== lead.start.y))
       b.lineTo('finish', lead.start.x, lead.start.y)

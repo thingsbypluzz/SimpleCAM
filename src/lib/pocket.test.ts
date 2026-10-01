@@ -194,8 +194,12 @@ describe('Lightened shapes (OP-6)', () => {
     expect(Math.min(...toolpath.moves.map((m) => m.to.z))).toBeCloseTo(-2, 9)
   })
 
-  it('is Spiral-only even with Adaptive stored', () => {
-    const toolpath = buildPocketToolpath(lightened({ method: 'adaptive' }), 'adaptive')
+  it('Circle Lightened is Spiral-only even with Adaptive stored', () => {
+    const params = buildParams({
+      pocket: { shape: 'circleLightened', method: 'adaptive', diameter: 80, spokeCount: 5, hubDiameter: 16, ribWidth: 4, toolDiameter: 3.175, totalDepth: 1 },
+      feeds: { stepdown: 1 },
+    })
+    const toolpath = buildPocketToolpath(params, 'adaptive')
     expect(toolpath.moves.some((m) => m.kind === 'link')).toBe(false)
   })
 

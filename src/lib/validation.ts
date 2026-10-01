@@ -11,7 +11,7 @@ import { holeCircleOptions } from './helix'
 import { surfaceStepoverMm, surfaceToolBounds } from './surfaceGeometry'
 import { effectivePocketZTransitionMode } from './pocketZTransition'
 import { entryHelixExceedsTurnLimit, entryHelixTurnCount } from './surfaceZTransition'
-import { MAX_OPTIMAL_LOAD_PERCENT, MIN_OPTIMAL_LOAD_PERCENT } from './pocketAdaptiveMath'
+import { engagementAngleFor, MAX_OPTIMAL_LOAD_PERCENT, MIN_OPTIMAL_LOAD_PERCENT } from './pocketAdaptiveMath'
 import { exceedsPassLimit, MAX_PASSES } from './depthPasses'
 import { exceedsLineLimit, rasterExceedsLineLimit } from './surfaceRaster'
 import {
@@ -25,6 +25,7 @@ import {
 import {
   cellInscribed,
   isLightenedShape,
+  isSpiralOnlyShape,
   lightenedCells,
   lightenedCellsOrNull,
   MAX_LIGHT_COUNT,
@@ -33,6 +34,7 @@ import {
   MIN_SPOKES,
   type LightCell,
 } from './pocketLightened'
+import { cellAdaptiveExceedsLimits, planCellAdaptive } from './pocketCellAdaptive'
 import { adaptiveExceedsLimits } from './pocketAdaptive'
 
 // Strict (BL-49): a tool exactly as wide as the hole leaves a zero-radius
@@ -141,6 +143,29 @@ export function isSurfaceEntryHelixWithinLimit(params: WizardParams): boolean {
 
 export function isPocketToolpathWithinLimits(params: WizardParams): boolean {
   const { pocket } = params
+  // Adaptive per triangular cell (BL-83): the entry helix repeats in every
+  // cell (turns capped over all of them, like Spiral), and every cell's
+  // rings and corner peels must reach their walls.
+  if (pocket.method === 'adaptive' && pocket.shape === 'rectLightened') {
+    const cells = lightenedCells(pocket)
+    if (
+      isPocketRampAngleValid(pocket) &&
+      cells.length *
+        entryHelixTurnCount(params.feeds.startZ, pocket.totalDepth, params.feeds.stepdown, pocket.helixRadius, pocket.rampAngleDeg) >
+        MAX_PASSES
+    )
+      return false
+    const toolRadius = pocket.toolDiameter / 2
+    const theta = engagementAngleFor(pocket.optimalLoadPercent)
+    if (!(toolRadius > 0) || !(pocket.helixRadius > 0) || !(theta > 0)) return true
+    const roughWallDepth = toolRadius + pocketStockToLeave(pocket)
+    return cells.every(
+      (cell) =>
+        !cellAdaptiveExceedsLimits(
+          planCellAdaptive(cell, { toolRadius, theta, roughWallDepth, helixRadius: pocket.helixRadius, sign: 1 }),
+        ),
+    )
+  }
   if (pocket.method === 'adaptive') return !adaptiveExceedsLimits(params)
   if (
     pocket.zTransitionMode === 'helix' &&
@@ -801,7 +826,7 @@ export const OPERATION_RULES: Record<OperationType, OperationRules> = {
       isPocketRampLengthValid(p.pocket) &&
       isPocketLightParamsValid(p.pocket) &&
       isPocketLightCellsValid(p.pocket) &&
-      !(isLightenedShape(p.pocket.shape) && p.pocket.method === 'adaptive') &&
+      !(isSpiralOnlyShape(p.pocket.shape) && p.pocket.method === 'adaptive') &&
       isPocketHelixRadiusValid(p.pocket) &&
       isPocketOptimalLoadValid(p.pocket) &&
       isPocketRampAngleValid(p.pocket) &&

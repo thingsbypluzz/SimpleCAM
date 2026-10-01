@@ -152,7 +152,7 @@ zaczyna od `zTo('rapid', startZ)`; końcowy retrakt robi `assembleProgram()`.
 
 - Kształty Rectangle Cornered/Centered, Circle oraz **Rectangle
   Lightened** / **Circle Lightened** (niżej); metody **Spiral** i
-  **Adaptive** (Lightened tylko Spiral), opcjonalny przejazd
+  **Adaptive** (Circle Lightened tylko Spiral — `BL-85`), opcjonalny przejazd
   wykończeniowy ścian (niżej), bez mostków. Zapisane dawne `'raster'` nie
   przechodzi strażnika enuma i wczytuje się jako Spiral.
 - Czyszczenie zawsze od środka na zewnątrz, CCW (climb). Ściana
@@ -242,9 +242,24 @@ zaczyna od `zTo('rapid', startZ)`; końcowy retrakt robi `assembleProgram()`.
   finishing tej komórki (`appendCellFinish()`: okrążenie konturu d = R,
   wejście na środku najdłuższej krawędzi ćwierćłukiem, gdy się nie mieści —
   kolejne krawędzie / półłuk / prosto ze środka komórki).
-- Tylko Spiral: wybór kształtu w Kroku 1 ustawia Spiral, Adaptive w
-  pickerze wyłączony, storage zamienia Lightened+Adaptive na Spiral,
-  walidacja odrzuca parę, silnik ignoruje zapisaną metodę.
+- **Adaptive — tylko Rectangle Lightened** (trójkąty, `BL-83`,
+  `pocketCellAdaptive.ts`): okrąg wpisany trójkąta dotyka wszystkich
+  boków, więc Adaptive = faza A (`phaseARadii()`/`phaseA()` wokół środka
+  okręgu wpisanego ściany roughingu) + faza C uogólniona na kąt α
+  (`cornerPeelRadii()` — łuki π−α, środek na dwusiecznej w r/sin(α/2),
+  styczne w r/tan(α/2), poprzedni środek o Δ/sin(α/2); dla 90° = 
+  `phaseCRadii()`; memoizowane), bez fazy B. Narożniki w kolejności
+  kierunku cięcia; pierwszy osiągany łącznikiem przez okrąg, kolejne
+  cięciem wzdłuż boku (ściera grzbiety końców łuków). Silnik
+  (`buildLightenedAdaptiveToolpath()`): komórka po komórce z retraktem,
+  w komórce bez retraktu między poziomami (link do startu helixa, helix
+  pod Ramp Angle, obrót płaski, fazy A+C), potem finishing komórki —
+  Direction Climb/Conventional także w nim (`appendCellFinish()` z
+  `finishDirection()`). Limity: `cellAdaptiveExceedsLimits()` + łączne
+  obroty helixa.
+- **Circle Lightened tylko Spiral** (`isSpiralOnlyShape()`): wybór w
+  Kroku 1 ustawia Spiral, Adaptive w pickerze wyłączony, storage zamienia
+  parę na Spiral, walidacja ją odrzuca, silnik ignoruje zapisaną metodę.
 - Walidacja: `isPocketLightParamsValid()` (N, M całkowite 1–20, Spokes
   3–24, Rib > 0, 0 ≤ Hub < Diameter),
   `isPocketLightCellsValid()` (każda komórka istnieje i
@@ -408,7 +423,8 @@ Surface/Pocket Spiral — stepover, Adaptive — Optimal Load.
   `isWizardParamsValid()` muszą dać G-code spełniający niezmienniki (G0 w
   XY tylko na Safe Z, F > 0, brak NaN, najniższe Z = −totalDepth, spójne
   łuki, brak łuków przy G1 w Kroku 4, ostatnia linia M30/M2, ścieżka w
-  granicach Surface/ścian Pocket — Lightened: w którejś komórce; roughing
+  granicach Surface/ścian Pocket — Lightened: w którejś komórce, także
+  Adaptive; roughing
   Pocket w ścianie roughingu, a finishing dotyka ściany — na liście
   ruchów). `GCODE_FUZZ_SCALE`/
   `GCODE_FUZZ_SEED`.

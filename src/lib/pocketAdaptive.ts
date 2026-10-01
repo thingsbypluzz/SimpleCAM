@@ -32,14 +32,15 @@ const RAMP_SEGMENT_RAD = (2 * Math.PI) / 180
 // Corner peeling (phase C) converges geometrically toward the sharp
 // corner; below this fraction of the tool radius the remaining sliver is
 // taken in one final straight move into the corner.
-const MIN_PEEL_RADIUS_FRACTION = 0.01
+export const MIN_PEEL_RADIUS_FRACTION = 0.01
 // Safety net for transient/invalid values while typing (the previews
 // regenerate on every keystroke) — never loop forever.
-const MAX_STEPS = 5000
+export const ADAPTIVE_MAX_STEPS = 5000
+const MAX_STEPS = ADAPTIVE_MAX_STEPS
 const EPS = 1e-6
 
 
-interface LevelContext {
+export interface LevelContext {
   b: ToolpathBuilder
   cx: number
   cy: number
@@ -58,7 +59,7 @@ interface LevelContext {
 // computed once per toolpath. `complete` is false when the loop stopped
 // before reaching `toRho` (MAX_STEPS or no progress), i.e. a ring of
 // material next to the wall would be left uncut (BL-55).
-function phaseARadii(toolRadius: number, theta: number, fromRho: number, toRho: number): { radii: number[]; complete: boolean } {
+export function phaseARadii(toolRadius: number, theta: number, fromRho: number, toRho: number): { radii: number[]; complete: boolean } {
   const ringTheta = theta * (1 - RAMP_TILT_FRACTION)
   const radii = [fromRho]
   let rho = fromRho
@@ -72,7 +73,7 @@ function phaseARadii(toolRadius: number, theta: number, fromRho: number, toRho: 
   return { radii, complete: !(rho < toRho - EPS) }
 }
 
-function phaseA(ctx: LevelContext, radii: number[], startAngle: number): number {
+export function phaseA(ctx: LevelContext, radii: number[], startAngle: number): number {
   const { b, cx, cy, theta, sign, direction } = ctx
   const tanTilt = Math.tan(theta * RAMP_TILT_FRACTION)
   let angle = startAngle
@@ -174,7 +175,7 @@ function phaseB(ctx: LevelContext, map: (u: number, v: number) => Point2D, h: nu
 // hop between corners runs along an already-cleared wall.
 // Corner-peel radii for phase C (hv down to 0) — the same on every Z level
 // and for all four corners, so computed once per toolpath.
-function phaseCRadii(toolRadius: number, theta: number, hv: number): number[] {
+export function phaseCRadii(toolRadius: number, theta: number, hv: number): number[] {
   // Canonical corner (+u, +v): arc of radius r − Δ around the origin from
   // the u-wall (angle 0) to the v-wall (90°); the previous arc's center sits
   // Δ back along both axes. The worst point is near the arc's start (and
