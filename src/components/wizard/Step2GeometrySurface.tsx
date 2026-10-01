@@ -97,7 +97,7 @@ export function Step2GeometrySurface({ params, onChange, machine, toolDiameters,
 
       <div className="flex flex-col gap-4">
         <ToolChipLoad params={params} machine={machine} flutes={flutes} onFlutesChange={onFlutesChange}>
-          <FieldRow label="Tool Diameter [mm]">
+          <FieldRow label="Tool Diam. [mm]">
             <select
               className={inputClass}
               value={surface.toolDiameter}

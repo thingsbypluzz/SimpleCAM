@@ -38,7 +38,8 @@ export function ToolChipLoad({ params, machine, flutes, onFlutesChange, children
   const showError = flutesField.value !== '' && !isValidFluteCount(typedFlutes)
   return (
     <div className="flex flex-col gap-1">
-      <div className="flex gap-4">
+      {/* items-end: the inputs share one line even if a label wraps (BL-90). */}
+      <div className="flex items-end gap-4">
         <div className="min-w-0 flex-1">{children}</div>
         <div className="w-24 shrink-0">
           <FieldRow label="Flutes">

@@ -516,7 +516,7 @@ Waga z review w nawiasie kwadratowym.
   migają. Do przegadania: „żywość” podglądu, Edit Mode live-save, pola
   sparowane (% ↔ mm), Generate/Apply przy niezatwierdzonym polu,
   alternatywa — debounce ciężkich obliczeń ~300 ms.
-- **`BL-90`** *(Otwarty)* 🟢 — **Krok 2: etykieta Tool Diameter łamie
+- **`BL-90`** *(Zrealizowany, 2026-10-01)* 🟢 — **Krok 2: etykieta Tool Diameter łamie
   wiersz.** Zgłoszone 2026-10-01. W wierszu Tool Diameter + Flutes + fz
   (`ToolChipLoad.tsx`) etykieta „Tool Diameter [mm]” zawija się do dwóch
   linii, więc Drop-down leży niżej niż pola Flutes i fz. Opcje: skrócić
@@ -524,6 +524,8 @@ Waga z review w nawiasie kwadratowym.
   wyrównać pola do dołu wiersza (`items-end`), żeby inputy zawsze stały w
   jednej linii niezależnie od długości etykiet. Sprawdzić też inne wiersze
   z parami pól (węższe kolumny, dłuższe etykiety).
+  Wdrożone: etykieta „Tool Diam. [mm]” we wszystkich czterech operacjach
+  i wyrównanie pól wiersza do dołu (`items-end` w `ToolChipLoad.tsx`).
 - **`BL-91`** *(Otwarty)* 🟢 — **Podgląd: ukrywać ścieżkę przy
   niepoprawnych parametrach.** Zgłoszone 2026-10-01 przy `BL-85`. Podglądy
   2D/3D rysują ścieżkę dla każdej wpisanej wartości, także odrzuconej przez
