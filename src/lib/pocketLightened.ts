@@ -39,12 +39,6 @@ export const MAX_LIGHT_COUNT = 20
 export const MIN_SPOKES = 3
 export const MAX_SPOKES = 24
 
-// Adaptive handles triangular cells (BL-83); Circle Lightened's sectors are
-// Spiral-only for now (BL-85).
-export function isSpiralOnlyShape(shape: PocketParams['shape']): boolean {
-  return shape === 'circleLightened'
-}
-
 export function isLightenedShape(shape: PocketParams['shape']): shape is 'rectLightened' | 'circleLightened' {
   return shape === 'rectLightened' || shape === 'circleLightened'
 }

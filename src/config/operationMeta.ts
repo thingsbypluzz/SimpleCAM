@@ -21,7 +21,6 @@ import { POCKET_METHOD_LIST, POCKET_METHOD_META } from './pocketMethodMeta'
 import { POCKET_SHAPE_META, pocketShapeIcon, pocketShapeLabel, pocketShapeLines, pocketShapeSlug, pocketSummary } from './pocketMeta'
 import { patternLabel, patternSlug, POSITIONING_META, positioningIcon, positioningLines, positioningSummary } from './positioningMeta'
 import { SURFACE_METHOD_LIST, SURFACE_METHOD_META } from './surfaceMethodMeta'
-import { isSpiralOnlyShape } from '../lib/pocketLightened'
 import { SURFACE_SHAPE_META, surfaceShapeIcon, surfaceShapeLabel, surfaceShapeLines, surfaceShapeSlug, surfaceSummary } from './surfaceMeta'
 
 type IconComponent = ComponentType<{ className?: string }>
@@ -271,9 +270,7 @@ export const OPERATION_META: Record<OperationType, OperationMeta> = {
     presetLabel: (p) => `${pocketShapeLabel(p.pocket)} • ${POCKET_METHOD_META[p.pocket.method].shortLabel}`,
     toolDiameter: (p) => p.pocket.toolDiameter,
     methodValue: (p) => p.pocket.method,
-    // Circle Lightened is Spiral-only (BL-85).
-    calcMethods: (p) =>
-      methodOptions(isSpiralOnlyShape(p.pocket.shape) ? POCKET_METHOD_LIST.filter((m) => m.value === 'spiral') : POCKET_METHOD_LIST),
+    calcMethods: () => methodOptions(POCKET_METHOD_LIST),
     withCalc: (p, c) => {
       const method = c.method as PocketMethodType
       const pocket = { ...p.pocket, method, toolDiameter: c.toolDiameter }

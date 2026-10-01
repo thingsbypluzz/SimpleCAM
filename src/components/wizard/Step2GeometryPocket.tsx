@@ -457,7 +457,8 @@ export function Step2GeometryPocket({ params, onChange, machine, toolDiameters, 
         {helixRadiusInvalid && (
           <p className="text-sm text-status-error">
             Helix radius must be greater than 0 and at most {fmt(round2(pocketMaxHelixRadius(pocket)))} mm — no more than
-            the tool's radius (a wider helix leaves an uncut post in the center) and inside the pocket's own wall.
+            the tool's radius (a wider helix leaves an uncut post in the center) and inside{' '}
+            {isLightened ? "the smallest cell's wall" : "the pocket's own wall"}.
           </p>
         )}
         {isPocketHelixRadiusSmall(pocket) && isPocketHelixRadiusValid(pocket) && (

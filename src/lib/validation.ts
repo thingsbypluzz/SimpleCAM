@@ -25,7 +25,6 @@ import {
 import {
   cellInscribed,
   isLightenedShape,
-  isSpiralOnlyShape,
   lightenedCells,
   lightenedCellsOrNull,
   MAX_LIGHT_COUNT,
@@ -35,6 +34,7 @@ import {
   type LightCell,
 } from './pocketLightened'
 import { cellAdaptiveExceedsLimits, planCellAdaptive } from './pocketCellAdaptive'
+import { planSectorAdaptive, sectorAdaptiveExceedsLimits } from './pocketSectorAdaptive'
 import { adaptiveExceedsLimits } from './pocketAdaptive'
 
 // Strict (BL-49): a tool exactly as wide as the hole leaves a zero-radius
@@ -143,10 +143,10 @@ export function isSurfaceEntryHelixWithinLimit(params: WizardParams): boolean {
 
 export function isPocketToolpathWithinLimits(params: WizardParams): boolean {
   const { pocket } = params
-  // Adaptive per triangular cell (BL-83): the entry helix repeats in every
-  // cell (turns capped over all of them, like Spiral), and every cell's
-  // rings and corner peels must reach their walls.
-  if (pocket.method === 'adaptive' && pocket.shape === 'rectLightened') {
+  // Adaptive per Lightened cell (BL-83 triangles, BL-85 sectors): the
+  // entry helix repeats in every cell (turns capped over all of them, like
+  // Spiral), and every cell's rings and remnants must reach their walls.
+  if (pocket.method === 'adaptive' && isLightenedShape(pocket.shape)) {
     const cells = lightenedCells(pocket)
     if (
       isPocketRampAngleValid(pocket) &&
@@ -159,11 +159,11 @@ export function isPocketToolpathWithinLimits(params: WizardParams): boolean {
     const theta = engagementAngleFor(pocket.optimalLoadPercent)
     if (!(toolRadius > 0) || !(pocket.helixRadius > 0) || !(theta > 0)) return true
     const roughWallDepth = toolRadius + pocketStockToLeave(pocket)
-    return cells.every(
-      (cell) =>
-        !cellAdaptiveExceedsLimits(
-          planCellAdaptive(cell, { toolRadius, theta, roughWallDepth, helixRadius: pocket.helixRadius, sign: 1 }),
-        ),
+    const opts = { toolRadius, theta, roughWallDepth, helixRadius: pocket.helixRadius }
+    return cells.every((cell) =>
+      cell.kind === 'sector'
+        ? !sectorAdaptiveExceedsLimits(planSectorAdaptive(cell, opts))
+        : !cellAdaptiveExceedsLimits(planCellAdaptive(cell, { ...opts, sign: 1 })),
     )
   }
   if (pocket.method === 'adaptive') return !adaptiveExceedsLimits(params)
@@ -826,7 +826,6 @@ export const OPERATION_RULES: Record<OperationType, OperationRules> = {
       isPocketRampLengthValid(p.pocket) &&
       isPocketLightParamsValid(p.pocket) &&
       isPocketLightCellsValid(p.pocket) &&
-      !(isSpiralOnlyShape(p.pocket.shape) && p.pocket.method === 'adaptive') &&
       isPocketHelixRadiusValid(p.pocket) &&
       isPocketOptimalLoadValid(p.pocket) &&
       isPocketRampAngleValid(p.pocket) &&

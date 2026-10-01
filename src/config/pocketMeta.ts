@@ -39,14 +39,14 @@ export const POCKET_SHAPE_META: Record<PocketShape, PocketShapeMeta> = {
     value: 'rectLightened',
     title: 'Rectangle Lightened',
     description:
-      'Lightening pockets in a rectangle, origin at the center: triangular cells cut out between ribs, filling the Width × Height — an X-grid or a Warren/isogrid of triangles. Spiral only.',
+      'Lightening pockets in a rectangle, origin at the center: triangular cells cut out between ribs, filling the Width × Height — an X-grid or a Warren/isogrid of triangles. Spiral or Adaptive.',
     Icon: PocketRectLightenedIcon,
   },
   circleLightened: {
     value: 'circleLightened',
     title: 'Circle Lightened',
     description:
-      'Lightening pockets in a circle, centered at the origin: sector cells cut out between spokes and a center hub, filling the Diameter. Spiral only.',
+      'Lightening pockets in a circle, centered at the origin: sector cells cut out between spokes and a center hub, filling the Diameter. Spiral or Adaptive.',
     Icon: PocketCircleLightenedIcon,
   },
 }

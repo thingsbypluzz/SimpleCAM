@@ -194,13 +194,12 @@ describe('Lightened shapes (OP-6)', () => {
     expect(Math.min(...toolpath.moves.map((m) => m.to.z))).toBeCloseTo(-2, 9)
   })
 
-  it('Circle Lightened is Spiral-only even with Adaptive stored', () => {
-    const params = buildParams({
-      pocket: { shape: 'circleLightened', method: 'adaptive', diameter: 80, spokeCount: 5, hubDiameter: 16, ribWidth: 4, toolDiameter: 3.175, totalDepth: 1 },
-      feeds: { stepdown: 1 },
-    })
-    const toolpath = buildPocketToolpath(params, 'adaptive')
-    expect(toolpath.moves.some((m) => m.kind === 'link')).toBe(false)
+  it('Adaptive works for both Lightened shapes (links at Linking Feed), Spiral has none', () => {
+    const circle = { shape: 'circleLightened' as const, diameter: 80, spokeCount: 5, hubDiameter: 16, ribWidth: 4, toolDiameter: 3.175, totalDepth: 1, helixRadius: 1 }
+    const adaptive = buildPocketToolpath(buildParams({ pocket: { ...circle, method: 'adaptive' }, feeds: { stepdown: 1 } }))
+    const spiral = buildPocketToolpath(buildParams({ pocket: { ...circle, method: 'spiral' }, feeds: { stepdown: 1 } }))
+    expect(adaptive.moves.some((m) => m.kind === 'link')).toBe(true)
+    expect(spiral.moves.some((m) => m.kind === 'link')).toBe(false)
   })
 
   it('adds finishing laps on every cell when Finishing Pass is on', () => {
