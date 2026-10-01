@@ -30,7 +30,7 @@ interface Step2GeometryOutlineProps {
   onFlutesChange: (flutes: number) => void
 }
 
-// Field order (BL-72): shape size fields -> Cutting Depth -> Offset Mode ->
+// Field order (BL-72): shape size fields + Depth (one row) -> Offset Mode ->
 // Tool Diameter -> Method -> Ramp + Pitch (Helix/Ramp only, BL-80) -> Tabs ->
 // Offset X/Y — see CLAUDE.md's Outline design
 // notes. Mirrors Step2GeometryHoles.tsx's conventions throughout
@@ -73,49 +73,50 @@ export function Step2GeometryOutline({ params, onChange, machine, toolDiameters,
 
       <div className="flex flex-col gap-4">
         {isRect ? (
-          <>
-            <div className="flex gap-4">
-              <div className="min-w-0 flex-1">
-                <FieldRow label="Width [mm]">
-                  <NumberInput
-                    type="number"
-                    step="0.1"
-                    min="0"
-                    max={machine.travelX}
-                    className={inputClass}
-                    aria-invalid={widthInvalid}
-                    {...widthField}
-                  />
-                </FieldRow>
-              </div>
-              <div className="min-w-0 flex-1">
-                <FieldRow label="Height [mm]">
-                  <NumberInput
-                    type="number"
-                    step="0.1"
-                    min="0"
-                    max={machine.travelY}
-                    className={inputClass}
-                    aria-invalid={heightInvalid}
-                    {...heightField}
-                  />
-                </FieldRow>
-              </div>
+          // Rectangle: Width + Height + Depth on one row (BL-93).
+          <div className="flex items-end gap-4">
+            <div className="min-w-0 flex-1">
+              <FieldRow label="Width [mm]">
+                <NumberInput
+                  type="number"
+                  step="0.1"
+                  min="0"
+                  max={machine.travelX}
+                  className={inputClass}
+                  aria-invalid={widthInvalid}
+                  {...widthField}
+                />
+              </FieldRow>
             </div>
-            <FieldRow label="Cutting Depth [mm]">
-              <NumberInput
-                type="number"
-                step="0.1"
-                min="0"
-                max={machine.travelZ}
-                className={inputClass}
-                aria-invalid={depthInvalid}
-                {...totalDepthField}
-              />
-            </FieldRow>
-          </>
+            <div className="min-w-0 flex-1">
+              <FieldRow label="Height [mm]">
+                <NumberInput
+                  type="number"
+                  step="0.1"
+                  min="0"
+                  max={machine.travelY}
+                  className={inputClass}
+                  aria-invalid={heightInvalid}
+                  {...heightField}
+                />
+              </FieldRow>
+            </div>
+            <div className="min-w-0 flex-1">
+              <FieldRow label="Depth [mm]">
+                <NumberInput
+                  type="number"
+                  step="0.1"
+                  min="0"
+                  max={machine.travelZ}
+                  className={inputClass}
+                  aria-invalid={depthInvalid}
+                  {...totalDepthField}
+                />
+              </FieldRow>
+            </div>
+          </div>
         ) : (
-          // Circle: Diameter + Cutting Depth on one row, like Hole(s).
+          // Circle: Diameter + Depth on one row, like Hole(s).
           <div className="flex gap-4">
             <div className="min-w-0 flex-1">
               <FieldRow label="Diameter [mm]">
@@ -131,7 +132,7 @@ export function Step2GeometryOutline({ params, onChange, machine, toolDiameters,
               </FieldRow>
             </div>
             <div className="min-w-0 flex-1">
-              <FieldRow label="Cutting Depth [mm]">
+              <FieldRow label="Depth [mm]">
                 <NumberInput
                   type="number"
                   step="0.1"
@@ -241,7 +242,7 @@ export function Step2GeometryOutline({ params, onChange, machine, toolDiameters,
             </div>
             {tabHeightInvalid && (
               <p className="text-sm text-status-error">
-                Tab height must be greater than 0 and less than Cutting Depth.
+                Tab height must be greater than 0 and less than Depth.
               </p>
             )}
             {tabWidthInvalid && (

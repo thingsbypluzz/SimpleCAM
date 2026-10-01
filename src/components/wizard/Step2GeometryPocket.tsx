@@ -59,9 +59,9 @@ interface Step2GeometryPocketProps {
 const round2 = (n: number) => Math.round(n * 100) / 100
 const round4 = (n: number) => Math.round(n * 10000) / 10000
 
-// Field order (BL-72): shape size fields -> Total Depth -> Lightened
-// pattern (OP-6: Layout + N + M or Spokes + Hub + Start, then Rib Width —
-// LightenedFields.tsx) -> Tool Diameter ->
+// Field order (BL-72): shape size fields + Depth (one row) -> Lightened
+// pattern (OP-6: Layout, then N + M + Rib Width; or Spokes + Hub + Rib
+// Width, then Start — LightenedFields.tsx) -> Tool Diameter ->
 // Method (+ Direction) -> Stepover (% + read-only mm) + Ramp Length (one
 // row, BL-41, engagement readout below it) -> Z-Transition Mode
 // + Helix Radius + Ramp Angle (one row, helix fields only in Helix mode)
@@ -135,49 +135,50 @@ export function Step2GeometryPocket({ params, onChange, machine, toolDiameters, 
 
       <div className="flex flex-col gap-4">
         {isRect ? (
-          <>
-            <div className="flex gap-4">
-              <div className="min-w-0 flex-1">
-                <FieldRow label="Width [mm]">
-                  <NumberInput
-                    type="number"
-                    step="0.1"
-                    min="0"
-                    max={machine.travelX}
-                    className={inputClass}
-                    aria-invalid={widthInvalid}
-                    {...widthField}
-                  />
-                </FieldRow>
-              </div>
-              <div className="min-w-0 flex-1">
-                <FieldRow label="Height [mm]">
-                  <NumberInput
-                    type="number"
-                    step="0.1"
-                    min="0"
-                    max={machine.travelY}
-                    className={inputClass}
-                    aria-invalid={heightInvalid}
-                    {...heightField}
-                  />
-                </FieldRow>
-              </div>
+          // Rectangle: Width + Height + Depth on one row (BL-93).
+          <div className="flex items-end gap-4">
+            <div className="min-w-0 flex-1">
+              <FieldRow label="Width [mm]">
+                <NumberInput
+                  type="number"
+                  step="0.1"
+                  min="0"
+                  max={machine.travelX}
+                  className={inputClass}
+                  aria-invalid={widthInvalid}
+                  {...widthField}
+                />
+              </FieldRow>
             </div>
-            <FieldRow label="Total Depth [mm]">
-              <NumberInput
-                type="number"
-                step="0.1"
-                min="0"
-                max={machine.travelZ}
-                className={inputClass}
-                aria-invalid={depthInvalid}
-                {...totalDepthField}
-              />
-            </FieldRow>
-          </>
+            <div className="min-w-0 flex-1">
+              <FieldRow label="Height [mm]">
+                <NumberInput
+                  type="number"
+                  step="0.1"
+                  min="0"
+                  max={machine.travelY}
+                  className={inputClass}
+                  aria-invalid={heightInvalid}
+                  {...heightField}
+                />
+              </FieldRow>
+            </div>
+            <div className="min-w-0 flex-1">
+              <FieldRow label="Depth [mm]">
+                <NumberInput
+                  type="number"
+                  step="0.1"
+                  min="0"
+                  max={machine.travelZ}
+                  className={inputClass}
+                  aria-invalid={depthInvalid}
+                  {...totalDepthField}
+                />
+              </FieldRow>
+            </div>
+          </div>
         ) : (
-          // Circle: Diameter + Total Depth on one row, like Hole(s).
+          // Circle: Diameter + Depth on one row, like Hole(s).
           <div className="flex gap-4">
             <div className="min-w-0 flex-1">
               <FieldRow label="Diameter [mm]">
@@ -193,7 +194,7 @@ export function Step2GeometryPocket({ params, onChange, machine, toolDiameters, 
               </FieldRow>
             </div>
             <div className="min-w-0 flex-1">
-              <FieldRow label="Total Depth [mm]">
+              <FieldRow label="Depth [mm]">
                 <NumberInput
                   type="number"
                   step="0.1"

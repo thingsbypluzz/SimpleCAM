@@ -123,12 +123,12 @@ const bitStat = (toolDiameter: number): SummaryStat => ({
   title: `Tool Diameter: ${toolDiameter} mm`,
 })
 
-const depthStat = (depthLabel: string, totalDepth: number): SummaryStat => ({
+const depthStat = (totalDepth: number): SummaryStat => ({
   Icon: DepthIcon,
   label: 'DEPTH',
   value: `${totalDepth}`,
   unit: 'mm',
-  title: `${depthLabel}: ${totalDepth} mm`,
+  title: `Depth: ${totalDepth} mm`,
 })
 
 const tabsStat = (tabsEnabled: boolean): SummaryStat[] =>
@@ -164,7 +164,7 @@ export const OPERATION_META: Record<OperationType, OperationMeta> = {
         unit: 'mm',
         title: `Hole Diameter: ${p.geometry.holeDiameter} mm`,
       },
-      depthStat('Total Depth', p.geometry.totalDepth),
+      depthStat(p.geometry.totalDepth),
       ...tabsStat(p.geometry.tabsEnabled),
     ],
     geometryTitle: (p) =>
@@ -193,7 +193,7 @@ export const OPERATION_META: Record<OperationType, OperationMeta> = {
       ),
       ...offsetStat(p.outline),
       bitStat(p.outline.toolDiameter),
-      depthStat('Cutting Depth', p.outline.totalDepth),
+      depthStat(p.outline.totalDepth),
       ...tabsStat(p.outline.tabsEnabled),
     ],
     geometryTitle: (p) =>
@@ -226,7 +226,7 @@ export const OPERATION_META: Record<OperationType, OperationMeta> = {
       ),
       ...offsetStat(p.surface),
       bitStat(p.surface.toolDiameter),
-      depthStat('Depth to Remove', p.surface.totalDepth),
+      depthStat(p.surface.totalDepth),
     ],
     geometryTitle: (p) =>
       `Tool ⌀${p.surface.toolDiameter}mm, ${SURFACE_SHAPE_META[p.surface.shape].title} ${roundSize(p.surface)}mm, Depth ${p.surface.totalDepth}mm${withOffset(p.surface)} — Method: ${SURFACE_METHOD_META[p.surface.method].title}`,
@@ -261,7 +261,7 @@ export const OPERATION_META: Record<OperationType, OperationMeta> = {
       ),
       ...offsetStat(p.pocket),
       bitStat(p.pocket.toolDiameter),
-      depthStat('Total Depth', p.pocket.totalDepth),
+      depthStat(p.pocket.totalDepth),
     ],
     geometryTitle: (p) =>
       `Tool ⌀${p.pocket.toolDiameter}mm, ${POCKET_SHAPE_META[p.pocket.shape].title} ${roundSize(p.pocket)}mm, Depth ${p.pocket.totalDepth}mm${withOffset(p.pocket)} — Method: ${POCKET_METHOD_META[p.pocket.method].title}`,

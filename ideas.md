@@ -487,13 +487,19 @@ Waga z review w nawiasie kwadratowym.
   operacjach z kątami (Outline Rectangle Inside/Outside/On-line, Pocket
   Rectangle, Lightened, Surface?). Do ustalenia: tylko 3D czy też 2D,
   domyślnie włączone czy nie, zapis w stanie sesji jak Hide/Show.
-- **`BL-87`** *(Otwarty)* 🟢 — **Krok 4: styl slotów presetów 1–5 (pusty
+- **`BL-87`** *(Zrealizowany, 2026-10-01)* 🟢 — **Krok 4: styl slotów presetów 1–5 (pusty
   vs zapisany).** Zgłoszone 2026-09-30. Przyciski slotów [1]…[5] w Kroku 4
   słabo odróżniają slot pusty od zapisanego. Pomysł: inny styl dla obu
   stanów, np. po zapisaniu slot przyjmuje taki sam wygląd jak w Preset Bar
   w Header. Do przegadania: spójność z Header (ikona/kształt/kolor),
   czytelność stanu nie tylko kolorem (`aria-pressed`/etykieta), zachowanie
   przy nadpisaniu i usuwaniu.
+  Wdrożone: zapisany slot wygląda jak w Preset Bar (ramka akcentu + ikona
+  wzorca/kształtu presetu), pusty — przerywana, przygaszona ramka z numerem;
+  stan widać po zawartości i ramce, nie tylko po kolorze, a etykieta
+  (`title` + `aria-label`) mówi „Overwrite…” albo „Save… — empty”.
+  Potwierdzenie nadpisania i zielony „✓” po zapisie bez zmian; usuwanie
+  zostaje w Header.
 - **`BL-88`** *(Zrealizowany, 2026-10-01)* 🟢 — **Settings Modal: osobna sekcja na
   sterowanie (G-Code / Dialect / Software).** Zgłoszone 2026-10-01. Dziś
   Settings → Machine miesza fizykę maszyny (travel X/Y/Z, Spindle, Min/Max
@@ -558,7 +564,7 @@ Waga z review w nawiasie kwadratowym.
     etykieta presetu, Feedrate Calculator (bez zmian?);
   - czy tylko Custom List, czy także inne wzorce; zgodność zapisanych
     presetów (`customPointsText`/`customPoints`).
-- **`BL-93`** *(Otwarty)* 🟢 — **Krok 2: Width, Height i Total Depth w
+- **`BL-93`** *(Zrealizowany, 2026-10-01)* 🟢 — **Krok 2: Width, Height i Total Depth w
   jednym wierszu.** Zgłoszone 2026-10-01. Wszędzie tam, gdzie kształt/
   wzorzec ma wymiary Width, Height i Total Depth — trzy pola w jednym
   wierszu (dziś Total Depth stoi osobno). Wyjątki:
@@ -569,6 +575,14 @@ Waga z review w nawiasie kwadratowym.
   - **Outline Circle**, **Pocket Circle**, **Pocket Circle Lightened** —
     bez zmian.
   Po zmianie zaktualizować kolejność pól w `src/components/wizard/CLAUDE.md`.
+  Wdrożone: trzy kolumny w Hole(s) Grid/Grid Centered, Outline Rectangle,
+  Pocket Rectangle (także Rectangle Lightened) i Surface; N-Holes wg opisu.
+  Głębokość nazywa się „Depth [mm]” w każdej operacji i układzie (zamiast
+  Total Depth / Cutting Depth / Depth to Remove), a podpowiedź Grid „0 = dwa otwory” przeszła z pól do
+  opisu wzorca (Hint Button w wierszu „Pattern:”); etykiety Grid skrócone
+  do „Width [mm]”/„Height [mm]”. Przy okazji Lightened: Rectangle — Layout
+  w osobnym wierszu, pod nim Diagonals/Cells X, Rows/Cells Y, Rib Width;
+  Circle — Spokes, Hub, Rib Width, a Start w wierszu poniżej.
 - **`BL-61`** *(Zrealizowany, 2026-09-27)* 🔴 **[Low, kosztowne w czasie]**
   — **Podglądy duplikują geometrię silnika** — jedna lista ruchów (jak
   Adaptive) dla G-code i podglądu 3D, po jednej operacji na raz. Etapy 1–2

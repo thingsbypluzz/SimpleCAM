@@ -38,6 +38,9 @@ const SCENARIOS: [string, Partial<PocketParams>][] = [
   ['wide — 3 spokes, big hub', { diameter: 50, spokeCount: 3, hubDiameter: 22 }],
   ['wide, conventional, 20%', { diameter: 50, spokeCount: 3, hubDiameter: 22, cutDirection: 'conventional', optimalLoadPercent: 20 }],
   ['narrow, hub, 5%', { diameter: 60, spokeCount: 8, hubDiameter: 20, optimalLoadPercent: 5 }],
+  // A tool nearly as wide as the cell: the tool-center region is tiny, the
+  // cell must still come out to its nominal shape without a Finishing Pass.
+  ['tool nearly fills the cell — Ø45, 5 spokes, tool 8', { diameter: 45, spokeCount: 5, hubDiameter: 16, toolDiameter: 8, ribWidth: 4, helixRadius: 0.5, spokeStartAngle: 90, optimalLoadPercent: 30, cutDirection: 'conventional' }],
 ]
 
 describe('Circle Lightened Adaptive — simulated coverage and walls (BL-85)', () => {
