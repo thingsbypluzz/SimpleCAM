@@ -840,10 +840,10 @@ describe('Lightened Pocket (OP-6)', () => {
     expect(isWizardParamsValid(asParams(rect({ toolDiameter: 25 })))).toBe(false)
   })
 
-  it('allows Adaptive for Rectangle Lightened, not for Circle Lightened (BL-83/BL-85)', () => {
+  it('allows Adaptive for both Lightened shapes (BL-83, BL-85)', () => {
     expect(isWizardParamsValid(asParams(rect({ method: 'adaptive', helixRadius: 1 })))).toBe(true)
-    const circle = { ...DEFAULT_WIZARD_PARAMS.pocket, shape: 'circleLightened' as const, diameter: 80, method: 'adaptive' as const }
-    expect(isWizardParamsValid(asParams(circle))).toBe(false)
+    const circle = { ...DEFAULT_WIZARD_PARAMS.pocket, shape: 'circleLightened' as const, diameter: 80, method: 'adaptive' as const, helixRadius: 1 }
+    expect(isWizardParamsValid(asParams(circle))).toBe(true)
   })
 
   it('bounds the helix by the smallest cell and caps its turns over all cells', () => {

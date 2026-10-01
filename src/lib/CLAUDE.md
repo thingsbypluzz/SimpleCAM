@@ -152,7 +152,7 @@ zaczyna od `zTo('rapid', startZ)`; końcowy retrakt robi `assembleProgram()`.
 
 - Kształty Rectangle Cornered/Centered, Circle oraz **Rectangle
   Lightened** / **Circle Lightened** (niżej); metody **Spiral** i
-  **Adaptive** (Circle Lightened tylko Spiral — `BL-85`), opcjonalny przejazd
+  **Adaptive** (każda dla każdego kształtu), opcjonalny przejazd
   wykończeniowy ścian (niżej), bez mostków. Zapisane dawne `'raster'` nie
   przechodzi strażnika enuma i wczytuje się jako Spiral.
 - Czyszczenie zawsze od środka na zewnątrz, CCW (climb). Ściana
@@ -242,24 +242,41 @@ zaczyna od `zTo('rapid', startZ)`; końcowy retrakt robi `assembleProgram()`.
   finishing tej komórki (`appendCellFinish()`: okrążenie konturu d = R,
   wejście na środku najdłuższej krawędzi ćwierćłukiem, gdy się nie mieści —
   kolejne krawędzie / półłuk / prosto ze środka komórki).
-- **Adaptive — tylko Rectangle Lightened** (trójkąty, `BL-83`,
-  `pocketCellAdaptive.ts`): okrąg wpisany trójkąta dotyka wszystkich
+- **Adaptive, trójkąty** (Rectangle Lightened, `pocketCellAdaptive.ts`):
+  okrąg wpisany trójkąta dotyka wszystkich
   boków, więc Adaptive = faza A (`phaseARadii()`/`phaseA()` wokół środka
   okręgu wpisanego ściany roughingu) + faza C uogólniona na kąt α
   (`cornerPeelRadii()` — łuki π−α, środek na dwusiecznej w r/sin(α/2),
   styczne w r/tan(α/2), poprzedni środek o Δ/sin(α/2); dla 90° = 
   `phaseCRadii()`; memoizowane), bez fazy B. Narożniki w kolejności
   kierunku cięcia; pierwszy osiągany łącznikiem przez okrąg, kolejne
-  cięciem wzdłuż boku (ściera grzbiety końców łuków). Silnik
-  (`buildLightenedAdaptiveToolpath()`): komórka po komórce z retraktem,
+  cięciem wzdłuż boku (ściera grzbiety końców łuków). Silnik obu rodzajów
+  komórek (`buildLightenedAdaptiveToolpath()`): komórka po komórce z retraktem,
   w komórce bez retraktu między poziomami (link do startu helixa, helix
   pod Ramp Angle, obrót płaski, fazy A+C), potem finishing komórki —
   Direction Climb/Conventional także w nim (`appendCellFinish()` z
   `finishDirection()`). Limity: `cellAdaptiveExceedsLimits()` + łączne
   obroty helixa.
-- **Circle Lightened tylko Spiral** (`isSpiralOnlyShape()`): wybór w
-  Kroku 1 ustawia Spiral, Adaptive w pickerze wyłączony, storage zamienia
-  parę na Spiral, walidacja ją odrzuca, silnik ignoruje zapisaną metodę.
+- **Adaptive, wycinki** (Circle Lightened, `pocketSectorAdaptive.ts`):
+  po fazie A każda reszta leży między dwiema ścianami i jest wybierana
+  jednym mechanizmem — okrąg styczny do obu ścian przesuwany wzdłuż ich
+  środkowej, promień = odległość do ścian, krok największy, przy którym
+  zaangażowanie na łuku natarcia (`maxArcEngagement()` względem
+  poprzedniego okręgu) ≤ θ* (`walk()`; fazy B i C prostokąta to jego
+  szczególne przypadki). Rodziny okręgów (`Family`): `sideSide` (oba boki
+  — trzon do piasty albo wierzchołka), `sideArc` (bok + łuk zewnętrzny
+  albo piasta — narożnik, promień do 0), `wing` (piasta + łuk zewnętrzny,
+  stały promień). Wycinek **wąski** (okrąg wpisany dotyka boków i łuku
+  zewnętrznego): 2 narożniki zewnętrzne + trzon, który przy piaście
+  rozdziela się na 2 narożniki; **szeroki** (dotyka piasty i łuku
+  zewnętrznego): 2 skrzydła, każde kończy się 2 narożnikami. Kandydat w
+  narożniku nigdy nie ma promienia 0 (brak łuku do zmierzenia). Ruch
+  wzdłuż piasty to łamana opisana na łuku (cięciwy weszłyby w piastę),
+  wzdłuż łuku zewnętrznego — łuk. Dojazd i powrót gałęzi po jej własnych
+  środkach (przy piaście) albo prosto — nigdy przez piastę; poziom kończy
+  w środku okręgu wpisanego. Geometria w układzie lokalnym wycinka
+  (dwusieczna na +X), plan wspólny dla wszystkich komórek (cache), obracany
+  przy emisji. Limity: `sectorAdaptiveExceedsLimits()`.
 - Walidacja: `isPocketLightParamsValid()` (N, M całkowite 1–20, Spokes
   3–24, Rib > 0, 0 ≤ Hub < Diameter),
   `isPocketLightCellsValid()` (każda komórka istnieje i

@@ -23,7 +23,6 @@ import {
   type ZTransitionMode,
 } from '../types/wizard'
 import { formatCustomPoints } from './customPoints'
-import { isSpiralOnlyShape } from './pocketLightened'
 
 // `operation` and `method` are the two top-level scalar fields
 // mergeWithDefaults() below can't fix with a plain `??` fallback: a preset
@@ -186,13 +185,6 @@ function mergeGeometry(saved: unknown): GeometryParams {
   return merged
 }
 
-// Circle Lightened is Spiral-only (BL-85) — a hand-edited or future
-// snapshot pairing it with Adaptive loads as Spiral.
-function mergePocket(saved: unknown): PocketParams {
-  const merged = mergeSection(DEFAULT_WIZARD_PARAMS.pocket, saved, POCKET_GUARDS)
-  return isSpiralOnlyShape(merged.shape) && merged.method === 'adaptive' ? { ...merged, method: 'spiral' } : merged
-}
-
 // Per-section, per-field merge with defaults — a snapshot saved by an older
 // version of the app that's missing newly-added fields still loads cleanly,
 // picking up defaults for whatever it doesn't have (or has in a shape this
@@ -205,7 +197,7 @@ function mergeWithDefaults(saved: unknown): WizardParams {
     geometry: mergeGeometry(source.geometry),
     outline: mergeSection(DEFAULT_WIZARD_PARAMS.outline, source.outline, OUTLINE_GUARDS),
     surface: mergeSection(DEFAULT_WIZARD_PARAMS.surface, source.surface, SURFACE_GUARDS),
-    pocket: mergePocket(source.pocket),
+    pocket: mergeSection(DEFAULT_WIZARD_PARAMS.pocket, source.pocket, POCKET_GUARDS),
     feeds: mergeSection(DEFAULT_WIZARD_PARAMS.feeds, source.feeds),
     output: mergeSection(DEFAULT_WIZARD_PARAMS.output, source.output, OUTPUT_GUARDS),
   }

@@ -7,6 +7,30 @@ zgodne z [SemVer](https://semver.org/). Ten plik pozostaje głównym, czytelnym
 thingsbypluzz/SimpleCAM), ale to infrastruktura pod izolację pracy
 (branch/worktree per zadanie), nie zamiennik tego changeloga.
 
+## [0.32.0] — 2026-10-01
+
+### Dodano
+
+- **Adaptive dla Circle Lightened** (`BL-85`) — ostatni brakujący element
+  `OP-6`: obie metody działają teraz dla każdego kształtu Pocket. Po
+  rosnących okręgach o stałym zaangażowaniu każda reszta wycinka leży
+  między dwiema ścianami i jest wybierana jednym mechanizmem: okrąg
+  styczny do obu ścian przesuwany wzdłuż ich środkowej, z krokiem
+  dobranym pod cel zaangażowania.
+  - Wycinek wąski (dużo szprych): dwa zewnętrzne narożniki i trzon w
+    stronę piasty, który przy piaście rozdziela się na dwa narożniki
+    (bez piasty kończy się w wierzchołku). Wycinek szeroki (mało szprych,
+    duża piasta): dwa skrzydła wokół pierścienia, każde zakończone dwoma
+    narożnikami.
+  - Ruch wzdłuż piasty jest łamaną opisaną na łuku — także w trybie G1
+    nigdy nie wchodzi w piastę. Dojazdy między resztami nie przecinają
+    piasty.
+  - Pola, kierunek, wejście Helix, Finishing Pass i walidacja jak w
+    Adaptive dla Rectangle Lightened.
+  - Sprawdzone symulacją materiału (wąskie z piastą i bez, szerokie;
+    Climb i Conventional) i testem losowym; G-code pozostałych kształtów
+    bez zmian.
+
 ## [0.31.0] — 2026-10-01
 
 ### Dodano

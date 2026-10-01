@@ -225,7 +225,7 @@ export function randomPocketLightened(rng: Rng): WizardParams {
   return { ...base, pocket: { ...pocket, helixRadius } }
 }
 
-// Rectangle Lightened with Adaptive (BL-83) — triangular cells only.
+// Lightened shapes with Adaptive (BL-83 triangles, BL-85 sectors).
 // Tools 3–6 mm and shallow depths: a 1 mm tool through dozens of cells at
 // 20 levels is a legitimate multi-million-line job, but it only slows the
 // suite without exercising anything new.
@@ -234,7 +234,6 @@ export function randomPocketLightenedAdaptive(rng: Rng): WizardParams {
   const totalDepth = rng.range(0.5, 3, 1)
   const pocket = {
     ...base.pocket,
-    shape: 'rectLightened' as const,
     method: 'adaptive' as const,
     zTransitionMode: 'helix' as const,
     toolDiameter: rng.pick([3, 3.175, 4, 6]),

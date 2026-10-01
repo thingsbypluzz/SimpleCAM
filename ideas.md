@@ -428,13 +428,18 @@ faktycznym.
   trójkąty (Rectangle Lightened) — faza A do okręgu wpisanego + faza C
   uogólniona na kąt narożnika, bez fazy B; Direction także w Finishing
   komórki; wycinki → `BL-85`. Pełny opis: `CHANGELOG.md`, `[0.31.0]`.
-- **`BL-85`** *(Otwarty)* 🔴 — **Adaptive dla Circle Lightened
+- **`BL-85`** *(Zrealizowany, 2026-10-01)* 🔴 — **Adaptive dla Circle Lightened
   (wycinki).** Z sesji `/grill-me` `BL-83` (2026-09-30). Wycinki pierścienia
   mają ściany łukowe (zewnętrzna wypukła, przy piaście wklęsła), są
   wydłużone promieniowo (odpowiednik fazy B wzdłuż promienia), a ich
   „narożniki” to styk prostej z łukiem — każdy element to nowa geometria.
   Dziś Circle Lightened jest tylko Spiral. Wymaga własnej sesji
   `/grill-me`.
+  **Rozstrzygnięte i wdrożone (`0.32.0`):** ogólny mechanizm „okrąg
+  styczny do dwóch ścian przesuwany wzdłuż ich środkowej” (wąskie i
+  szerokie wycinki, z piastą i bez), tylko dla wycinków — trójkąty i
+  zwykły Adaptive zostają na swoim kodzie. Pełny opis: `CHANGELOG.md`,
+  `[0.32.0]`.
 - **`BL-84`** *(Zrealizowany, 2026-09-30)* 🟠 — **Lightened: obrys zewnętrzny i znaczenie
   wymiarów.** Zgłoszone 2026-09-30 przy testach `OP-6`. Podglądy
   Rectangle/Circle Lightened pokazują tylko komórki — nie widać obrysu
@@ -519,6 +524,16 @@ Waga z review w nawiasie kwadratowym.
   wyrównać pola do dołu wiersza (`items-end`), żeby inputy zawsze stały w
   jednej linii niezależnie od długości etykiet. Sprawdzić też inne wiersze
   z parami pól (węższe kolumny, dłuższe etykiety).
+- **`BL-91`** *(Otwarty)* 🟢 — **Podgląd: ukrywać ścieżkę przy
+  niepoprawnych parametrach.** Zgłoszone 2026-10-01 przy `BL-85`. Podglądy
+  2D/3D rysują ścieżkę dla każdej wpisanej wartości, także odrzuconej przez
+  walidację (np. Helix Radius większy niż mieści komórka — helix narysowany
+  poza kieszenią, choć pole jest czerwone, a Generate zablokowany). Pomysł:
+  gdy `isWizardParamsValid()` jest fałszywe, zostają materiał i kształt, a
+  ścieżka znika; w podglądzie krótki napis typu „Fix the highlighted fields
+  to see the toolpath”. Dotyczy wszystkich operacji. Do ustalenia: czy
+  także zakładka G-Code, zachowanie w Overlay, alternatywa — niepoprawna
+  ścieżka w kolorze błędu (nowy kolor w paletach).
 - **`BL-61`** *(Zrealizowany, 2026-09-27)* 🔴 **[Low, kosztowne w czasie]**
   — **Podglądy duplikują geometrię silnika** — jedna lista ruchów (jak
   Adaptive) dla G-code i podglądu 3D, po jednej operacji na raz. Etapy 1–2
@@ -580,8 +595,8 @@ Pocket, 2026-09-21, i dla Adaptive, 2026-09-25; historia implementacji w
   silniki znają tylko prostokąt i okrąg), liczba ramion dla prostokąta
   (2 przekątne = 4 trójkąty; więcej?), podglądy 2D/3D, walidacja.
   **Ustalenia `/grill-me` (2026-09-30), stan: etap 1 zrealizowany
-  (`0.30.0`), etap 2 — Adaptive dla trójkątów zrealizowany (`BL-83`,
-  `0.31.0`), wycinki = `BL-85`:**
+  (`0.30.0`), etap 2 — Adaptive dla trójkątów (`BL-83`, `0.31.0`) i
+  wycinków (`BL-85`, `0.32.0`) zrealizowany; `OP-6` zamknięte:**
   - Zawsze pełne wybranie komórki; o przelocie decyduje Total Depth; bez
     mostków (kontur po trójkącie przy przelocie → `BL-82`).
   - Nowe kształty w **Pocket** (nie osobna operacja): **Rectangle

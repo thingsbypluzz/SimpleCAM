@@ -3,7 +3,6 @@ import type { WizardParams } from '../../types/wizard'
 import { POSITIONING_LIST } from '../../config/positioningMeta'
 import { OUTLINE_SHAPE_LIST } from '../../config/outlineMeta'
 import { SURFACE_SHAPE_LIST } from '../../config/surfaceMeta'
-import { isSpiralOnlyShape } from '../../lib/pocketLightened'
 import { POCKET_SHAPE_LIST } from '../../config/pocketMeta'
 
 interface Step1PositioningProps {
@@ -142,8 +141,7 @@ export function Step1Positioning({ params, onChange }: Step1PositioningProps) {
             onClick={() =>
               onChange({
                 operation: 'pocket',
-                // Circle Lightened is Spiral-only (BL-85).
-                pocket: { ...pocket, shape: opt.value, ...(isSpiralOnlyShape(opt.value) ? { method: 'spiral' as const } : {}) },
+                pocket: { ...pocket, shape: opt.value },
               })
             }
             Icon={opt.Icon}
