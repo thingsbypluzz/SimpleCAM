@@ -1,12 +1,15 @@
 import type { MachineSettings } from '../types/machine'
 import type { PocketMethodType, Point2D, WizardParams } from '../types/wizard'
 import { assembleProgram } from './program'
-import { buildLevelDescents, levelEntryZ } from './surfaceZTransition'
+import { buildLevelDescents, helixPitchForRampAngle, levelEntryZ } from './surfaceZTransition'
 import { appendPocketZTransition, pocketEntryPoint } from './pocketZTransition'
 import { buildAdaptiveToolpath } from './pocketAdaptive'
 import { appendCellFinish, appendPocketFinish, pocketFinishMoves } from './pocketFinish'
 import { cellInscribed, isLightenedShape, lightenedCells } from './pocketLightened'
 import { appendCellSpiral } from './pocketCellSpiral'
+import { appendCellAdaptiveLevel, planCellAdaptive } from './pocketCellAdaptive'
+import { engagementAngleFor } from './pocketAdaptiveMath'
+import { computeDepthPasses } from './depthPasses'
 import {
   appendCircleRing,
   appendRectRing,
@@ -22,7 +25,7 @@ import {
   pocketRoughRectWallHalfDims,
   pocketStepoverMm,
 } from './pocketGeometry'
-import { toolpathToGcode, ToolpathBuilder, type Toolpath } from './toolpath'
+import { toolpathToGcode, ToolpathBuilder, type ArcDirection, type Toolpath } from './toolpath'
 
 function pocketStartPoint(pocket: WizardParams['pocket']): Point2D {
   return pocketCenter(pocket)
@@ -147,6 +150,8 @@ function appendSpiralLevels(b: ToolpathBuilder, params: WizardParams, center: Po
 // lightenedCells()' order (snake / CCW around the circle).
 function buildLightenedToolpath(params: WizardParams): Toolpath {
   const { pocket, feeds } = params
+  // Adaptive: Rectangle Lightened only (triangles, BL-83); Circle stays Spiral.
+  if (pocket.method === 'adaptive' && pocket.shape === 'rectLightened') return buildLightenedAdaptiveToolpath(params)
   const cells = lightenedCells(pocket)
   const isHelix = pocket.zTransitionMode === 'helix'
   const roughWallDepth = pocket.toolDiameter / 2 + pocketStockToLeave(pocket)
@@ -174,6 +179,55 @@ function buildLightenedToolpath(params: WizardParams): Toolpath {
         rampLengthFactor: pocket.rampLengthFactor,
       }),
     )
+    appendCellFinish(b, cell, params)
+  })
+  return b.build()
+}
+
+// Adaptive per triangular cell (BL-83): cell by cell like Spiral (retract
+// and rapid between cells), and inside a cell Adaptive's own level loop —
+// stay down between levels, link back to the helix start, helix at the
+// Ramp Angle around the incenter, a flat turn, then phase A rings and the
+// corner peels (pocketCellAdaptive.ts); the cell's finishing laps last.
+function buildLightenedAdaptiveToolpath(params: WizardParams): Toolpath {
+  const { pocket, feeds } = params
+  const toolRadius = pocket.toolDiameter / 2
+  const theta = engagementAngleFor(pocket.optimalLoadPercent)
+  const helixRadius = pocket.helixRadius
+  const sign: 1 | -1 = pocket.cutDirection === 'climb' ? 1 : -1
+  const direction: ArcDirection = sign > 0 ? 'ccw' : 'cw'
+  const roughWallDepth = toolRadius + pocketStockToLeave(pocket)
+  const usable = toolRadius > 0 && helixRadius > 0 && theta > 0
+  const cells = usable
+    ? lightenedCells(pocket).flatMap((cell) => {
+        const plan = planCellAdaptive(cell, { toolRadius, theta, roughWallDepth, helixRadius, sign })
+        return plan ? [{ cell, plan }] : []
+      })
+    : []
+  const entryOf = (center: Point2D) => ({ x: center.x + helixRadius, y: center.y })
+  const first = cells.length > 0 ? entryOf(cells[0].plan.center) : pocketCenter(pocket)
+  const b = new ToolpathBuilder({ x: first.x, y: first.y, z: feeds.safeZ }, true)
+  const pitch = helixPitchForRampAngle(helixRadius, pocket.rampAngleDeg)
+  cells.forEach(({ cell, plan }, i) => {
+    const entry = entryOf(plan.center)
+    if (i > 0) {
+      b.zTo('rapid', feeds.safeZ)
+      b.rapidXY(entry.x, entry.y)
+    }
+    b.zTo('rapid', feeds.startZ)
+    const ctx = { b, cx: plan.center.x, cy: plan.center.y, toolRadius, theta, sign, direction }
+    let fromZ = feeds.startZ
+    for (const { toZ } of buildLevelDescents(feeds.startZ, pocket.totalDepth, feeds.stepdown)) {
+      b.lineTo('link', entry.x, entry.y)
+      let z = fromZ
+      for (const turn of computeDepthPasses(fromZ - toZ, pitch)) {
+        z -= turn
+        b.arc('cut', plan.center, direction, 2 * Math.PI, z)
+      }
+      b.arc('cut', plan.center, direction, 2 * Math.PI, toZ)
+      appendCellAdaptiveLevel(ctx, plan)
+      fromZ = toZ
+    }
     appendCellFinish(b, cell, params)
   })
   return b.build()

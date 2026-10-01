@@ -52,8 +52,8 @@ Cztery operacje (`WizardParams.operation`):
   Spiral i Adaptive (stałe zaangażowanie); opcjonalny przejazd
   wykończeniowy ścian (Stock to Leave, Finish Feed). Kieszenie odciążające
   **Rectangle Lightened** (X-grid N×M / Triangles N×M) i **Circle
-  Lightened** (szprychy, piasta) — każda komórka osobna kieszeń, tylko
-  Spiral.
+  Lightened** (szprychy, piasta) — każda komórka osobna kieszeń; Spiral,
+  a dla Rectangle Lightened także Adaptive.
 
 ## Kluczowe decyzje (przekrojowe)
 

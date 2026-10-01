@@ -418,12 +418,23 @@ faktycznym.
   wypada, potrzebne mostki). Nowe kształty Outline reużywające geometrię
   komórek `OP-6` (te same układy X-grid/Triangles/Spokes), albo tryb
   „Contour only” w kształtach Lightened. Do ustalenia po etapie 1 `OP-6`.
-- **`BL-83`** *(Otwarty)* 🔴 — **Adaptive dla kształtów Lightened (etap 2
+- **`BL-83`** *(Zrealizowany, 2026-10-01)* 🔴 — **Adaptive dla kształtów Lightened (etap 2
   `OP-6`).** Etap 1 wybiera komórki tylko metodą Spiral (offset). Adaptive
   liczy stałe zaangażowanie analitycznie wyłącznie dla okręgu i
   prostokąta — trójkąty o ostrych kątach i wycinki pierścienia to nowe
   przypadki geometryczne (rozmiar zbliżony do `OP-5`). Wymaga własnej
   sesji `/grill-me` po sprawdzeniu geometrii komórek z etapu 1.
+  **Sesja `/grill-me` (2026-09-30) i wdrożenie (`0.31.0`):** tylko
+  trójkąty (Rectangle Lightened) — faza A do okręgu wpisanego + faza C
+  uogólniona na kąt narożnika, bez fazy B; Direction także w Finishing
+  komórki; wycinki → `BL-85`. Pełny opis: `CHANGELOG.md`, `[0.31.0]`.
+- **`BL-85`** *(Otwarty)* 🔴 — **Adaptive dla Circle Lightened
+  (wycinki).** Z sesji `/grill-me` `BL-83` (2026-09-30). Wycinki pierścienia
+  mają ściany łukowe (zewnętrzna wypukła, przy piaście wklęsła), są
+  wydłużone promieniowo (odpowiednik fazy B wzdłuż promienia), a ich
+  „narożniki” to styk prostej z łukiem — każdy element to nowa geometria.
+  Dziś Circle Lightened jest tylko Spiral. Wymaga własnej sesji
+  `/grill-me`.
 - **`BL-84`** *(Zrealizowany, 2026-09-30)* 🟠 — **Lightened: obrys zewnętrzny i znaczenie
   wymiarów.** Zgłoszone 2026-09-30 przy testach `OP-6`. Podglądy
   Rectangle/Circle Lightened pokazują tylko komórki — nie widać obrysu
@@ -460,6 +471,54 @@ pełny opis (lokalizacja w kodzie, scenariusz błędu, proponowana zmiana)
 w sekcji **"Szczegóły code review (2026-09-26)"** na końcu tego pliku.
 Waga z review w nawiasie kwadratowym.
 
+- **`BL-86`** *(Otwarty)* 🟠 — **Podgląd 3D: wynikowy kształt z
+  zaokrągleniem narożników freza.** Zgłoszone 2026-09-30. Dziś pustki w
+  podglądach mają ostre narożniki z zadanego kształtu (prostokąt Pocket,
+  komórki Lightened, Outline Rectangle Inside), a frez zostawia w
+  narożnikach wewnętrznych zaokrąglenie o swoim promieniu. Opcja (np.
+  przełącznik obok Hide/Show Stock) pokazująca „wynikowy” kształt: kontur
+  pustki = ścieżka środka narzędzia poszerzona o promień freza (narożniki
+  wewnętrzne zaokrąglone R, zewnętrzne ostre). Do dodania we wszystkich
+  operacjach z kątami (Outline Rectangle Inside/Outside/On-line, Pocket
+  Rectangle, Lightened, Surface?). Do ustalenia: tylko 3D czy też 2D,
+  domyślnie włączone czy nie, zapis w stanie sesji jak Hide/Show.
+- **`BL-87`** *(Otwarty)* 🟢 — **Krok 4: styl slotów presetów 1–5 (pusty
+  vs zapisany).** Zgłoszone 2026-09-30. Przyciski slotów [1]…[5] w Kroku 4
+  słabo odróżniają slot pusty od zapisanego. Pomysł: inny styl dla obu
+  stanów, np. po zapisaniu slot przyjmuje taki sam wygląd jak w Preset Bar
+  w Header. Do przegadania: spójność z Header (ikona/kształt/kolor),
+  czytelność stanu nie tylko kolorem (`aria-pressed`/etykieta), zachowanie
+  przy nadpisaniu i usuwaniu.
+- **`BL-88`** *(Otwarty)* 🟢 — **Settings Modal: osobna sekcja na
+  sterowanie (G-Code / Dialect / Software).** Zgłoszone 2026-10-01. Dziś
+  Settings → Machine miesza fizykę maszyny (travel X/Y/Z, Spindle, Min/Max
+  RPM, Dwell, Max Feed, Rigidity, Router) z ustawieniami sterowania (G-Code
+  Dialect, Start/End G-Code), co utrudnia czytelność. Nowa pozycja Settings
+  Nav zaraz pod Machine, do której przechodzą Dialect i Start/End G-Code;
+  Machine zostaje tylko fizyką maszyny. Do ustalenia: nazwa sekcji
+  (G-Code / Dialect / Software), gdzie trafiają Spindle Speed i Spin-up
+  Dwell (fizyka czy sterowanie), klucz w `localStorage` bez zmian
+  (`simplecam.machine`) — tylko podział w UI.
+- **`BL-89`** *(Otwarty)* 🟠 — **Zatwierdzanie pól liczbowych przy utracie
+  fokusu (wydajność podglądu).** Zgłoszone 2026-10-01 przy `BL-83`. Dziś
+  `useNumberField` zatwierdza przy każdym klawiszu; podgląd jest odroczony
+  (`useDeferredValue`, `BL-63`), ale walidacja (`isWizardParamsValid()` i
+  walidatory Kroku 2) liczy się synchronicznie przy każdym renderze — przy
+  Lightened/Adaptive to odczuwalne przycięcie przy pisaniu. Propozycja:
+  zatwierdzanie na blur i Enter, strzałki (i przytrzymanie, `BL-26`) od
+  razu. Zyski: brak ciężkiego liczenia w trakcie pisania, koniec błędów ze
+  stanów pośrednich (np. awaria 3D przy wpisywaniu średnicy), błędy nie
+  migają. Do przegadania: „żywość” podglądu, Edit Mode live-save, pola
+  sparowane (% ↔ mm), Generate/Apply przy niezatwierdzonym polu,
+  alternatywa — debounce ciężkich obliczeń ~300 ms.
+- **`BL-90`** *(Otwarty)* 🟢 — **Krok 2: etykieta Tool Diameter łamie
+  wiersz.** Zgłoszone 2026-10-01. W wierszu Tool Diameter + Flutes + fz
+  (`ToolChipLoad.tsx`) etykieta „Tool Diameter [mm]” zawija się do dwóch
+  linii, więc Drop-down leży niżej niż pola Flutes i fz. Opcje: skrócić
+  etykietę (np. „Tool Diam. [mm]”, pełna nazwa w podpowiedzi) albo
+  wyrównać pola do dołu wiersza (`items-end`), żeby inputy zawsze stały w
+  jednej linii niezależnie od długości etykiet. Sprawdzić też inne wiersze
+  z parami pól (węższe kolumny, dłuższe etykiety).
 - **`BL-61`** *(Zrealizowany, 2026-09-27)* 🔴 **[Low, kosztowne w czasie]**
   — **Podglądy duplikują geometrię silnika** — jedna lista ruchów (jak
   Adaptive) dla G-code i podglądu 3D, po jednej operacji na raz. Etapy 1–2
@@ -521,7 +580,8 @@ Pocket, 2026-09-21, i dla Adaptive, 2026-09-25; historia implementacji w
   silniki znają tylko prostokąt i okrąg), liczba ramion dla prostokąta
   (2 przekątne = 4 trójkąty; więcej?), podglądy 2D/3D, walidacja.
   **Ustalenia `/grill-me` (2026-09-30), stan: etap 1 zrealizowany
-  (`0.30.0`), etap 2 = `BL-83`:**
+  (`0.30.0`), etap 2 — Adaptive dla trójkątów zrealizowany (`BL-83`,
+  `0.31.0`), wycinki = `BL-85`:**
   - Zawsze pełne wybranie komórki; o przelocie decyduje Total Depth; bez
     mostków (kontur po trójkącie przy przelocie → `BL-82`).
   - Nowe kształty w **Pocket** (nie osobna operacja): **Rectangle

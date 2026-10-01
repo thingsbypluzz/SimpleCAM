@@ -246,11 +246,13 @@ describe('field validation on load (BL-57)', () => {
     expect(loadSlot(AUTO_SAVE_SLOT)!.pocket.rampLengthFactor).toBe(3)
   })
 
-  it('loads Lightened shapes, and a Lightened + Adaptive pair as Spiral (OP-6)', () => {
+  it('loads Lightened shapes; a Circle Lightened + Adaptive pair as Spiral (OP-6, BL-85)', () => {
+    storeAutoSave({ pocket: { shape: 'circleLightened', method: 'adaptive' } })
+    expect(loadSlot(AUTO_SAVE_SLOT)!.pocket.method).toBe('spiral')
     storeAutoSave({ pocket: { shape: 'rectLightened', method: 'adaptive', lightLayout: 'bogus' } })
     const { pocket } = loadSlot(AUTO_SAVE_SLOT)!
     expect(pocket.shape).toBe('rectLightened')
-    expect(pocket.method).toBe('spiral')
+    expect(pocket.method).toBe('adaptive')
     expect(pocket.lightLayout).toBe(DEFAULT_WIZARD_PARAMS.pocket.lightLayout)
     expect(pocket.ribWidth).toBe(DEFAULT_WIZARD_PARAMS.pocket.ribWidth)
   })

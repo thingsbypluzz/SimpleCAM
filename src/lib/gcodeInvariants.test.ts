@@ -8,7 +8,17 @@
 import { describe, expect, it } from 'vitest'
 import type { MachineSettings } from '../types/machine'
 import type { WizardParams } from '../types/wizard'
-import { makeRng, randomHoles, randomMachine, randomOutline, randomPocket, randomPocketLightened, randomSurface, type Rng } from './fuzzParams'
+import {
+  makeRng,
+  randomHoles,
+  randomMachine,
+  randomOutline,
+  randomPocket,
+  randomPocketLightened,
+  randomPocketLightenedAdaptive,
+  randomSurface,
+  type Rng,
+} from './fuzzParams'
 import { cellWallDistance, isLightenedShape, lightenedCells } from './pocketLightened'
 import { pocketStockToLeave } from './pocketGeometry'
 import { arcRadiusMismatches } from './gcodeTestUtils'
@@ -219,6 +229,7 @@ const SUITES: Suite[] = [
   { name: 'Pocket Spiral', samples: 40, build: (r) => randomPocket(r, 'spiral'), generate: generatePocketSpiral },
   { name: 'Pocket Adaptive', samples: 25, build: (r) => randomPocket(r, 'adaptive'), generate: generatePocketAdaptive },
   { name: 'Pocket Lightened', samples: 30, build: randomPocketLightened, generate: generatePocketSpiral },
+  { name: 'Pocket Lightened Adaptive', samples: 10, build: randomPocketLightenedAdaptive, generate: generatePocketAdaptive },
 ]
 
 describe('G-code invariants for every valid parameter set (BL-62)', () => {
