@@ -494,7 +494,7 @@ Waga z review w nawiasie kwadratowym.
   w Header. Do przegadania: spójność z Header (ikona/kształt/kolor),
   czytelność stanu nie tylko kolorem (`aria-pressed`/etykieta), zachowanie
   przy nadpisaniu i usuwaniu.
-- **`BL-88`** *(Otwarty)* 🟢 — **Settings Modal: osobna sekcja na
+- **`BL-88`** *(Zrealizowany, 2026-10-01)* 🟢 — **Settings Modal: osobna sekcja na
   sterowanie (G-Code / Dialect / Software).** Zgłoszone 2026-10-01. Dziś
   Settings → Machine miesza fizykę maszyny (travel X/Y/Z, Spindle, Min/Max
   RPM, Dwell, Max Feed, Rigidity, Router) z ustawieniami sterowania (G-Code
@@ -504,6 +504,9 @@ Waga z review w nawiasie kwadratowym.
   (G-Code / Dialect / Software), gdzie trafiają Spindle Speed i Spin-up
   Dwell (fizyka czy sterowanie), klucz w `localStorage` bez zmian
   (`simplecam.machine`) — tylko podział w UI.
+  Wdrożone: sekcja **Controller** zaraz pod Machine z G-Code Dialect
+  (z opisem, co dialekt zmienia w programie) i Start/End G-Code; Spindle
+  Speed i Spin-up Dwell zostały w Machine (właściwości wrzeciona).
 - **`BL-89`** *(Otwarty)* 🟠 — **Zatwierdzanie pól liczbowych przy utracie
   fokusu (wydajność podglądu).** Zgłoszone 2026-10-01 przy `BL-83`. Dziś
   `useNumberField` zatwierdza przy każdym klawiszu; podgląd jest odroczony

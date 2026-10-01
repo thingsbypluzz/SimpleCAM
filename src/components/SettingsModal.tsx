@@ -33,10 +33,11 @@ type LimitField = 'spindleMinRpm' | 'spindleMaxRpm' | 'maxFeed'
 // the field list and per-field step/label differ.
 type NumericField = TravelField | TabDefaultField | SpindleField | LimitField
 type CodeField = 'headerText' | 'footerText'
-type SectionId = 'machine' | 'tabs' | 'toolDiameters' | 'appearance' | 'privacy' | 'reset' | 'about'
+type SectionId = 'machine' | 'controller' | 'tabs' | 'toolDiameters' | 'appearance' | 'privacy' | 'reset' | 'about'
 
 const SECTIONS: { id: SectionId; label: string }[] = [
   { id: 'machine', label: 'Machine' },
+  { id: 'controller', label: 'Controller' },
   { id: 'tabs', label: 'Tabs' },
   { id: 'toolDiameters', label: 'Tool Diameters' },
   { id: 'appearance', label: 'Appearance' },
@@ -311,8 +312,7 @@ export function SettingsModal({
         {/* Sibling of the scrollable content pane below, not a child of it —
             an absolutely-positioned descendant of a scrolling container
             scrolls right along with it, which is what made this button
-            drift out of view on a tall Machine section (dialect + Start/End
-            G-Code pushed it past the fold). Anchored to this non-scrolling
+            drift out of view on a section taller than the modal. Anchored to this non-scrolling
             card instead, it now stays pinned regardless of inner scroll. */}
         <button
           ref={closeButtonRef}
@@ -389,23 +389,6 @@ export function SettingsModal({
               </p>
 
               <div className="flex flex-col gap-4 border-t border-border pt-4">
-                <label className="flex flex-col gap-1">
-                  <span className="text-sm font-medium text-value">
-                    G-Code Dialect
-                  </span>
-                  <select
-                    className={inputClass}
-                    value={machine.dialect}
-                    onChange={(e) => handleDialectChange(e.target.value as Dialect)}
-                  >
-                    {DIALECT_OPTIONS.map((opt) => (
-                      <option key={opt.value} value={opt.value}>
-                        {opt.label}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-
                 <div className="flex gap-4">{SPINDLE_FIELDS.map(numericField)}</div>
                 <div className="flex gap-4">
                   {MOTION_FIELDS.map(numericField)}
@@ -454,7 +437,38 @@ export function SettingsModal({
                   suggested RPM stays within the spindle's range, a feed above Max Feed lowers the RPM first, and
                   Rigidity scales the chip load it suggests, and the stepdown of wide cuts (not Adaptive). The defaults mean no limit.
                 </p>
+              </div>
+            </>
+          )}
 
+          {activeSection === 'controller' && (
+            <>
+              <h2 className="text-sm font-semibold text-fg">Controller</h2>
+
+              <label className="flex flex-col gap-1">
+                <span className="text-sm font-medium text-value">
+                  G-Code Dialect
+                </span>
+                <select
+                  className={inputClass}
+                  value={machine.dialect}
+                  onChange={(e) => handleDialectChange(e.target.value as Dialect)}
+                >
+                  {DIALECT_OPTIONS.map((opt) => (
+                    <option key={opt.value} value={opt.value}>
+                      {opt.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <p className="text-sm text-muted">
+                Sets what differs between controllers: the setup line at the top of the program, the
+                dwell units (<code className="font-mono text-xs">G4 P</code> in seconds, milliseconds on
+                Marlin) and the closing code (<code className="font-mono text-xs">M30</code>,{' '}
+                <code className="font-mono text-xs">M2</code> on Marlin).
+              </p>
+
+              <div className="flex flex-col gap-4 border-t border-border pt-4">
                 <span className="text-sm font-medium text-value">
                   Start / End G-Code
                 </span>
@@ -770,7 +784,7 @@ export function SettingsModal({
               <div className="flex flex-col gap-2 border-t border-border pt-4">
                 <span className="text-sm font-medium text-value">What's stored, and where</span>
                 <p className="text-sm text-muted">
-                  Presets and settings (Machine, Appearance, Tabs, Tool Diameters, Feedrate Calculator) are stored only
+                  Presets and settings (Machine, Controller, Appearance, Tabs, Tool Diameters, Feedrate Calculator) are stored only
                   in your browser's localStorage, scoped to this site. Nothing is synced,
                   exported, or read by us — it stays on your device and is cleared whenever you
                   clear your browser's site data, or automatically if you use a private/incognito
@@ -828,8 +842,8 @@ export function SettingsModal({
                 <li>Theme, Preview Color Palette, and Grid Labels (Appearance)</li>
                 <li>The Tool Diameters list</li>
                 <li>
-                  Machine Settings — dialect, X/Y/Z travel, spindle and feed limits, rigidity, Start/End G-Code, default
-                  tab sizes
+                  Machine and Controller settings — X/Y/Z travel, spindle and feed limits, rigidity, dialect,
+                  Start/End G-Code, default tab sizes
                 </li>
                 <li>The Feedrate Calculator's remembered material and tool</li>
                 <li>Every saved preset, including the hidden auto-save from your last session</li>

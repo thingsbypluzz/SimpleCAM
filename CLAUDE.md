@@ -131,7 +131,7 @@ być wierny.
   "Edit Mode — select a preset" / "Auto-save Mode Enabled" (kolor błędu
   przy niepoprawnych parametrach). Overlay i Edit Mode wzajemnie się
   wyłączają; stan tylko w pamięci; Edit Mode nie blokuje Generate.
-- **Settings Modal:** Machine, Tabs, Tool Diameters, Appearance, Privacy,
+- **Settings Modal:** Machine, Controller, Tabs, Tool Diameters, Appearance, Privacy,
   Reset, About (szczegóły: `src/components/CLAUDE.md`).
 - **Feedrate Calculator:** ikona przy Feedrate XY w Kroku 3; z materiału,
   freza i limitów maszyny liczy RPM, posuwy, Stepdown i szerokość, „Apply
