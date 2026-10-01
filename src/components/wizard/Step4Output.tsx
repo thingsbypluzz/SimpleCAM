@@ -4,6 +4,7 @@ import { buildFilename, downloadTextFile } from '../../lib/download'
 import { forcedLinearReason } from '../../lib/interpolation'
 import { presetLabel } from '../../lib/presetLabel'
 import { PRESET_SLOT_IDS, type PresetSlotId } from '../../lib/storage'
+import { OPERATION_META } from '../../config/operationMeta'
 import { Checkbox } from './Checkbox'
 import { TextToggle } from './TextToggle'
 import { INTERPOLATION_OPTIONS } from './toggleOptions'
@@ -154,25 +155,30 @@ export function Step4Output({
           {PRESET_SLOT_IDS.map((id) => {
             const existing = presetSlots[id]
             const justSaved = savedSlot === id
+            // BL-87: a saved slot looks exactly like it does in the Header's
+            // Preset Bar (accent frame + the preset's icon); an empty one is
+            // a dashed, dim frame with its number — so the two states differ
+            // by content and border, not by color alone.
+            const PresetIcon = existing ? OPERATION_META[existing.operation].pickIcon(existing) : null
+            const label = existing
+              ? `Overwrite preset [${id}] — ${presetLabel(existing)}`
+              : `Save current settings to preset [${id}] — empty`
             return (
               <button
                 key={id}
                 type="button"
                 onClick={() => handleSaveToPreset(id)}
-                title={
-                  existing
-                    ? `Overwrite preset [${id}] — ${presetLabel(existing)}`
-                    : `Save current settings to preset [${id}]`
-                }
+                title={label}
+                aria-label={label}
                 className={
                   justSaved
                     ? 'flex h-11 w-11 items-center justify-center rounded-md border border-status-success bg-status-success-bg text-sm font-semibold text-status-success'
                     : existing
-                      ? 'flex h-11 w-11 items-center justify-center rounded-md border border-dashed border-empty-border text-sm font-semibold text-empty-fg hover:border-field-border hover:text-muted'
-                      : 'flex h-11 w-11 items-center justify-center rounded-md border border-accent-border bg-accent-bg text-sm font-semibold text-accent-fg shadow-[var(--glow-accent)]'
+                      ? 'flex h-11 w-11 items-center justify-center rounded-md border border-accent-border text-accent-fg shadow-[var(--glow-accent)] hover:bg-accent-bg'
+                      : 'flex h-11 w-11 items-center justify-center rounded-md border border-dashed border-empty-border text-xs font-semibold text-empty-fg hover:border-field-border hover:text-muted'
                 }
               >
-                {justSaved ? '✓' : id}
+                {justSaved ? '✓' : PresetIcon ? <PresetIcon className="h-7 w-7" /> : id}
               </button>
             )
           })}
