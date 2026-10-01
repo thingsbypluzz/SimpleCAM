@@ -52,7 +52,8 @@
 
 - Jedyne źródło kolorów 2D/3D, jako wartości JS (nie CSS custom
   properties). `getFixedColors(themeId, isDark)` — osie, origin, offset,
-  tekst, `holeFill`, **tło** (per Theme, wspólne dla każdej Palety).
+  tekst, `holeFill`, `pocketFloorFill` (dno kieszeni w 2D — połowa krycia
+  `holeFill`), **tło** (per Theme, wspólne dla każdej Palety).
   `getPaletteAccents(paletteId, isDark, themeId)` — grid/toolpath/rapid/
   hole/linking; **Default** czyta `DEFAULT_ACCENTS[themeId]`, **Ocean**/
   **Ember**/**Violet** z `ALTERNATE_PALETTES` (niezależne od Theme).

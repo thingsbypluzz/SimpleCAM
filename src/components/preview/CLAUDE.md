@@ -9,19 +9,15 @@
   (Fit View). Pocket rysowany z listy ruchów silnika (`drawToolpathMoves()`:
   cięcie ciągłe, rapid kreskowany, link kropkowany w kolorze `linking`),
   Surface z `surfaceGeometry`/`surfaceRaster` (linie skanu + strzałki).
-- **Materiał (reguła otwarte/zamknięte jak w 3D):** `stockSheetRect()`
-  daje arkusz o zasięgu płaszczyzny 3D (footprint danych + 25%, z
-  originem, kwadrat domknięty do `niceStep()`); `fillStockSheet()` wypełnia
-  go `holeFill` na warstwie offscreen i wycina pustki (`destination-out`,
-  nachodzące otwory się sumują), bez obrysu krawędzi arkusza. Pustki
-  (Hole(s), Outline Inside, Pocket) — tylko obrys; Outline Outside —
-  wypełniona wyspa bez arkusza; On-line — arkusz wycięty na zewnętrznej
-  krawędzi + wypełniona wyspa, obie krawędzie obrysowane. Surface bez
-  arkusza. Overlay (reguła wspólna z 3D, `lib/overlayStock.ts`): presety
-  nie rysują własnych arkuszy — jeden wspólny arkusz z pustkami wszystkich
-  presetów (`overlaySheetVoids()`), rysowany raz przed wzorcami; brak
-  arkusza, gdy któryś preset jest litą bryłą (Outline Outside/On-line,
-  Surface). Wyspy i obrysy bez zmian.
+- **Materiał:** z modelu `stockModel()` (`lib/stockModel.ts`, ten sam co
+  w 3D), w zasięgu `stockSheetRect()` (footprint danych + 25%, z originem,
+  kwadrat domknięty do `niceStep()` — płaszczyzna 3D). Rysowany raz, przed
+  wzorcami, dla wszystkiego, co widać (żywy wzorzec albo presety Overlay):
+  `fillRegion()` wypełnia lico (`holeFill`) i dna kieszeni
+  (`pocketFloorFill`, słabsze krycie) jedną ścieżką even-odd, bez obrysu.
+  Wzorce rysują tylko krawędzie (`holeStroke`): otwory, kontur nominalny
+  Outline, obie krawędzie On-line, kontur kieszeni / komórek Lightened.
+  Surface poza modelem — wypełnia własny obszar.
   Mostki: `drawGappedCircle()`/`drawGappedRectangle()` — przerywana linia
   (`TAB_DASH`) na łuku/odcinku mostka; materiał je ignoruje.
 - `camera2d.ts` — czysta matematyka kamery (`Camera2D = { scale, centerX,

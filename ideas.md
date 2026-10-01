@@ -322,19 +322,17 @@ faktycznym.
   pamięć ma przetrwać odświeżenie strony. Zgłoszone 2026-09-28.
   Wdrożone: pamięć tylko w sesji (refy w `App.tsx`), bez `localStorage`.
   Pełny opis: `CHANGELOG.md`, `[0.22.10]`.
-- **`BL-77`** *(Otwarty)* 🔴 — **Overlay: jedna wspólna bryła materiału
-  ze wszystkich presetów.** Dziś w Overlay każdy preset rysuje własny
-  materiał (2D: półprzezroczysty arkusz z pustkami, `BL-74`; 3D: tylko
-  bryły/ściany, `BL-75`), a „co zostaje z płyty” widać tylko ze złożenia
-  warstw. Docelowo Overlay byłby świadomy wszystkich dołączonych stocków i
-  budował z nich jedną spójną bryłę — operacje boolowskie: suma (union)
-  materiału albo odjęcie wszystkich pustek od największego arkusza.
-  Wymaga geometrii boolowskiej na wielokątach/okręgach (2D) i bryłach (3D,
-  CSG — dziś świadomie bez, podkładka to `THREE.Shape` + `holes`), więc
-  duży zakres. **`BL-75`** (tańszy krok przed tą pozycją) daje jedną
-  wspólną podkładkę z pustkami, ale tylko gdy w Overlay nie ma litej
-  bryły; ta pozycja rozszerza to o łączenie materiału z litymi bryłami
-  (Outline Outside/On-line, Surface). Zgłoszone 2026-09-28.
+- **`BL-77`** *(Zrealizowany, 2026-10-02)* 🔴 — **Overlay: jedna wspólna
+  bryła materiału ze wszystkich presetów.** Po `BL-75` wspólny arkusz
+  istniał w Overlay tylko wtedy, gdy wszystkie presety były pustkami; przy
+  litej bryle (Outline Outside/On-line, Surface) zostawały przenikające
+  się ściany, a kieszeń nie była wycięta z części. Zgłoszone 2026-09-28.
+  Ustalenia (rozmowa 2026-10-01): materiał = suma wysp minus pustki, bez
+  wysp arkusz; Pocket ma dno, pozostałe pustki są na wylot; dno wszędzie
+  (Overlay i żywy wzorzec, 2D i 3D); Surface poza wspólną bryłą.
+  Wdrożone: `lib/stockModel.ts` — jeden model dla żywego wzorca i Overlay,
+  boole 2D na przekrojach (`polygon-clipping`), bez CSG. Pełny opis:
+  `CHANGELOG.md`, `[0.33.0]`.
 - **`BL-78`** *(Zrealizowany, 2026-09-30)* 🟢 — **Feedrate Calculator: Finish Feed i Stock
   to Leave dla Pocket Finishing Pass.** Dziś kalkulator ich nie liczy —
   Finish Feed startuje z bieżącego Feed XY (`BL-42`). Ustalenia (rozmowa
@@ -583,6 +581,13 @@ Waga z review w nawiasie kwadratowym.
   do „Width [mm]”/„Height [mm]”. Przy okazji Lightened: Rectangle — Layout
   w osobnym wierszu, pod nim Diagonals/Cells X, Rows/Cells Y, Rib Width;
   Circle — Spokes, Hub, Rib Width, a Start w wierszu poniżej.
+- **`BL-94`** *(Otwarty)* 🟢 — **Step 1 Summary: ikony wszystkich
+  operacji.** Zgłoszone 2026-10-02. Dziś Step 1 Summary pokazuje tylko
+  wybraną operację, więc zmiana operacji to trzy kliknięcia: rozwinięcie
+  Kroku 1, przełączenie operacji, wybór wzorca. Pomysł: w Step 1 Summary
+  ikona każdej operacji; klik w ikonę otwiera Krok 1 z tą operacją już
+  wybraną. Do ustalenia: wygląd nieaktywnych ikon (wyszarzone albo inny
+  kolor).
 - **`BL-61`** *(Zrealizowany, 2026-09-27)* 🔴 **[Low, kosztowne w czasie]**
   — **Podglądy duplikują geometrię silnika** — jedna lista ruchów (jak
   Adaptive) dla G-code i podglądu 3D, po jednej operacji na raz. Etapy 1–2
