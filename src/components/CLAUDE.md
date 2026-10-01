@@ -5,18 +5,21 @@
 - Nakładka `bg-black/50 backdrop-blur-sm`; podgląd 3D wstrzymany
   (`renderPaused`). Fokus/Escape/pułapka Tab — `useModalFocus.ts` (wspólne
   z kalkulatorem).
-- Settings Nav w kolejności: **Machine**, **Tabs**, **Tool Diameters**,
-  **Appearance**, **Privacy**, **Reset**, **About** (zawsze ostatnia);
-  aktywna pozycja z `aria-current`.
-- **Machine:** X/Y/Z travel (zapis `onBlur`, tylko `> 0`), G-Code Dialect
-  (natychmiast), Spindle Speed + Min/Max RPM w jednym wierszu (Min < Max,
-  Min może być 0), Spin-up Dwell [s] (może być 0), Max Feed, Rigidity
+- Settings Nav w kolejności: **Machine**, **Controller**, **Tabs**,
+  **Tool Diameters**, **Appearance**, **Privacy**, **Reset**, **About**
+  (zawsze ostatnia); aktywna pozycja z `aria-current`.
+- **Machine** — tylko fizyka maszyny: X/Y/Z travel (zapis `onBlur`, tylko
+  `> 0`), Spindle Speed + Min/Max RPM w jednym wierszu (Min < Max, Min może
+  być 0), Spin-up Dwell [s] (może być 0), Max Feed, Rigidity
   (Light/Medium/Rigid), Router (speed dial) — wybór ustawia Min/Max RPM na
   zakres pokrętła, pod spodem lista pozycji (`config/routers.ts`); przy
-  Marlinie podpowiedź, że `S` bywa PWM 0–255; Start/End G-Code (textarea,
-  commit `onBlur`). Min/Max RPM, Max Feed, Rigidity czyta tylko Feedrate
-  Calculator. Domyślnie `DEFAULT_MACHINE_SETTINGS` (5000/5000/1000 mm, bez
-  realnych limitów).
+  Marlinie podpowiedź, że `S` bywa PWM 0–255. Min/Max RPM, Max Feed,
+  Rigidity czyta tylko Feedrate Calculator. Domyślnie
+  `DEFAULT_MACHINE_SETTINGS` (5000/5000/1000 mm, bez realnych limitów).
+- **Controller** — sterowanie: G-Code Dialect (natychmiast, z opisem, co
+  dialekt zmienia w programie) i Start/End G-Code (textarea, commit
+  `onBlur`). Sekcja to tylko podział w UI — pola należą do
+  `MachineSettings` i zapisują się w `simplecam.machine`, jak **Tabs**.
 - **Tabs:** domyślne rozmiary mostków (Default Tab Count — ta sama
   walidacja co w wizardzie). **Tool Diameters:** edytowalna lista (dodaj/
   usuń, sufit `MAX_TOOL_DIAMETER_COUNT`, blokada usunięcia ostatniej, Reset
