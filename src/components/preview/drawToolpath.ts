@@ -9,7 +9,8 @@ import { computeRasterLines, zigzagWaypoints, type RasterLine } from '../../lib/
 import { pocketCenter } from '../../lib/pocketGeometry'
 import { buildPocketToolpath } from '../../lib/pocket'
 import { movePoints, type MoveKind, type Toolpath } from '../../lib/toolpath'
-import { overlaySheetVoids, pocketVoids, type SheetVoid } from '../../lib/overlayStock'
+import { pocketVoids, stockModel } from '../../lib/stockModel'
+import type { MultiPolygon } from 'polygon-clipping'
 import type { Point2D, PocketMethodType, PocketShape, WizardParams } from '../../types/wizard'
 import type { ThemeId } from '../../types/theme'
 import { cellInscribed, isLightenedShape, lightenedCells } from '../../lib/pocketLightened'
@@ -22,6 +23,7 @@ interface Theme {
   axisY: string
   origin: string
   holeFill: string
+  pocketFloorFill: string
   holeStroke: string
   toolpath: string
   rapid: string
@@ -34,8 +36,9 @@ interface Theme {
 // hole) with the fixed CNC-convention colors (axes/origin/offset/text) —
 // see config/palettes.ts (BL-12) for why the two are split and where the
 // actual color values live. holeStroke maps 1:1 to the palette's `hole`
-// accent; holeFill stays a fixed, low-opacity origin tint (not palette
-// accent) since it's not meant to stand out as a distinguishing color.
+// accent; holeFill/pocketFloorFill stay fixed, low-opacity origin tints
+// (not palette accents) since they're not meant to stand out as a
+// distinguishing color.
 function buildTheme(paletteId: PaletteId, isDark: boolean, themeId: ThemeId): Theme {
   const fixed = getFixedColors(themeId, isDark)
   const accents = getPaletteAccents(paletteId, isDark, themeId)
@@ -46,6 +49,7 @@ function buildTheme(paletteId: PaletteId, isDark: boolean, themeId: ThemeId): Th
     axisY: fixed.axisY,
     origin: fixed.origin,
     holeFill: fixed.holeFill,
+    pocketFloorFill: fixed.pocketFloorFill,
     holeStroke: accents.hole,
     toolpath: accents.toolpath,
     rapid: accents.rapid,
@@ -495,84 +499,30 @@ function onLineRectEdges(pattern: Extract<ResolvedPattern, { kind: 'outlineRect'
   return { inner: corners(innerWidth, innerHeight), outer: corners(outerWidth, outerHeight) }
 }
 
-// Offscreen layer for the stock sheet — reused between frames.
-let sheetLayer: HTMLCanvasElement | null = null
-
-// BL-74: the material around a cut-through shape, like the 3D stock cap —
-// the stock sheet (stockSheetRect()) filled with the stock tint, every void
-// cleared out of it, no outline on the sheet's own edge. Drawn on an
-// offscreen layer so overlapping voids (e.g. a dense hole grid) simply
-// union instead of flipping back to filled the way an even-odd path
-// would; the layer shares the canvas's device-pixel transform. A null
-// sheet draws nothing — in Overlay the shared sheet is drawn once for all
-// presets instead (BL-75, see drawToolpath()).
-function fillStockSheet(
-  ctx: CanvasRenderingContext2D,
-  toPx: (x: number, y: number) => [number, number],
-  scale: number,
-  sheet: StockSheet | null,
-  color: string,
-  voids: readonly SheetVoid[],
-) {
-  if (!sheet) return
-  sheetLayer ??= document.createElement('canvas')
-  const layer = sheetLayer
-  if (layer.width !== ctx.canvas.width || layer.height !== ctx.canvas.height) {
-    layer.width = ctx.canvas.width
-    layer.height = ctx.canvas.height
-  }
-  const lctx = layer.getContext('2d')
-  if (!lctx) return
-  lctx.setTransform(1, 0, 0, 1, 0, 0)
-  lctx.clearRect(0, 0, layer.width, layer.height)
-  lctx.setTransform(ctx.getTransform())
-
-  const half = sheet.size / 2
-  const [x0, y0] = toPx(sheet.centerX - half, sheet.centerY + half)
-  const [x1, y1] = toPx(sheet.centerX + half, sheet.centerY - half)
-  lctx.fillStyle = color
-  lctx.fillRect(x0, y0, x1 - x0, y1 - y0)
-
-  lctx.globalCompositeOperation = 'destination-out'
-  lctx.fillStyle = '#000'
-  for (const v of voids) {
-    lctx.beginPath()
-    if ('circle' in v) {
-      const [px, py] = toPx(v.circle.x, v.circle.y)
-      lctx.arc(px, py, Math.max(0, v.radius) * scale, 0, Math.PI * 2)
-    } else {
-      v.polygon.forEach((p, i) => {
-        const [x, y] = toPx(p.x, p.y)
-        if (i === 0) lctx.moveTo(x, y)
-        else lctx.lineTo(x, y)
-      })
-      lctx.closePath()
-    }
-    lctx.fill()
-  }
-  lctx.globalCompositeOperation = 'source-over'
-
-  ctx.save()
-  ctx.setTransform(1, 0, 0, 1, 0, 0)
-  ctx.drawImage(layer, 0, 0)
-  ctx.restore()
-}
-
-function fillPolygon(ctx: CanvasRenderingContext2D, toPx: (x: number, y: number) => [number, number], corners: Point2D[]) {
+// One face of the stock model (lib/stockModel.ts): its polygons never
+// overlap, and a ring inside another alternates hole / enclosed island, so
+// a single even-odd path fills exactly the material. No outline — the
+// edges are stroked per pattern, with their tab gaps.
+function fillRegion(ctx: CanvasRenderingContext2D, toPx: (x: number, y: number) => [number, number], region: MultiPolygon, color: string) {
   ctx.beginPath()
-  corners.forEach((p, i) => {
-    const [x, y] = toPx(p.x, p.y)
-    if (i === 0) ctx.moveTo(x, y)
-    else ctx.lineTo(x, y)
-  })
-  ctx.closePath()
-  ctx.fill()
+  for (const polygon of region) {
+    for (const ring of polygon) {
+      ring.forEach(([rx, ry], i) => {
+        const [x, y] = toPx(rx, ry)
+        if (i === 0) ctx.moveTo(x, y)
+        else ctx.lineTo(x, y)
+      })
+      ctx.closePath()
+    }
+  }
+  ctx.fillStyle = color
+  ctx.fill('evenodd')
 }
 
-// Hole(s): stock sheet with every hole cut out (BL-74), rapid traverse
-// between holes, then each hole's outline + tool-center toolpath (stroke)
-// + offset vector. The stock ignores tabs (same simplification as the 3D
-// stock cap); the outline and toolpath strokes get real gaps.
+// Hole(s): rapid traverse between holes, then each hole's outline +
+// tool-center toolpath (stroke) + offset vector. The holes are voids in
+// the stock (drawn once by drawToolpath()), so only their outline is drawn
+// here — with real tab gaps, which the stock itself ignores.
 function drawHolesGeometry(
   ctx: CanvasRenderingContext2D,
   toPx: (x: number, y: number) => [number, number],
@@ -582,16 +532,9 @@ function drawHolesGeometry(
   arrowSize: number,
   showStock: boolean,
   showToolpath: boolean,
-  sheet: StockSheet | null,
 ) {
   const { points, holeRadius, toolPathRadius, params } = pattern
   const { geometry } = params
-
-  // Stock sheet with every hole cut out (BL-74) — the holes themselves
-  // are voids, so only their outline is drawn below.
-  if (showStock) {
-    fillStockSheet(ctx, toPx, scale, sheet, theme.holeFill, points.map((p) => ({ circle: p, radius: holeRadius })))
-  }
 
   // Rapid traverse between holes, through each hole's actual descent-start
   // XY (center + toolPathRadius on +X) — matches the real G-code
@@ -642,12 +585,10 @@ function drawHolesGeometry(
   drawOffsetVector(ctx, toPx, geometry.offsetX, geometry.offsetY, theme, arrowSize)
 }
 
-// Circle Outline: material by offset mode, same rule as the 3D walls
-// (BL-74) — Inside: stock sheet with the shape cut out (a void); Outside:
-// the shape itself filled (a kept island, no stock around it); On-line:
-// stock sheet cut at the outer edge plus the filled inner island, a
-// tool-wide empty ring between them. Edges stroked with tab gaps, then the
-// tool-center toolpath on top.
+// Circle Outline: the real edges of the cut — the nominal circle, or
+// On-line's inner and outer edge around the tool-wide band — stroked with
+// tab gaps, then the tool-center toolpath on top. The material itself
+// comes from the stock model (drawToolpath()).
 function drawOutlineCircleGeometry(
   ctx: CanvasRenderingContext2D,
   toPx: (x: number, y: number) => [number, number],
@@ -657,7 +598,6 @@ function drawOutlineCircleGeometry(
   arrowSize: number,
   showStock: boolean,
   showToolpath: boolean,
-  sheet: StockSheet | null,
 ) {
   const { center, nominalRadius, toolRadius, tabRanges, params } = pattern
   const [px, py] = toPx(center.x, center.y)
@@ -668,15 +608,6 @@ function drawOutlineCircleGeometry(
       offsetMode === 'onLine'
         ? [onLineCircleEdges(params.outline).innerRadius, onLineCircleEdges(params.outline).outerRadius]
         : [nominalRadius]
-    if (offsetMode !== 'outside') {
-      fillStockSheet(ctx, toPx, scale, sheet, theme.holeFill, [{ circle: center, radius: edges[edges.length - 1] }])
-    }
-    if (offsetMode !== 'inside') {
-      ctx.beginPath()
-      ctx.arc(px, py, edges[0] * scale, 0, Math.PI * 2)
-      ctx.fillStyle = theme.holeFill
-      ctx.fill()
-    }
     ctx.strokeStyle = theme.holeStroke
     ctx.lineWidth = 1
     for (const r of edges) drawGappedCircle(ctx, px, py, r * scale, tabRanges)
@@ -696,20 +627,18 @@ function drawOutlineCircleGeometry(
   drawOffsetVector(ctx, toPx, params.outline.offsetX, params.outline.offsetY, theme, arrowSize)
 }
 
-// Rectangle Outline: same offset-mode material rule as Circle Outline
-// (BL-74), walking 4 corners instead of a radius. On-line's edges reuse
+// Rectangle Outline: same as Circle Outline, walking 4 corners instead of
+// a radius. On-line's edges reuse
 // the tool path's tab fractions — a tab sits at the same relative spot on
 // every parallel edge.
 function drawOutlineRectGeometry(
   ctx: CanvasRenderingContext2D,
   toPx: (x: number, y: number) => [number, number],
-  scale: number,
   pattern: Extract<ResolvedPattern, { kind: 'outlineRect' }>,
   theme: Theme,
   arrowSize: number,
   showStock: boolean,
   showToolpath: boolean,
-  sheet: StockSheet | null,
 ) {
   const { nominalCorners, toolCorners, sideTabRanges, params } = pattern
 
@@ -717,13 +646,6 @@ function drawOutlineRectGeometry(
     const { offsetMode } = params.outline
     const onLine = onLineRectEdges(pattern)
     const edges = offsetMode === 'onLine' ? [onLine.inner, onLine.outer] : [nominalCorners]
-    if (offsetMode !== 'outside') {
-      fillStockSheet(ctx, toPx, scale, sheet, theme.holeFill, [{ polygon: edges[edges.length - 1] }])
-    }
-    if (offsetMode !== 'inside') {
-      ctx.fillStyle = theme.holeFill
-      fillPolygon(ctx, toPx, edges[0])
-    }
     ctx.strokeStyle = theme.holeStroke
     ctx.lineWidth = 1
     for (const corners of edges) drawGappedRectangle(ctx, toPx, corners, sideTabRanges)
@@ -847,8 +769,8 @@ function drawSurfaceGeometry(
   drawOffsetVector(ctx, toPx, params.surface.offsetX, params.surface.offsetY, theme, arrowSize)
 }
 
-// Pocket: nominal boundary (fill, same convention as Outline/Surface) +
-// toolpath — the engine's own move list for every method (BL-61), so the
+// Pocket: nominal boundary (stroke — its floor is filled by the stock
+// model, drawToolpath()) + toolpath — the engine's own move list for every method (BL-61), so the
 // Helix entry, ring-to-ring ramps, laps and raster chain are exactly what
 // pocket.ts cuts, never a re-derivation of it.
 function drawPocketGeometry(
@@ -860,21 +782,17 @@ function drawPocketGeometry(
   arrowSize: number,
   showStock: boolean,
   showToolpath: boolean,
-  sheet: StockSheet | null,
 ) {
   const { center, nominal, toolpath, params } = pattern
   const [cx, cy] = toPx(center.x, center.y)
 
-  // The pocket is a void (BL-74): stock sheet with its outline cut out,
-  // the outline itself only stroked. Lightened (OP-6): one void per cell.
+  // Lightened (OP-6): one outline per cell.
   const lightened = isLightenedShape(params.pocket.shape)
   if (showStock) {
     ctx.strokeStyle = theme.holeStroke
     ctx.lineWidth = 1
     if (lightened) {
-      const voids = pocketVoids(params.pocket)
-      fillStockSheet(ctx, toPx, scale, sheet, theme.holeFill, voids)
-      for (const v of voids) {
+      for (const v of pocketVoids(params.pocket)) {
         if (!('polygon' in v)) continue
         ctx.beginPath()
         v.polygon.forEach((p, i) => {
@@ -886,7 +804,6 @@ function drawPocketGeometry(
         ctx.stroke()
       }
     } else if (nominal.shape === 'circle') {
-      fillStockSheet(ctx, toPx, scale, sheet, theme.holeFill, [{ circle: center, radius: nominal.radius }])
       ctx.beginPath()
       ctx.arc(cx, cy, nominal.radius * scale, 0, Math.PI * 2)
       ctx.stroke()
@@ -897,7 +814,6 @@ function drawPocketGeometry(
         { x: center.x + nominal.halfWidth, y: center.y + nominal.halfHeight },
         { x: center.x - nominal.halfWidth, y: center.y + nominal.halfHeight },
       ]
-      fillStockSheet(ctx, toPx, scale, sheet, theme.holeFill, [{ polygon: corners }])
       ctx.beginPath()
       corners.forEach((p, i) => {
         const [x, y] = toPx(p.x, p.y)
@@ -939,23 +855,22 @@ function drawPatternGeometry(
   arrowSize: number,
   showStock: boolean,
   showToolpath: boolean,
-  sheet: StockSheet | null,
 ) {
   switch (pattern.kind) {
     case 'holes':
-      drawHolesGeometry(ctx, toPx, scale, pattern, theme, arrowSize, showStock, showToolpath, sheet)
+      drawHolesGeometry(ctx, toPx, scale, pattern, theme, arrowSize, showStock, showToolpath)
       break
     case 'outlineCircle':
-      drawOutlineCircleGeometry(ctx, toPx, scale, pattern, theme, arrowSize, showStock, showToolpath, sheet)
+      drawOutlineCircleGeometry(ctx, toPx, scale, pattern, theme, arrowSize, showStock, showToolpath)
       break
     case 'outlineRect':
-      drawOutlineRectGeometry(ctx, toPx, scale, pattern, theme, arrowSize, showStock, showToolpath, sheet)
+      drawOutlineRectGeometry(ctx, toPx, pattern, theme, arrowSize, showStock, showToolpath)
       break
     case 'surface':
       drawSurfaceGeometry(ctx, toPx, pattern, theme, arrowSize, showStock, showToolpath)
       break
     case 'pocket':
-      drawPocketGeometry(ctx, toPx, scale, pattern, theme, arrowSize, showStock, showToolpath, sheet)
+      drawPocketGeometry(ctx, toPx, scale, pattern, theme, arrowSize, showStock, showToolpath)
       break
   }
 }
@@ -1081,19 +996,26 @@ export function drawToolpath(
   ctx.fillText('Y', originPxX + 5, EDGE_MARGIN - 5)
   ctx.font = '10px ui-monospace, monospace'
 
-  // One stock sheet for every drawn pattern — the 3D material plane's
-  // footprint. The live pattern cuts its own voids out of it (BL-74). In
-  // Overlay the presets share ONE sheet with every preset's voids cut out,
-  // drawn once here — or none, when any preset is a solid of its own
-  // (Outline Outside/On-line, Surface), same rule as 3D (BL-75).
-  const sheet = stockSheetRect(patternFootprint(allPatterns))
-  const isOverlay = overlayParams.length > 0 && !showActivePattern
-  if (isOverlay && showStock) {
-    const voids = overlaySheetVoids(overlayParams)
-    if (voids) fillStockSheet(ctx, toPx, camera.scale, sheet, theme.holeFill, voids)
+  // Stock: one model of everything drawn (lib/stockModel.ts, the same one
+  // the 3D Preview builds), within the 3D material plane's footprint — the
+  // uncut face, and pocket floors in a fainter tint. Drawn once, before
+  // the patterns; Surface is not part of it and fills its own area.
+  if (showStock) {
+    const sheet = stockSheetRect(patternFootprint(allPatterns))
+    const half = sheet.size / 2
+    const model = stockModel([...overlayParams, ...(showActivePattern ? [params] : [])], {
+      minX: sheet.centerX - half,
+      minY: sheet.centerY - half,
+      maxX: sheet.centerX + half,
+      maxY: sheet.centerY + half,
+    })
+    if (model) {
+      fillRegion(ctx, toPx, model.top, theme.holeFill)
+      for (const floor of model.floors) fillRegion(ctx, toPx, floor.region, theme.pocketFloorFill)
+    }
   }
   for (const pattern of allPatterns) {
-    drawPatternGeometry(ctx, toPx, camera.scale, pattern, theme, arrowSize, showStock, showToolpath, isOverlay ? null : sheet)
+    drawPatternGeometry(ctx, toPx, camera.scale, pattern, theme, arrowSize, showStock, showToolpath)
   }
 
   // Origin marker

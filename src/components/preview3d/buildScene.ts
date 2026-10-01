@@ -16,9 +16,9 @@ import { buildSurfaceToolpath } from '../../lib/surface'
 import { buildPocketToolpath } from '../../lib/pocket'
 import { movePoints, type MoveKind, type Toolpath } from '../../lib/toolpath'
 import { pocketCenter } from '../../lib/pocketGeometry'
-import { cellLoop, isLightenedShape, lightenedCells } from '../../lib/pocketLightened'
 import { stockSheetRect } from '../preview/drawToolpath'
-import { overlaySheetVoids, sheetMinusVoids } from '../../lib/overlayStock'
+import { stockModel, type StockModel } from '../../lib/stockModel'
+import type { MultiPolygon, Ring } from 'polygon-clipping'
 import type { Point2D, PocketShape, WizardParams } from '../../types/wizard'
 import type { ThemeId } from '../../types/theme'
 import type { Grid3DLabelSize } from '../../types/appearance'
@@ -40,37 +40,20 @@ function toThree(x: number, y: number, z: number): THREE.Vector3 {
   return new THREE.Vector3(x, z, -y)
 }
 
-// Lifts any flat, solid "cap" surface a hair above its nominal startZ
-// height so it never renders exactly coplanar with the material plane
-// (fixed at world Y=0) or the grid (world Y=0.01, see the GridHelper
-// below) — both are semi-transparent flat surfaces, so an exact Y match
-// z-fights (visible as a moire/interpolation flicker), most commonly hit
-// at the default Start Z = 0. Bigger than the grid's own 0.01 offset so
-// one lift clears both possible collisions at once. Purely cosmetic —
-// 0.02mm is invisible at any real part scale.
-//
-// Two different kinds of object need this, not just the stock cap
-// (buildStockCapObject) the name once implied: any *closed* Outline wall
-// — a closed CylinderGeometry (Circle, Outside or On-line's inner island)
-// or a closed BoxGeometry (Rectangle, same two cases, see
-// buildRectWallMesh) — has its own real top face at world Y = startZ,
-// from its geometry, not from a separate cap object. An *open* wall (no
-// visible top/bottom faces) has nothing at that height to collide with,
-// so it's left alone.
+// Lifts a flat top face a hair above its nominal height so it never
+// renders exactly coplanar with the material plane (world Y=0) or the grid
+// (world Y=0.01, see the GridHelper below) — all semi-transparent flat
+// surfaces, so an exact Y match z-fights (a moire flicker). Bigger than the
+// grid's own 0.01 offset so one lift clears both. Purely cosmetic — 0.02mm
+// is invisible at any real part scale. Used by the stock model's top face
+// (buildStockModelObjects) and a closed box's top (buildRectWallMesh).
 const SOLID_CAP_Z_LIFT = 0.02
 
-// Side/wall surfaces (bore cylinders, Outline walls) are drawn at this
-// fraction of theme.hole's brightness — always darker than any cap/top
-// surface next to them, including the separate flat stock cap object
-// (buildStockCapObject), which stays at full theme.hole. MeshBasicMaterial
+// Vertical faces are drawn at this fraction of theme.hole's brightness —
+// always darker than any horizontal face next to them. MeshBasicMaterial
 // has no real lighting model, so this flat-shaded-sprite-style contrast is
-// the only cue that a wall is a distinct vertical surface and not just
-// part of the same flat tint as the cap sitting at its rim — previously
-// applied only to *closed* walls (open ones were assumed to already read
-// as 3D via their visible missing cap, but that assumption breaks once a
-// same-colored external stock cap sits right at the opening). 0.5, not the
-// original 0.6, after user feedback that 0.6 read as too subtle against
-// the dark theme background.
+// the only cue that a wall is a distinct vertical surface and not part of
+// the flat tint of the face at its rim.
 const WALL_SHADE_FACTOR = 0.5
 
 // Desired on-screen size (CSS px) of EVERY text sprite in the scene — the
@@ -313,17 +296,14 @@ type ResolvedPattern =
       shape: PocketShape
       nominalRadius: number // circle only
       nominalCorners: Point2D[] // rect only, [] for circle
-      // Lightened (OP-6): every cell's nominal outline — the voids; [] otherwise.
-      cellPolygons: Point2D[][]
     }
 
 function resolvePattern(params: WizardParams): ResolvedPattern {
   if (params.operation === 'pocket') {
     const { pocket } = params
     const center = pocketCenter(pocket)
-    const cellPolygons = isLightenedShape(pocket.shape) ? lightenedCells(pocket).map((c) => cellLoop(c, 0)) : []
     if (pocket.shape === 'circle' || pocket.shape === 'circleLightened') {
-      return { kind: 'pocket', params, center, shape: pocket.shape, nominalRadius: pocket.diameter / 2, nominalCorners: [], cellPolygons }
+      return { kind: 'pocket', params, center, shape: pocket.shape, nominalRadius: pocket.diameter / 2, nominalCorners: [] }
     }
     const nominalCorners: Point2D[] = [
       { x: center.x - pocket.width / 2, y: center.y - pocket.height / 2 },
@@ -331,7 +311,7 @@ function resolvePattern(params: WizardParams): ResolvedPattern {
       { x: center.x + pocket.width / 2, y: center.y + pocket.height / 2 },
       { x: center.x - pocket.width / 2, y: center.y + pocket.height / 2 },
     ]
-    return { kind: 'pocket', params, center, shape: pocket.shape, nominalRadius: 0, nominalCorners, cellPolygons }
+    return { kind: 'pocket', params, center, shape: pocket.shape, nominalRadius: 0, nominalCorners }
   }
   if (params.operation === 'surface') {
     const { surface } = params
@@ -539,18 +519,17 @@ function createSegmentBuilder3D(start: THREE.Vector3) {
 }
 
 // Builds everything that's per-pattern (BL-3 overlay): offset vector, rapid
-// XY traverse, and per-hole rapid-Z lines + bore cylinder + toolpath line.
-// The material plane/grid/origin/axes are NOT per-pattern — built once by
-// the caller from the combined bounds.
+// XY traverse and per-hole toolpath lines. The material plane/grid/origin/
+// axes and the stock (buildStockModelObjects()) are NOT per-pattern — built
+// once by the caller.
 function buildHolesPatternObjects(
   pattern: Extract<ResolvedPattern, { kind: 'holes' }>,
   theme: Theme,
   span: number,
   arrowSize: number,
-  showStock: boolean,
   showToolpath: boolean,
 ): THREE.Object3D[] {
-  const { points, holeRadius, params } = pattern
+  const { points, params } = pattern
   const { geometry, feeds, method } = params
   const objects: THREE.Object3D[] = []
 
@@ -566,45 +545,11 @@ function buildHolesPatternObjects(
     objects.push(buildToolpathLine3D(rapidPoints, 'dashed', theme, span))
   }
 
-  for (const p of points) {
-    // Final bore (semi-transparent cylinder, top at Z=0 down to
-    // -totalDepth — the real material extent. Start Z doesn't affect this
-    // at all (BL-37): it's where the feed-rate descent begins, not a
-    // material-height concept — totalDepth is already anchored to Z=0 on
-    // its own (see helix.ts/standardHole.ts, the cut bottom is always
-    // -totalDepth regardless of startZ). The toolpath's own above-material
-    // segment (Start Z down to Z=0) is left to visibly poke out above this
-    // block — that's the real, honest picture of what's happening: feed-
-    // rate motion through open air before the tool actually reaches
-    // material.
-    if (showStock) {
-      const boreHeight = geometry.totalDepth
-      const hole = new THREE.Mesh(
-        new THREE.CylinderGeometry(holeRadius, holeRadius, boreHeight, 32, 1, true),
-        new THREE.MeshBasicMaterial({
-          color: new THREE.Color(theme.hole).multiplyScalar(WALL_SHADE_FACTOR),
-          transparent: true,
-          opacity: 0.3,
-          side: THREE.DoubleSide,
-          // Same depthWrite fix as the stock cap (0.16.2) — without it,
-          // overlaid patterns' bore cylinders can win the depth test
-          // against each other's coils/walls depending on camera-distance
-          // sort order, hard-hiding one instead of blending, and flipping
-          // which one wins with tiny camera moves. Never an issue for a
-          // single pattern alone (at most its own front/back wall overlap),
-          // but overlay mode routes several independent patterns' bore
-          // cylinders through this same near-camera screen space.
-          depthWrite: false,
-        }),
-      )
-      hole.position.copy(toThree(p.x, p.y, -geometry.totalDepth / 2))
-      objects.push(hole)
-    }
-
-    // The engine's own move list for this hole (BL-61) — rapid down to
-    // Start Z, every turn/pass/tab exactly as the G-code has it — plus the
-    // retract to Safe Z assembleProgram() appends after each hole.
-    if (showToolpath) {
+  // The engine's own move list for each hole (BL-61) — rapid down to
+  // Start Z, every turn/pass/tab exactly as the G-code has it — plus the
+  // retract to Safe Z assembleProgram() appends after each hole.
+  if (showToolpath) {
+    for (const p of points) {
       const toolpath = method === 'helix' ? buildHelixCircleToolpath(p.x, p.y, opts) : buildStandardCircleToolpath(p.x, p.y, opts)
       objects.push(...toolpathLines3D(toolpath, theme, span, feeds.safeZ))
     }
@@ -618,115 +563,13 @@ function buildOutlineCirclePatternObjects(
   theme: Theme,
   span: number,
   arrowSize: number,
-  showStock: boolean,
   showToolpath: boolean,
 ): THREE.Object3D[] {
-  const { center, nominalRadius, params } = pattern
+  const { center, params } = pattern
   const { outline, feeds } = params
   const objects: THREE.Object3D[] = []
 
   objects.push(...buildOffsetVectorObjects(outline.offsetX, outline.offsetY, theme, arrowSize))
-
-  // Nominal shape (semi-transparent cylinder) — same convention as Hole(s):
-  // the finished material boundary, not the tool-corrected path. Open/closed
-  // follows the offset mode's physical meaning (BL-27): Outside means this
-  // shape IS the kept, solid part (closed); Inside means material is removed
-  // from the interior, a void like a hole/pocket (open, no caps).
-  //
-  // On-line (BL-28) gets two walls instead of one: the tool travels centered
-  // on the nominal line, so it leaves two real physical edges — an inner
-  // edge (a standalone island, rendered Outside-style/closed) and an outer
-  // edge (still connected to the surrounding stock, rendered Inside-style/
-  // open) — replacing the single nominal-radius wall, which doesn't
-  // correspond to any real edge for On-line.
-  //
-  // Top sits at Z=0 (the real material surface), height exactly
-  // totalDepth — Start Z doesn't affect this at all (BL-37): it's where
-  // the feed-rate descent begins, not a material-height concept. The
-  // toolpath's own above-material segment (Start Z down to Z=0) is left
-  // to visibly poke out above this wall.
-  if (showStock) {
-    const boreHeight = outline.totalDepth
-    const boreCenterZ = -outline.totalDepth / 2
-    // side depends on closed, same reasoning as buildRectWallMesh: a closed
-    // cylinder (nothing hollow to look into) only needs THREE.FrontSide,
-    // which also avoids the same-mesh transparent self-overlap artifact
-    // DoubleSide has (WebGL doesn't depth-sort triangles within one draw
-    // call, so a near face and a far face of the same transparent cylinder
-    // can blend in the wrong order depending on camera angle). An open
-    // cylinder (Inside, On-line's outer edge) still needs DoubleSide to show
-    // its interior wall from inside/above.
-    //
-    // For closed cylinders, the lateral (side) surface — CylinderGeometry's
-    // own group 0, with the top/bottom caps as groups 1/2 — is rendered a
-    // shade darker than the caps (WALL_SHADE_FACTOR), same fake-shading
-    // reasoning as buildRectWallMesh: without it a solid closed cylinder
-    // reads as a flat tinted circle instead of a 3D volume. Open cylinders
-    // have no cap geometry at all (openEnded=true means only the side
-    // group exists), so their single material IS the side — it gets the
-    // same darkened color too, not the plain theme.hole it used to keep:
-    // the darkening needs to hold against the separate flat stock cap
-    // object sitting at the rim, not just against a cap that's part of
-    // this same mesh.
-    // depthWrite: false on both materials — same fix as the stock cap
-    // (0.16.2) and the Hole(s) bore cylinder above, generalized: overlay
-    // mode can stack several independent patterns' walls in the same
-    // screen space, and without this, one can win the depth test against
-    // another (or against a different pattern's coil) depending on
-    // camera-distance sort order, hard-hiding it instead of blending.
-    const wallMaterial = (closed: boolean): THREE.Material | THREE.Material[] => {
-      const side = closed ? THREE.FrontSide : THREE.DoubleSide
-      const sideColor = new THREE.Color(theme.hole).multiplyScalar(WALL_SHADE_FACTOR)
-      const sideMaterial = new THREE.MeshBasicMaterial({
-        color: sideColor,
-        transparent: true,
-        opacity: 0.3,
-        side,
-        depthWrite: false,
-      })
-      if (!closed) return sideMaterial
-      const capMaterial = new THREE.MeshBasicMaterial({
-        color: theme.hole,
-        transparent: true,
-        opacity: 0.3,
-        side,
-        depthWrite: false,
-      })
-      return [sideMaterial, capMaterial, capMaterial]
-    }
-
-    if (outline.offsetMode === 'onLine') {
-      const { innerRadius, outerRadius } = onLineCircleEdges(outline)
-      // Inner wall is closed (false = not open-ended) — its own top face
-      // sits at world Y = 0, same height the material plane/grid sit at,
-      // so it needs the same z-fight lift as the stock cap.
-      const innerWall = new THREE.Mesh(
-        new THREE.CylinderGeometry(innerRadius, innerRadius, boreHeight, 32, 1, false),
-        wallMaterial(true),
-      )
-      innerWall.position.copy(toThree(center.x, center.y, boreCenterZ + SOLID_CAP_Z_LIFT))
-      objects.push(innerWall)
-
-      const outerWall = new THREE.Mesh(
-        new THREE.CylinderGeometry(outerRadius, outerRadius, boreHeight, 32, 1, true),
-        wallMaterial(false),
-      )
-      outerWall.position.copy(toThree(center.x, center.y, boreCenterZ))
-      objects.push(outerWall)
-    } else {
-      const openEnded = outline.offsetMode !== 'outside'
-      const shape = new THREE.Mesh(
-        new THREE.CylinderGeometry(nominalRadius, nominalRadius, boreHeight, 32, 1, openEnded),
-        wallMaterial(!openEnded),
-      )
-      // Only the closed (Outside) case has a real top face to lift — open
-      // (Inside) has no cap geometry there at all.
-      shape.position.copy(
-        toThree(center.x, center.y, openEnded ? boreCenterZ : boreCenterZ + SOLID_CAP_Z_LIFT),
-      )
-      objects.push(shape)
-    }
-  }
 
   // Engine move list (BL-61), same as Hole(s).
   if (showToolpath) {
@@ -744,57 +587,16 @@ function boundingCenter(points: Point2D[]): Point2D {
   return { x: (Math.min(...xs) + Math.max(...xs)) / 2, y: (Math.min(...ys) + Math.max(...ys)) / 2 }
 }
 
-// Builds one semi-transparent box wall from a set of corners — aligned with
-// CNC X/Y, no rotation needed (see the comment at its call site below for
-// why). Open/closed follows BL-27's rule: BoxGeometry has no `openEnded`
-// like CylinderGeometry, so "open" hides the top/bottom cap faces (indices
-// 2/3 of BoxGeometry's default [+x,-x,+y,-y,+z,-z] groups — box-local Y is
-// already the vertical bore axis here) via a per-face material array,
-// instead of a hand-built tunnel BufferGeometry. Factored out (BL-28) since
-// On-line now needs this twice (inner + outer wall) in addition to the
-// single-wall case every other offset mode still uses. When `closed`, the
-// box's own top face is a real, solid cap at world Y = startZ — same
-// z-fight risk against the material plane/grid as the stock cap, so it
-// gets the same SOLID_CAP_Z_LIFT nudge. An open wall's hidden cap faces
-// have nothing there to collide with.
+// One semi-transparent box from a set of corners — aligned with CNC X/Y,
+// so BoxGeometry needs no rotation (toThree() is a pure axis permutation +
+// negation). Surface's stock block is its only user. `closed` hides the
+// top/bottom faces when false (groups 2/3 of BoxGeometry's
+// [+x,-x,+y,-y,+z,-z]); a closed box's top face gets SOLID_CAP_Z_LIFT.
 //
-// `side` depends on `closed` too: a closed box (Outside, On-line's inner
-// island, Surface's stock — nothing hollow to look into) only ever needs
-// to be seen from outside, so THREE.FrontSide (culls the far faces) is
-// correct and, crucially, avoids a real rendering artifact DoubleSide has
-// here — WebGL doesn't depth-sort triangles *within* one draw call, so a
-// transparent DoubleSide box viewed at an angle where a near face and a
-// far face of the SAME box both project to the same pixels blends both
-// (in whatever order the GPU happens to rasterize them, not by distance),
-// making the box look inconsistently darker/lighter depending on camera
-// angle and position — reported against Surface's stock block, alongside
-// the separate plane/grid depthWrite fix above. An open wall (Inside,
-// On-line's outer edge) still needs DoubleSide — the whole point of
-// leaving it open is to see the interior wall from inside/above, which
-// means seeing that geometry's back face.
-// Open vertical walls along a closed polygon, Z=0 down to −height — a
-// Lightened cell's sides (OP-6). Same shading/transparency as the other
-// open walls.
-function buildPolygonWallMesh(polygon: Point2D[], height: number, theme: Theme): THREE.Mesh {
-  const positions: number[] = []
-  for (let i = 0; i < polygon.length; i++) {
-    const a = polygon[i]
-    const b = polygon[(i + 1) % polygon.length]
-    const at = toThree(a.x, a.y, 0)
-    const ab = toThree(a.x, a.y, -height)
-    const bt = toThree(b.x, b.y, 0)
-    const bb = toThree(b.x, b.y, -height)
-    positions.push(at.x, at.y, at.z, ab.x, ab.y, ab.z, bb.x, bb.y, bb.z, at.x, at.y, at.z, bb.x, bb.y, bb.z, bt.x, bt.y, bt.z)
-  }
-  const geometry = new THREE.BufferGeometry()
-  geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3))
-  const color = new THREE.Color(theme.hole).multiplyScalar(WALL_SHADE_FACTOR)
-  return new THREE.Mesh(
-    geometry,
-    new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.3, side: THREE.DoubleSide, depthWrite: false }),
-  )
-}
-
+// A closed box is FrontSide: WebGL doesn't depth-sort triangles within one
+// draw call, so a transparent DoubleSide box blends its near and far faces
+// in rasterization order and looks darker/lighter depending on the camera
+// angle.
 function buildRectWallMesh(corners: Point2D[], boreHeight: number, centerZ: number, closed: boolean, theme: Theme): THREE.Mesh {
   const center = boundingCenter(corners)
   const width = Math.max(...corners.map((p) => p.x)) - Math.min(...corners.map((p) => p.x))
@@ -843,71 +645,13 @@ function buildOutlineRectPatternObjects(
   theme: Theme,
   span: number,
   arrowSize: number,
-  showStock: boolean,
   showToolpath: boolean,
 ): THREE.Object3D[] {
-  const { nominalCorners, params } = pattern
+  const { params } = pattern
   const { outline, feeds } = params
   const objects: THREE.Object3D[] = []
 
   objects.push(...buildOffsetVectorObjects(outline.offsetX, outline.offsetY, theme, arrowSize))
-
-  // Nominal shape (semi-transparent box, aligned with CNC X/Y — BoxGeometry's
-  // own local X/Y/Z axes need no rotation here, unlike ExtrudeGeometry,
-  // since our fixed toThree() mapping is a pure axis permutation+negation:
-  // Three's box-X == CNC width, box-Y == vertical bore height, box-Z ==
-  // CNC height (mirrored in position by the -y term, but a centered box's
-  // extent along an axis is symmetric either way)).
-  //
-  // Open/closed follows BL-27's offset-mode rule (see buildRectWallMesh).
-  // On-line (BL-28) gets two walls instead of one, same reasoning as
-  // Circle above: the tool travels centered on the nominal line, leaving
-  // an inner edge (standalone island, closed) and an outer edge (still
-  // connected to stock, open) — replacing the single nominal-corner wall,
-  // which doesn't correspond to a real edge for On-line.
-  //
-  // Top sits at Z=0 (the real material surface), height exactly
-  // totalDepth — Start Z doesn't affect this at all (BL-37): it's where
-  // the feed-rate descent begins, not a material-height concept. The
-  // toolpath's own above-material segment (Start Z down to Z=0) is left
-  // to visibly poke out above this wall.
-  if (showStock) {
-    const boreHeight = outline.totalDepth
-    const boreCenterZ = -outline.totalDepth / 2
-
-    if (outline.offsetMode === 'onLine' && outline.shape !== 'circle') {
-      const { innerWidth, innerHeight, outerWidth, outerHeight } = onLineRectDimensions(
-        outline.width,
-        outline.height,
-        outline.toolDiameter,
-      )
-      const innerCorners = rectCorners(
-        outline.shape,
-        outline.width,
-        outline.height,
-        innerWidth,
-        innerHeight,
-        outline.offsetX,
-        outline.offsetY,
-        'ccw',
-      )
-      const outerCorners = rectCorners(
-        outline.shape,
-        outline.width,
-        outline.height,
-        outerWidth,
-        outerHeight,
-        outline.offsetX,
-        outline.offsetY,
-        'ccw',
-      )
-      objects.push(buildRectWallMesh(innerCorners, boreHeight, boreCenterZ, true, theme))
-      objects.push(buildRectWallMesh(outerCorners, boreHeight, boreCenterZ, false, theme))
-    } else {
-      const closed = outline.offsetMode === 'outside'
-      objects.push(buildRectWallMesh(nominalCorners, boreHeight, boreCenterZ, closed, theme))
-    }
-  }
 
   // Engine move list (BL-61), same as every other operation.
   if (showToolpath) {
@@ -925,12 +669,11 @@ function buildOutlineRectPatternObjects(
 // min/max), just passed the Surface footprint's 4 corners instead of an
 // Outline perimeter's. Closed (real top cap), matching Outline's Outside
 // treatment — Surface always represents kept, solid material, never a
-// void/pocket the way Hole(s)/Outline Inside do. No separate
-// stock-cap-with-cutout concept applies to Surface (see
-// buildStockCapObject's early return below).
+// void/pocket the way Hole(s)/Outline Inside do — and not part of the
+// shared stock model (lib/stockModel.ts), which leaves Surface out.
 //
-// Unlike Hole(s)/Outline's bore/wall (which spans the actual cut, top at
-// +startZ down to -totalDepth), this block deliberately shows the
+// Unlike that model (which spans the actual cut, Z=0 down to
+// -totalDepth), this block deliberately shows the
 // RESULTING shape of the stock after facing, not the cut cavity: its top
 // face sits at the new machined surface (-totalDepth, absolute — startZ
 // only lengthens the approach from above and never shifts where cutting
@@ -974,49 +717,18 @@ function buildSurfacePatternObjects(
   return objects
 }
 
-// Open geometry (Inside model, see CLAUDE.md's Pocket design notes) —
-// Pocket always removes material from inside a closed boundary, the same
-// physical situation as Outline's Inside offset mode, so it reuses that
-// exact wall treatment (open cylinder/box, DoubleSide, no cap, side walls
-// shaded WALL_SHADE_FACTOR darker than a cap — here there's no cap at all,
-// so the shading applies to the only material there is, same as Outline's
-// open-wall case). Top sits at Z=0, height exactly totalDepth, same
-// Start-Z-independent convention as Hole(s)/Outline (BL-37).
 function buildPocketPatternObjects(
   pattern: Extract<ResolvedPattern, { kind: 'pocket' }>,
   theme: Theme,
   span: number,
   arrowSize: number,
-  showStock: boolean,
   showToolpath: boolean,
 ): THREE.Object3D[] {
-  const { center, shape, nominalRadius, nominalCorners, cellPolygons, params } = pattern
+  const { params } = pattern
   const { pocket, feeds } = params
   const objects: THREE.Object3D[] = []
 
   objects.push(...buildOffsetVectorObjects(pocket.offsetX, pocket.offsetY, theme, arrowSize))
-
-  if (showStock) {
-    const boreHeight = pocket.totalDepth
-    const boreCenterZ = -pocket.totalDepth / 2
-    // Lightened: one wall per cell — none while no cell is valid (e.g. a
-    // field mid-edit), never the solid shapes' fallbacks.
-    if (isLightenedShape(shape)) {
-      for (const polygon of cellPolygons) {
-        if (polygon.length >= 3) objects.push(buildPolygonWallMesh(polygon, boreHeight, theme))
-      }
-    } else if (shape === 'circle') {
-      const sideColor = new THREE.Color(theme.hole).multiplyScalar(WALL_SHADE_FACTOR)
-      const wall = new THREE.Mesh(
-        new THREE.CylinderGeometry(nominalRadius, nominalRadius, boreHeight, 32, 1, true),
-        new THREE.MeshBasicMaterial({ color: sideColor, transparent: true, opacity: 0.3, side: THREE.DoubleSide, depthWrite: false }),
-      )
-      wall.position.copy(toThree(center.x, center.y, boreCenterZ))
-      objects.push(wall)
-    } else {
-      objects.push(buildRectWallMesh(nominalCorners, boreHeight, boreCenterZ, false, theme))
-    }
-  }
 
   if (showToolpath) {
     // Entry rapid, Z entry, every level's clearing moves and the final
@@ -1037,179 +749,107 @@ function buildPatternObjects(
 ): THREE.Object3D[] {
   switch (pattern.kind) {
     case 'holes':
-      return buildHolesPatternObjects(pattern, theme, span, arrowSize, showStock, showToolpath)
+      return buildHolesPatternObjects(pattern, theme, span, arrowSize, showToolpath)
     case 'outlineCircle':
-      return buildOutlineCirclePatternObjects(pattern, theme, span, arrowSize, showStock, showToolpath)
+      return buildOutlineCirclePatternObjects(pattern, theme, span, arrowSize, showToolpath)
     case 'outlineRect':
-      return buildOutlineRectPatternObjects(pattern, theme, span, arrowSize, showStock, showToolpath)
+      return buildOutlineRectPatternObjects(pattern, theme, span, arrowSize, showToolpath)
     case 'surface':
       return buildSurfacePatternObjects(pattern, theme, span, arrowSize, showStock, showToolpath)
     case 'pocket':
-      return buildPocketPatternObjects(pattern, theme, span, arrowSize, showStock, showToolpath)
+      return buildPocketPatternObjects(pattern, theme, span, arrowSize, showToolpath)
   }
 }
 
-function circlePath(cx: number, cy: number, radius: number): THREE.Path {
-  const path = new THREE.Path()
-  path.absarc(cx, cy, radius, 0, Math.PI * 2, false)
-  return path
+// polygon-clipping closes every ring by repeating its first point.
+function openRing(ring: Ring): Ring {
+  const [fx, fy] = ring[0]
+  const [lx, ly] = ring[ring.length - 1]
+  return ring.length > 1 && fx === lx && fy === ly ? ring.slice(0, -1) : ring
 }
 
-function rectPath(corners: Point2D[]): THREE.Path {
-  const path = new THREE.Path()
-  path.moveTo(corners[0].x, corners[0].y)
-  for (let i = 1; i < corners.length; i++) path.lineTo(corners[i].x, corners[i].y)
-  path.closePath()
-  return path
-}
-
-// The illusory "stock" cap (BL-28) — a flat plate bounded by the same
-// visible-grid extent as the material plane/GridHelper, with a hole cut
-// where material is actually removed, so the existing bore/wall meshes
-// (BL-27) read as "a hole in a plate" instead of a floating wall. Built
-// with THREE.Shape + shape.holes (native Three.js tessellation) — not CSG,
-// just a flat cap, since the existing wall already provides the "sides".
-//
-// Scope: Hole(s) always gets one shared cap with N holes (one per drilled
-// point). Outline Inside always gets one cap, hole = the nominal boundary
-// (matches the existing wall's footprint exactly, no seam at the rim).
-// Outline Outside gets no cap — already a closed solid (BL-27), that's the
-// whole "stock" on its own. Outline On-line gets one cap too, hole = the
-// NEW outer wall's footprint (onLineCircleEdges/onLineRectDimensions,
-// same as the wall above) — the inner island's own wall is now fully
-// closed, so it already has its own top cap for free, no separate hole
-// needed for it here.
-//
-// Coordinate mapping: THREE.Shape/Path points are consumed as raw CNC
-// (x, y) — after rotating the mesh by rotation.x = -Math.PI/2 (the same
-// rotation the existing flat material plane below already uses), local
-// shape-X becomes world-X and local shape-Y becomes world -Z, which is
-// exactly toThree(x, y, 0)'s (x, 0, -y) mapping. No extra transform.
-function buildStockCapObject(
-  pattern: ResolvedPattern,
-  theme: Theme,
-  planeSize: number,
-  centerCNC: Point2D,
-): THREE.Object3D | null {
-  // Surface removes material across the whole top area rather than cutting
-  // a bounded hole through a plate — the flat "removed material" box built
-  // in buildSurfacePatternObjects already IS that visualization, so no
-  // separate stock-cap-with-cutout concept applies here.
-  if (pattern.kind === 'surface') return null
-
-  // Cap sits at Z=0 (the real material surface) regardless of Start Z
-  // (BL-37) — see buildHolesPatternObjects()/buildOutlineCirclePatternObjects()
-  // for the same reasoning: Start Z is where the feed-rate descent
-  // begins, not a material-height concept.
-  let holePaths: THREE.Path[]
-
-  if (pattern.kind === 'holes') {
-    holePaths = pattern.points.map((p) => circlePath(p.x, p.y, pattern.holeRadius))
-  } else if (pattern.kind === 'pocket') {
-    holePaths =
-      isLightenedShape(pattern.shape)
-        ? pattern.cellPolygons.filter((polygon) => polygon.length >= 3).map((polygon) => rectPath(polygon))
-        : pattern.shape === 'circle'
-          ? [circlePath(pattern.center.x, pattern.center.y, pattern.nominalRadius)]
-          : [rectPath(pattern.nominalCorners)]
-  } else {
-    const { outline } = pattern.params
-    if (outline.offsetMode === 'outside') return null
-
-    if (pattern.kind === 'outlineCircle') {
-      const radius = outline.offsetMode === 'onLine' ? onLineCircleEdges(outline).outerRadius : pattern.nominalRadius
-      holePaths = [circlePath(pattern.center.x, pattern.center.y, radius)]
-    } else {
-      if (outline.offsetMode === 'onLine' && outline.shape !== 'circle') {
-        const { outerWidth, outerHeight } = onLineRectDimensions(outline.width, outline.height, outline.toolDiameter)
-        holePaths = [
-          rectPath(
-            rectCorners(outline.shape, outline.width, outline.height, outerWidth, outerHeight, outline.offsetX, outline.offsetY, 'ccw'),
-          ),
-        ]
-      } else {
-        holePaths = [rectPath(pattern.nominalCorners)]
-      }
-    }
-  }
-
-  const half = planeSize / 2
-  const outer = new THREE.Shape()
-  outer.moveTo(centerCNC.x - half, centerCNC.y - half)
-  outer.lineTo(centerCNC.x + half, centerCNC.y - half)
-  outer.lineTo(centerCNC.x + half, centerCNC.y + half)
-  outer.lineTo(centerCNC.x - half, centerCNC.y + half)
-  outer.closePath()
-  outer.holes = holePaths
-  return stockCapMesh([outer], theme)
-}
-
-// BL-75: the one shared stock cap in Overlay — the plane-sized sheet with
-// every overlaid preset's voids cut out (overlaySheetVoids()), overlapping
-// voids unioned first (sheetMinusVoids(), polygon-clipping) since
-// THREE.Shape can't take overlapping holes. Null when any preset is a
-// solid of its own (Outline Outside/On-line, Surface) — then, as BL-3
-// decided, every preset shows its extent through its own walls only.
-function buildOverlayStockCapObject(
-  overlayParams: readonly WizardParams[],
-  theme: Theme,
-  planeSize: number,
-  centerCNC: Point2D,
-): THREE.Object3D | null {
-  const voids = overlaySheetVoids(overlayParams)
-  if (!voids) return null
-  const half = planeSize / 2
-  const polygons = sheetMinusVoids(
-    { minX: centerCNC.x - half, minY: centerCNC.y - half, maxX: centerCNC.x + half, maxY: centerCNC.y + half },
-    voids,
-  )
-  // polygon-clipping closes every ring by repeating its first point; THREE
-  // closes paths itself, so the duplicate is dropped.
-  const toPoints = (ring: [number, number][]) => {
-    const [fx, fy] = ring[0]
-    const [lx, ly] = ring[ring.length - 1]
-    const open = ring.length > 1 && fx === lx && fy === ly ? ring.slice(0, -1) : ring
-    return open.map(([x, y]) => new THREE.Vector2(x, y))
-  }
-  const shapes = polygons.map(([outerRing, ...holeRings]) => {
-    const shape = new THREE.Shape(toPoints(outerRing))
-    shape.holes = holeRings.map((ring) => new THREE.Path(toPoints(ring)))
+// One horizontal face of the stock model (lib/stockModel.ts) at CNC Z = z.
+// THREE.Shape points are raw CNC (x, y): after rotation.x = -PI/2 (the
+// material plane's own rotation) local shape-X is world X and shape-Y is
+// world -Z — exactly toThree(x, y, 0). Islands enclosed by voids come as
+// separate polygons, so every shape has non-overlapping holes.
+function stockFaceMesh(region: MultiPolygon, z: number, side: THREE.Side, theme: Theme): THREE.Mesh {
+  const shapes = region.map(([outerRing, ...holeRings]) => {
+    const shape = new THREE.Shape(openRing(outerRing).map(([x, y]) => new THREE.Vector2(x, y)))
+    shape.holes = holeRings.map((ring) => new THREE.Path(openRing(ring).map(([x, y]) => new THREE.Vector2(x, y))))
     return shape
   })
-  return stockCapMesh(shapes, theme)
+  // theme.hole at 0.3, like the walls — theme.material is the scene's own
+  // background color and barely shows over it. depthWrite: false keeps a
+  // large translucent face from occluding what lies behind it at a raking
+  // camera angle.
+  const face = new THREE.Mesh(
+    new THREE.ShapeGeometry(shapes),
+    new THREE.MeshBasicMaterial({ color: theme.hole, transparent: true, opacity: 0.3, side, depthWrite: false }),
+  )
+  face.rotation.x = -Math.PI / 2
+  face.position.set(0, z, 0)
+  return face
 }
 
-// The translucent stock-cap mesh shared by the live pattern's cap and the
-// Overlay one — shapes in raw CNC (x, y), see buildStockCapObject().
-function stockCapMesh(shapes: THREE.Shape[], theme: Theme): THREE.Object3D {
-  // Same color/opacity as the wall meshes (theme.hole, 0.3) — not
-  // theme.material/materialOpacity as first tried. theme.material equals
-  // the scene's own background color, so a semi-transparent plane of "the
-  // background color" over the background was barely visible in practice;
-  // matching the wall exactly is what actually reads as "this is stock".
-  const cap = new THREE.Mesh(
-    new THREE.ShapeGeometry(shapes),
-    new THREE.MeshBasicMaterial({
-      color: theme.hole,
-      transparent: true,
-      opacity: 0.3,
-      side: THREE.DoubleSide,
-      // Same fix as the material plane/grid (0.15.6): without this, the
-      // cap — a single large quad spanning the whole visible grid, with a
-      // hole cut only exactly at each drilled footprint — wins the depth
-      // test against anything behind it at a raking camera angle (where
-      // the sightline into a hole crosses the cap plane *outside* the
-      // cutout before reaching a deep toolpath point), and then occludes
-      // it like a real solid instead of staying a translucent backdrop.
-      // Most visible on the hole nearest the camera, where perspective
-      // makes that raking angle unavoidable.
-      depthWrite: false,
-    }),
-  )
-  cap.renderOrder = -1
-  cap.rotation.x = -Math.PI / 2
-  cap.position.set(0, SOLID_CAP_Z_LIFT, 0)
-  return cap
+function signedArea(ring: Ring): number {
+  return ring.reduce((sum, [x, y], i) => {
+    const [nx, ny] = ring[(i + 1) % ring.length]
+    return sum + x * ny - nx * y
+  }, 0)
+}
+
+// The vertical faces of one band of the stock model: every ring of the
+// band's region, from zTop down to zBottom. Rings are walked with the
+// material on the left (outer rings counter-clockwise, holes clockwise),
+// which makes every face's front point out of the material — what a
+// FrontSide (closed solid) band needs. A shade darker than the horizontal
+// faces (WALL_SHADE_FACTOR): MeshBasicMaterial has no lighting, and
+// without the contrast a wall reads as part of the flat face at its rim.
+function stockWallMesh(band: StockModel['walls'][number], side: THREE.Side, theme: Theme): THREE.Mesh {
+  const positions: number[] = []
+  for (const polygon of band.region) {
+    polygon.forEach((closedRing, ringIndex) => {
+      const ring = openRing(closedRing)
+      const counterClockwise = signedArea(ring) > 0
+      const points = counterClockwise === (ringIndex === 0) ? ring : [...ring].reverse()
+      for (let i = 0; i < points.length; i++) {
+        const [ax, ay] = points[i]
+        const [bx, by] = points[(i + 1) % points.length]
+        const at = toThree(ax, ay, band.zTop)
+        const ab = toThree(ax, ay, band.zBottom)
+        const bt = toThree(bx, by, band.zTop)
+        const bb = toThree(bx, by, band.zBottom)
+        positions.push(at.x, at.y, at.z, ab.x, ab.y, ab.z, bb.x, bb.y, bb.z, at.x, at.y, at.z, bb.x, bb.y, bb.z, bt.x, bt.y, bt.z)
+      }
+    })
+  }
+  const geometry = new THREE.BufferGeometry()
+  geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3))
+  const color = new THREE.Color(theme.hole).multiplyScalar(WALL_SHADE_FACTOR)
+  return new THREE.Mesh(geometry, new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.3, side, depthWrite: false }))
+}
+
+// The stock of everything drawn (BL-77) — one model for the live pattern
+// or for all overlaid presets together, so nothing interpenetrates: the
+// uncut face at Z=0 (regardless of Start Z, BL-37 — Start Z is where the
+// feed-rate descent begins, not a material height), pocket floors, and
+// walls along the resulting contour of each Z band. Tabs are ignored.
+//
+// A part (Outline Outside) is a closed solid: FrontSide everywhere, so a
+// near and a far face never blend through each other, plus an underside
+// seen only from below. The sheet is open: its faces and walls are
+// DoubleSide, to be seen from inside a void and from underneath.
+function buildStockModelObjects(model: StockModel, theme: Theme): THREE.Object3D[] {
+  const side = model.solid ? THREE.FrontSide : THREE.DoubleSide
+  // Lifted off the material plane and grid; drawn first, as a backdrop.
+  const top = stockFaceMesh(model.top, SOLID_CAP_Z_LIFT, side, theme)
+  top.renderOrder = -1
+  const objects: THREE.Object3D[] = [top]
+  for (const floor of model.floors) objects.push(stockFaceMesh(floor.region, floor.z, side, theme))
+  for (const band of model.walls) objects.push(stockWallMesh(band, side, theme))
+  if (model.bottom) objects.push(stockFaceMesh(model.bottom.region, model.bottom.z, THREE.BackSide, theme))
+  return objects
 }
 
 export function buildToolpathScene(
@@ -1322,22 +962,18 @@ export function buildToolpathScene(
   ;(grid.material as THREE.Material).depthWrite = false
   objects.push(grid)
 
-  // Illusory stock cap (BL-28). The live/active pattern gets its own;
-  // allPatterns always pushes it last when showActivePattern is true (see
-  // the array literal above). In Overlay (live pattern hidden) the presets
-  // share one cap with all their voids cut out — or none, when any of them
-  // is a solid of its own (BL-75, buildOverlayStockCapObject()).
+  // Stock: one model of everything drawn (lib/stockModel.ts), within the
+  // grid/plane's own (step-snapped) extent — world Z is -CNC Y. Surface is
+  // not part of it and draws its own block (buildSurfacePatternObjects()).
   if (showStock) {
-    // Inverse of toThree's CNC->world Z mapping (world.z = -CNC.y), so the
-    // cap's outer boundary can be built directly in CNC (x, y) coordinates,
-    // matching the grid/plane's own (now step-snapped) center and size.
-    const centerCNC: Point2D = { x: gridCenterX, y: -gridCenterZ }
-    const cap = showActivePattern
-      ? buildStockCapObject(allPatterns[allPatterns.length - 1], theme, gridSize, centerCNC)
-      : overlayParams.length > 0
-        ? buildOverlayStockCapObject(overlayParams, theme, gridSize, centerCNC)
-        : null
-    if (cap) objects.push(cap)
+    const half = gridSize / 2
+    const model = stockModel([...overlayParams, ...(showActivePattern ? [params] : [])], {
+      minX: gridCenterX - half,
+      minY: -gridCenterZ - half,
+      maxX: gridCenterX + half,
+      maxY: -gridCenterZ + half,
+    })
+    if (model) objects.push(...buildStockModelObjects(model, theme))
   }
 
   // Shared by origin/"X"/"Y" and, further below, every grid tick — one

@@ -105,12 +105,13 @@ być wierny.
   parametrów (`useDeferredValue`) i pamięta widok przy przełączaniu
   zakładek (tylko w sesji). Hide/Show Stock i Hide/Show Toolpath — wspólny
   stan sesyjny obu podglądów.
-- **Materiał w podglądach** wg fizycznego znaczenia: pustka (otwór, Outline
-  Inside, Pocket) wycięta z arkusza materiału, Outline Outside = lita wyspa,
-  On-line = wyspa + arkusz wycięty na zewnętrznej krawędzi; Surface =
-  „pozostały materiał”. W Overlay jeden wspólny arkusz z pustkami
-  wszystkich presetów, a gdy któryś jest litą bryłą (Outline Outside/
-  On-line, Surface) — żaden (2D i 3D tą samą regułą).
+- **Materiał w podglądach** — jeden model (`lib/stockModel.ts`) dla
+  żywego wzorca i dla wszystkich presetów w Overlay; 2D i 3D rysują tę samą
+  geometrię. Pustki (otwór, Outline Inside, pas On-line) wycięte na wylot,
+  Pocket ma dno na swojej głębokości. Bazą jest arkusz materiału, a gdy
+  któryś preset to Outline Outside — suma wysp (część), z której wycinane
+  są pustki pozostałych presetów. Surface poza modelem: rysuje własny
+  „pozostały materiał”.
 - **Header:** Preset Bar `[1]…[5]`, oko Overlay, ołówek Edit Mode, dark/
   light (dark domyślny niezależnie od systemu), Settings.
 - **Auto-save i presety** (`simplecam.storage`): slot `"0"` zapisywany przy
@@ -201,6 +202,7 @@ src/
     depthPasses.ts, interpolation.ts, format.ts
     validation.ts        OPERATION_RULES, walidacja, ostrzeżenia
     feedCalc.ts          model Feedrate Calculator
+    stockModel.ts        model materiału dla obu podglądów
     storage.ts, *Storage.ts, presetLabel.ts, toolDiameterOptions.ts, overlayParams.ts
     download.ts          plik do pobrania (jedyny efekt uboczny)
     fuzzParams.ts, gcodeTestUtils.ts, pocketAdaptiveSim.ts   tylko testy

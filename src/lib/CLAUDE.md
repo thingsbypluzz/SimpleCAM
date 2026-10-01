@@ -285,8 +285,8 @@ zaczyna od `zTo('rapid', startZ)`; końcowy retrakt robi `assembleProgram()`.
   liczba obrotów helixa wejścia we wszystkich komórkach ≤ `MAX_PASSES`
   (`entryHelixTurnCount()`).
 - Podglądy: pustki = kontury nominalne komórek (`pocketVoids()` w
-  `overlayStock.ts`, ostre narożniki jak prostokąt Pocket), 3D ściany per
-  komórka (`buildPolygonWallMesh()`).
+  `stockModel.ts`, ostre narożniki jak prostokąt Pocket); ściany i dna
+  komórek z modelu materiału.
 
 ### Adaptive (`pocketAdaptive.ts`, `pocketAdaptiveMath.ts`)
 
@@ -421,14 +421,44 @@ w mocy (`FeedCalcInput.finishStock`), ≤ Max Feed. Rodzaj zaangażowania z
 Surface/Pocket Spiral — stepover, Adaptive — Optimal Load.
 `effectiveChipLoad()` — rzeczywiste fz w Kroku 2.
 
+## Model materiału dla podglądów (`stockModel.ts`)
+
+`stockModel(presets, sheet)` — materiał pozostawiony przez zestaw presetów
+(żywy wzorzec = jeden preset, Overlay = wszystkie nałożone), wspólny dla
+2D i 3D. Wszystko to pryzmaty o pionowych ścianach, więc całość powstaje z
+booli 2D na przekrojach (`polygon-clipping`, okręgi po 72 odcinki).
+
+- **Cechy presetu** (`stockFeatures()` — jedyne miejsce, w którym materiał
+  rozgałęzia się po operacji; wyjątek „rysowanie w podglądach” od zasady
+  rejestrów): Hole(s) i Outline Inside — pustki na wylot; Outline Outside —
+  wyspa (część); Outline On-line — wyspa wewnętrzna + pas szerokości freza
+  jako pustka na wylot; Pocket — pustki `pocketVoids()` **z dnem** na
+  `-totalDepth`; Surface — poza modelem (same Surface → `null`).
+- **Baza:** arkusz (`sheet` = `stockSheetRect()`), a gdy którykolwiek
+  preset to Outline Outside — suma wszystkich wysp (`solid`), o grubości
+  równej największej głębokości wyspy. Samotny On-line zostaje więc na
+  arkuszu (pas w arkuszu, wyspa w środku).
+- **Pasy Z:** poziomy z głębokości pustek (przy części przyciętych do jej
+  grubości). W pasie kończącym się na głębokości `d` przekrój materiału =
+  baza − suma pustek sięgających co najmniej `d`. Wynik (`StockModel`):
+  `top` (lico na Z0), `walls` (pierścienie przekroju każdego pasa; dla
+  arkusza — pierścienie sumy pustek, bez ścian na krawędzi arkusza),
+  `floors` (dno = kieszenie o danej głębokości minus głębsze pustki i
+  pustki na wylot o tej samej głębokości), `bottom` (spód, tylko część).
+- Skutki: otwór głębszy od kieszeni dziurawi jej dno i ma ścianę tylko
+  poniżej dna, płytszy znika w kieszeni; głębsza kieszeń w płytszej daje
+  stopień; kieszeń sięgająca grubości części nie ma dna; nachodzące wyspy
+  zlewają się; pustka poza każdą wyspą nie zostawia śladu w materiale.
+- Mostki ignorowane. Współrzędne zaokrąglane do siatki — `polygon-clipping`
+  wykłada się na krawędziach, które prawie się pokrywają (presety o
+  wspólnym originie), a radzi sobie, gdy pokrywają się dokładnie. Przy
+  błędzie kolejna, grubsza siatka (`SNAP_GRIDS`, 1 nm → 10 µm); gdy żadna
+  nie pomoże — `null` (podgląd bez materiału zamiast wyjątku).
+
 ## Inne
 
 - `format.ts` — liczby w G-code: 4 miejsca, bez zbędnych zer i `-0`.
 - `download.ts::buildFilename()` — `op-<pattern|shape slug>-<data>.gcode`.
-- `overlayStock.ts` — wspólna podkładka Overlay dla obu podglądów:
-  `stockVoids()` (pustki presetu albo `null` dla litej bryły),
-  `overlaySheetVoids()`, `sheetMinusVoids()` (arkusz minus suma pustek,
-  `polygon-clipping`, okręgi po 72 odcinki).
 - `overlayParams.ts::deriveOverlayParams()` — parametry nałożonych presetów
   w stałej kolejności `[1]…[5]`; bez zaznaczeń zawsze ta sama zamrożona
   pusta tablica (nowa referencja = zmiana selekcji dla podglądów).

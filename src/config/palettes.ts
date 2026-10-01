@@ -43,6 +43,8 @@ export interface FixedColors {
   offset: string
   text: string
   holeFill: string
+  // A pocket's floor in 2D: stock at half the tint of the uncut face.
+  pocketFloorFill: string
 }
 
 const FIXED_COLORS: Record<ThemeId, { light: FixedColors; dark: FixedColors }> = {
@@ -55,6 +57,7 @@ const FIXED_COLORS: Record<ThemeId, { light: FixedColors; dark: FixedColors }> =
       offset: '#d97706',
       text: '#64748b',
       holeFill: 'rgba(79, 70, 229, 0.3)',
+      pocketFloorFill: 'rgba(79, 70, 229, 0.15)',
     },
     dark: {
       background: '#0f172a',
@@ -64,6 +67,7 @@ const FIXED_COLORS: Record<ThemeId, { light: FixedColors; dark: FixedColors }> =
       offset: '#fbbf24',
       text: '#94a3b8',
       holeFill: 'rgba(129, 140, 248, 0.3)',
+      pocketFloorFill: 'rgba(129, 140, 248, 0.15)',
     },
   },
   // Values from design_shopfloor_amber.md §2.3 — the toolpath is amber in
@@ -81,6 +85,7 @@ const FIXED_COLORS: Record<ThemeId, { light: FixedColors; dark: FixedColors }> =
       offset: '#7c3aed',
       text: '#78716c',
       holeFill: 'rgba(180, 83, 9, .15)',
+      pocketFloorFill: 'rgba(180, 83, 9, .075)',
     },
     dark: {
       background: '#0a0a0b',
@@ -90,6 +95,7 @@ const FIXED_COLORS: Record<ThemeId, { light: FixedColors; dark: FixedColors }> =
       offset: '#a78bfa',
       text: '#a29a8c',
       holeFill: 'rgba(245, 158, 11, .18)',
+      pocketFloorFill: 'rgba(245, 158, 11, .09)',
     },
   },
   // Arcade Studio — dark-only by spec (design-arcade-restrained.md /
@@ -107,6 +113,7 @@ const FIXED_COLORS: Record<ThemeId, { light: FixedColors; dark: FixedColors }> =
       offset: '#ffe600',
       text: '#849495',
       holeFill: 'rgba(0, 240, 255, .07)',
+      pocketFloorFill: 'rgba(0, 240, 255, .035)',
     },
     dark: {
       background: '#0b0c10',
@@ -116,6 +123,7 @@ const FIXED_COLORS: Record<ThemeId, { light: FixedColors; dark: FixedColors }> =
       offset: '#ffe600',
       text: '#849495',
       holeFill: 'rgba(0, 240, 255, .07)',
+      pocketFloorFill: 'rgba(0, 240, 255, .035)',
     },
   },
   'arcade-full-neon': {
@@ -127,6 +135,7 @@ const FIXED_COLORS: Record<ThemeId, { light: FixedColors; dark: FixedColors }> =
       offset: '#ffe600',
       text: '#849495',
       holeFill: 'rgba(0, 240, 255, .09)',
+      pocketFloorFill: 'rgba(0, 240, 255, .045)',
     },
     dark: {
       background: '#0b0c10',
@@ -136,6 +145,7 @@ const FIXED_COLORS: Record<ThemeId, { light: FixedColors; dark: FixedColors }> =
       offset: '#ffe600',
       text: '#849495',
       holeFill: 'rgba(0, 240, 255, .09)',
+      pocketFloorFill: 'rgba(0, 240, 255, .045)',
     },
   },
 }

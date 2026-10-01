@@ -7,6 +7,35 @@ zgodne z [SemVer](https://semver.org/). Ten plik pozostaje głównym, czytelnym
 thingsbypluzz/SimpleCAM), ale to infrastruktura pod izolację pracy
 (branch/worktree per zadanie), nie zamiennik tego changeloga.
 
+## [0.33.0] — 2026-10-02
+
+### Zmieniono
+
+- **Jeden model materiału w podglądach** (`BL-77`). Dotąd każdy wzorzec
+  rysował własne ściany, a w Overlay wspólny arkusz powstawał tylko wtedy,
+  gdy wszystkie presety były pustkami — przy Outline Outside/On-line
+  zostawały przenikające się bryły i kieszeń nie była wycięta z części.
+  Teraz 2D i 3D rysują materiał z jednego modelu (`lib/stockModel.ts`),
+  tego samego dla żywego wzorca i dla wszystkich presetów w Overlay.
+  - Bazą jest arkusz materiału; gdy któryś preset to Outline Outside —
+    suma wysp (część), z której wycinane są pustki pozostałych presetów.
+    Samotny On-line wygląda jak dotąd: arkusz z pasem szerokości freza i
+    wyspą w środku.
+  - **Pocket ma dno** na swojej głębokości (w 2D słabsze wypełnienie,
+    nowy kolor `pocketFloorFill`); otwory, Outline Inside i pas On-line
+    są na wylot. Otwór głębszy od kieszeni dziurawi jej dno, płytszy w
+    niej znika; głębsza kieszeń w płytszej daje stopień; kieszeń
+    sięgająca grubości części nie ma dna.
+  - Ściany biegną po konturze wynikowym, osobno dla każdego pasa
+    głębokości — nic się nie przenika, nachodzące wyspy zlewają się w
+    jedną. Okręgi mają wszędzie 72 odcinki (ściany miały 32).
+  - Surface zostaje poza modelem i rysuje własny „pozostały materiał”;
+    pozostałe presety w Overlay tworzą wspólny materiał mimo jego
+    obecności.
+  - Bez CSG i bez nowej zależności: wszystkie bryły to pryzmaty o
+    pionowych ścianach, więc wystarczają boole 2D na przekrojach
+    (`polygon-clipping`). G-code bez zmian.
+
 ## [0.32.0] — 2026-10-01
 
 ### Dodano

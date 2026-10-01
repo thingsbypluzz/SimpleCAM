@@ -12,52 +12,45 @@ chiralność, a `lookAt()` buduje bazę prawoskrętną. Każda pozycja budowana
 z `p.x`/`p.y` **musi** iść przez `toThree()`; przy zmianie mapowania
 grepować `.position.set(` z `p.x`/`p.y`.
 
-## Bryły: otwarte/zamknięte + stock cap
+## Materiał
 
-- Zależy od **fizycznego znaczenia offset mode**, nie kształtu: Outside =
-  lita część → zamknięta bryła; Inside = pustka → otwarta; On-line →
-  hybryda: wewnętrzna wyspa (`nominal − r`) zamknięta, zewnętrzna ściana
-  (`nominal + r`) otwarta (`onLineCircleEdges()`/`onLineRectDimensions()`).
-  Rectangle — `buildRectWallMesh()`: `BoxGeometry` z ukrytymi grupami
-  `+y`/`-y` przy otwartej. Hole(s) zawsze otwarte.
-- **Stock cap** (`buildStockCapObject()`): płaska podkładka na Z=0,
-  `THREE.Shape` + `shape.holes` (bez CSG), zasięg = siatka/płaszczyzna.
-  Hole(s) — jedna z N otworami; Outline Inside — otwór nominalny; Outside —
-  brak; On-line — otwór na zewnętrznej krawędzi; `null` dla Surface.
-  Mostki ignorowane przez bryły i cap. Materiał/kolejność wspólne w
-  `stockCapMesh()`.
-- **Overlay** (żywy wzorzec ukryty): jeden wspólny cap
-  (`buildOverlayStockCapObject()`) z pustkami wszystkich presetów
-  (`overlaySheetVoids()`, `lib/overlayStock.ts`), nachodzące pustki
-  scalane przez `sheetMinusVoids()` (`polygon-clipping` — `THREE.Shape`
-  nie znosi nachodzących otworów; wyspy zamknięte pierścieniem pustek
-  jako osobne kształty). Brak capu, gdy któryś preset jest litą bryłą
-  (Outline Outside/On-line, Surface) — wtedy każdy pokazuje zasięg
-  własnymi ścianami. Ta sama reguła w 2D.
-- **Surface:** blok „pozostały materiał” przez `buildRectWallMesh()`
-  (zamknięty), górna ściana na `Z = -totalDepth`, wysokość = `feeds.safeZ`.
-- Bryły i cap zawsze od **Z=0**, wysokość `totalDepth` — Start Z ich nie
-  przesuwa (`BL-37`); odcinek ścieżki Start Z → Z0 celowo wystaje ponad
-  bryłę (najazd w powietrzu).
-- `SOLID_CAP_Z_LIFT` (0.02 mm) — cap i każda zamknięta górna ściana
-  podniesione nad Z=0, żeby nie z-fightować z płaszczyzną (Y=0) i siatką
-  (0.01).
-- Zasięg płaszczyzny/siatki/capu: `stockSheetRect()` z
-  `preview/drawToolpath.ts` (wspólny z arkuszem 2D).
+- Jeden model `stockModel()` (`lib/stockModel.ts`) dla wszystkiego, co
+  widać — żywy wzorzec albo wszystkie presety Overlay — w zasięgu
+  siatki/płaszczyzny (`stockSheetRect()` z `preview/drawToolpath.ts`,
+  wspólny z 2D). Wzorce nie rysują własnych brył, więc nic się nie
+  przenika. `buildStockModelObjects()`:
+  - lico na Z=0 i dna kieszeni — `stockFaceMesh()` (`THREE.Shape` +
+    `holes`; wyspy zamknięte pustkami to osobne kształty);
+  - ściany — `stockWallMesh()`, jeden mesh na pas Z, wzdłuż pierścieni
+    przekroju; pierścienie obchodzone z materiałem po lewej, więc przód
+    każdej ściany patrzy na zewnątrz materiału;
+  - spód — tylko dla części.
+- **Arkusz** (bez Outline Outside): lico, dna i ściany `DoubleSide` —
+  widoczne z wnętrza pustki i od spodu; krawędź arkusza bez ścian.
+  **Część** (Outline Outside): zamknięta bryła, wszystko `FrontSide`, spód
+  `BackSide` — bliska i daleka ściana nigdy nie blendują się przez siebie.
+- **Surface** poza modelem: blok „pozostały materiał” przez
+  `buildRectWallMesh()` (zamknięty), górna ściana na `Z = -totalDepth`,
+  wysokość = `feeds.safeZ`.
+- Materiał zawsze od **Z=0** — Start Z go nie przesuwa (`BL-37`); odcinek
+  ścieżki Start Z → Z0 celowo wystaje ponad materiał (najazd w powietrzu).
+  Mostki ignorowane.
+- `SOLID_CAP_Z_LIFT` (0.02 mm) — lico i górna ściana bloku Surface
+  podniesione, żeby nie z-fightować z płaszczyzną (Y=0) i siatką (0.01).
 
 ## Przezroczystość i kolejność renderowania
 
 - `depthWrite: false` na **wszystkich** przezroczystych obiektach
-  (płaszczyzna, siatka, cap, każda bryła) — inaczej sortowanie po
+  (płaszczyzna, siatka, każda ściana materiału) — inaczej sortowanie po
   odległości potrafi wymazać obiekt za innym (szczególnie w Overlay).
   `depthTest` zostaje.
-- `renderOrder = -1` na płaszczyźnie, siatce i capie — tło zawsze
-  najpierw, stała kolejność blendowania.
+- `renderOrder = -1` na płaszczyźnie, siatce i licu materiału — tło
+  zawsze najpierw, stała kolejność blendowania.
 - Zamknięte bryły `FrontSide` (DoubleSide pokazywał bliską i daleką ścianę
-  naraz w losowej kolejności); otwarte ściany i cap — `DoubleSide`.
+  naraz w losowej kolejności); arkusz — `DoubleSide`.
 - Sztuczne cieniowanie: każda ściana boczna = `theme.hole` ×
-  `WALL_SHADE_FACTOR` (0.5), ciemniejsza niż każda nakrywka/cap. Opacity
-  brył 0.3.
+  `WALL_SHADE_FACTOR` (0.5), ciemniejsza niż każda ściana pozioma. Opacity
+  materiału 0.3.
 
 ## Styl linii ścieżki (`MOVE_STYLE`)
 
