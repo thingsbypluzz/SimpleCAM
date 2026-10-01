@@ -6,15 +6,19 @@
 - **Kolejność pól w Kroku 2** (komentarz „Field order” na górze każdego
   pliku): pierwszy wiersz `PickHeader.tsx` („Pattern: …” / „Shape: …” z
   `OPERATION_META[op].pickKind` + `pick()`, opis pod Hint Button przy
-  prawej krawędzi). Hole(s): pola wzorca → Hole Diameter + Total Depth →
+  prawej krawędzi). Hole(s): pola wzorca z rozmiarem otworu (Grid: Width +
+  Height + Depth, potem Hole Diameter; N-Holes: Hole Count + Diameter +
+  Depth, potem Hole Diameter + Start Angle; Custom List: lista, potem Hole
+  Diameter + Depth; Single: sama ta para) →
   Tool Diameter → Method → Ramp + Pitch (tylko Helix) → Tabs → Offset.
-  Outline: wymiary + Cutting Depth → Offset Mode → Tool Diameter → Method
+  Outline: wymiary + Depth → Offset Mode → Tool Diameter → Method
   → Ramp + Pitch (tylko Circle Helix / Rectangle Ramp) → Tabs → Offset. Surface:
-  Width/Height + Depth to Remove → Tool Diameter → Method + Raster
+  Width + Height + Depth → Tool Diameter → Method + Raster
   Direction → Stepover → Z-Transition + Helix Radius + Ramp Angle (jeden
   wiersz) → Offset.
-  Pocket: wymiary + Total Depth → (Lightened: `LightenedFields.tsx` —
-  Layout + N + M albo Spokes + Hub + Start, potem Rib Width; błąd „za mała
+  Pocket: wymiary + Depth → (Lightened: `LightenedFields.tsx` —
+  Rectangle: Layout w osobnym wierszu, potem N + M + Rib Width; Circle:
+  Spokes + Hub + Rib Width, potem Start w pierwszej z trzech kolumn; błąd „za mała
   komórka” oznacza też Tool Diameter) → Tool Diameter → Method (+ Direction) →
   Optimal Load albo Stepover + Ramp Length (Spiral, pod wierszem odczyt
   Engagement) → Z-Transition + Helix Radius + Ramp Angle
@@ -31,10 +35,11 @@
   ramka + ring `status-error`, `--glow-error` w Arcade, kolor błędu także
   przy fokusie; pola tylko do odczytu bez oznaczenia.
 - **Pary pól w jednym wierszu** (`flex gap-4`, `min-w-0 flex-1` —
-  `min-w-0` konieczne, input ma min-content podłogę): Grid X/Y, Offset
-  X/Y, Hole Diameter + Total Depth, Circle Count/Diameter/Start Angle,
-  Outline Circle Diameter + Cutting Depth, Pocket Circle Diameter + Total
-  Depth, Tabs Height/Width/Count, Surface Method + Raster Direction, Pocket
+  `min-w-0` konieczne, input ma min-content podłogę): Offset
+  X/Y, Hole Diameter + Depth (Single, Custom List), Hole Diameter +
+  Start Angle (N-Holes),
+  Outline Circle Diameter + Depth, Pocket Circle Diameter + Depth,
+  Tabs Height/Width/Count, Surface Method + Raster Direction, Pocket
   Method + Direction (Method `shrink-0`, drugi toggle po odstępie; "Conv."/
   "Climb" z pełną nazwą w tooltipie), Optimal Load %/mm/Engagement,
   Pocket Stepover %/mm/Ramp Length,
@@ -48,6 +53,16 @@
   funkcji, jednostka mm/turn albo mm/lap; błędy zakresu i limitu obrotów
   pod wierszem). Reszta w
   jednej kolumnie.
+- **Wymiary z głębokością w jednym wierszu** (trzy kolumny,
+  `items-end`): Width + Height + głębokość wszędzie, gdzie kształt ma oba
+  wymiary — Hole(s) Grid/Grid Centered, Outline i Pocket Rectangle (także
+  Rectangle Lightened), Surface; N-Holes: Hole Count + Diameter + głębokość.
+  Głębokość nazywa się **„Depth [mm]” w każdej operacji i w każdym
+  układzie** (także w komunikatach i w tooltipie Step 2 Summary) — jedna
+  nazwa, mieści się w trzech kolumnach.
+  W trzech kolumnach nie ma miejsca na Hint Button przy polu z dłuższą
+  wartością —
+  podpowiedź Grid „0 = dwa otwory” jest w opisie wzorca (`PickHeader`).
 - `ToolChipLoad.tsx` — wiersz Tool Diameter (etykieta skrócona do „Tool
   Diam. [mm]”, pola wyrównane do dołu wiersza `items-end` — inputy w
   jednej linii, nawet gdy etykieta się zawinie) + Flutes (ta sama pamięć co

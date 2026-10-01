@@ -26,13 +26,13 @@ export const POSITIONING_META: Record<PositioningMode, PositioningMeta> = {
   grid: {
     value: 'grid',
     title: 'Rectangular Grid',
-    description: 'Holes at the four corners of a rectangle, origin at one corner.',
+    description: 'Holes at the four corners of a rectangle, origin at one corner. Set Width or Height to 0 for two holes spaced by the other.',
     Icon: RectangleIcon,
   },
   gridCentered: {
     value: 'gridCentered',
     title: 'Rectangular Grid (Centered)',
-    description: 'Holes at the four corners of a rectangle, origin at the center.',
+    description: 'Holes at the four corners of a rectangle, origin at the center. Set Width or Height to 0 for two holes spaced by the other.',
     Icon: RectangleCenteredIcon,
   },
   circle: {

@@ -33,9 +33,12 @@ interface Step2GeometryHolesProps {
 }
 
 // Field order (BL-72, shared idea across all four Step 2 panels): where
-// and how big first, then the tool, then how to cut — Pattern (+ its
-// Grid/Circle/Custom fields) -> Hole Diameter + Total Depth -> Tool Diameter
-// -> Method -> Ramp + Pitch (Helix only, BL-80) -> Tabs -> Offset X/Y.
+// and how big first, then the tool, then how to cut — Pattern fields with
+// the hole size (Grid: Width + Height + Depth, then Hole Diameter; N-Holes:
+// Hole Count + Diameter + Depth, then Hole Diameter + Start Angle; Custom:
+// the list, then Hole Diameter + Depth; Single: just that pair, BL-93)
+// -> Tool Diameter -> Method -> Ramp + Pitch (Helix only, BL-80) -> Tabs ->
+// Offset X/Y.
 export function Step2GeometryHoles({ params, onChange, machine, toolDiameters, flutes, onFlutesChange }: Step2GeometryHolesProps) {
   const { geometry } = params
 
@@ -85,15 +88,48 @@ export function Step2GeometryHoles({ params, onChange, machine, toolDiameters, f
   const tabWidthInvalid = !isTabWidthValid(geometry)
   const tabCountInvalid = !isTabCountValid(geometry)
 
+  // BL-93: Grid and N-Holes carry the depth on their own dimension row
+  // (three columns), Single and Custom List keep Hole Diameter + Depth as
+  // a pair. The field is "Depth" in every operation.
+  // Three columns leave no room for a Hint Button beside an input, so the
+  // Grid's "0 = two holes" tip lives in the pattern description (PickHeader).
+  const isGrid = geometry.positioning === 'grid' || geometry.positioning === 'gridCentered'
+  const isCircle = geometry.positioning === 'circle'
+  const holeDiameterInput = (
+    <NumberInput
+      type="number"
+      step="0.1"
+      className={inputClass}
+      aria-invalid={!(geometry.holeDiameter > 0) || toolInvalid}
+      {...holeDiameterField}
+    />
+  )
+  const depthCell = (
+    <div className="min-w-0 flex-1">
+      <FieldRow label="Depth [mm]">
+        <NumberInput
+          type="number"
+          step="0.1"
+          min="0"
+          max={machine.travelZ}
+          className={inputClass}
+          aria-invalid={!(geometry.totalDepth > 0) || (geometry.tabsEnabled && geometry.tabHeight >= geometry.totalDepth)}
+          {...totalDepthField}
+        />
+      </FieldRow>
+    </div>
+  )
+  const sizeError = sizeInvalid && <p className="text-sm text-status-error">Dimensions and depth must be greater than 0.</p>
+
   return (
     <div className="flex flex-col gap-6">
       <PickHeader params={params} />
 
-      {(geometry.positioning === 'grid' || geometry.positioning === 'gridCentered') && (
+      {isGrid && (
         <div className="flex flex-col gap-4">
-          <div className="flex gap-4">
+          <div className="flex items-end gap-4">
             <div className="min-w-0 flex-1">
-              <FieldRow label="Width (X) [mm]" hint="Tip: set to 0 for 2 holes spaced by Height">
+              <FieldRow label="Width [mm]">
                 <NumberInput
                   type="number"
                   step="0.1"
@@ -105,7 +141,7 @@ export function Step2GeometryHoles({ params, onChange, machine, toolDiameters, f
               </FieldRow>
             </div>
             <div className="min-w-0 flex-1">
-              <FieldRow label="Height (Y) [mm]" hint="Tip: set to 0 for 2 holes spaced by Width">
+              <FieldRow label="Height [mm]">
                 <NumberInput
                   type="number"
                   step="0.1"
@@ -116,13 +152,16 @@ export function Step2GeometryHoles({ params, onChange, machine, toolDiameters, f
                 />
               </FieldRow>
             </div>
+            {depthCell}
           </div>
+          <FieldRow label="Hole Diameter [mm]">{holeDiameterInput}</FieldRow>
+          {sizeError}
         </div>
       )}
 
-      {geometry.positioning === 'circle' && (
+      {isCircle && (
         <div className="flex flex-col gap-4">
-          <div className="flex gap-4">
+          <div className="flex items-end gap-4">
             <div className="min-w-0 flex-1">
               <FieldRow label="Hole Count">
                 <NumberInput
@@ -148,17 +187,24 @@ export function Step2GeometryHoles({ params, onChange, machine, toolDiameters, f
                 />
               </FieldRow>
             </div>
-            <div className="min-w-0 flex-1">
-              <FieldRow label="Start Angle [deg]">
-                <NumberInput type="number" step="1" className={inputClass} {...circleStartAngleField} />
-              </FieldRow>
-            </div>
+            {depthCell}
           </div>
           {circleCountInvalid && (
             <p className="text-sm text-status-error">
               Hole count can't exceed {MAX_CIRCLE_HOLE_COUNT}.
             </p>
           )}
+          <div className="flex gap-4">
+            <div className="min-w-0 flex-1">
+              <FieldRow label="Hole Diameter [mm]">{holeDiameterInput}</FieldRow>
+            </div>
+            <div className="min-w-0 flex-1">
+              <FieldRow label="Start Angle [deg]">
+                <NumberInput type="number" step="1" className={inputClass} {...circleStartAngleField} />
+              </FieldRow>
+            </div>
+          </div>
+          {sizeError}
         </div>
       )}
 
@@ -185,35 +231,17 @@ export function Step2GeometryHoles({ params, onChange, machine, toolDiameters, f
         </div>
       )}
 
-      <div className="flex flex-col gap-4">
-        <div className="flex gap-4">
-          <div className="min-w-0 flex-1">
-            <FieldRow label="Hole Diameter [mm]">
-              <NumberInput
-                type="number"
-                step="0.1"
-                className={inputClass}
-                aria-invalid={!(geometry.holeDiameter > 0) || toolInvalid}
-                {...holeDiameterField}
-              />
-            </FieldRow>
+      {!isGrid && !isCircle && (
+        <div className="flex flex-col gap-4">
+          <div className="flex gap-4">
+            <div className="min-w-0 flex-1">
+              <FieldRow label="Hole Diameter [mm]">{holeDiameterInput}</FieldRow>
+            </div>
+            {depthCell}
           </div>
-          <div className="min-w-0 flex-1">
-            <FieldRow label="Total Depth [mm]">
-              <NumberInput
-                type="number"
-                step="0.1"
-                min="0"
-                max={machine.travelZ}
-                className={inputClass}
-                aria-invalid={!(geometry.totalDepth > 0) || (geometry.tabsEnabled && geometry.tabHeight >= geometry.totalDepth)}
-                {...totalDepthField}
-              />
-            </FieldRow>
-          </div>
+          {sizeError}
         </div>
-        {sizeInvalid && <p className="text-sm text-status-error">Dimensions and depth must be greater than 0.</p>}
-      </div>
+      )}
 
       <div className="flex flex-col gap-4">
         <ToolChipLoad params={params} machine={machine} flutes={flutes} onFlutesChange={onFlutesChange}>
@@ -304,7 +332,7 @@ export function Step2GeometryHoles({ params, onChange, machine, toolDiameters, f
             </div>
             {tabHeightInvalid && (
               <p className="text-sm text-status-error">
-                Tab height must be greater than 0 and less than Total Depth.
+                Tab height must be greater than 0 and less than Depth.
               </p>
             )}
             {tabWidthInvalid && (

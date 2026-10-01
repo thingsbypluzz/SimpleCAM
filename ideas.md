@@ -558,7 +558,7 @@ Waga z review w nawiasie kwadratowym.
     etykieta presetu, Feedrate Calculator (bez zmian?);
   - czy tylko Custom List, czy także inne wzorce; zgodność zapisanych
     presetów (`customPointsText`/`customPoints`).
-- **`BL-93`** *(Otwarty)* 🟢 — **Krok 2: Width, Height i Total Depth w
+- **`BL-93`** *(Zrealizowany, 2026-10-01)* 🟢 — **Krok 2: Width, Height i Total Depth w
   jednym wierszu.** Zgłoszone 2026-10-01. Wszędzie tam, gdzie kształt/
   wzorzec ma wymiary Width, Height i Total Depth — trzy pola w jednym
   wierszu (dziś Total Depth stoi osobno). Wyjątki:
@@ -569,6 +569,14 @@ Waga z review w nawiasie kwadratowym.
   - **Outline Circle**, **Pocket Circle**, **Pocket Circle Lightened** —
     bez zmian.
   Po zmianie zaktualizować kolejność pól w `src/components/wizard/CLAUDE.md`.
+  Wdrożone: trzy kolumny w Hole(s) Grid/Grid Centered, Outline Rectangle,
+  Pocket Rectangle (także Rectangle Lightened) i Surface; N-Holes wg opisu.
+  Głębokość nazywa się „Depth [mm]” w każdej operacji i układzie (zamiast
+  Total Depth / Cutting Depth / Depth to Remove), a podpowiedź Grid „0 = dwa otwory” przeszła z pól do
+  opisu wzorca (Hint Button w wierszu „Pattern:”); etykiety Grid skrócone
+  do „Width [mm]”/„Height [mm]”. Przy okazji Lightened: Rectangle — Layout
+  w osobnym wierszu, pod nim Diagonals/Cells X, Rows/Cells Y, Rib Width;
+  Circle — Spokes, Hub, Rib Width, a Start w wierszu poniżej.
 - **`BL-61`** *(Zrealizowany, 2026-09-27)* 🔴 **[Low, kosztowne w czasie]**
   — **Podglądy duplikują geometrię silnika** — jedna lista ruchów (jak
   Adaptive) dla G-code i podglądu 3D, po jednej operacji na raz. Etapy 1–2
