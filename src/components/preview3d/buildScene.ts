@@ -128,6 +128,7 @@ interface Theme {
   linking: number
   origin: number
   hole: number
+  stockEdge: number
   axisX: number
   axisY: number
   offset: number
@@ -160,6 +161,7 @@ function buildTheme(paletteId: PaletteId, isDark: boolean, themeId: ThemeId): Th
     linking: hexToThreeColor(accents.linking),
     origin: hexToThreeColor(fixed.origin),
     hole: hexToThreeColor(accents.hole),
+    stockEdge: hexToThreeColor(accents.stockEdge),
     axisX: hexToThreeColor(fixed.axisX),
     axisY: hexToThreeColor(fixed.axisY),
     offset: hexToThreeColor(fixed.offset),
@@ -587,6 +589,29 @@ function boundingCenter(points: Point2D[]): Point2D {
   return { x: (Math.min(...xs) + Math.max(...xs)) / 2, y: (Math.min(...ys) + Math.max(...ys)) / 2 }
 }
 
+// The stock's material, in its two looks (BL-95).
+//
+// Transparent (default): theme.hole at 0.3 — theme.material is the scene's
+// own background color and barely shows over it. No lighting, so vertical
+// faces are darkened instead (WALL_SHADE_FACTOR). depthWrite: false on all
+// of it: translucent stock must never occlude what lies behind it (the
+// toolpath inside a pocket, another overlaid preset's walls) — it would
+// win or lose the depth test by camera-distance sort order and flip with
+// tiny camera moves.
+//
+// Solid: opaque and lit (Scene3D's ambient + directional light), so every
+// face takes its shade from its own orientation and the stock occludes the
+// toolpath like a real part. polygonOffset pushes it a hair back in depth
+// so the grid and toolpath lines lying on its surfaces don't flicker.
+function stockMaterial(theme: Theme, kind: 'face' | 'wall', side: THREE.Side, solid: boolean): THREE.Material {
+  if (solid) {
+    return new THREE.MeshLambertMaterial({ color: theme.hole, side, polygonOffset: true, polygonOffsetFactor: 1, polygonOffsetUnits: 1 })
+  }
+  const color = new THREE.Color(theme.hole)
+  if (kind === 'wall') color.multiplyScalar(WALL_SHADE_FACTOR)
+  return new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.3, side, depthWrite: false })
+}
+
 // One semi-transparent box from a set of corners — aligned with CNC X/Y,
 // so BoxGeometry needs no rotation (toThree() is a pure axis permutation +
 // negation). Surface's stock block is its only user. `closed` hides the
@@ -597,41 +622,20 @@ function boundingCenter(points: Point2D[]): Point2D {
 // draw call, so a transparent DoubleSide box blends its near and far faces
 // in rasterization order and looks darker/lighter depending on the camera
 // angle.
-function buildRectWallMesh(corners: Point2D[], boreHeight: number, centerZ: number, closed: boolean, theme: Theme): THREE.Mesh {
+function buildRectWallMesh(
+  corners: Point2D[],
+  boreHeight: number,
+  centerZ: number,
+  closed: boolean,
+  theme: Theme,
+  solid: boolean,
+): THREE.Mesh {
   const center = boundingCenter(corners)
   const width = Math.max(...corners.map((p) => p.x)) - Math.min(...corners.map((p) => p.x))
   const height = Math.max(...corners.map((p) => p.y)) - Math.min(...corners.map((p) => p.y))
   const side = closed ? THREE.FrontSide : THREE.DoubleSide
-  // Side walls a shade darker (WALL_SHADE_FACTOR) than the top/bottom cap
-  // — MeshBasicMaterial has no real lighting model, so without some
-  // deliberate cap-vs-wall contrast a box reads as a flat tinted
-  // rectangle rather than a solid 3D volume (this became visible once the
-  // FrontSide fix above removed the DoubleSide self-overlap darkening,
-  // which — by accident — had been the only cue making it read as 3D at
-  // all). Cheap fake shading, same idea as a flat-shaded isometric
-  // sprite's darker side faces. Applies to open shapes too, not just
-  // closed ones — an open wall's own missing cap used to be considered
-  // enough of a 3D cue on its own, but that breaks down next to the
-  // separate flat stock cap object, which sits right at the opening in
-  // the same undarkened theme.hole and reads as one continuous flat tint
-  // with an undarkened wall.
-  // depthWrite: false on both — same fix as the stock cap (0.16.2) and
-  // the Hole(s)/Outline Circle walls above, generalized: overlay mode can
-  // stack several independent patterns' walls in the same screen space,
-  // and without this, one can win the depth test against another (or
-  // against a different pattern's coil) depending on camera-distance sort
-  // order, hard-hiding it instead of blending.
-  const wallColor = new THREE.Color(theme.hole).multiplyScalar(WALL_SHADE_FACTOR)
-  const wallMaterial = new THREE.MeshBasicMaterial({
-    color: wallColor,
-    transparent: true,
-    opacity: 0.3,
-    side,
-    depthWrite: false,
-  })
-  const capMaterial = closed
-    ? new THREE.MeshBasicMaterial({ color: theme.hole, transparent: true, opacity: 0.3, side, depthWrite: false })
-    : new THREE.MeshBasicMaterial({ visible: false })
+  const wallMaterial = stockMaterial(theme, 'wall', side, solid)
+  const capMaterial = closed ? stockMaterial(theme, 'face', side, solid) : new THREE.MeshBasicMaterial({ visible: false })
   const mesh = new THREE.Mesh(
     new THREE.BoxGeometry(width, boreHeight, height),
     [wallMaterial, wallMaterial, capMaterial, capMaterial, wallMaterial, wallMaterial],
@@ -690,6 +694,8 @@ function buildSurfacePatternObjects(
   arrowSize: number,
   showStock: boolean,
   showToolpath: boolean,
+  solidStock: boolean,
+  stockEdges: boolean,
 ): THREE.Object3D[] {
   const { nominalBounds, params } = pattern
   const { surface, feeds } = params
@@ -707,7 +713,15 @@ function buildSurfacePatternObjects(
       { x: nominalBounds.minX, y: nominalBounds.maxY },
     ]
     // closed=true — see the block comment above.
-    objects.push(buildRectWallMesh(corners, boreHeight, boreCenterZ, true, theme))
+    const block = buildRectWallMesh(corners, boreHeight, boreCenterZ, true, theme, solidStock)
+    // The block's own outline, like the stock model's (stockEdgeMesh()).
+    const blockEdges = new THREE.LineSegments(
+      new THREE.EdgesGeometry(block.geometry),
+      new THREE.LineBasicMaterial({ color: theme.stockEdge }),
+    )
+    blockEdges.position.copy(block.position)
+    objects.push(block)
+    if (stockEdges) objects.push(blockEdges)
   }
 
   // The whole path — entry rapid, Z transitions, raster, final retract —
@@ -746,6 +760,8 @@ function buildPatternObjects(
   arrowSize: number,
   showStock: boolean,
   showToolpath: boolean,
+  solidStock: boolean,
+  stockEdges: boolean,
 ): THREE.Object3D[] {
   switch (pattern.kind) {
     case 'holes':
@@ -755,7 +771,7 @@ function buildPatternObjects(
     case 'outlineRect':
       return buildOutlineRectPatternObjects(pattern, theme, span, arrowSize, showToolpath)
     case 'surface':
-      return buildSurfacePatternObjects(pattern, theme, span, arrowSize, showStock, showToolpath)
+      return buildSurfacePatternObjects(pattern, theme, span, arrowSize, showStock, showToolpath, solidStock, stockEdges)
     case 'pocket':
       return buildPocketPatternObjects(pattern, theme, span, arrowSize, showToolpath)
   }
@@ -773,20 +789,13 @@ function openRing(ring: Ring): Ring {
 // material plane's own rotation) local shape-X is world X and shape-Y is
 // world -Z — exactly toThree(x, y, 0). Islands enclosed by voids come as
 // separate polygons, so every shape has non-overlapping holes.
-function stockFaceMesh(region: MultiPolygon, z: number, side: THREE.Side, theme: Theme): THREE.Mesh {
+function stockFaceMesh(region: MultiPolygon, z: number, side: THREE.Side, theme: Theme, solid: boolean): THREE.Mesh {
   const shapes = region.map(([outerRing, ...holeRings]) => {
     const shape = new THREE.Shape(openRing(outerRing).map(([x, y]) => new THREE.Vector2(x, y)))
     shape.holes = holeRings.map((ring) => new THREE.Path(openRing(ring).map(([x, y]) => new THREE.Vector2(x, y))))
     return shape
   })
-  // theme.hole at 0.3, like the walls — theme.material is the scene's own
-  // background color and barely shows over it. depthWrite: false keeps a
-  // large translucent face from occluding what lies behind it at a raking
-  // camera angle.
-  const face = new THREE.Mesh(
-    new THREE.ShapeGeometry(shapes),
-    new THREE.MeshBasicMaterial({ color: theme.hole, transparent: true, opacity: 0.3, side, depthWrite: false }),
-  )
+  const face = new THREE.Mesh(new THREE.ShapeGeometry(shapes), stockMaterial(theme, 'face', side, solid))
   face.rotation.x = -Math.PI / 2
   face.position.set(0, z, 0)
   return face
@@ -803,10 +812,9 @@ function signedArea(ring: Ring): number {
 // band's region, from zTop down to zBottom. Rings are walked with the
 // material on the left (outer rings counter-clockwise, holes clockwise),
 // which makes every face's front point out of the material — what a
-// FrontSide (closed solid) band needs. A shade darker than the horizontal
-// faces (WALL_SHADE_FACTOR): MeshBasicMaterial has no lighting, and
-// without the contrast a wall reads as part of the flat face at its rim.
-function stockWallMesh(band: StockModel['walls'][number], side: THREE.Side, theme: Theme): THREE.Mesh {
+// FrontSide (closed solid) band needs, and what its lighting normals
+// (flat, one per face) are computed from.
+function stockWallMesh(band: StockModel['walls'][number], side: THREE.Side, theme: Theme, solid: boolean): THREE.Mesh {
   const positions: number[] = []
   for (const polygon of band.region) {
     polygon.forEach((closedRing, ringIndex) => {
@@ -826,8 +834,8 @@ function stockWallMesh(band: StockModel['walls'][number], side: THREE.Side, them
   }
   const geometry = new THREE.BufferGeometry()
   geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3))
-  const color = new THREE.Color(theme.hole).multiplyScalar(WALL_SHADE_FACTOR)
-  return new THREE.Mesh(geometry, new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.3, side, depthWrite: false }))
+  geometry.computeVertexNormals()
+  return new THREE.Mesh(geometry, stockMaterial(theme, 'wall', side, solid))
 }
 
 // The stock of everything drawn (BL-77) — one model for the live pattern
@@ -840,15 +848,79 @@ function stockWallMesh(band: StockModel['walls'][number], side: THREE.Side, them
 // near and a far face never blend through each other, plus an underside
 // seen only from below. The sheet is open: its faces and walls are
 // DoubleSide, to be seen from inside a void and from underneath.
-function buildStockModelObjects(model: StockModel, theme: Theme): THREE.Object3D[] {
+function edgeLines(positions: number[], theme: Theme): THREE.LineSegments {
+  const geometry = new THREE.BufferGeometry()
+  geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3))
+  return new THREE.LineSegments(geometry, new THREE.LineBasicMaterial({ color: theme.stockEdge }))
+}
+
+// A wall corner sharper than this gets a vertical edge line; the 5° steps
+// of a circle or an arc stay smooth.
+const EDGE_CORNER_DEG = 20
+
+// The stock model's edges (palette color `stockEdge`, Settings →
+// Appearance), as a sketch-like outline that keeps a part readable where
+// its faces share one tone: the rim of every
+// horizontal face (top, pocket floors, underside) and a vertical line at
+// every sharp corner of a wall. The sheet's own outer edge is not one —
+// the sheet has no walls there.
+function stockEdgeMesh(model: StockModel, theme: Theme): THREE.LineSegments {
+  const positions: number[] = []
+  const segment = (ax: number, ay: number, az: number, bx: number, by: number, bz: number) => {
+    const a = toThree(ax, ay, az)
+    const b = toThree(bx, by, bz)
+    positions.push(a.x, a.y, a.z, b.x, b.y, b.z)
+  }
+  const extent = (rings: Ring[]) => {
+    const xs = rings.flatMap((ring) => ring.map(([x]) => x))
+    return Math.max(...xs) - Math.min(...xs)
+  }
+  const sheetWidth = model.solid || model.top.length === 0 ? Infinity : extent(model.top.map(([outer]) => outer))
+
+  const rim = (region: MultiPolygon, z: number) => {
+    for (const polygon of region) {
+      polygon.forEach((closedRing, ringIndex) => {
+        const ring = openRing(closedRing)
+        if (ringIndex === 0 && extent([ring]) >= sheetWidth) return
+        ring.forEach(([x, y], i) => {
+          const [nx, ny] = ring[(i + 1) % ring.length]
+          segment(x, y, z, nx, ny, z)
+        })
+      })
+    }
+  }
+  rim(model.top, SOLID_CAP_Z_LIFT)
+  for (const floor of model.floors) rim(floor.region, floor.z)
+  if (model.bottom) rim(model.bottom.region, model.bottom.z)
+
+  const minTurn = (EDGE_CORNER_DEG * Math.PI) / 180
+  for (const band of model.walls) {
+    for (const polygon of band.region) {
+      for (const closedRing of polygon) {
+        const ring = openRing(closedRing)
+        ring.forEach(([x, y], i) => {
+          const [px, py] = ring[(i + ring.length - 1) % ring.length]
+          const [nx, ny] = ring[(i + 1) % ring.length]
+          const turn = Math.abs(Math.atan2((x - px) * (ny - y) - (y - py) * (nx - x), (x - px) * (nx - x) + (y - py) * (ny - y)))
+          if (turn > minTurn) segment(x, y, band.zTop, x, y, band.zBottom)
+        })
+      }
+    }
+  }
+  return edgeLines(positions, theme)
+}
+
+function buildStockModelObjects(model: StockModel, theme: Theme, solid: boolean, edges: boolean): THREE.Object3D[] {
   const side = model.solid ? THREE.FrontSide : THREE.DoubleSide
-  // Lifted off the material plane and grid; drawn first, as a backdrop.
-  const top = stockFaceMesh(model.top, SOLID_CAP_Z_LIFT, side, theme)
-  top.renderOrder = -1
+  // Lifted off the material plane and grid; while translucent, drawn
+  // first, as a backdrop.
+  const top = stockFaceMesh(model.top, SOLID_CAP_Z_LIFT, side, theme, solid)
+  if (!solid) top.renderOrder = -1
   const objects: THREE.Object3D[] = [top]
-  for (const floor of model.floors) objects.push(stockFaceMesh(floor.region, floor.z, side, theme))
-  for (const band of model.walls) objects.push(stockWallMesh(band, side, theme))
-  if (model.bottom) objects.push(stockFaceMesh(model.bottom.region, model.bottom.z, THREE.BackSide, theme))
+  for (const floor of model.floors) objects.push(stockFaceMesh(floor.region, floor.z, side, theme, solid))
+  for (const band of model.walls) objects.push(stockWallMesh(band, side, theme, solid))
+  if (model.bottom) objects.push(stockFaceMesh(model.bottom.region, model.bottom.z, THREE.BackSide, theme, solid))
+  if (edges) objects.push(stockEdgeMesh(model, theme))
   return objects
 }
 
@@ -863,6 +935,8 @@ export function buildToolpathScene(
   gridLabelSize: Grid3DLabelSize = 'medium',
   showStock = true,
   showToolpath = true,
+  solidStock = false,
+  stockEdges = true,
 ): BuiltScene {
   const theme = buildTheme(paletteId, isDark, themeId)
 
@@ -952,11 +1026,18 @@ export function buildToolpathScene(
   plane.renderOrder = -1
   plane.rotation.x = -Math.PI / 2
   plane.position.set(gridCenterX, 0, gridCenterZ)
-  objects.push(plane)
+  // Left out under solid stock (BL-95): it lies 0.02 mm below the stock's
+  // top face, whose polygonOffset pushes it behind the plane at any oblique
+  // angle — the plane (the background color at partial opacity) then
+  // veiled the top and every wall below Z0, flattening the lit stock into
+  // one dark tone.
+  if (!(showStock && solidStock)) objects.push(plane)
 
   const grid = new THREE.GridHelper(gridSize, gridDivisions, theme.grid, theme.grid)
   grid.renderOrder = -1
-  grid.position.set(gridCenterX, 0.01, gridCenterZ)
+  // Below the translucent stock's top face; above it when the stock is
+  // solid (BL-95), which would otherwise cover the whole grid.
+  grid.position.set(gridCenterX, showStock && solidStock ? SOLID_CAP_Z_LIFT * 2 : 0.01, gridCenterZ)
   ;(grid.material as THREE.Material).transparent = true
   ;(grid.material as THREE.Material).opacity = 0.4
   ;(grid.material as THREE.Material).depthWrite = false
@@ -973,7 +1054,7 @@ export function buildToolpathScene(
       maxX: gridCenterX + half,
       maxY: -gridCenterZ + half,
     })
-    if (model) objects.push(...buildStockModelObjects(model, theme))
+    if (model) objects.push(...buildStockModelObjects(model, theme, solidStock, stockEdges))
   }
 
   // Shared by origin/"X"/"Y" and, further below, every grid tick — one
@@ -1114,7 +1195,7 @@ export function buildToolpathScene(
   }
 
   for (const pattern of allPatterns) {
-    objects.push(...buildPatternObjects(pattern, theme, span, arrowSize, showStock, showToolpath))
+    objects.push(...buildPatternObjects(pattern, theme, span, arrowSize, showStock, showToolpath, solidStock, stockEdges))
   }
 
   return { objects, labels, bounds, background: theme.material }

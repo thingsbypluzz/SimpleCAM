@@ -37,20 +37,45 @@ grepować `.position.set(` z `p.x`/`p.y`.
   Mostki ignorowane.
 - `SOLID_CAP_Z_LIFT` (0.02 mm) — lico i górna ściana bloku Surface
   podniesione, żeby nie z-fightować z płaszczyzną (Y=0) i siatką (0.01).
+- **Dwa wyglądy** (`stockMaterial()`, przycisk Solid/Transparent Stock,
+  stan sesyjny w `App.tsx`, tylko 3D):
+  - **przezroczysty** (domyślny) — `MeshBasicMaterial`, `theme.hole`,
+    opacity 0.3, bez zapisu głębi; ścieżkę widać przez materiał;
+  - **lity** — `MeshLambertMaterial` w kolorze `theme.hole`, nieprzezroczysty,
+    z zapisem głębi: materiał zasłania ścieżkę (widać ją w pustkach i nad
+    materiałem), a odcień każdej ściany daje światło. `polygonOffset`
+    odsuwa go o włos w głębi, żeby siatka i linie na powierzchni nie
+    migotały; siatka podniesiona nad lico (inaczej lity arkusz by ją
+    zasłonił), a półprzezroczysta płaszczyzna Z=0 pominięta — przy
+    widoku pod kątem przykrywała lico i ściany poniżej Z0, zlewając
+    oświetlony materiał w jeden ciemny ton. Ściany mają płaskie normalne (`computeVertexNormals()` na
+    geometrii nieindeksowanej).
+- **Krawędzie** (`stockEdgeMesh()`, `THREE.LineSegments` w kolorze palety
+  `stockEdge`, w obu wyglądach; wyłączane w Settings → Appearance,
+  `appearance.stockEdges3DEnabled`): obrys każdej powierzchni poziomej
+  (lico, dna kieszeni, spód części) i pionowa linia w każdym narożniku
+  ściany ostrzejszym niż `EDGE_CORNER_DEG` (20°) — segmenty okręgów i
+  łuków (5°) zostają gładkie. Krawędź arkusza nie jest obrysowana (arkusz
+  nie ma tam ścian). Blok Surface: `THREE.EdgesGeometry`. Bez nich lico,
+  dna i ściany o tym samym odcieniu zlewają się w jedną plamę.
+- Światła (`Scene3D.tsx`): `AmbientLight` + `DirectionalLight` z pozycji
+  (1, 1.5, 1), stałe w świecie; natężenia × π (Lambert dzieli przez π) —
+  lico w pełnym kolorze, ściany od strony światła ok. 0.8, odwrócone 0.45.
+  Oświetlony jest tylko lity materiał.
 
 ## Przezroczystość i kolejność renderowania
 
 - `depthWrite: false` na **wszystkich** przezroczystych obiektach
-  (płaszczyzna, siatka, każda ściana materiału) — inaczej sortowanie po
+  (płaszczyzna, siatka, każda ściana przezroczystego materiału) — inaczej sortowanie po
   odległości potrafi wymazać obiekt za innym (szczególnie w Overlay).
   `depthTest` zostaje.
-- `renderOrder = -1` na płaszczyźnie, siatce i licu materiału — tło
-  zawsze najpierw, stała kolejność blendowania.
+- `renderOrder = -1` na płaszczyźnie, siatce i licu przezroczystego
+  materiału — tło zawsze najpierw, stała kolejność blendowania.
 - Zamknięte bryły `FrontSide` (DoubleSide pokazywał bliską i daleką ścianę
   naraz w losowej kolejności); arkusz — `DoubleSide`.
-- Sztuczne cieniowanie: każda ściana boczna = `theme.hole` ×
-  `WALL_SHADE_FACTOR` (0.5), ciemniejsza niż każda ściana pozioma. Opacity
-  materiału 0.3.
+- Sztuczne cieniowanie przezroczystego materiału: każda ściana boczna =
+  `theme.hole` × `WALL_SHADE_FACTOR` (0.5), ciemniejsza niż każda ściana
+  pozioma. Opacity 0.3.
 
 ## Styl linii ścieżki (`MOVE_STYLE`)
 
@@ -93,5 +118,6 @@ Adaptive, kropkowane w kolorze `linking` palety). Każdy styl = osobne
   przeglądarki); korzeń `flex-1 min-h-0`, nie `h-full w-full`.
 - `renderPaused` (modal otwarty) — pętla rysuje tylko po realnej zmianie.
   Sprzątanie: `renderer.forceContextLoss()` (limit kontekstów WebGL).
-- Przyciski w podglądzie: Hide/Show Stock, Hide/Show Toolpath (stan
-  sesyjny, wspólny z 2D), Hide/Show Grid Labels, presety widoku, Fit View.
+- Przyciski w podglądzie: Hide/Show Stock, Solid/Transparent Stock (stan
+  sesyjny, tylko 3D), Hide/Show Toolpath (stan sesyjny, wspólny z 2D, jak
+  Hide/Show Stock), Hide/Show Grid Labels, presety widoku, Fit View.

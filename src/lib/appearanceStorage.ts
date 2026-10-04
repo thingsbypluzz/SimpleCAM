@@ -37,6 +37,10 @@ export function loadAppearanceSettings(): AppearanceSettings {
       grid3DLabelSize: isGrid3DLabelSize(parsed.grid3DLabelSize)
         ? parsed.grid3DLabelSize
         : DEFAULT_APPEARANCE_SETTINGS.grid3DLabelSize,
+      stockEdges3DEnabled:
+        typeof parsed.stockEdges3DEnabled === 'boolean'
+          ? parsed.stockEdges3DEnabled
+          : DEFAULT_APPEARANCE_SETTINGS.stockEdges3DEnabled,
     }
   } catch (err) {
     console.warn('OnlyPaths: could not read appearance settings from localStorage', err)

@@ -19,6 +19,9 @@ export interface AppearanceSettings {
   // coordinate-labels work this setting follows up on).
   grid3DLabelsEnabled: boolean
   grid3DLabelSize: Grid3DLabelSize
+  // 3D Preview only — the stock's edge outline (rims of its faces, sharp
+  // wall corners).
+  stockEdges3DEnabled: boolean
 }
 
 export const DEFAULT_APPEARANCE_SETTINGS: AppearanceSettings = {
@@ -26,4 +29,5 @@ export const DEFAULT_APPEARANCE_SETTINGS: AppearanceSettings = {
   palette: 'default',
   grid3DLabelsEnabled: true,
   grid3DLabelSize: 'medium',
+  stockEdges3DEnabled: true,
 }

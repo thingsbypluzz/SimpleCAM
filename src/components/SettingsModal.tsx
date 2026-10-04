@@ -734,6 +734,25 @@ export function SettingsModal({
 
               <div className="flex flex-col gap-2 border-t border-border pt-4">
                 <span className="text-sm font-medium text-value">
+                  Stock Edges (3D Preview)
+                </span>
+                <Checkbox
+                  checked={appearance.stockEdges3DEnabled}
+                  onChange={(checked) =>
+                    onSaveAppearance({ ...appearance, stockEdges3DEnabled: checked })
+                  }
+                  label="Outline the stock's edges"
+                  className="text-sm text-value"
+                />
+                <p className="text-sm text-muted">
+                  Draws a thin line along every edge of the stock — rims of holes and pockets,
+                  steps and sharp corners — in both Solid and Transparent Stock. The line color
+                  follows the Preview Color Palette.
+                </p>
+              </div>
+
+              <div className="flex flex-col gap-2 border-t border-border pt-4">
+                <span className="text-sm font-medium text-value">
                   Grid Labels (3D Preview)
                 </span>
                 <Checkbox

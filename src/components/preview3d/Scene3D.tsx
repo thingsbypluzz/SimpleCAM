@@ -19,7 +19,12 @@ interface Scene3DProps {
   gridLabelSize: Grid3DLabelSize
   stockVisible: boolean
   toolpathVisible: boolean
+  // BL-95: opaque, lit stock instead of the translucent one.
+  stockSolid: boolean
+  // The stock's edge outline — appearance.stockEdges3DEnabled.
+  stockEdgesEnabled: boolean
   onToggleStockVisible: () => void
+  onToggleStockSolid: () => void
   onToggleToolpathVisible: () => void
   // BL-38: unlike stockVisible/toolpathVisible (local, session-only view
   // state), this flips the same persisted appearance.grid3DLabelsEnabled
@@ -70,7 +75,10 @@ export function Scene3D({
   gridLabelSize,
   stockVisible,
   toolpathVisible,
+  stockSolid,
+  stockEdgesEnabled,
   onToggleStockVisible,
+  onToggleStockSolid,
   onToggleToolpathVisible,
   onToggleGridLabels,
   renderPaused = false,
@@ -129,8 +137,14 @@ export function Scene3D({
     scene.add(contentGroup)
     contentGroupRef.current = contentGroup
 
-    scene.add(new THREE.AmbientLight(0xffffff, 0.7))
-    const dirLight = new THREE.DirectionalLight(0xffffff, 0.6)
+    // Lights for the solid stock (BL-95) — its material is the only lit
+    // one in the scene. Lambert shading divides by π, so the intensities
+    // carry it: a face comes out at (0.45 + 0.75 · cos) of its color — the
+    // top at full color, walls facing the light around 0.8, walls facing
+    // away at 0.45. The light sits toward the Front view's side, up and to
+    // the right, fixed in the world (it does not follow the camera).
+    scene.add(new THREE.AmbientLight(0xffffff, 0.45 * Math.PI))
+    const dirLight = new THREE.DirectionalLight(0xffffff, 0.75 * Math.PI)
     dirLight.position.set(1, 1.5, 1)
     scene.add(dirLight)
 
@@ -242,6 +256,8 @@ export function Scene3D({
       gridLabelSize,
       stockVisible,
       toolpathVisible,
+      stockSolid,
+      stockEdgesEnabled,
     )
     renderer.setClearColor(background, 1)
     objects.forEach((obj) => contentGroup.add(obj))
@@ -301,6 +317,8 @@ export function Scene3D({
     gridLabelSize,
     stockVisible,
     toolpathVisible,
+    stockSolid,
+    stockEdgesEnabled,
     viewMemory,
   ])
 
@@ -334,6 +352,9 @@ export function Scene3D({
       <div className="absolute top-3 left-3 flex flex-wrap items-center gap-1.5">
         <button type="button" onClick={onToggleStockVisible} className={buttonClass}>
           {stockVisible ? 'Hide Stock' : 'Show Stock'}
+        </button>
+        <button type="button" onClick={onToggleStockSolid} className={buttonClass}>
+          {stockSolid ? 'Transparent Stock' : 'Solid Stock'}
         </button>
         <button type="button" onClick={onToggleToolpathVisible} className={buttonClass}>
           {toolpathVisible ? 'Hide Toolpath' : 'Show Toolpath'}
