@@ -7,6 +7,18 @@ zgodne z [SemVer](https://semver.org/). Ten plik pozostaje głównym, czytelnym
 thingsbypluzz/SimpleCAM), ale to infrastruktura pod izolację pracy
 (branch/worktree per zadanie), nie zamiennik tego changeloga.
 
+## [0.34.0] — 2026-10-04
+
+### Dodano
+
+- **Step 1 Summary pokazuje wszystkie operacje** (`BL-94`), w kolejności
+  Kroku 1. Aktywna jest podświetlona na swoim miejscu (nazwa, duża ikona,
+  opis wzorca), pozostałe to małe, wyszarzone ikony z podpisami — każda
+  pokazuje wzorzec/kształt, który ta operacja pamięta. Klik otwiera Krok 1
+  z tą operacją już wybraną, więc zmiana operacji to jedno kliknięcie
+  zamiast dwóch przed wyborem wzorca. Klik w aktywną operację albo w tło
+  kolumny otwiera Krok 1 jak dotąd.
+
 ## [0.33.0] — 2026-10-02
 
 ### Zmieniono

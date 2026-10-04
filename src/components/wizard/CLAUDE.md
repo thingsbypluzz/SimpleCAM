@@ -3,6 +3,14 @@
 - `Step1Positioning.tsx` — tylko wybór operacji i wzorca/kształtu (pionowy
   stos operacji z listą wariantów). `Step2Geometry.tsx` — router na
   `params.operation` → `Step2GeometryHoles/Outline/Surface/Pocket.tsx`.
+- `Step1Summary.tsx` — zwinięty Krok 1: wszystkie operacje w kolejności
+  Kroku 1 (`OPERATION_LIST`). Aktywna podświetlona na swoim miejscu
+  (tokeny `selected-*`, nazwa, duża ikona i opis wybranego wzorca/
+  kształtu), pozostałe jako małe, wyszarzone przyciski z podpisem (ikona
+  zapamiętanego wzorca z `pickIcon()`). Klik w nieaktywną przełącza
+  operację i otwiera Krok 1; klik w aktywną albo w tło kolumny tylko
+  otwiera Krok 1. Korzeń to `<div>` (zawiera własne przyciski), pozostałe
+  Step N Summary są jednym `<button>`; każdy przycisk z `aria-pressed`.
 - **Kolejność pól w Kroku 2** (komentarz „Field order” na górze każdego
   pliku): pierwszy wiersz `PickHeader.tsx` („Pattern: …” / „Shape: …” z
   `OPERATION_META[op].pickKind` + `pick()`, opis pod Hint Button przy

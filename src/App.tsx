@@ -1,5 +1,6 @@
 import { lazy, Suspense, useDeferredValue, useEffect, useMemo, useRef, useState, type ComponentType } from 'react'
 import { Step1Positioning } from './components/wizard/Step1Positioning'
+import { Step1Summary } from './components/wizard/Step1Summary'
 import { Step2Geometry } from './components/wizard/Step2Geometry'
 import { Step3Feeds } from './components/wizard/Step3Feeds'
 import { Step4Output } from './components/wizard/Step4Output'
@@ -741,6 +742,21 @@ function App() {
               )
             }
 
+            if (step.id === 1) {
+              return (
+                <Step1Summary
+                  key={step.id}
+                  params={params}
+                  title={collapsedStepTitle(step.id, params)}
+                  onOpen={() => setActiveStep(step.id)}
+                  onSwitchOperation={(operation) => {
+                    updateParams({ operation })
+                    setActiveStep(step.id)
+                  }}
+                />
+              )
+            }
+
             return (
               <button
                 key={step.id}
@@ -749,31 +765,6 @@ function App() {
                 title={collapsedStepTitle(step.id, params)}
                 className="flex w-20 shrink-0 flex-col items-center gap-3 border-r border-border py-4 hover:bg-border/40"
               >
-                {step.id === 1 && (
-                  <div
-                    className="flex flex-col items-center gap-1"
-                    title={`${operationMeta.pickKind}: ${operationMeta.pickSummary(params)}`}
-                  >
-                    <span className="text-[10px] font-semibold uppercase text-muted">
-                      {operationMeta.label}
-                    </span>
-                    {(() => {
-                      const Icon = operationMeta.pickIcon(params)
-                      return <Icon className="h-8 w-8 text-accent" />
-                    })()}
-                    <div className="flex flex-col items-center">
-                      {operationMeta.pickLines(params).map((line, i) => (
-                        <span
-                          key={i}
-                          className="text-center text-[9px] leading-tight font-semibold whitespace-nowrap text-stat-value"
-                        >
-                          {line}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
                 {step.id === 2 && (
                   <div className="flex flex-col items-center gap-4">
                     <span className="text-[10px] font-semibold uppercase text-muted">
