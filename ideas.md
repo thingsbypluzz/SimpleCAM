@@ -581,13 +581,22 @@ Waga z review w nawiasie kwadratowym.
   do „Width [mm]”/„Height [mm]”. Przy okazji Lightened: Rectangle — Layout
   w osobnym wierszu, pod nim Diagonals/Cells X, Rows/Cells Y, Rib Width;
   Circle — Spokes, Hub, Rib Width, a Start w wierszu poniżej.
-- **`BL-94`** *(Otwarty)* 🟢 — **Step 1 Summary: ikony wszystkich
-  operacji.** Zgłoszone 2026-10-02. Dziś Step 1 Summary pokazuje tylko
-  wybraną operację, więc zmiana operacji to trzy kliknięcia: rozwinięcie
-  Kroku 1, przełączenie operacji, wybór wzorca. Pomysł: w Step 1 Summary
-  ikona każdej operacji; klik w ikonę otwiera Krok 1 z tą operacją już
-  wybraną. Do ustalenia: wygląd nieaktywnych ikon (wyszarzone albo inny
-  kolor).
+- **`BL-94`** *(Zrealizowany, 2026-10-04)* 🟢 — **Step 1 Summary: ikony
+  wszystkich operacji.** Zgłoszone 2026-10-02. Step 1 Summary pokazywał
+  tylko wybraną operację, więc zmiana operacji to trzy kliknięcia:
+  rozwinięcie Kroku 1, przełączenie operacji, wybór wzorca. Wdrożone
+  (`Step1Summary.tsx`): cztery operacje w kolejności Kroku 1, aktywna
+  podświetlona na swoim miejscu, pozostałe jako małe, wyszarzone ikony z
+  podpisami (akcent po najechaniu); klik otwiera Krok 1 z tą operacją już
+  wybraną. Pełny opis: `CHANGELOG.md`, `[0.34.0]`.
+- **`BL-95`** *(Otwarty)* 🟠 — **3D Preview: przełącznik przezroczystości
+  materiału.** Zgłoszone 2026-10-02. Dziś materiał w 3D jest zawsze
+  półprzezroczysty (opacity 0.3, `depthWrite: false`). Pomysł: przycisk w
+  górnym rzędzie 3D Preview (obok Hide/Show Stock, Hide/Show Toolpath),
+  który przełącza materiał między przezroczystym a litym — w zwykłym
+  podglądzie i w Overlay. Do ustalenia: widoczność ścieżki wewnątrz litego
+  materiału (zasłonięta czy rysowana na wierzchu), cieniowanie ścian bez
+  oświetlenia, stan sesyjny czy zapis w Appearance, etykieta przycisku.
 - **`BL-61`** *(Zrealizowany, 2026-09-27)* 🔴 **[Low, kosztowne w czasie]**
   — **Podglądy duplikują geometrię silnika** — jedna lista ruchów (jak
   Adaptive) dla G-code i podglądu 3D, po jednej operacji na raz. Etapy 1–2
