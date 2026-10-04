@@ -7,6 +7,37 @@ zgodne z [SemVer](https://semver.org/). Ten plik pozostaje głównym, czytelnym
 thingsbypluzz/SimpleCAM), ale to infrastruktura pod izolację pracy
 (branch/worktree per zadanie), nie zamiennik tego changeloga.
 
+## [0.38.0] — 2026-10-04
+
+### Dodano
+
+- **Facing — piąta operacja: obróbka jednego boku detalu** (`OP-7`). Frez
+  jedzie bokiem wzdłuż prostej krawędzi kostki albo deski, wchodzi i
+  wychodzi w powietrzu i zbiera zadany naddatek kilkoma dosuwami
+  bocznymi. Dotąd nie dało się tego uzyskać: Outline zawsze obiega cały
+  kształt jednym przejściem i zagłębia się od góry, Surface zbiera tylko
+  z wierzchu.
+  - Krok 1 wybiera bok: Bottom / Top / Left / Right Side (Bottom i Top
+    biegną wzdłuż X, Left i Right wzdłuż Y).
+  - Krok 2: Length, Remove (naddatek), Depth (wysokość boku), Origin
+    Along (Start / Center / End) i Origin Across (Raw Edge / Finished) —
+    zero na dowolnym końcu albo w środku boku, na krawędzi surowej albo
+    gotowej; Stepover w mm i w % średnicy (oba edytowalne, zapisywane są
+    mm), Direction (Climb domyślnie / Conventional), Lead (wybieg poza
+    końce boku ponad promień freza), Clearance (odsunięcie od materiału
+    na powrót), Offset X/Y.
+  - Tor: jednokierunkowo, poziom Z po poziomie; po każdym przejściu frez
+    odsuwa się od materiału i wraca na początek boku ruchem G1 z posuwem
+    Linking Feed (Krok 3) — nigdy G0 poniżej Safe Z. Ostatni dosuw jest
+    wyrównany do naddatku. Zawsze G1.
+  - Podglądy rysują detal po obróbce: blok od gotowej krawędzi w głąb
+    detalu do brzegu widocznej płaszczyzny (drugi wymiar detalu nie jest
+    znany), o wysokości Depth; zbierany pas ma sam obrys. Facing, jak
+    Surface, jest poza wspólnym modelem materiału.
+  - Feedrate Calculator traktuje Facing jak frezowanie boczne i sugeruje
+    Stepover — nie większy niż naddatek.
+  - Plik: `op-facing-<bok>-<data>.gcode`.
+
 ## [0.37.0] — 2026-10-04
 
 ### Dodano

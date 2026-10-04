@@ -34,6 +34,11 @@ grepować `.position.set(` z `p.x`/`p.y`.
 - **Surface** poza modelem: blok „pozostały materiał” przez
   `buildRectWallMesh()` (zamknięty), górna ściana na `Z = -totalDepth`,
   wysokość = `feeds.safeZ`.
+- **Facing** poza modelem (`buildFacingPatternObjects()`): zamknięty blok
+  przez `buildRectWallMesh()` od gotowej krawędzi w głąb detalu do brzegu
+  siatki/płaszczyzny (drugi wymiar detalu nie jest znany), od Z0 do
+  `-totalDepth`; zbierany pas bez ścian — sam kreskowany obrys
+  (`LineDashedMaterial`), żeby surowa krawędź została widoczna.
 - Materiał zawsze od **Z=0** — Start Z go nie przesuwa (`BL-37`); odcinek
   ścieżki Start Z → Z0 celowo wystaje ponad materiał (najazd w powietrzu).
   Mostki ignorowane.

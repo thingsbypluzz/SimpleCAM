@@ -200,11 +200,11 @@ interface StockFeatures {
 
 // What one preset means for the material, by the physical sense of its
 // operation — the one place the previews' stock branches on the operation.
-// Surface is not part of the model (null): it draws its own "remaining
-// material" block. `cutShape` (BL-86) swaps the nominal contours for the
+// Surface and Facing are not part of the model (null): each draws its own
+// "remaining material" block. `cutShape` (BL-86) swaps the nominal contours for the
 // ones the tool actually leaves.
 function stockFeatures(params: WizardParams, grid: number, cutShape: boolean): StockFeatures | null {
-  if (params.operation === 'surface') return null
+  if (params.operation === 'surface' || params.operation === 'facing') return null
   const ring = (v: SheetVoid) => outlineRing(v, grid)
   if (params.operation === 'pocket') {
     const depth = params.pocket.totalDepth

@@ -98,7 +98,9 @@ export function Step4Output({
           <p className="text-xs text-muted">
             {forcedLinearBy === 'rectOutline'
               ? 'G2/G3 disabled — Rectangle outlines are always straight-edge (G1).'
-              : 'G2/G3 disabled — Tabs (Step 2) require G1 interpolation.'}
+              : forcedLinearBy === 'facing'
+                ? 'G2/G3 disabled — Facing is straight lines only (G1).'
+                : 'G2/G3 disabled — Tabs (Step 2) require G1 interpolation.'}
           </p>
         )}
       </div>

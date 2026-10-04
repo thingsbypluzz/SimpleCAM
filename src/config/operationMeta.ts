@@ -1,9 +1,11 @@
 import type { ComponentType } from 'react'
 import { BitIcon, DepthIcon, DiameterIcon, OffsetIcon, TabBridgeIcon } from '../components/icons'
 import { fmt } from '../lib/format'
+import { generateFacing } from '../lib/facing'
 import { generateOutline } from '../lib/outline'
 import type { MachineSettings } from '../types/machine'
 import type { MethodType, OperationType, OutlineMethod, PocketMethodType, SurfaceMethodType, WizardParams } from '../types/wizard'
+import { FACING_METHOD, FACING_SIDE_META, facingLabel, facingLines, facingSideIcon, facingSlug, facingSummary } from './facingMeta'
 import { METHOD_LIST, METHOD_META } from './methodMeta'
 import {
   activeOutlineMethodMeta,
@@ -71,8 +73,9 @@ export interface CalcPatch {
 // OPERATION_RULES.
 export interface OperationMeta {
   label: string
-  // What Step 1 picks for this operation: a hole pattern or a shape.
-  pickKind: 'Pattern' | 'Shape'
+  // What Step 1 picks for this operation: a hole pattern, a shape or (Facing)
+  // a side of the part.
+  pickKind: 'Pattern' | 'Shape' | 'Side'
   pickIcon: (params: WizardParams) => IconComponent
   pickLines: (params: WizardParams) => string[]
   pickSummary: (params: WizardParams) => string
@@ -95,6 +98,10 @@ export interface OperationMeta {
   methodValue: (params: WizardParams) => string
   calcMethods: (params: WizardParams) => CalcMethodOption[]
   withCalc: (params: WizardParams, patch: CalcPatch) => Partial<WizardParams>
+  // The widest cut the operation can take [% of the tool], when the
+  // geometry limits it below the calculator's suggestion (Facing: there is
+  // only Material to Remove to cut).
+  maxCalcWidthPercent?: (params: WizardParams) => number
 }
 
 const methodOptions = (list: { value: string; title: string }[]): CalcMethodOption[] =>
@@ -146,7 +153,7 @@ const roundSize = (shape: { shape: string; diameter?: number; width: number; hei
   shape.shape === 'circle' || shape.shape === 'circleLightened' ? `⌀${shape.diameter}` : `${shape.width}×${shape.height}`
 
 // The operations in Step 1's order.
-export const OPERATION_LIST: OperationType[] = ['holes', 'outline', 'surface', 'pocket']
+export const OPERATION_LIST: OperationType[] = ['holes', 'outline', 'surface', 'pocket', 'facing']
 
 export const OPERATION_META: Record<OperationType, OperationMeta> = {
   holes: {
@@ -288,5 +295,43 @@ export const OPERATION_META: Record<OperationType, OperationMeta> = {
       if (c.finishFeed !== undefined) pocket.finishFeed = c.finishFeed
       return { pocket }
     },
+  },  facing: {
+    label: 'Facing',
+    pickKind: 'Side',
+    pickIcon: (p) => facingSideIcon(p.facing.side),
+    pickLines: (p) => facingLines(p.facing),
+    pickSummary: (p) => facingSummary(p.facing),
+    pick: (p) => FACING_SIDE_META[p.facing.side],
+    method: () => FACING_METHOD,
+    geometryStats: (p) => [
+      sizeStat(
+        facingSideIcon(p.facing.side),
+        `${p.facing.length}−${p.facing.removal}`,
+        `${FACING_SIDE_META[p.facing.side].title}: ${p.facing.length}mm long, ${p.facing.removal}mm to remove`,
+      ),
+      ...offsetStat(p.facing),
+      bitStat(p.facing.toolDiameter),
+      depthStat(p.facing.totalDepth),
+    ],
+    geometryTitle: (p) =>
+      `Tool ⌀${p.facing.toolDiameter}mm, ${FACING_SIDE_META[p.facing.side].title} ${p.facing.length}mm, remove ${p.facing.removal}mm, Depth ${p.facing.totalDepth}mm${withOffset(p.facing)} — Method: ${FACING_METHOD.title}`,
+    generate: generateFacing,
+    filenameSlug: (p) => facingSlug(p.facing),
+    presetLabel: (p) => `${facingLabel(p.facing)} • ${FACING_METHOD.shortLabel}`,
+    toolDiameter: (p) => p.facing.toolDiameter,
+    methodValue: () => FACING_METHOD.value,
+    calcMethods: () => [{ value: FACING_METHOD.value, label: FACING_METHOD.title }],
+    maxCalcWidthPercent: (p) =>
+      p.facing.toolDiameter > 0 ? Math.round((p.facing.removal / p.facing.toolDiameter) * 10000) / 100 : 100,
+    // The calculator's width is a % of the tool; Facing stores its stepover
+    // in mm.
+    withCalc: (p, c) => ({
+      facing: {
+        ...p.facing,
+        toolDiameter: c.toolDiameter,
+        stepover:
+          c.widthPercent !== undefined ? Math.round(c.toolDiameter * c.widthPercent * 100) / 10000 : p.facing.stepover,
+      },
+    }),
   },
 }

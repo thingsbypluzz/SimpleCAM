@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest'
 import {
+  OPERATION_RULES,
+  facingFootprint,
+  isFacingPassCountWithinLimit,
+  isFacingStepoverValid,
   descentAngleDeg,
   isPocketLightCellsValid,
   isPocketLightParamsValid,
@@ -851,5 +855,47 @@ describe('Lightened Pocket (OP-6)', () => {
     expect(pocketMaxHelixRadius(pocket)).toBeLessThanOrEqual(pocket.toolDiameter / 2)
     const tiny = { ...pocket, helixRadius: 0.01, rampAngleDeg: 0.5 }
     expect(isPocketToolpathWithinLimits(asParams(tiny))).toBe(false)
+  })
+})
+
+describe('Facing validators (OP-7)', () => {
+  const facing = (patch: Partial<WizardParams['facing']> = {}): WizardParams => ({
+    ...DEFAULT_WIZARD_PARAMS,
+    operation: 'facing',
+    facing: { ...DEFAULT_WIZARD_PARAMS.facing, toolDiameter: 6, ...patch },
+  })
+
+  it('accepts the defaults', () => {
+    expect(isWizardParamsValid(facing())).toBe(true)
+  })
+
+  it('needs a stepover above 0 and no wider than the tool', () => {
+    expect(isFacingStepoverValid(facing({ stepover: 0 }).facing)).toBe(false)
+    expect(isFacingStepoverValid(facing({ stepover: 6 }).facing)).toBe(true)
+    expect(isFacingStepoverValid(facing({ stepover: 6.1 }).facing)).toBe(false)
+    // More than there is to remove is fine — one pass, trimmed.
+    expect(isWizardParamsValid(facing({ removal: 0.2, stepover: 0.5 }))).toBe(true)
+  })
+
+  it('rejects zero sizes, a negative Lead, no Clearance and no Linking Feed', () => {
+    expect(isWizardParamsValid(facing({ length: 0 }))).toBe(false)
+    expect(isWizardParamsValid(facing({ removal: 0 }))).toBe(false)
+    expect(isWizardParamsValid(facing({ lead: -1 }))).toBe(false)
+    expect(isWizardParamsValid(facing({ lead: 0 }))).toBe(true)
+    expect(isWizardParamsValid(facing({ clearance: 0 }))).toBe(false)
+    expect(isWizardParamsValid(facing({ linkingFeed: 0 }))).toBe(false)
+  })
+
+  it('caps sideways passes × Z levels', () => {
+    const many = facing({ removal: 50, stepover: 0.05, totalDepth: 20 })
+    expect(isFacingPassCountWithinLimit({ ...many, feeds: { ...many.feeds, stepdown: 1 } })).toBe(false)
+    expect(isFacingPassCountWithinLimit({ ...many, feeds: { ...many.feeds, stepdown: 20 } })).toBe(true)
+  })
+
+  it('reports the radial engagement and the tool travel footprint', () => {
+    expect(OPERATION_RULES.facing.engagement(facing({ stepover: 1.5, removal: 3 }))).toEqual({ kind: 'stepover', percent: 25 })
+    expect(OPERATION_RULES.facing.engagement(facing({ stepover: 1.5, removal: 0.6 }))).toEqual({ kind: 'stepover', percent: 10 })
+    // Length 50 + 2 × (radius 3 + Lead 1); return line to last pass: 2 + 1.
+    expect(facingFootprint(facing({ lead: 1, clearance: 2, removal: 1 }).facing)).toEqual({ x: 58, y: 3 })
   })
 })

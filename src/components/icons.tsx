@@ -500,3 +500,46 @@ export function PocketCircleLightenedIcon({ className }: IconProps) {
     </svg>
   )
 }
+
+// Facing (OP-7): the part (open box) with the milled side drawn heavier,
+// the tool beside it and the pass along the side. Drawn for Bottom Side
+// and rotated for the other three.
+function FacingSideIcon({ className, rotate }: IconProps & { rotate: number }) {
+  return (
+    <svg {...base} className={className}>
+      <g transform={`rotate(${rotate} 12 12)`}>
+        <path d="M5 14V4h14v10" strokeWidth={1.2} />
+        <path d="M5 14h14" strokeWidth={2.4} />
+        <circle cx="6.5" cy="18.5" r="2" strokeWidth={1.4} />
+        <path d="M11 18.5h8M17 16.5l2 2-2 2" strokeWidth={1.4} />
+      </g>
+    </svg>
+  )
+}
+
+export function FacingBottomIcon({ className }: IconProps) {
+  return <FacingSideIcon className={className} rotate={0} />
+}
+
+export function FacingTopIcon({ className }: IconProps) {
+  return <FacingSideIcon className={className} rotate={180} />
+}
+
+export function FacingLeftIcon({ className }: IconProps) {
+  return <FacingSideIcon className={className} rotate={90} />
+}
+
+export function FacingRightIcon({ className }: IconProps) {
+  return <FacingSideIcon className={className} rotate={-90} />
+}
+
+// Facing's one method: the tool running along a wall, taking a thin strip.
+export function SideMillingIcon({ className }: IconProps) {
+  return (
+    <svg {...base} className={className}>
+      <path d="M3 9h18" strokeWidth={2.4} />
+      <circle cx="7" cy="14" r="3" />
+      <path d="M13 14h7M18 12l2 2-2 2" strokeWidth={1.4} />
+    </svg>
+  )
+}

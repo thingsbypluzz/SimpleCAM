@@ -13,6 +13,8 @@ import {
 } from '../../lib/outlineRectangle'
 import { surfaceNominalBounds, surfaceToolBounds, type SurfaceBounds } from '../../lib/surfaceGeometry'
 import { buildSurfaceToolpath } from '../../lib/surface'
+import { buildFacingToolpath } from '../../lib/facing'
+import { facingBlockCorners, facingStripCorners, facingViewBounds, type FacingBounds } from '../../lib/facingGeometry'
 import { buildPocketToolpath } from '../../lib/pocket'
 import { movePoints, type MoveKind, type Toolpath } from '../../lib/toolpath'
 import { pocketCenter } from '../../lib/pocketGeometry'
@@ -292,6 +294,12 @@ type ResolvedPattern =
       toolBounds: SurfaceBounds
     }
   | {
+      kind: 'facing'
+      params: WizardParams
+      // Tool travel plus a band of the part behind the finished edge.
+      viewBounds: FacingBounds
+    }
+  | {
       kind: 'pocket'
       params: WizardParams
       center: Point2D
@@ -314,6 +322,9 @@ function resolvePattern(params: WizardParams): ResolvedPattern {
       { x: center.x - pocket.width / 2, y: center.y + pocket.height / 2 },
     ]
     return { kind: 'pocket', params, center, shape: pocket.shape, nominalRadius: 0, nominalCorners }
+  }
+  if (params.operation === 'facing') {
+    return { kind: 'facing', params, viewBounds: facingViewBounds(params.facing) }
   }
   if (params.operation === 'surface') {
     const { surface } = params
@@ -393,6 +404,13 @@ function expandBoundsForPattern(bounds: THREE.Box3, pattern: ResolvedPattern) {
         bounds.expandByPoint(toThree(p.x, p.y, feeds.safeZ))
       }
     }
+    return
+  }
+  if (pattern.kind === 'facing') {
+    const { facing, feeds } = pattern.params
+    const { minX, maxX, minY, maxY } = pattern.viewBounds
+    bounds.expandByPoint(toThree(minX, minY, -facing.totalDepth))
+    bounds.expandByPoint(toThree(maxX, maxY, feeds.safeZ))
     return
   }
   if (pattern.kind === 'surface') {
@@ -731,6 +749,60 @@ function buildSurfacePatternObjects(
   return objects
 }
 
+// Facing (OP-7): the part as the cut leaves it — a closed block from the
+// finished edge into the material as far as the grid/plane reaches (the
+// app doesn't know the part's other dimension), Z0 down to -totalDepth —
+// plus the outline of the strip the cut removes, and the engine's move
+// list. Not part of the shared stock model, like Surface.
+function buildFacingPatternObjects(
+  pattern: Extract<ResolvedPattern, { kind: 'facing' }>,
+  theme: Theme,
+  span: number,
+  arrowSize: number,
+  showStock: boolean,
+  showToolpath: boolean,
+  solidStock: boolean,
+  stockEdges: boolean,
+  sheet: FacingBounds,
+): THREE.Object3D[] {
+  const { params } = pattern
+  const { facing, feeds } = params
+  const objects: THREE.Object3D[] = []
+
+  objects.push(...buildOffsetVectorObjects(facing.offsetX, facing.offsetY, theme, arrowSize))
+
+  if (showStock && facing.totalDepth > 0) {
+    const centerZ = -facing.totalDepth / 2
+    const block = buildRectWallMesh(facingBlockCorners(facing, sheet), facing.totalDepth, centerZ, true, theme, solidStock)
+    objects.push(block)
+    if (stockEdges) {
+      const blockEdges = new THREE.LineSegments(
+        new THREE.EdgesGeometry(block.geometry),
+        new THREE.LineBasicMaterial({ color: theme.stockEdge }),
+      )
+      blockEdges.position.copy(block.position)
+      objects.push(blockEdges)
+    }
+    // The removed strip has no faces — only its outline, so the raw edge
+    // stays visible next to the finished one.
+    const strip = facingStripCorners(facing)
+    const stripCenter = boundingCenter(strip)
+    const stripWidth = Math.max(...strip.map((p) => p.x)) - Math.min(...strip.map((p) => p.x))
+    const stripHeight = Math.max(...strip.map((p) => p.y)) - Math.min(...strip.map((p) => p.y))
+    const stripEdges = new THREE.LineSegments(
+      new THREE.EdgesGeometry(new THREE.BoxGeometry(stripWidth, facing.totalDepth, stripHeight)),
+      new THREE.LineDashedMaterial({ color: theme.stockEdge, dashSize: span * 0.008, gapSize: span * 0.012 }),
+    )
+    stripEdges.computeLineDistances()
+    stripEdges.position.copy(toThree(stripCenter.x, stripCenter.y, centerZ))
+    objects.push(stripEdges)
+  }
+
+  if (showToolpath) objects.push(...toolpathLines3D(buildFacingToolpath(params), theme, span, feeds.safeZ))
+
+  return objects
+}
+
 function buildPocketPatternObjects(
   pattern: Extract<ResolvedPattern, { kind: 'pocket' }>,
   theme: Theme,
@@ -762,6 +834,7 @@ function buildPatternObjects(
   showToolpath: boolean,
   solidStock: boolean,
   stockEdges: boolean,
+  sheet: FacingBounds,
 ): THREE.Object3D[] {
   switch (pattern.kind) {
     case 'holes':
@@ -774,6 +847,8 @@ function buildPatternObjects(
       return buildSurfacePatternObjects(pattern, theme, span, arrowSize, showStock, showToolpath, solidStock, stockEdges)
     case 'pocket':
       return buildPocketPatternObjects(pattern, theme, span, arrowSize, showToolpath)
+    case 'facing':
+      return buildFacingPatternObjects(pattern, theme, span, arrowSize, showStock, showToolpath, solidStock, stockEdges, sheet)
   }
 }
 
@@ -1045,8 +1120,8 @@ export function buildToolpathScene(
   objects.push(grid)
 
   // Stock: one model of everything drawn (lib/stockModel.ts), within the
-  // grid/plane's own (step-snapped) extent — world Z is -CNC Y. Surface is
-  // not part of it and draws its own block (buildSurfacePatternObjects()).
+  // grid/plane's own (step-snapped) extent — world Z is -CNC Y. Surface and
+  // Facing are not part of it and draw their own blocks.
   if (showStock) {
     const half = gridSize / 2
     const model = stockModel(
@@ -1194,8 +1269,14 @@ export function buildToolpathScene(
     }
   }
 
+  const sheetBounds = {
+    minX: gridCenterX - gridSize / 2,
+    maxX: gridCenterX + gridSize / 2,
+    minY: -gridCenterZ - gridSize / 2,
+    maxY: -gridCenterZ + gridSize / 2,
+  }
   for (const pattern of allPatterns) {
-    objects.push(...buildPatternObjects(pattern, theme, span, arrowSize, showStock, showToolpath, solidStock, stockEdges))
+    objects.push(...buildPatternObjects(pattern, theme, span, arrowSize, showStock, showToolpath, solidStock, stockEdges, sheetBounds))
   }
 
   return { objects, labels, bounds, background: theme.material }

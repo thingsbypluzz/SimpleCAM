@@ -4,7 +4,7 @@ export type PositioningMode = 'single' | 'grid' | 'gridCentered' | 'circle' | 'c
 
 export type InterpolationMode = 'arc' | 'linear'
 
-export type OperationType = 'holes' | 'outline' | 'surface' | 'pocket'
+export type OperationType = 'holes' | 'outline' | 'surface' | 'pocket' | 'facing'
 
 export type OutlineShape = 'rectCornered' | 'rectCentered' | 'circle'
 
@@ -144,6 +144,35 @@ export interface PocketParams {
   spokeStartAngle: number // deg, first spoke's axis, 0 = +X, CCW
 }
 
+// Facing (OP-7): which side of the part is milled. Bottom/Top run along X,
+// Left/Right along Y; the material lies on the opposite side of the tool.
+export type FacingSide = 'bottom' | 'top' | 'left' | 'right'
+
+// Where the origin sits along the side: its low-coordinate end (left for
+// Bottom/Top, bottom for Left/Right), its middle or its other end.
+export type FacingOriginAlong = 'start' | 'center' | 'end'
+
+// Where the origin sits across the side: on the edge as it is before the
+// cut, or on the edge the cut leaves.
+export type FacingOriginAcross = 'raw' | 'finished'
+
+export interface FacingParams {
+  side: FacingSide
+  toolDiameter: number
+  totalDepth: number // also the height of the side drawn in the previews
+  length: number // mm, length of the side
+  removal: number // mm of material taken off the side
+  originAlong: FacingOriginAlong
+  originAcross: FacingOriginAcross
+  offsetX: number
+  offsetY: number
+  stepover: number // mm per sideways pass, single source of truth — the % value is derived
+  cutDirection: CutDirection
+  lead: number // mm the tool starts/ends beyond each end of the side, on top of its radius
+  clearance: number // mm the tool backs away from the raw edge for the return move
+  linkingFeed: number // mm/min — G1 return move beside the material
+}
+
 export interface FeedsParams {
   stepdown: number
   feedrateXY: number
@@ -166,6 +195,7 @@ export interface WizardParams {
   outline: OutlineParams
   surface: SurfaceParams
   pocket: PocketParams
+  facing: FacingParams
   feeds: FeedsParams
   output: OutputOptions
 }
@@ -254,6 +284,22 @@ export const DEFAULT_WIZARD_PARAMS: WizardParams = {
     spokeCount: 5,
     hubDiameter: 16,
     spokeStartAngle: 90,
+  },
+  facing: {
+    side: 'bottom',
+    toolDiameter: 3.175,
+    totalDepth: 4,
+    length: 50,
+    removal: 1,
+    originAlong: 'start',
+    originAcross: 'raw',
+    offsetX: 0,
+    offsetY: 0,
+    stepover: 0.5,
+    cutDirection: 'climb',
+    lead: 1,
+    clearance: 2,
+    linkingFeed: 800,
   },
   feeds: {
     stepdown: 1,

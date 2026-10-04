@@ -1,7 +1,7 @@
 # OnlyPaths
 
 Lekki, w pełni client-side generator G-code dla pojedynczych operacji
-wiercenia/kieszeniowania na frezarkach CNC (GRBL/Marlin/Mach3). Użytkownik
+wiercenia/kieszeniowania/obróbki boku na frezarkach CNC (GRBL/Marlin/Mach3). Użytkownik
 przechodzi przez 4-krokowy wizard i na końcu dostaje gotowy plik `.gcode` —
 bez logowania, bez backendu, bez CAD-a.
 
@@ -38,7 +38,7 @@ bez logowania, bez backendu, bez CAD-a.
 
 ## Stan projektu
 
-Cztery operacje (`WizardParams.operation`):
+Pięć operacji (`WizardParams.operation`):
 
 - **Hole(s)** — okrągłe otwory; metody Helix / Standard Hole × wzorce
   Single / Rectangular Grid / Grid Centered / N-Holes on Circle / Custom
@@ -54,6 +54,11 @@ Cztery operacje (`WizardParams.operation`):
   **Rectangle Lightened** (X-grid N×M / Triangles N×M) i **Circle
   Lightened** (szprychy, piasta) — każda komórka osobna kieszeń, Spiral
   albo Adaptive.
+- **Facing** — obróbka jednego boku detalu (Bottom / Top / Left / Right
+  Side): frez jedzie bokiem wzdłuż krawędzi, wchodzi i wychodzi w
+  powietrzu, zbiera zadany naddatek dosuwami bocznymi co Stepover, poziom
+  Z po poziomie; Climb / Conventional; powrót obok materiału na Linking
+  Feed.
 
 ## Kluczowe decyzje (przekrojowe)
 
@@ -63,7 +68,7 @@ Cztery operacje (`WizardParams.operation`):
   Jedno narzędzie na plik. Kierunek cięcia: zawsze climb pod M3 (wewnątrz
   CCW, na zewnątrz CW), Adaptive ma przełącznik Climb/Conventional.
 - Interpolacja okręgów: przełącznik G2/G3 vs G1 w Kroku 4; mostki i
-  prostokąty wymuszają G1 (zapisana wartość zostaje).
+  prostokąty Outline oraz Facing wymuszają G1 (zapisana wartość zostaje).
 - Logika G-code to **czyste funkcje TS** w `src/lib/`
   (`(params, machine) => string[]`), odizolowane od UI. Każdy silnik buduje
   **jedną listę ruchów** (`lib/toolpath.ts`), z której powstaje G-code i
@@ -114,8 +119,9 @@ być wierny.
   geometrię. Pustki (otwór, Outline Inside, pas On-line) wycięte na wylot,
   Pocket ma dno na swojej głębokości. Bazą jest arkusz materiału, a gdy
   któryś preset to Outline Outside — suma wysp (część), z której wycinane
-  są pustki pozostałych presetów. Surface poza modelem: rysuje własny
-  „pozostały materiał”. Domyślnie pustki mają kształt po frezie
+  są pustki pozostałych presetów. Surface i Facing poza modelem: rysują
+  własny „pozostały materiał” (Facing — blok od gotowej krawędzi w głąb
+  detalu do brzegu widocznej płaszczyzny). Domyślnie pustki mają kształt po frezie
   (narożniki wewnętrzne zaokrąglone promieniem freza; w 2D kropkowany
   kontur obok ciągłego obrysu nominalnego) — wyłącznik w Settings →
   Appearance.
@@ -165,8 +171,9 @@ wybór operacji w Kroku 1, rysowanie w podglądach. Zależne od **metody** —
 przez `METHOD_META`/`SURFACE_METHOD_META`/`POCKET_METHOD_META` (Outline:
 `generateOutline()`), wołane wyłącznie przez
 `OPERATION_META[op].generate()` — nie importować generatorów w
-komponentach. Zależne od **wzorca/kształtu** — przez `positioningMeta.ts`/
-`outlineMeta.ts`/`surfaceMeta.ts`/`pocketMeta.ts`. Kolory podglądów —
+komponentach. Zależne od **wzorca/kształtu/boku** — przez
+`positioningMeta.ts`/`outlineMeta.ts`/`surfaceMeta.ts`/`pocketMeta.ts`/
+`facingMeta.ts`. Kolory podglądów —
 wyłącznie przez `config/palettes.ts`.
 
 ## Hosting testowy
@@ -188,11 +195,11 @@ src/
                        appearance.ts, toolDiameters.ts
   config/              rejestry: operationMeta, methodMeta, surfaceMethodMeta,
                        pocketMethodMeta, positioningMeta, outlineMeta, surfaceMeta,
-                       pocketMeta; palettes, materials, routers           → CLAUDE.md
+                       pocketMeta, facingMeta; palettes, materials, routers           → CLAUDE.md
   components/
     SettingsModal.tsx, FeedCalculatorModal.tsx, ErrorBoundary.tsx,
     useModalFocus.ts, icons.tsx                                          → CLAUDE.md
-    wizard/            Step1Positioning, Step2Geometry(+Holes/Outline/Surface/Pocket),
+    wizard/            Step1Positioning, Step2Geometry(+Holes/Outline/Surface/Pocket/Facing),
                        Step3Feeds, Step4Output, pickery metod, PickHeader, MiniStat, ToolChipLoad,
                        TextToggle, NumberInput, useNumberField, Checkbox,
                        FieldRow, HintPopover                              → CLAUDE.md
@@ -206,6 +213,7 @@ src/
     outline.ts, outlineCircle.ts, outlineRectangle*.ts   Outline
     surface*.ts                            Surface
     pocket*.ts                             Pocket (Spiral, Adaptive, Lightened, wejście Z)
+    facing*.ts                             Facing
     depthPasses.ts, interpolation.ts, format.ts
     validation.ts        OPERATION_RULES, walidacja, ostrzeżenia
     feedCalc.ts          model Feedrate Calculator

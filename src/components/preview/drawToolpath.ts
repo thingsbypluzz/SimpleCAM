@@ -6,6 +6,8 @@ import { onLineRectDimensions, rectCorners, rectToolDimensions } from '../../lib
 import { sideRangesFor, type SideTabRange } from '../../lib/outlineRectangleTabs'
 import { surfaceNominalBounds, surfaceStepoverMm, surfaceToolBounds, type SurfaceBounds } from '../../lib/surfaceGeometry'
 import { computeRasterLines, zigzagWaypoints, type RasterLine } from '../../lib/surfaceRaster'
+import { buildFacingToolpath } from '../../lib/facing'
+import { facingBlockCorners, facingStripCorners, facingViewBounds, type FacingBounds } from '../../lib/facingGeometry'
 import { pocketCenter } from '../../lib/pocketGeometry'
 import { buildPocketToolpath } from '../../lib/pocket'
 import { movePoints, type MoveKind, type Toolpath } from '../../lib/toolpath'
@@ -278,6 +280,13 @@ type ResolvedPattern =
       method: WizardParams['surface']['method']
     }
   | {
+      kind: 'facing'
+      params: WizardParams
+      // Tool travel plus a band of the part behind the finished edge.
+      bounds: FacingBounds
+      toolpath: Toolpath
+    }
+  | {
       kind: 'pocket'
       params: WizardParams
       center: Point2D
@@ -344,6 +353,9 @@ function resolvePattern(params: WizardParams): ResolvedPattern {
     const toolpath = buildPocketToolpath(params)
 
     return { kind: 'pocket', params, center, shape: pocket.shape, method: pocket.method, nominal, toolpath }
+  }
+  if (params.operation === 'facing') {
+    return { kind: 'facing', params, bounds: facingViewBounds(params.facing), toolpath: buildFacingToolpath(params) }
   }
   if (params.operation === 'surface') {
     const { surface } = params
@@ -790,6 +802,70 @@ function drawSurfaceGeometry(
   drawOffsetVector(ctx, toPx, params.surface.offsetX, params.surface.offsetY, theme, arrowSize)
 }
 
+// Facing (OP-7): the part as the cut leaves it — a block from the finished
+// edge into the material, as far as the stock sheet reaches (its far edge
+// is left open: the part goes on) — the removed strip dotted along the raw
+// edge, and the engine's own move list.
+function drawFacingGeometry(
+  ctx: CanvasRenderingContext2D,
+  toPx: (x: number, y: number) => [number, number],
+  pattern: Extract<ResolvedPattern, { kind: 'facing' }>,
+  theme: Theme,
+  arrowSize: number,
+  showStock: boolean,
+  showToolpath: boolean,
+  sheet: FacingBounds,
+) {
+  const { params, toolpath } = pattern
+  const { facing } = params
+  const path = (points: Point2D[]) => {
+    ctx.beginPath()
+    points.forEach((p, i) => {
+      const [x, y] = toPx(p.x, p.y)
+      if (i === 0) ctx.moveTo(x, y)
+      else ctx.lineTo(x, y)
+    })
+  }
+
+  if (showStock) {
+    const [edgeStart, edgeEnd, farEnd, farStart] = facingBlockCorners(facing, sheet)
+    path([edgeStart, edgeEnd, farEnd, farStart])
+    ctx.closePath()
+    ctx.fillStyle = theme.holeFill
+    ctx.fill()
+    path([farStart, edgeStart, edgeEnd, farEnd])
+    ctx.strokeStyle = theme.holeStroke
+    ctx.lineWidth = 1
+    ctx.stroke()
+
+    const [rawStart, rawEnd, stripEnd, stripStart] = facingStripCorners(facing)
+    path([stripStart, rawStart, rawEnd, stripEnd])
+    ctx.setLineDash(LINK_DASH)
+    ctx.stroke()
+    ctx.setLineDash([])
+  }
+
+  if (showToolpath) {
+    drawToolpathMoves(ctx, toPx, toolpath, theme)
+    // Direction of cut: an arrowhead mid-way along the first pass (moves:
+    // rapid down, plunge, feed in, cut along the side).
+    const cut = toolpath.moves.findIndex((m, i) => i > 0 && m.kind === 'cut' && toolpath.moves[i - 1].kind === 'cut')
+    if (cut > 0) {
+      const [fx, fy] = toPx(toolpath.moves[cut - 1].to.x, toolpath.moves[cut - 1].to.y)
+      const [tx, ty] = toPx(toolpath.moves[cut].to.x, toolpath.moves[cut].to.y)
+      const len = Math.hypot(tx - fx, ty - fy) || 1
+      drawArrowhead(ctx, (fx + tx) / 2, (fy + ty) / 2, (tx - fx) / len, (ty - fy) / len, arrowSize * 0.7, theme.toolpath)
+    }
+    const [startX, startY] = toPx(toolpath.start.x, toolpath.start.y)
+    ctx.beginPath()
+    ctx.arc(startX, startY, 2, 0, Math.PI * 2)
+    ctx.fillStyle = theme.toolpath
+    ctx.fill()
+  }
+
+  drawOffsetVector(ctx, toPx, facing.offsetX, facing.offsetY, theme, arrowSize)
+}
+
 // Pocket: nominal boundary (stroke — its floor is filled by the stock
 // model, drawToolpath()) + toolpath — the engine's own move list for every method (BL-61), so the
 // Helix entry, ring-to-ring ramps, laps and raster chain are exactly what
@@ -876,6 +952,7 @@ function drawPatternGeometry(
   arrowSize: number,
   showStock: boolean,
   showToolpath: boolean,
+  sheet: FacingBounds,
 ) {
   switch (pattern.kind) {
     case 'holes':
@@ -892,6 +969,9 @@ function drawPatternGeometry(
       break
     case 'pocket':
       drawPocketGeometry(ctx, toPx, scale, pattern, theme, arrowSize, showStock, showToolpath)
+      break
+    case 'facing':
+      drawFacingGeometry(ctx, toPx, pattern, theme, arrowSize, showStock, showToolpath, sheet)
       break
   }
 }
@@ -1021,17 +1101,24 @@ export function drawToolpath(
   // Stock: one model of everything drawn (lib/stockModel.ts, the same one
   // the 3D Preview builds), within the 3D material plane's footprint — the
   // uncut face, and pocket floors in a fainter tint. Drawn once, before
-  // the patterns; Surface is not part of it and fills its own area.
+  // the patterns; Surface and Facing are not part of it and fill their own.
+  const sheet = stockSheetRect(patternFootprint(allPatterns))
+  const sheetBounds = {
+    minX: sheet.centerX - sheet.size / 2,
+    maxX: sheet.centerX + sheet.size / 2,
+    minY: sheet.centerY - sheet.size / 2,
+    maxY: sheet.centerY + sheet.size / 2,
+  }
   if (showStock) {
     const presets = [...overlayParams, ...(showActivePattern ? [params] : [])]
-    const model = cachedStockModel(presets, stockSheetRect(patternFootprint(allPatterns)), cutShape)
+    const model = cachedStockModel(presets, sheet, cutShape)
     if (model) {
       fillRegion(ctx, toPx, model.top, theme.holeFill)
       for (const floor of model.floors) fillRegion(ctx, toPx, floor.region, theme.pocketFloorFill)
     }
   }
   for (const pattern of allPatterns) {
-    drawPatternGeometry(ctx, toPx, camera.scale, pattern, theme, arrowSize, showStock, showToolpath)
+    drawPatternGeometry(ctx, toPx, camera.scale, pattern, theme, arrowSize, showStock, showToolpath, sheetBounds)
   }
 
   // BL-86: next to each nominal outline (solid, above), the contour the

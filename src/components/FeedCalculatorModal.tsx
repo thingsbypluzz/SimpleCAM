@@ -88,8 +88,9 @@ export function FeedCalculatorModal({ params, machine, settings, toolDiameters, 
   const draft = { ...params, ...meta.withCalc(params, { method, toolDiameter }) }
   const engagement = OPERATION_RULES[params.operation].engagement(draft)
   const currentWidth = engagement.kind === 'slot' ? null : engagement.percent
-  const suggestedWidth =
+  const tableWidth =
     engagement.kind === 'stepover' ? material.aeStepover : engagement.kind === 'optimalLoad' ? material.aeAdaptive : null
+  const suggestedWidth = tableWidth === null ? null : Math.min(tableWidth, meta.maxCalcWidthPercent?.(draft) ?? tableWidth)
   const widthInEffect = checks.width && suggestedWidth !== null ? suggestedWidth : (currentWidth ?? 100)
 
   // Pocket Finishing Pass (BL-78): Stock to Leave from the material table,

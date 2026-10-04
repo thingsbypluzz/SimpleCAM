@@ -26,4 +26,8 @@ describe('forcedLinearReason', () => {
     expect(forcedLinearReason(withOp('surface', { geometry: tabbedGeometry }))).toBeNull()
     expect(forcedLinearReason(withOp('pocket', { geometry: tabbedGeometry }))).toBeNull()
   })
+
+  it('locks Facing on G1 — straight lines only (OP-7)', () => {
+    expect(forcedLinearReason(withOp('facing'))).toBe('facing')
+  })
 })
