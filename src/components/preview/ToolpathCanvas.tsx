@@ -14,6 +14,8 @@ interface ToolpathCanvasProps {
   showActivePattern: boolean
   stockVisible: boolean
   toolpathVisible: boolean
+  // Stock as the tool leaves it — appearance.cutShapeEnabled.
+  cutShapeEnabled: boolean
   onToggleStockVisible: () => void
   onToggleToolpathVisible: () => void
   // BL-76: the last view, kept by App.tsx across unmounts (switching to
@@ -45,6 +47,7 @@ export function ToolpathCanvas({
   showActivePattern,
   stockVisible,
   toolpathVisible,
+  cutShapeEnabled,
   onToggleStockVisible,
   onToggleToolpathVisible,
   viewMemory,
@@ -120,6 +123,7 @@ export function ToolpathCanvas({
         showActivePattern,
         stockVisible,
         toolpathVisible,
+        cutShapeEnabled,
       )
     }
 
@@ -138,6 +142,7 @@ export function ToolpathCanvas({
     camera,
     stockVisible,
     toolpathVisible,
+    cutShapeEnabled,
   ])
 
   // One-time initial fit, once the container has a real size — mirrors

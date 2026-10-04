@@ -26,7 +26,8 @@
   to Default z potwierdzeniem; wpisy użytkownika z etykietą `"<wartość>
   mm"`; błąd dodania oznacza pole „New diameter” przez `aria-invalid`,
   poza błędem pełnej listy). **Appearance:** Theme (karty ze swatchami, `aria-pressed`),
-  Preview Color Palette, Stock Edges 3D (checkbox — obrys krawędzi materiału),
+  Preview Color Palette, Cut Shape (checkbox — materiał w podglądach w kształcie
+  po frezie, `cutShapeEnabled`), Stock Edges 3D (checkbox — obrys krawędzi materiału),
   Grid Labels 3D (checkbox + rozmiar).
 - **Privacy:** statyczny tekst — brak backendu/kont/trackingu/cookies,
   dane tylko w `localStorage`; jawnie ujawniony jedyny wyjątek: arkusz

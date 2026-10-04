@@ -18,7 +18,9 @@ grepować `.position.set(` z `p.x`/`p.y`.
   widać — żywy wzorzec albo wszystkie presety Overlay — w zasięgu
   siatki/płaszczyzny (`stockSheetRect()` z `preview/drawToolpath.ts`,
   wspólny z 2D). Wzorce nie rysują własnych brył, więc nic się nie
-  przenika. `buildStockModelObjects()`:
+  przenika. Przy `cutShape` (Settings → Appearance) pustki mają kształt
+  po frezie — zaokrąglone narożniki wewnętrzne (kroki 15°, poniżej progu
+  linii krawędzi, więc bez pionowych kresek). `buildStockModelObjects()`:
   - lico na Z=0 i dna kieszeni — `stockFaceMesh()` (`THREE.Shape` +
     `holes`; wyspy zamknięte pustkami to osobne kształty);
   - ściany — `stockWallMesh()`, jeden mesh na pas Z, wzdłuż pierścieni

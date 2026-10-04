@@ -115,7 +115,10 @@ być wierny.
   Pocket ma dno na swojej głębokości. Bazą jest arkusz materiału, a gdy
   któryś preset to Outline Outside — suma wysp (część), z której wycinane
   są pustki pozostałych presetów. Surface poza modelem: rysuje własny
-  „pozostały materiał”.
+  „pozostały materiał”. Domyślnie pustki mają kształt po frezie
+  (narożniki wewnętrzne zaokrąglone promieniem freza; w 2D kropkowany
+  kontur obok ciągłego obrysu nominalnego) — wyłącznik w Settings →
+  Appearance.
 - **Header:** Preset Bar `[1]…[5]`, oko Overlay, ołówek Edit Mode, dark/
   light (dark domyślny niezależnie od systemu), Settings.
 - **Auto-save i presety** (`simplecam.storage`): slot `"0"` zapisywany przy
