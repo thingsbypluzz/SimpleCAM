@@ -533,7 +533,7 @@ Waga z review w nawiasie kwadratowym.
   z parami pól (węższe kolumny, dłuższe etykiety).
   Wdrożone: etykieta „Tool Diam. [mm]” we wszystkich czterech operacjach
   i wyrównanie pól wiersza do dołu (`items-end` w `ToolChipLoad.tsx`).
-- **`BL-91`** *(Otwarty)* 🟢 — **Podgląd: ukrywać ścieżkę przy
+- **`BL-91`** *(Zrealizowany, 2026-10-04)* 🟢 — **Podgląd: ukrywać ścieżkę przy
   niepoprawnych parametrach.** Zgłoszone 2026-10-01 przy `BL-85`. Podglądy
   2D/3D rysują ścieżkę dla każdej wpisanej wartości, także odrzuconej przez
   walidację (np. Helix Radius większy niż mieści komórka — helix narysowany
@@ -542,7 +542,10 @@ Waga z review w nawiasie kwadratowym.
   ścieżka znika; w podglądzie krótki napis typu „Fix the highlighted fields
   to see the toolpath”. Dotyczy wszystkich operacji. Do ustalenia: czy
   także zakładka G-Code, zachowanie w Overlay, alternatywa — niepoprawna
-  ścieżka w kolorze błędu (nowy kolor w paletach).
+  ścieżka w kolorze błędu (nowy kolor w paletach). Wdrożone: ścieżka
+  znika w 2D i 3D, napis w kolorze błędu u góry podglądu; Overlay i
+  zakładka G-Code bez zmian, bez nowego koloru w paletach. Pełny opis:
+  `CHANGELOG.md`, `[0.35.0]`.
 - **`BL-92`** *(Otwarty)* 🟠 — **Hole(s) Custom List: dodatkowe kolumny
   per punkt (średnica i/lub głębokość).** Zgłoszone 2026-10-01, do
   rozważenia — **sesja `/grill-me` obowiązkowa**. Dziś linia Custom List to

@@ -276,6 +276,13 @@ function App() {
   // once React has time, instead of every keystroke waiting on it.
   const previewParams = useDeferredValue(params)
 
+  // BL-91: the previews draw no toolpath for parameters validation rejects
+  // (e.g. a helix wider than its pocket) — stock and shape stay, with a
+  // note. Judged on the deferred copy, the one the previews actually draw.
+  // Overlay hides the live pattern, so its validity doesn't matter there.
+  const previewToolpathBlocked =
+    !overlayEnabled && !(previewParams === params ? isGeometryValid : isWizardParamsValid(previewParams))
+
   // BL-76: each preview's last view, kept here because switching tabs
   // unmounts the preview itself — restored when its tab comes back.
   // Session-only (a page reload starts from Front / Fit View again).
@@ -886,6 +893,14 @@ function App() {
                 Preview mode
               </div>
             )}
+            {previewToolpathBlocked && previewTab !== 'gcode' && (
+              <div
+                role="status"
+                className="pointer-events-none absolute top-3 left-1/2 z-10 -translate-x-1/2 rounded-full border border-status-delete-fg bg-status-delete-bg px-3 py-1 text-xs font-semibold whitespace-nowrap text-status-delete-fg shadow-lg"
+              >
+                Fix the highlighted fields to see the toolpath
+              </div>
+            )}
 
             {previewTab === '2d' && (
               <ToolpathCanvas
@@ -897,7 +912,7 @@ function App() {
                 overlayParams={overlayParams}
                 showActivePattern={!overlayEnabled}
                 stockVisible={stockVisible}
-                toolpathVisible={toolpathVisible}
+                toolpathVisible={toolpathVisible && !previewToolpathBlocked}
                 onToggleStockVisible={() => setStockVisible((v) => !v)}
                 onToggleToolpathVisible={() => setToolpathVisible((v) => !v)}
               />
@@ -922,7 +937,7 @@ function App() {
                   gridLabelsEnabled={appearance.grid3DLabelsEnabled}
                   gridLabelSize={appearance.grid3DLabelSize}
                   stockVisible={stockVisible}
-                  toolpathVisible={toolpathVisible}
+                  toolpathVisible={toolpathVisible && !previewToolpathBlocked}
                   renderPaused={isSettingsOpen || isFeedCalcOpen}
                   onToggleStockVisible={() => setStockVisible((v) => !v)}
                   onToggleToolpathVisible={() => setToolpathVisible((v) => !v)}

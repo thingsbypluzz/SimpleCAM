@@ -7,6 +7,19 @@ zgodne z [SemVer](https://semver.org/). Ten plik pozostaje głównym, czytelnym
 thingsbypluzz/SimpleCAM), ale to infrastruktura pod izolację pracy
 (branch/worktree per zadanie), nie zamiennik tego changeloga.
 
+## [0.35.0] — 2026-10-04
+
+### Zmieniono
+
+- **Podglądy nie rysują ścieżki przy niepoprawnych parametrach** (`BL-91`).
+  Dotąd 2D i 3D rysowały ścieżkę dla każdej wpisanej wartości, także
+  odrzuconej przez walidację — np. helix poza kieszenią, choć pole było
+  czerwone, a Generate zablokowany. Teraz przy niepoprawnych parametrach
+  zostają materiał i kształt, a zamiast ścieżki jest napis "Fix the
+  highlighted fields to see the toolpath". Dotyczy wszystkich operacji.
+  Overlay bez zmian (żywy wzorzec jest w nim ukryty), zakładka G-Code też —
+  pokazuje ostatnio wygenerowany program.
+
 ## [0.34.0] — 2026-10-04
 
 ### Dodano
