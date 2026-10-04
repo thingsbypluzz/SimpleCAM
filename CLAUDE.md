@@ -104,7 +104,10 @@ być wierny.
   pełny program w pobranym pliku). Podgląd dostaje odroczoną kopię
   parametrów (`useDeferredValue`) i pamięta widok przy przełączaniu
   zakładek (tylko w sesji). Hide/Show Stock i Hide/Show Toolpath — wspólny
-  stan sesyjny obu podglądów.
+  stan sesyjny obu podglądów. Przy parametrach odrzuconych przez walidację
+  (`isWizardParamsValid`) podglądy nie rysują ścieżki — zostają materiał i
+  kształt, z napisem "Fix the highlighted fields to see the toolpath"; nie
+  dotyczy Overlay (żywy wzorzec ukryty) ani zakładki G-Code.
 - **Materiał w podglądach** — jeden model (`lib/stockModel.ts`) dla
   żywego wzorca i dla wszystkich presetów w Overlay; 2D i 3D rysują tę samą
   geometrię. Pustki (otwór, Outline Inside, pas On-line) wycięte na wylot,
