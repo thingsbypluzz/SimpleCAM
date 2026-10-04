@@ -592,14 +592,33 @@ Waga z review w nawiasie kwadratowym.
   podświetlona na swoim miejscu, pozostałe jako małe, wyszarzone ikony z
   podpisami (akcent po najechaniu); klik otwiera Krok 1 z tą operacją już
   wybraną. Pełny opis: `CHANGELOG.md`, `[0.34.0]`.
-- **`BL-95`** *(Otwarty)* 🟠 — **3D Preview: przełącznik przezroczystości
-  materiału.** Zgłoszone 2026-10-02. Dziś materiał w 3D jest zawsze
-  półprzezroczysty (opacity 0.3, `depthWrite: false`). Pomysł: przycisk w
-  górnym rzędzie 3D Preview (obok Hide/Show Stock, Hide/Show Toolpath),
-  który przełącza materiał między przezroczystym a litym — w zwykłym
-  podglądzie i w Overlay. Do ustalenia: widoczność ścieżki wewnątrz litego
-  materiału (zasłonięta czy rysowana na wierzchu), cieniowanie ścian bez
-  oświetlenia, stan sesyjny czy zapis w Appearance, etykieta przycisku.
+- **`BL-95`** *(Zrealizowany, 2026-10-04)* 🟠 — **3D Preview: przełącznik
+  przezroczystości materiału.** Zgłoszone 2026-10-02. Materiał w 3D był
+  zawsze półprzezroczysty. Ustalenia (2026-10-04): lity materiał zasłania
+  ścieżkę (prawdziwa głębia), prawdziwe oświetlenie, stan tylko w sesji,
+  etykieta „Solid Stock” / „Transparent Stock”. Wdrożone: przycisk obok
+  Hide/Show Stock, w zwykłym podglądzie i w Overlay; przy okazji obrys
+  krawędzi materiału w obu trybach (kolor w paletach, wyłącznik w
+  Settings → Appearance). Pełny opis:
+  `CHANGELOG.md`, `[0.36.0]`.
+- **`BL-96`** *(Otwarty)* 🔴 — **Outline Rectangle: zaokrąglone narożniki
+  (Corner Radius).** Zgłoszone 2026-10-04 — **sesja `/grill-me`
+  obowiązkowa**. Dziś Outline Rectangle ma zawsze ostre narożniki
+  (zaokrąglone rogi świadomie poza zakresem przy wdrożeniu `OP-1`). Pomysł:
+  pole Corner Radius w Kroku 2, 0 = ostre jak dziś. Do przegadania:
+  - znaczenie promienia przy Inside / Outside / On-line (promień konturu
+    nominalnego; ścieżka środka narzędzia ma wtedy R ∓ promień freza;
+    Inside z R mniejszym od promienia freza);
+  - ruchy: łuki G2/G3 w narożnikach — prostokąt dziś wymusza G1, więc
+    przełącznik interpolacji z Kroku 4 zacząłby go dotyczyć;
+  - Ramp (zejście rozłożone po obwodzie, start w narożniku dłuższego
+    boku) i mostki per bok — obwód i boki zmieniają długość;
+  - walidacja (R ≤ połowa krótszego boku; R = połowa boku daje „stadion”
+    albo okrąg), footprint bez zmian;
+  - podglądy 2D/3D i model materiału (`stockModel.ts` — kontur
+    zaokrąglony), etykieta presetu;
+  - czy także Pocket Rectangle i Surface; relacja z `BL-86` (zaokrąglenie
+    wynikające z promienia freza w podglądzie).
 - **`BL-61`** *(Zrealizowany, 2026-09-27)* 🔴 **[Low, kosztowne w czasie]**
   — **Podglądy duplikują geometrię silnika** — jedna lista ruchów (jak
   Adaptive) dla G-code i podglądu 3D, po jednej operacji na raz. Etapy 1–2

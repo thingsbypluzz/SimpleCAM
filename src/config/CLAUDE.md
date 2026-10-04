@@ -55,7 +55,9 @@
   tekst, `holeFill`, `pocketFloorFill` (dno kieszeni w 2D — połowa krycia
   `holeFill`), **tło** (per Theme, wspólne dla każdej Palety).
   `getPaletteAccents(paletteId, isDark, themeId)` — grid/toolpath/rapid/
-  hole/linking; **Default** czyta `DEFAULT_ACCENTS[themeId]`, **Ocean**/
+  hole/stockEdge/linking (`stockEdge` — linie krawędzi materiału w 3D:
+  `hole` przesunięty o 60% w stronę bieli w wariantach dark, czerni w
+  light); **Default** czyta `DEFAULT_ACCENTS[themeId]`, **Ocean**/
   **Ember**/**Violet** z `ALTERNATE_PALETTES` (niezależne od Theme).
   `linking` wyraźnie inny niż `toolpath`, nigdy bursztyn (zarezerwowany dla
   wektora offsetu). `hexToThreeColor()` dla Three.js.

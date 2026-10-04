@@ -202,6 +202,8 @@ function App() {
   // local-only (not persisted), shared between the 2D and 3D Preview Tabs.
   const [stockVisible, setStockVisible] = useState(true)
   const [toolpathVisible, setToolpathVisible] = useState(true)
+  // BL-95: 3D only — opaque, lit stock instead of the translucent one.
+  const [stockSolid, setStockSolid] = useState(false)
   const [justLoadedSlot, setJustLoadedSlot] = useState<PresetSlotId | null>(null)
   // BL-25: global toggle for edit mode, next to overlayEnabled — mutually
   // exclusive with it (see handleToggleEditMode/handleToggleOverlay). While
@@ -938,6 +940,9 @@ function App() {
                   gridLabelSize={appearance.grid3DLabelSize}
                   stockVisible={stockVisible}
                   toolpathVisible={toolpathVisible && !previewToolpathBlocked}
+                  stockSolid={stockSolid}
+                  stockEdgesEnabled={appearance.stockEdges3DEnabled}
+                  onToggleStockSolid={() => setStockSolid((v) => !v)}
                   renderPaused={isSettingsOpen || isFeedCalcOpen}
                   onToggleStockVisible={() => setStockVisible((v) => !v)}
                   onToggleToolpathVisible={() => setToolpathVisible((v) => !v)}

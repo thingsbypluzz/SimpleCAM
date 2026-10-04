@@ -7,6 +7,24 @@ zgodne z [SemVer](https://semver.org/). Ten plik pozostaje głównym, czytelnym
 thingsbypluzz/SimpleCAM), ale to infrastruktura pod izolację pracy
 (branch/worktree per zadanie), nie zamiennik tego changeloga.
 
+## [0.36.0] — 2026-10-04
+
+### Dodano
+
+- **Lity materiał w 3D Preview** (`BL-95`). Nowy przycisk „Solid Stock” /
+  „Transparent Stock” obok Hide/Show Stock przełącza materiał między
+  dotychczasowym półprzezroczystym a litym — w zwykłym podglądzie i w
+  Overlay. Lity materiał jest oświetlony (każda ściana ma odcień zależny od
+  ustawienia) i zasłania ścieżkę jak prawdziwy detal: widać ją w pustkach
+  i nad materiałem. Stan tylko w sesji, domyślnie przezroczysty; podgląd
+  2D bez zmian.
+- **Obrys krawędzi materiału w 3D Preview.** Cienka linia wzdłuż każdej
+  krawędzi — brzegi otworów i kieszeni, stopnie, obrys części, ostre
+  narożniki ścian — w obu trybach, Solid i Transparent. Bez niej
+  powierzchnie o tym samym odcieniu zlewały się, zwłaszcza w złożonym
+  Overlay. Kolor linii to nowy akcent palet (`stockEdge`); wyłącznik w
+  Settings → Appearance → „Stock Edges (3D Preview)”, domyślnie włączony.
+
 ## [0.35.0] — 2026-10-04
 
 ### Zmieniono
