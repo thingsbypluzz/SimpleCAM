@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { MultiPolygon, Ring } from 'polygon-clipping'
-import { pocketVoids, stockModel } from './stockModel'
+import { cutContours, pocketVoids, roundedOffsetLoop, stockModel } from './stockModel'
 import { DEFAULT_WIZARD_PARAMS, type WizardParams } from '../types/wizard'
 
 const sheet = { minX: -100, minY: -100, maxX: 100, maxY: 100 }
@@ -209,5 +209,76 @@ describe('stockModel — coinciding edges', () => {
     const model = stockModel([lightened('rectLightened'), lightened('circleLightened'), hole(0, 0, 6, 6), onLine], big)
     expect(model).not.toBeNull()
     expect(area(model!.top)).toBeLessThan(600 * 600)
+  })
+})
+
+describe('cut shape (BL-86)', () => {
+  // A corner arc is a polyline inscribed in the true arc (15° steps), so
+  // areas come out a hair off the exact π·r² terms.
+  const TOLERANCE = 0.5
+  const withTool = (params: WizardParams, toolDiameter: number): WizardParams =>
+    params.operation === 'pocket'
+      ? { ...params, pocket: { ...params.pocket, toolDiameter } }
+      : { ...params, outline: { ...params.outline, toolDiameter } }
+  const polygonArea = (polygon: { x: number; y: number }[]) => ringArea(polygon.map((p) => [p.x, p.y] as [number, number]))
+
+  it('roundedOffsetLoop grows a square by r with round corners', () => {
+    const square = [
+      { x: 0, y: 0 },
+      { x: 10, y: 0 },
+      { x: 10, y: 10 },
+      { x: 0, y: 10 },
+    ]
+    const area = polygonArea(roundedOffsetLoop(square, 2))
+    expect(Math.abs(area - (100 + 4 * 10 * 2 + Math.PI * 4))).toBeLessThan(TOLERANCE)
+  })
+
+  it('rounds a rectangular pocket to the tool radius', () => {
+    const preset = withTool(pocket(40, 20, 6), 6)
+    const exact = 800 - (4 - Math.PI) * 9
+    const model = stockModel([preset], sheet, true)!
+    expect(Math.abs(area(model.floors[0].region) - exact)).toBeLessThan(TOLERANCE)
+    expect(Math.abs(area(model.top) - (SHEET_AREA - exact))).toBeLessThan(TOLERANCE)
+    // Off: the nominal rectangle, as before.
+    expect(area(stockModel([preset], sheet)!.floors[0].region)).toBeCloseTo(800)
+  })
+
+  it('rounds Outline Inside, leaves Outside sharp', () => {
+    const inside = stockModel([withTool(outline('inside', 40, 20, 5), 6)], sheet, true)!
+    expect(Math.abs(area(inside.top) - (SHEET_AREA - 800 + (4 - Math.PI) * 9))).toBeLessThan(TOLERANCE)
+    const outside = stockModel([withTool(outline('outside', 40, 20, 5), 6)], sheet, true)!
+    expect(area(outside.top)).toBeCloseTo(800)
+  })
+
+  it("rounds On-line's outer edge and keeps the island sharp", () => {
+    const model = stockModel([withTool(outline('onLine', 40, 20, 5), 4)], sheet, true)!
+    // Outer edge: 40×20 grown by 2 with round corners; island 36×16.
+    const outer = 44 * 24 - (4 - Math.PI) * 4
+    expect(Math.abs(area(model.top) - (SHEET_AREA - outer + 36 * 16))).toBeLessThan(TOLERANCE)
+  })
+
+  it('rounds every Lightened cell between its tool wall and its nominal outline', () => {
+    const preset: WizardParams = {
+      ...DEFAULT_WIZARD_PARAMS,
+      operation: 'pocket',
+      pocket: { ...DEFAULT_WIZARD_PARAMS.pocket, shape: 'rectLightened', width: 120, height: 80, toolDiameter: 4, ribWidth: 4, offsetX: 0, offsetY: 0 },
+    }
+    const nominal = pocketVoids(preset.pocket).reduce((sum, v) => sum + ('polygon' in v ? polygonArea(v.polygon) : 0), 0)
+    const cut = cutContours(preset).reduce((sum, polygon) => sum + polygonArea(polygon), 0)
+    expect(cutContours(preset)).toHaveLength(pocketVoids(preset.pocket).length)
+    expect(cut).toBeLessThan(nominal)
+    expect(cut).toBeGreaterThan(nominal * 0.8)
+  })
+
+  it('falls back to the nominal shape when the tool does not fit', () => {
+    const model = stockModel([withTool(pocket(4, 4, 6), 6)], sheet, true)!
+    expect(area(model.floors[0].region)).toBeCloseTo(16)
+    expect(cutContours(withTool(outline('inside', 4, 4, 5), 6))).toEqual([])
+  })
+
+  it('has no cut contour where the shape is already what the tool leaves', () => {
+    expect(cutContours(hole(0, 0, 10, 5))).toEqual([])
+    expect(cutContours(outline('outside', 40, 20, 5))).toEqual([])
+    expect(cutContours({ ...pocket(40, 20, 6), pocket: { ...pocket(40, 20, 6).pocket, shape: 'circle' } })).toEqual([])
   })
 })

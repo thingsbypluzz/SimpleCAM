@@ -734,6 +734,24 @@ export function SettingsModal({
 
               <div className="flex flex-col gap-2 border-t border-border pt-4">
                 <span className="text-sm font-medium text-value">
+                  Cut Shape (Previews)
+                </span>
+                <Checkbox
+                  checked={appearance.cutShapeEnabled}
+                  onChange={(checked) => onSaveAppearance({ ...appearance, cutShapeEnabled: checked })}
+                  label="Show corners as the tool leaves them"
+                  className="text-sm text-value"
+                />
+                <p className="text-sm text-muted">
+                  A round tool leaves every inside corner rounded to its own radius. On: the stock
+                  in both previews shows that result, and the 2D Preview dots its contour next to
+                  the nominal outline. Off: the stock follows the nominal shape. The G-code is the
+                  same either way.
+                </p>
+              </div>
+
+              <div className="flex flex-col gap-2 border-t border-border pt-4">
+                <span className="text-sm font-medium text-value">
                   Stock Edges (3D Preview)
                 </span>
                 <Checkbox

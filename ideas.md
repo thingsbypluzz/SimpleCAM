@@ -474,17 +474,15 @@ pełny opis (lokalizacja w kodzie, scenariusz błędu, proponowana zmiana)
 w sekcji **"Szczegóły code review (2026-09-26)"** na końcu tego pliku.
 Waga z review w nawiasie kwadratowym.
 
-- **`BL-86`** *(Otwarty)* 🟠 — **Podgląd 3D: wynikowy kształt z
-  zaokrągleniem narożników freza.** Zgłoszone 2026-09-30. Dziś pustki w
-  podglądach mają ostre narożniki z zadanego kształtu (prostokąt Pocket,
-  komórki Lightened, Outline Rectangle Inside), a frez zostawia w
-  narożnikach wewnętrznych zaokrąglenie o swoim promieniu. Opcja (np.
-  przełącznik obok Hide/Show Stock) pokazująca „wynikowy” kształt: kontur
-  pustki = ścieżka środka narzędzia poszerzona o promień freza (narożniki
-  wewnętrzne zaokrąglone R, zewnętrzne ostre). Do dodania we wszystkich
-  operacjach z kątami (Outline Rectangle Inside/Outside/On-line, Pocket
-  Rectangle, Lightened, Surface?). Do ustalenia: tylko 3D czy też 2D,
-  domyślnie włączone czy nie, zapis w stanie sesji jak Hide/Show.
+- **`BL-86`** *(Zrealizowany, 2026-10-04)* 🟠 — **Podgląd: wynikowy kształt
+  z zaokrągleniem narożników freza.** Zgłoszone 2026-09-30. Pustki w
+  podglądach miały ostre narożniki z zadanego kształtu, a frez zostawia w
+  narożnikach wewnętrznych zaokrąglenie o swoim promieniu. Ustalenia
+  (2026-10-04): wyłącznik w Settings → Appearance (domyślnie włączony);
+  2D i 3D; w 2D obrys nominalny ciągły + kropkowany kontur po frezie.
+  Wdrożone w modelu materiału (`stockModel.ts`): Pocket Rectangle, komórki
+  Lightened (do 300 komórek), Outline Rectangle Inside i zewnętrzna
+  krawędź On-line. Pełny opis: `CHANGELOG.md`, `[0.37.0]`.
 - **`BL-87`** *(Zrealizowany, 2026-10-01)* 🟢 — **Krok 4: styl slotów presetów 1–5 (pusty
   vs zapisany).** Zgłoszone 2026-09-30. Przyciski slotów [1]…[5] w Kroku 4
   słabo odróżniają slot pusty od zapisanego. Pomysł: inny styl dla obu

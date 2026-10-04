@@ -284,9 +284,10 @@ zaczyna od `zTo('rapid', startZ)`; końcowy retrakt robi `assembleProgram()`.
   (`pocketMinWallExtent()`), limity: pierścienie per komórka i **łączna**
   liczba obrotów helixa wejścia we wszystkich komórkach ≤ `MAX_PASSES`
   (`entryHelixTurnCount()`).
-- Podglądy: pustki = kontury nominalne komórek (`pocketVoids()` w
-  `stockModel.ts`, ostre narożniki jak prostokąt Pocket); ściany i dna
-  komórek z modelu materiału.
+- Podglądy: pustki = kontury komórek z modelu materiału (`stockModel.ts`)
+  — nominalne (`pocketVoids()`, ostre narożniki) albo po frezie, z
+  narożnikami zaokrąglonymi promieniem freza; ściany i dna z tego samego
+  modelu.
 
 ### Adaptive (`pocketAdaptive.ts`, `pocketAdaptiveMath.ts`)
 
@@ -423,7 +424,7 @@ Surface/Pocket Spiral — stepover, Adaptive — Optimal Load.
 
 ## Model materiału dla podglądów (`stockModel.ts`)
 
-`stockModel(presets, sheet)` — materiał pozostawiony przez zestaw presetów
+`stockModel(presets, sheet, cutShape)` — materiał pozostawiony przez zestaw presetów
 (żywy wzorzec = jeden preset, Overlay = wszystkie nałożone), wspólny dla
 2D i 3D. Wszystko to pryzmaty o pionowych ścianach, więc całość powstaje z
 booli 2D na przekrojach (`polygon-clipping`, okręgi po 72 odcinki).
@@ -449,6 +450,20 @@ booli 2D na przekrojach (`polygon-clipping`, okręgi po 72 odcinki).
   poniżej dna, płytszy znika w kieszeni; głębsza kieszeń w płytszej daje
   stopień; kieszeń sięgająca grubości części nie ma dna; nachodzące wyspy
   zlewają się; pustka poza każdą wyspą nie zostawia śladu w materiale.
+- **Kształt po frezie** (`cutShape`, `appearance.cutShapeEnabled`): kontur
+  pustki = ścieżka środka narzędzia poszerzona o promień freza
+  (`roundedOffsetLoop()` — łuk o promieniu freza w każdym narożniku
+  wypukłym pętli, co 15°). Dotyczy Pocket Rectangle (ściana
+  `pocketRectWallHalfDims()`), komórek Lightened (`cellLoop(cell, r)`),
+  Outline Rectangle Inside i zewnętrznej krawędzi pasa On-line (wyspa
+  zostaje ostra); Outline Outside, okręgi, Hole(s) bez zmian. Frez, który
+  się nie mieści → kontur nominalny. Powyżej `MAX_ROUNDED_CELLS` (300)
+  komórek Lightened zostają ostre — zaokrąglenie mnoży wierzchołki, a
+  każdy bool przechodzi po wszystkich. `cutContours(params)` — te same
+  kontury dla kropkowanego obrysu w 2D.
+- Wydajność: suma pustek liczona raz na głębokość i używana ponownie (dno
+  = ta suma, gdy nic nie sięga głębiej); dno przycinane do materiału tylko
+  przy części.
 - Mostki ignorowane. Współrzędne zaokrąglane do siatki — `polygon-clipping`
   wykłada się na krawędziach, które prawie się pokrywają (presety o
   wspólnym originie), a radzi sobie, gdy pokrywają się dokładnie. Przy

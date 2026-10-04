@@ -23,6 +23,8 @@ interface Scene3DProps {
   stockSolid: boolean
   // The stock's edge outline — appearance.stockEdges3DEnabled.
   stockEdgesEnabled: boolean
+  // Stock as the tool leaves it — appearance.cutShapeEnabled.
+  cutShapeEnabled: boolean
   onToggleStockVisible: () => void
   onToggleStockSolid: () => void
   onToggleToolpathVisible: () => void
@@ -77,6 +79,7 @@ export function Scene3D({
   toolpathVisible,
   stockSolid,
   stockEdgesEnabled,
+  cutShapeEnabled,
   onToggleStockVisible,
   onToggleStockSolid,
   onToggleToolpathVisible,
@@ -258,6 +261,7 @@ export function Scene3D({
       toolpathVisible,
       stockSolid,
       stockEdgesEnabled,
+      cutShapeEnabled,
     )
     renderer.setClearColor(background, 1)
     objects.forEach((obj) => contentGroup.add(obj))
@@ -319,6 +323,7 @@ export function Scene3D({
     toolpathVisible,
     stockSolid,
     stockEdgesEnabled,
+    cutShapeEnabled,
     viewMemory,
   ])
 

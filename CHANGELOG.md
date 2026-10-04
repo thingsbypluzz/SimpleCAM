@@ -7,6 +7,31 @@ zgodne z [SemVer](https://semver.org/). Ten plik pozostaje głównym, czytelnym
 thingsbypluzz/SimpleCAM), ale to infrastruktura pod izolację pracy
 (branch/worktree per zadanie), nie zamiennik tego changeloga.
 
+## [0.37.0] — 2026-10-04
+
+### Dodano
+
+- **Podglądy pokazują kształt po frezie** (`BL-86`). Okrągły frez zostawia
+  w każdym narożniku wewnętrznym zaokrąglenie o swoim promieniu, a
+  podglądy rysowały dotąd ostre narożniki z zadanego kształtu. Teraz
+  materiał w 2D i 3D ma zaokrąglone narożniki w Pocket Rectangle, w
+  komórkach Lightened, w Outline Rectangle Inside i na zewnętrznej
+  krawędzi pasa On-line. Outline Outside zostaje ostry (frez objeżdża
+  narożnik zewnętrzny). G-code bez zmian.
+  - W 2D obrys nominalny zostaje ciągłą linią, a kontur po frezie jest
+    kropkowany — w narożniku widać, ile materiału zostaje.
+  - Wyłącznik w Settings → Appearance → „Cut Shape (Previews)”, domyślnie
+    włączony.
+  - Powyżej 300 komórek Lightened komórki zostają ostre: zaokrąglenie
+    mnoży liczbę wierzchołków i przebudowa materiału trwałaby zbyt długo
+    przy każdej zmianie.
+
+### Zmieniono
+
+- Model materiału liczy się szybciej (sumy pustek używane ponownie —
+  Lightened 20×20 z ok. 250 ms do ok. 110 ms), a podgląd 2D pamięta go
+  między rysowaniami, więc przesuwanie i zoom nie przeliczają materiału.
+
 ## [0.36.0] — 2026-10-04
 
 ### Dodano

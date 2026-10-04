@@ -22,6 +22,9 @@ export interface AppearanceSettings {
   // 3D Preview only — the stock's edge outline (rims of its faces, sharp
   // wall corners).
   stockEdges3DEnabled: boolean
+  // Both previews — stock drawn as the tool leaves it (inside corners
+  // rounded to the tool radius) instead of the nominal shapes (BL-86).
+  cutShapeEnabled: boolean
 }
 
 export const DEFAULT_APPEARANCE_SETTINGS: AppearanceSettings = {
@@ -30,4 +33,5 @@ export const DEFAULT_APPEARANCE_SETTINGS: AppearanceSettings = {
   grid3DLabelsEnabled: true,
   grid3DLabelSize: 'medium',
   stockEdges3DEnabled: true,
+  cutShapeEnabled: true,
 }

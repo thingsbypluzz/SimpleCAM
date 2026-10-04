@@ -17,7 +17,12 @@
   (`pocketFloorFill`, słabsze krycie) jedną ścieżką even-odd, bez obrysu.
   Wzorce rysują tylko krawędzie (`holeStroke`): otwory, kontur nominalny
   Outline, obie krawędzie On-line, kontur kieszeni / komórek Lightened.
-  Surface poza modelem — wypełnia własny obszar.
+  Surface poza modelem — wypełnia własny obszar. Model jest pamiętany
+  między rysowaniami (`cachedStockModel()` — kanwa rysuje się przy każdym
+  kroku pan/zoom, a model zależy tylko od presetów, arkusza i opcji).
+  Przy `cutShape` (Settings → Appearance) materiał ma kształt po frezie, a
+  po obrysach nominalnych dochodzi kropkowana linia `cutContours()` —
+  na prostych pokrywa się z obrysem, odchodzi od niego w narożnikach.
   Mostki: `drawGappedCircle()`/`drawGappedRectangle()` — przerywana linia
   (`TAB_DASH`) na łuku/odcinku mostka; materiał je ignoruje.
 - `camera2d.ts` — czysta matematyka kamery (`Camera2D = { scale, centerX,

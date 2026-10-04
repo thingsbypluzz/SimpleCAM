@@ -937,6 +937,7 @@ export function buildToolpathScene(
   showToolpath = true,
   solidStock = false,
   stockEdges = true,
+  cutShape = false,
 ): BuiltScene {
   const theme = buildTheme(paletteId, isDark, themeId)
 
@@ -1048,12 +1049,11 @@ export function buildToolpathScene(
   // not part of it and draws its own block (buildSurfacePatternObjects()).
   if (showStock) {
     const half = gridSize / 2
-    const model = stockModel([...overlayParams, ...(showActivePattern ? [params] : [])], {
-      minX: gridCenterX - half,
-      minY: -gridCenterZ - half,
-      maxX: gridCenterX + half,
-      maxY: -gridCenterZ + half,
-    })
+    const model = stockModel(
+      [...overlayParams, ...(showActivePattern ? [params] : [])],
+      { minX: gridCenterX - half, minY: -gridCenterZ - half, maxX: gridCenterX + half, maxY: -gridCenterZ + half },
+      cutShape,
+    )
     if (model) objects.push(...buildStockModelObjects(model, theme, solidStock, stockEdges))
   }
 

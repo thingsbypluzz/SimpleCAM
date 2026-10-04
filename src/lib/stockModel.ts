@@ -1,8 +1,8 @@
 import polygonClipping, { type MultiPolygon, type Polygon, type Ring } from 'polygon-clipping'
 import type { Point2D, WizardParams } from '../types/wizard'
 import { onLineCircleEdges } from './outlineCircle'
-import { onLineRectDimensions, rectCorners } from './outlineRectangleGeometry'
-import { pocketCenter } from './pocketGeometry'
+import { onLineRectDimensions, rectCorners, rectToolDimensions } from './outlineRectangleGeometry'
+import { pocketCenter, pocketRectWallHalfDims } from './pocketGeometry'
 import { cellLoop, isLightenedShape, lightenedCells } from './pocketLightened'
 import { resolvePoints } from './positioning'
 
@@ -33,6 +33,124 @@ export function pocketVoids(pocket: WizardParams['pocket']): SheetVoid[] {
       ],
     },
   ]
+}
+
+// Corner arcs of a cut contour are coarser than the app's 5° curves: the
+// radius is a tool's, so the chord error stays in the hundredths of a mm,
+// and a Lightened pocket rounds thousands of corners for the booleans.
+const CORNER_STEP_RAD = (15 * Math.PI) / 180
+
+// `loop` (CCW, not closed) moved outward by r, the way a tool of radius r
+// whose center walks the loop leaves the wall: an arc of radius r around
+// every convex corner, the offset edges' intersection at a concave or
+// barely turning one (a sector cell's hub arc, the 5° steps of its outer
+// arc).
+export function roundedOffsetLoop(loop: Point2D[], r: number): Point2D[] {
+  const points = loop.filter((p, i) => {
+    const q = loop[(i + 1) % loop.length]
+    return Math.hypot(q.x - p.x, q.y - p.y) > 1e-9
+  })
+  if (points.length < 3 || !(r > 0)) return loop
+  const out: Point2D[] = []
+  for (let i = 0; i < points.length; i++) {
+    const prev = points[(i + points.length - 1) % points.length]
+    const v = points[i]
+    const next = points[(i + 1) % points.length]
+    const inLength = Math.hypot(v.x - prev.x, v.y - prev.y)
+    const outLength = Math.hypot(next.x - v.x, next.y - v.y)
+    // Outward normals of the edges into and out of the corner.
+    const n1 = { x: (v.y - prev.y) / inLength, y: -(v.x - prev.x) / inLength }
+    const n2 = { x: (next.y - v.y) / outLength, y: -(next.x - v.x) / outLength }
+    const turn = Math.atan2(n1.x * n2.y - n1.y * n2.x, n1.x * n2.x + n1.y * n2.y)
+    if (turn < CORNER_STEP_RAD) {
+      const k = r / Math.max(0.1, 1 + n1.x * n2.x + n1.y * n2.y)
+      out.push({ x: v.x + (n1.x + n2.x) * k, y: v.y + (n1.y + n2.y) * k })
+      continue
+    }
+    const steps = Math.ceil(turn / CORNER_STEP_RAD)
+    const from = Math.atan2(n1.y, n1.x)
+    for (let step = 0; step <= steps; step++) {
+      const a = from + (turn * step) / steps
+      out.push({ x: v.x + r * Math.cos(a), y: v.y + r * Math.sin(a) })
+    }
+  }
+  return out
+}
+
+// Rounding multiplies a cell's vertices (a triangle: 3 → about 25) and
+// every boolean of the model sweeps all of them: at 300 cells the model
+// builds in roughly 200 ms, at 1600 (X-grid 20×20) it would take over
+// 700 ms on every edit. Past this count the cells keep their nominal,
+// sharp outline.
+const MAX_ROUNDED_CELLS = 300
+
+// A Pocket's voids as the tool leaves them (BL-86): the wall its center
+// runs along, grown by its radius — every inside corner comes out rounded
+// to that radius. A circle already is; a shape the tool does not fit in
+// (which validation rejects) stays nominal.
+function pocketCutVoids(pocket: WizardParams['pocket']): SheetVoid[] {
+  const r = pocket.toolDiameter / 2
+  if (!(r > 0) || pocket.shape === 'circle') return pocketVoids(pocket)
+  if (isLightenedShape(pocket.shape)) {
+    const cells = lightenedCells(pocket)
+    if (cells.length > MAX_ROUNDED_CELLS) return pocketVoids(pocket)
+    return cells
+      .map((cell) => {
+        const wall = cellLoop(cell, r)
+        return wall.length >= 3 ? roundedOffsetLoop(wall, r) : cellLoop(cell, 0)
+      })
+      .filter((polygon) => polygon.length >= 3)
+      .map((polygon) => ({ polygon }))
+  }
+  const { halfWidth, halfHeight } = pocketRectWallHalfDims(pocket)
+  if (!(halfWidth > 0 && halfHeight > 0)) return pocketVoids(pocket)
+  const c = pocketCenter(pocket)
+  return [
+    {
+      polygon: roundedOffsetLoop(
+        [
+          { x: c.x - halfWidth, y: c.y - halfHeight },
+          { x: c.x + halfWidth, y: c.y - halfHeight },
+          { x: c.x + halfWidth, y: c.y + halfHeight },
+          { x: c.x - halfWidth, y: c.y + halfHeight },
+        ],
+        r,
+      ),
+    },
+  ]
+}
+
+// Rectangle Outline's one edge the tool rounds (BL-86): Inside — the void
+// (tool path grown by the tool radius); On-line — the band's outer edge
+// (the nominal rectangle grown by it; the inner island keeps its sharp
+// corners). Null where nothing changes: Outside (the tool goes around the
+// part's corners), a circle, a tool that does not fit.
+function outlineCutEdge(outline: WizardParams['outline']): Point2D[] | null {
+  const r = outline.toolDiameter / 2
+  if (outline.shape === 'circle' || outline.offsetMode === 'outside' || !(r > 0)) return null
+  const { toolWidth, toolHeight } = rectToolDimensions(outline.width, outline.height, outline.toolDiameter, outline.offsetMode)
+  if (!(toolWidth > 0 && toolHeight > 0)) return null
+  return roundedOffsetLoop(
+    rectCorners(outline.shape, outline.width, outline.height, toolWidth, toolHeight, outline.offsetX, outline.offsetY, 'ccw'),
+    r,
+  )
+}
+
+// The contours of a preset that differ from its nominal ones once the tool
+// radius is accounted for — what the 2D Preview dots next to the nominal
+// outline. Empty where the cut shape is the nominal one.
+export function cutContours(params: WizardParams): Point2D[][] {
+  if (params.operation === 'pocket') {
+    const { pocket } = params
+    if (pocket.shape === 'circle' || !(pocket.toolDiameter > 0)) return []
+    if (isLightenedShape(pocket.shape) && lightenedCells(pocket).length > MAX_ROUNDED_CELLS) return []
+    return pocketCutVoids(params.pocket).flatMap((v) => ('polygon' in v ? [v.polygon] : []))
+  }
+  if (params.operation === 'outline') {
+    const edge = outlineCutEdge(params.outline)
+    return edge ? [edge] : []
+  }
+  return []
 }
 
 // Same density as every G1-approximated circle in the app (72 per turn).
@@ -83,15 +201,16 @@ interface StockFeatures {
 // What one preset means for the material, by the physical sense of its
 // operation — the one place the previews' stock branches on the operation.
 // Surface is not part of the model (null): it draws its own "remaining
-// material" block.
-function stockFeatures(params: WizardParams, grid: number): StockFeatures | null {
+// material" block. `cutShape` (BL-86) swaps the nominal contours for the
+// ones the tool actually leaves.
+function stockFeatures(params: WizardParams, grid: number, cutShape: boolean): StockFeatures | null {
   if (params.operation === 'surface') return null
   const ring = (v: SheetVoid) => outlineRing(v, grid)
   if (params.operation === 'pocket') {
     const depth = params.pocket.totalDepth
     return {
       islands: [],
-      voids: pocketVoids(params.pocket)
+      voids: (cutShape ? pocketCutVoids(params.pocket) : pocketVoids(params.pocket))
         .filter((v) => !isDegenerate(v))
         .map((v) => ({ region: [ring(v)], depth, floor: true })),
       part: false,
@@ -105,8 +224,10 @@ function stockFeatures(params: WizardParams, grid: number): StockFeatures | null
         ? { circle: { x: outline.offsetX, y: outline.offsetY }, radius }
         : { polygon: rectCorners(outline.shape, outline.width, outline.height, width, height, outline.offsetX, outline.offsetY, 'ccw') }
     const nominal = edge(outline.diameter / 2, outline.width, outline.height)
+    const cutEdge = cutShape ? outlineCutEdge(outline) : null
     if (outline.offsetMode === 'inside') {
-      return { islands: [], voids: isDegenerate(nominal) ? [] : [{ region: [ring(nominal)], depth, floor: false }], part: false }
+      const cut: SheetVoid = cutEdge ? { polygon: cutEdge } : nominal
+      return { islands: [], voids: isDegenerate(cut) ? [] : [{ region: [ring(cut)], depth, floor: false }], part: false }
     }
     if (outline.offsetMode === 'outside') {
       return { islands: isDegenerate(nominal) ? [] : [{ region: [ring(nominal)], depth }], voids: [], part: true }
@@ -116,7 +237,7 @@ function stockFeatures(params: WizardParams, grid: number): StockFeatures | null
     const { innerRadius, outerRadius } = onLineCircleEdges(outline)
     const rect = onLineRectDimensions(outline.width, outline.height, outline.toolDiameter)
     const inner = edge(innerRadius, rect.innerWidth, rect.innerHeight)
-    const outer = edge(outerRadius, rect.outerWidth, rect.outerHeight)
+    const outer: SheetVoid = cutEdge ? { polygon: cutEdge } : edge(outerRadius, rect.outerWidth, rect.outerHeight)
     if (isDegenerate(outer)) return { islands: [], voids: [], part: false }
     const hasInner = !isDegenerate(inner)
     return {
@@ -190,8 +311,8 @@ function intersect(a: MultiPolygon, b: MultiPolygon): MultiPolygon {
   return polygonClipping.intersection(a, b)
 }
 
-function buildModel(presets: readonly WizardParams[], sheet: SheetRect, grid: number): StockModel | null {
-  const features = presets.map((params) => stockFeatures(params, grid)).filter((f): f is StockFeatures => f !== null)
+function buildModel(presets: readonly WizardParams[], sheet: SheetRect, grid: number, cutShape: boolean): StockModel | null {
+  const features = presets.map((params) => stockFeatures(params, grid, cutShape)).filter((f): f is StockFeatures => f !== null)
   if (features.length === 0) return null
 
   // The material before any void: the parts, when a preset cuts one out
@@ -219,7 +340,17 @@ function buildModel(presets: readonly WizardParams[], sheet: SheetRect, grid: nu
     .filter((v) => v.depth > 0)
     .map((v) => ({ ...v, depth: Math.min(v.depth, thickness), floor: v.floor && v.depth < thickness }))
 
-  const reaching = (depth: number) => unionAll(voids.filter((v) => v.depth >= depth).map((v) => v.region))
+  // Each boolean sweeps every vertex of every void — a Lightened pocket has
+  // thousands — so a union is computed once per depth and reused.
+  const unions = new Map<number, MultiPolygon>()
+  const reaching = (depth: number) => {
+    let union = unions.get(depth)
+    if (!union) {
+      union = unionAll(voids.filter((v) => v.depth >= depth).map((v) => v.region))
+      unions.set(depth, union)
+    }
+    return union
+  }
   // The material's cross-section in the band ending at `depth`.
   const section = (depth: number) => subtract(material, reaching(depth))
 
@@ -232,9 +363,18 @@ function buildModel(presets: readonly WizardParams[], sheet: SheetRect, grid: nu
     walls.push({ zTop: -above, zBottom: -depth, region: solid ? section(depth) : reaching(depth) })
     above = depth
 
-    const pockets = unionAll(voids.filter((v) => v.floor && v.depth === depth).map((v) => v.region))
-    const cutThrough = unionAll(voids.filter((v) => v.depth > depth || (v.depth === depth && !v.floor)).map((v) => v.region))
-    const floor = intersect(subtract(pockets, cutThrough), material)
+    // A floor: the pockets ending here, less whatever goes deeper or
+    // through. Nothing does in the common case — then it is the union
+    // already at hand. The sheet contains every void, so only a part
+    // needs the floor clipped to it.
+    const pockets = voids.filter((v) => v.floor && v.depth === depth)
+    const cutThrough = voids.filter((v) => v.depth > depth || (v.depth === depth && !v.floor))
+    if (pockets.length === 0) continue
+    const open =
+      cutThrough.length === 0
+        ? reaching(depth)
+        : subtract(unionAll(pockets.map((v) => v.region)), unionAll(cutThrough.map((v) => v.region)))
+    const floor = solid ? intersect(open, material) : open
     if (floor.length > 0) floors.push({ z: -depth, region: floor })
   }
   if (solid && above < thickness) walls.push({ zTop: -above, zBottom: -thickness, region: material })
@@ -254,14 +394,15 @@ const SNAP_GRIDS = [1e6, 1e4, 1e3, 1e2]
 
 // The stock of `presets` within `sheet` (the previews' stock sheet,
 // stockSheetRect()); null when no preset has stock of this kind (Surface
-// only). When polygon-clipping gives up on an input, the next coarser grid
+// only). `cutShape`: voids as the tool leaves them (inside corners rounded
+// to its radius) instead of the nominal shapes. When polygon-clipping gives up on an input, the next coarser grid
 // is tried; null — no stock drawn — if every grid fails, which beats
 // taking the preview down.
-export function stockModel(presets: readonly WizardParams[], sheet: SheetRect): StockModel | null {
+export function stockModel(presets: readonly WizardParams[], sheet: SheetRect, cutShape = false): StockModel | null {
   let failure: unknown
   for (const grid of SNAP_GRIDS) {
     try {
-      return buildModel(presets, sheet, grid)
+      return buildModel(presets, sheet, grid, cutShape)
     } catch (error) {
       failure = error
     }

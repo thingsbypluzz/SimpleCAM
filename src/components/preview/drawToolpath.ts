@@ -9,7 +9,7 @@ import { computeRasterLines, zigzagWaypoints, type RasterLine } from '../../lib/
 import { pocketCenter } from '../../lib/pocketGeometry'
 import { buildPocketToolpath } from '../../lib/pocket'
 import { movePoints, type MoveKind, type Toolpath } from '../../lib/toolpath'
-import { pocketVoids, stockModel } from '../../lib/stockModel'
+import { cutContours, pocketVoids, stockModel, type StockModel } from '../../lib/stockModel'
 import type { MultiPolygon } from 'polygon-clipping'
 import type { Point2D, PocketMethodType, PocketShape, WizardParams } from '../../types/wizard'
 import type { ThemeId } from '../../types/theme'
@@ -499,6 +499,27 @@ function onLineRectEdges(pattern: Extract<ResolvedPattern, { kind: 'outlineRect'
   return { inner: corners(innerWidth, innerHeight), outer: corners(outerWidth, outerHeight) }
 }
 
+// The stock model of the last draw. The canvas redraws on every pan and
+// zoom step, while the model only changes with the presets, the sheet or
+// the cut-shape option — and a Lightened pocket's model takes long enough
+// to build to make panning stutter.
+let lastStock: { presets: readonly WizardParams[]; key: string; model: StockModel | null } | null = null
+
+function cachedStockModel(presets: readonly WizardParams[], sheet: StockSheet, cutShape: boolean): StockModel | null {
+  const key = `${sheet.centerX}|${sheet.centerY}|${sheet.size}|${cutShape}`
+  const same = lastStock && lastStock.key === key && lastStock.presets.length === presets.length && presets.every((p, i) => p === lastStock!.presets[i])
+  if (!same) {
+    const half = sheet.size / 2
+    const model = stockModel(
+      presets,
+      { minX: sheet.centerX - half, minY: sheet.centerY - half, maxX: sheet.centerX + half, maxY: sheet.centerY + half },
+      cutShape,
+    )
+    lastStock = { presets, key, model }
+  }
+  return lastStock!.model
+}
+
 // One face of the stock model (lib/stockModel.ts): its polygons never
 // overlap, and a ring inside another alternates hole / enclosed island, so
 // a single even-odd path fills exactly the material. No outline — the
@@ -896,6 +917,7 @@ export function drawToolpath(
   showActivePattern = true,
   showStock = true,
   showToolpath = true,
+  cutShape = false,
 ) {
   const theme = buildTheme(paletteId, isDark, themeId)
 
@@ -1001,14 +1023,8 @@ export function drawToolpath(
   // uncut face, and pocket floors in a fainter tint. Drawn once, before
   // the patterns; Surface is not part of it and fills its own area.
   if (showStock) {
-    const sheet = stockSheetRect(patternFootprint(allPatterns))
-    const half = sheet.size / 2
-    const model = stockModel([...overlayParams, ...(showActivePattern ? [params] : [])], {
-      minX: sheet.centerX - half,
-      minY: sheet.centerY - half,
-      maxX: sheet.centerX + half,
-      maxY: sheet.centerY + half,
-    })
+    const presets = [...overlayParams, ...(showActivePattern ? [params] : [])]
+    const model = cachedStockModel(presets, stockSheetRect(patternFootprint(allPatterns)), cutShape)
     if (model) {
       fillRegion(ctx, toPx, model.top, theme.holeFill)
       for (const floor of model.floors) fillRegion(ctx, toPx, floor.region, theme.pocketFloorFill)
@@ -1016,6 +1032,28 @@ export function drawToolpath(
   }
   for (const pattern of allPatterns) {
     drawPatternGeometry(ctx, toPx, camera.scale, pattern, theme, arrowSize, showStock, showToolpath)
+  }
+
+  // BL-86: next to each nominal outline (solid, above), the contour the
+  // tool actually leaves — dotted. It runs along the nominal one on
+  // straight edges and parts from it at every inside corner.
+  if (showStock && cutShape) {
+    ctx.strokeStyle = theme.holeStroke
+    ctx.lineWidth = 1
+    ctx.setLineDash(LINK_DASH)
+    for (const pattern of allPatterns) {
+      for (const contour of cutContours(pattern.params)) {
+        ctx.beginPath()
+        contour.forEach((p, i) => {
+          const [x, y] = toPx(p.x, p.y)
+          if (i === 0) ctx.moveTo(x, y)
+          else ctx.lineTo(x, y)
+        })
+        ctx.closePath()
+        ctx.stroke()
+      }
+    }
+    ctx.setLineDash([])
   }
 
   // Origin marker

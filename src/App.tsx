@@ -915,6 +915,7 @@ function App() {
                 showActivePattern={!overlayEnabled}
                 stockVisible={stockVisible}
                 toolpathVisible={toolpathVisible && !previewToolpathBlocked}
+                cutShapeEnabled={appearance.cutShapeEnabled}
                 onToggleStockVisible={() => setStockVisible((v) => !v)}
                 onToggleToolpathVisible={() => setToolpathVisible((v) => !v)}
               />
@@ -942,6 +943,7 @@ function App() {
                   toolpathVisible={toolpathVisible && !previewToolpathBlocked}
                   stockSolid={stockSolid}
                   stockEdgesEnabled={appearance.stockEdges3DEnabled}
+                  cutShapeEnabled={appearance.cutShapeEnabled}
                   onToggleStockSolid={() => setStockSolid((v) => !v)}
                   renderPaused={isSettingsOpen || isFeedCalcOpen}
                   onToggleStockVisible={() => setStockVisible((v) => !v)}
