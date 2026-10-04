@@ -6,6 +6,7 @@ import {
   isPassCountWithinLimit,
   isFeedrateXYValid,
   isPlungeRateValid,
+  isFacingLinkingFeedValid,
   isPocketFinishFeedValid,
   isPocketLinkingFeedValid,
   isSafeZValid,
@@ -44,7 +45,8 @@ interface Step3FeedsProps {
 }
 
 export function Step3Feeds({ params, onChange, machine, stepdownLabel, onOpenCalculator, onSaveMachine }: Step3FeedsProps) {
-  const { feeds, pocket } = params
+  const { feeds, pocket, facing } = params
+  const isFacing = params.operation === 'facing'
   const isPocketAdaptive = params.operation === 'pocket' && pocket.method === 'adaptive'
   const isPocketFinishing = params.operation === 'pocket' && pocket.finishingEnabled
 
@@ -68,6 +70,7 @@ export function Step3Feeds({ params, onChange, machine, stepdownLabel, onOpenCal
   const startZField = useNumberField(feeds.startZ, (v) => updateFeeds({ startZ: v }))
   const safeZField = useNumberField(feeds.safeZ, (v) => updateFeeds({ safeZ: v }))
   const linkingFeedField = useNumberField(pocket.linkingFeed, (v) => onChange({ pocket: { ...pocket, linkingFeed: v } }))
+  const facingLinkingFeedField = useNumberField(facing.linkingFeed, (v) => onChange({ facing: { ...facing, linkingFeed: v } }))
   // Global (Settings → Machine); only a positive value is saved, like the
   // Settings field. The calculator's Apply remounts this step.
   const spindleField = useNumberField(machine.spindleSpeed, (v) => {
@@ -139,6 +142,17 @@ export function Step3Feeds({ params, onChange, machine, stepdownLabel, onOpenCal
         </FieldRow>
       )}
       {isPocketAdaptive && !isPocketLinkingFeedValid(pocket) && (
+        <p className="text-sm text-status-error">Linking Feed must be greater than 0.</p>
+      )}
+      {isFacing && (
+        <FieldRow
+          label="Linking Feed [mm/min]"
+          hint="Feed for the moves beside the material — backing away after each pass and returning to the start of the side. Always G1 (never a rapid below Safe Z); can safely be higher than Feedrate XY."
+        >
+          <NumberInput type="number" step="1" className={inputClass} aria-invalid={!isFacingLinkingFeedValid(facing)} {...facingLinkingFeedField} />
+        </FieldRow>
+      )}
+      {isFacing && !isFacingLinkingFeedValid(facing) && (
         <p className="text-sm text-status-error">Linking Feed must be greater than 0.</p>
       )}
       {isPocketFinishing && (

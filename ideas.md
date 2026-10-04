@@ -617,6 +617,14 @@ Waga z review w nawiasie kwadratowym.
     zaokrąglony), etykieta presetu;
   - czy także Pocket Rectangle i Surface; relacja z `BL-86` (zaokrąglenie
     wynikające z promienia freza w podglądzie).
+- **`BL-97`** *(Otwarty)* 🟠 — **Facing: przejście wykańczające (Finishing
+  Pass).** Zgłoszone 2026-10-04, odłożone przy `OP-7`. Dziś Facing bierze
+  równe dosuwy co Stepover, ostatni wyrównany do naddatku. Pomysł jak w
+  Pocket: checkbox Finishing Pass + Stock to Leave + Finish Feed —
+  zgrubne dosuwy do naddatku minus Stock to Leave, na końcu jedno cienkie
+  przejście na wymiar. Do ustalenia: wykańczanie na każdym poziomie Z czy
+  jednym przejściem na pełnej głębokości (lepsza powierzchnia, wymaga
+  długości ostrza ≥ Depth); sugestie Feedrate Calculator.
 - **`BL-61`** *(Zrealizowany, 2026-09-27)* 🔴 **[Low, kosztowne w czasie]**
   — **Podglądy duplikują geometrię silnika** — jedna lista ruchów (jak
   Adaptive) dla G-code i podglądu 3D, po jednej operacji na raz. Etapy 1–2
@@ -641,8 +649,8 @@ Osobna, celowo **nie** `BL-#` kategoria — każda to nie drobna poprawka
 tylko kamień milowy wielkości całego etapu implementacji, z własną,
 dziś nieznaną taksonomią (operacja → pattern/sub-choice → parametry).
 Numer `OP-#` jest identyfikatorem, nie kolejnością realizacji. `OP-1`
-(Outline), `OP-2` (Pocket), `OP-3` (Surface) i `OP-5` (Pocket Adaptive)
-zaimplementowane — patrz `CLAUDE.md`, "Kluczowe decyzje projektowe"
+(Outline), `OP-2` (Pocket), `OP-3` (Surface), `OP-5` (Pocket Adaptive),
+`OP-6` (Lightened Pocket) i `OP-7` (Facing) zaimplementowane — patrz `CLAUDE.md`, "Kluczowe decyzje projektowe"
 (pełne rozstrzygnięcia sesji `/grill-me` dla Surface, 2026-09-12, dla
 Pocket, 2026-09-21, i dla Adaptive, 2026-09-25; historia implementacji w
 `CHANGELOG.md`, `[0.14.0]`, `[0.18.0]` i `[0.19.0]`).
@@ -710,17 +718,24 @@ Pocket, 2026-09-21, i dla Adaptive, 2026-09-25; historia implementacji w
     4×1, Circle Ø80 / 5 szprych / Hub 16 / 90°, Rib 4 (Rim usunięty — `BL-84`); podglądy —
     komórki jako pustki (reguła Pocket); plik `op-rect-lightened-…`.
 - **`OP-7` — Facing (nie mylić z Surface).** Zgłoszone 2026-09-30.
-  Nowa operacja albo wariant istniejącej — **pierwsze pytanie sesji
-  `/grill-me`**: czy to w ogóle osobna operacja, czy da się ją uzyskać
-  z Surface/Outline z jakąś zmianą. Do rozstrzygnięcia: co dokładnie
-  znaczy „facing” w tym projekcie i czym różni się od Surface (dziś:
-  planowanie prostokąta rastrem z overtravelem o promień freza) — np.
-  wyrównanie krawędzi/boków materiału (cięcie boczne wzdłuż prostej, jeden
-  lub kilka boków) albo inny wariant obróbki czoła; reużycie istniejących
-  silników (Outline Rectangle Outside z wyborem boków, Surface z inną
-  strategią) vs nowy silnik; parametry (długość, naddatek do zebrania,
-  kierunek, wejście/wyjście poza materiałem), podglądy 2D/3D, walidacja,
-  miejsce w Kroku 1.
+  **Zrealizowany** (2026-10-04, `0.38.0`) — piąta operacja: obróbka
+  jednego boku detalu. Ustalenia rozmowy (2026-10-04):
+  - Osobna operacja w Kroku 1, który wybiera bok: Bottom / Top / Left /
+    Right Side (jeden bok na program).
+  - Użytkownik podaje długość boku, naddatek i głębokość (= wysokość
+    rysowanego boku). Zero wzdłuż boku: Start / Center / End; w poprzek:
+    krawędź surowa albo gotowa; do tego Offset X/Y.
+  - Stepover w mm i w % średnicy, sprzężone; zapisywane mm (zmiana freza
+    przelicza %).
+  - Jednokierunkowo, Climb (domyślnie) / Conventional; poziom Z po
+    poziomie; wybieg poza końce boku = promień + Lead; po przejściu
+    odsunięcie o Clearance i powrót na G1 z Linking Feed (bez wyjątku od
+    zasady „G0 w XY tylko na Safe Z”).
+  - Podglądy: poza wspólnym modelem materiału (jak Surface) — blok od
+    gotowej krawędzi do brzegu widocznej płaszczyzny.
+  - Feedrate Calculator z sugestią Stepover. Finishing Pass odłożony →
+    `BL-97`.
+  Pełny opis: `CHANGELOG.md`, `[0.38.0]`.
 
 **Każda z `OP-#` wymaga własnej, pełnej sesji `/grill-me` przed
 napisaniem jakiegokolwiek kodu** — nieporównywalnie większy zakres

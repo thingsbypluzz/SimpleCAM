@@ -2,7 +2,7 @@
 
 - `Step1Positioning.tsx` — tylko wybór operacji i wzorca/kształtu (pionowy
   stos operacji z listą wariantów). `Step2Geometry.tsx` — router na
-  `params.operation` → `Step2GeometryHoles/Outline/Surface/Pocket.tsx`.
+  `params.operation` → `Step2GeometryHoles/Outline/Surface/Pocket/Facing.tsx`.
 - `Step1Summary.tsx` — zwinięty Krok 1: wszystkie operacje w kolejności
   Kroku 1 (`OPERATION_LIST`). Aktywna podświetlona na swoim miejscu
   (tokeny `selected-*`, nazwa, duża ikona i opis wybranego wzorca/
@@ -12,7 +12,7 @@
   otwiera Krok 1. Korzeń to `<div>` (zawiera własne przyciski), pozostałe
   Step N Summary są jednym `<button>`; każdy przycisk z `aria-pressed`.
 - **Kolejność pól w Kroku 2** (komentarz „Field order” na górze każdego
-  pliku): pierwszy wiersz `PickHeader.tsx` („Pattern: …” / „Shape: …” z
+  pliku): pierwszy wiersz `PickHeader.tsx` („Pattern: …” / „Shape: …” / „Side: …” z
   `OPERATION_META[op].pickKind` + `pick()`, opis pod Hint Button przy
   prawej krawędzi). Hole(s): pola wzorca z rozmiarem otworu (Grid: Width +
   Height + Depth, potem Hole Diameter; N-Holes: Hole Count + Diameter +
@@ -31,7 +31,10 @@
   Optimal Load albo Stepover + Ramp Length (Spiral, pod wierszem odczyt
   Engagement) → Z-Transition + Helix Radius + Ramp Angle
   (jeden wiersz) → Finishing Pass + Stock to Leave (jeden wiersz) →
-  Offset. Błąd pod polem, którego dotyczy.
+  Offset. Facing: Length + Remove + Depth → Origin Along + Origin Across →
+  Tool Diameter → Stepover mm + % (oba edytowalne, zapisywane mm; przy
+  etykiecie liczba przejść) → Direction → Lead + Clearance → Offset.
+  Błąd pod polem, którego dotyczy.
 - **Błędne pola:** ten sam warunek, który pokazuje tekst błędu
   (`<p className="text-sm text-status-error">`), ustawia `aria-invalid`
   na polach, których dotyczy — przy relacji kilku pól na wszystkich
@@ -84,7 +87,7 @@
   tekst oddzielony od zatwierdzonej wartości (pole da się wyczyścić), commit
   przy każdym klawiszu dającym skończoną liczbę, `onBlur` resynchronizuje
   tekst. `{ syncWhenBlurred: true }` — para pól tej samej wielkości (Optimal
-  Load % ↔ mm). `onAdjust(delta)` dla przycisków góra/dół (przytrzymanie
+  Load % ↔ mm, Facing Stepover mm ↔ %). `onAdjust(delta)` dla przycisków góra/dół (przytrzymanie
   powtarza krok: pierwszy od razu, po 400 ms co 75 ms, do puszczenia albo
   zjechania z przycisku — `useHoldRepeat()` w `NumberInput.tsx`, zawsze
   najnowszy `onAdjust` przez ref),
@@ -121,4 +124,4 @@
 - Adaptive w Kroku 2: Apply chip thinning (wpisuje Feed XY do Kroku 3 bez
   przełączania kroku i bez zabierania fokusu); Krok 3: adnotacja
   "(chip thinning applied)", Linking Feed obok Feedrate XY, Apply Stepdown
-  1.5×D.
+  1.5×D. Linking Feed pokazuje się też dla Facing (`facing.linkingFeed`).

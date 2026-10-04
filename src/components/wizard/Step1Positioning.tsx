@@ -4,6 +4,7 @@ import { POSITIONING_LIST } from '../../config/positioningMeta'
 import { OUTLINE_SHAPE_LIST } from '../../config/outlineMeta'
 import { SURFACE_SHAPE_LIST } from '../../config/surfaceMeta'
 import { POCKET_SHAPE_LIST } from '../../config/pocketMeta'
+import { FACING_SIDE_LIST } from '../../config/facingMeta'
 
 interface Step1PositioningProps {
   params: WizardParams
@@ -77,7 +78,7 @@ function OptionButton({
 }
 
 export function Step1Positioning({ params, onChange }: Step1PositioningProps) {
-  const { geometry, outline, surface, pocket, operation } = params
+  const { geometry, outline, surface, pocket, facing, operation } = params
 
   return (
     <div className="flex flex-col gap-2">
@@ -144,6 +145,22 @@ export function Step1Positioning({ params, onChange }: Step1PositioningProps) {
                 pocket: { ...pocket, shape: opt.value },
               })
             }
+            Icon={opt.Icon}
+            label={opt.title}
+          />
+        ))}
+      </OperationBlock>
+
+      <OperationBlock
+        title="Facing"
+        isActive={operation === 'facing'}
+        onActivate={() => onChange({ operation: 'facing' })}
+      >
+        {FACING_SIDE_LIST.map((opt) => (
+          <OptionButton
+            key={opt.value}
+            isSelected={operation === 'facing' && facing.side === opt.value}
+            onClick={() => onChange({ operation: 'facing', facing: { ...facing, side: opt.value } })}
             Icon={opt.Icon}
             label={opt.title}
           />

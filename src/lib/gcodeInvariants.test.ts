@@ -16,6 +16,7 @@ import {
   randomPocket,
   randomPocketLightened,
   randomPocketLightenedAdaptive,
+  randomFacing,
   randomSurface,
   type Rng,
 } from './fuzzParams'
@@ -35,6 +36,8 @@ import {
 } from './pocketGeometry'
 import { endOfProgramCode } from './program'
 import { generateStandardHole } from './standardHole'
+import { generateFacing } from './facing'
+import { facingAxes, facingClearV, facingFinalV, facingPoint, facingTravel } from './facingGeometry'
 import { generateSurfaceUnidirectional, generateSurfaceZigzag } from './surface'
 import { surfaceToolBounds } from './surfaceGeometry'
 import { movePoints, type Point3D } from './toolpath'
@@ -148,6 +151,22 @@ function containmentProblems(params: WizardParams, below: TracedPoint[]): string
     const m = EPS + (params.surface.zTransitionMode === 'helix' ? 2 * params.surface.helixRadius : 0)
     return outside('outside the Surface bounds', (p) => p.x >= b.minX - m && p.x <= b.maxX + m && p.y >= b.minY - m && p.y <= b.maxY + m)
   }
+  if (params.operation === 'facing') {
+    // In the side's own frame: never deeper into the part than the last
+    // pass, never further out than the return line, never past the ends
+    // of its travel.
+    const { facing } = params
+    const { u, v } = facingAxes(facing.side)
+    const o = facingPoint(facing, 0, 0)
+    const { from, to } = facingTravel(facing)
+    const lo = Math.min(from, to) - EPS
+    const hi = Math.max(from, to) + EPS
+    return outside('outside the Facing travel', (p) => {
+      const pu = (p.x - o.x) * u.x + (p.y - o.y) * u.y
+      const pv = (p.x - o.x) * v.x + (p.y - o.y) * v.y
+      return pu >= lo && pu <= hi && pv <= facingFinalV(facing) + EPS && pv >= facingClearV(facing) - EPS
+    })
+  }
   if (params.operation === 'pocket') {
     if (isLightenedShape(params.pocket.shape)) {
       // Inside some cell's final tool-center wall (tool radius in from it).
@@ -226,6 +245,7 @@ const SUITES: Suite[] = [
   { name: 'Outline', samples: 120, build: randomOutline, generate: generateOutline },
   { name: 'Surface Zigzag', samples: 40, build: (r) => randomSurface(r, 'zigzag'), generate: generateSurfaceZigzag },
   { name: 'Surface Unidirectional', samples: 40, build: (r) => randomSurface(r, 'unidirectional'), generate: generateSurfaceUnidirectional },
+  { name: 'Facing', samples: 60, build: randomFacing, generate: generateFacing },
   { name: 'Pocket Spiral', samples: 40, build: (r) => randomPocket(r, 'spiral'), generate: generatePocketSpiral },
   { name: 'Pocket Adaptive', samples: 25, build: (r) => randomPocket(r, 'adaptive'), generate: generatePocketAdaptive },
   { name: 'Pocket Lightened', samples: 30, build: randomPocketLightened, generate: generatePocketSpiral },

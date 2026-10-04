@@ -45,7 +45,7 @@ describe('OPERATION_META (BL-61)', () => {
       'Tool ⌀3.175mm, Hole ⌀8mm, Depth 4mm — Method: Helix Hole',
     )
     expect(OPERATION_META.outline.geometryTitle(params('outline'))).toContain('(Inside)')
-    for (const op of ['holes', 'outline', 'surface', 'pocket'] as const) {
+    for (const op of ['holes', 'outline', 'surface', 'pocket', 'facing'] as const) {
       expect(OPERATION_META[op].filenameSlug(params(op))).toMatch(/^[a-z0-9-]+$/)
     }
   })
@@ -96,5 +96,16 @@ describe('OPERATION_META calculator hooks (BL-68)', () => {
     expect(spiral.pocket).toMatchObject({ stockToLeave: 0.3, finishFeed: 2500 })
     const untouched = OPERATION_META.pocket.withCalc(p, { method: 'adaptive', toolDiameter: 6 })
     expect(untouched.pocket).toMatchObject({ stockToLeave: p.pocket.stockToLeave, finishFeed: p.pocket.finishFeed })
+  })
+
+  it('Facing: one method, stepover written in mm, width capped by the removal (OP-7)', () => {
+    const p = { ...DEFAULT_WIZARD_PARAMS, operation: 'facing' as const }
+    expect(OPERATION_META.facing.calcMethods(p)).toEqual([{ value: 'sideMilling', label: 'Side Milling' }])
+    expect(OPERATION_META.facing.withCalc(p, { method: 'sideMilling', toolDiameter: 6, widthPercent: 25 })).toMatchObject({
+      facing: { toolDiameter: 6, stepover: 1.5 },
+    })
+    const narrow = { ...p, facing: { ...p.facing, toolDiameter: 6, removal: 0.9 } }
+    expect(OPERATION_META.facing.maxCalcWidthPercent!(narrow)).toBe(15)
+    expect(OPERATION_META.facing.filenameSlug(p)).toBe('facing-bottom')
   })
 })

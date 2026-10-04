@@ -1,5 +1,5 @@
 import type { MachineSettings } from '../types/machine'
-import type { FeedsParams, GeometryParams, OperationType, OutlineParams, PocketParams, SurfaceParams, WizardParams } from '../types/wizard'
+import type { FacingParams, FeedsParams, GeometryParams, OperationType, OutlineParams, PocketParams, SurfaceParams, WizardParams } from '../types/wizard'
 import type { ToolDiameterOption } from '../types/toolDiameters'
 import type { Engagement } from './feedCalc'
 import { MAX_CIRCLE_HOLE_COUNT, resolvePoints } from './positioning'
@@ -9,8 +9,9 @@ import { circleOutlineOptions, circleOutlineRadiusAndDirection } from './outline
 import { rectOutlineOptions } from './outlineRectangle'
 import { holeCircleOptions } from './helix'
 import { surfaceStepoverMm, surfaceToolBounds } from './surfaceGeometry'
+import { facingPassEdges, facingToolBounds } from './facingGeometry'
 import { effectivePocketZTransitionMode } from './pocketZTransition'
-import { entryHelixExceedsTurnLimit, entryHelixTurnCount } from './surfaceZTransition'
+import { buildLevelDescents, entryHelixExceedsTurnLimit, entryHelixTurnCount } from './surfaceZTransition'
 import { engagementAngleFor, MAX_OPTIMAL_LOAD_PERCENT, MIN_OPTIMAL_LOAD_PERCENT } from './pocketAdaptiveMath'
 import { exceedsPassLimit, MAX_PASSES } from './depthPasses'
 import { exceedsLineLimit, rasterExceedsLineLimit } from './surfaceRaster'
@@ -527,6 +528,55 @@ export function surfaceZSpan(surface: SurfaceParams, feeds: FeedsParams): number
   return feeds.safeZ + surface.totalDepth
 }
 
+// Facing validators (OP-7). The tool never has to fit anywhere — it works
+// from outside the part — so its diameter only has to exist.
+export function isFacingToolDiameterValid(facing: FacingParams): boolean {
+  return facing.toolDiameter > 0
+}
+
+export function isFacingSizeValid(facing: FacingParams): boolean {
+  return facing.totalDepth > 0 && facing.length > 0 && facing.removal > 0
+}
+
+// One sideways pass can't take more than the tool is wide. A stepover
+// above Material to Remove is fine: the single pass is trimmed to it.
+export function isFacingStepoverValid(facing: FacingParams): boolean {
+  return facing.stepover > 0 && facing.stepover <= facing.toolDiameter
+}
+
+export function isFacingLeadValid(facing: FacingParams): boolean {
+  return facing.lead >= 0
+}
+
+export function isFacingClearanceValid(facing: FacingParams): boolean {
+  return facing.clearance > 0
+}
+
+export function isFacingLinkingFeedValid(facing: FacingParams): boolean {
+  return facing.linkingFeed > 0
+}
+
+// Sideways passes × Z levels — past MAX_PASSES either list would stop
+// short of the full removal or depth.
+export function isFacingPassCountWithinLimit(params: WizardParams): boolean {
+  const { facing, feeds } = params
+  if (!isFacingStepoverValid(facing) || !(feeds.stepdown > 0)) return true
+  if (exceedsPassLimit(facing.removal, facing.stepover)) return false
+  const levels = buildLevelDescents(feeds.startZ, facing.totalDepth, feeds.stepdown).length
+  return facingPassEdges(facing).length * levels <= MAX_PASSES
+}
+
+// Radial engagement of one sideways pass, as % of the tool diameter.
+export function facingStepoverPercent(facing: Pick<FacingParams, 'stepover' | 'removal' | 'toolDiameter'>): number {
+  if (!(facing.toolDiameter > 0)) return 0
+  return (Math.min(facing.stepover, facing.removal) / facing.toolDiameter) * 100
+}
+
+export function facingFootprint(facing: FacingParams): { x: number; y: number } {
+  const bounds = facingToolBounds(facing)
+  return { x: Math.max(0, bounds.maxX - bounds.minX), y: Math.max(0, bounds.maxY - bounds.minY) }
+}
+
 // Pocket validators — same "vacuously valid when not applicable"
 // convention as Surface's above. Unlike Surface, Pocket DOES have a "tool
 // must physically fit inside the shape" constraint (it always cuts
@@ -841,5 +891,22 @@ export const OPERATION_RULES: Record<OperationType, OperationRules> = {
       p.pocket.method === 'adaptive'
         ? { kind: 'optimalLoad', percent: p.pocket.optimalLoadPercent }
         : { kind: 'stepover', percent: p.pocket.stepoverPercent },
+  },
+  facing: {
+    totalDepth: (p) => p.facing.totalDepth,
+    tabs: () => null,
+    isValid: (p) =>
+      isFacingToolDiameterValid(p.facing) &&
+      isFacingSizeValid(p.facing) &&
+      isFacingStepoverValid(p.facing) &&
+      isFacingLeadValid(p.facing) &&
+      isFacingClearanceValid(p.facing) &&
+      isFacingLinkingFeedValid(p.facing) &&
+      isFacingPassCountWithinLimit(p),
+    footprint: (p) => facingFootprint(p.facing),
+    zSpan: (p) => p.feeds.safeZ + p.facing.totalDepth,
+    rampDescent: () => null,
+    descentAngleDeg: () => null,
+    engagement: (p) => ({ kind: 'stepover', percent: facingStepoverPercent(p.facing) }),
   },
 }

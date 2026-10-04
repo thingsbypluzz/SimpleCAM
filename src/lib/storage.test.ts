@@ -270,4 +270,13 @@ describe('field validation on load (BL-57)', () => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify({ version: 1, slots: 42 }))
     expect(loadSlot(AUTO_SAVE_SLOT)).toBeNull()
   })
+
+  it('loads Facing, and gives a snapshot saved before it the defaults (OP-7)', () => {
+    storeAutoSave({ operation: 'facing', facing: { side: 'right', originAlong: 'end', originAcross: 'bogus', removal: 2.5 } })
+    const loaded = loadSlot(AUTO_SAVE_SLOT)!
+    expect(loaded.operation).toBe('facing')
+    expect(loaded.facing).toMatchObject({ side: 'right', originAlong: 'end', originAcross: 'raw', removal: 2.5 })
+    storeAutoSave({ operation: 'pocket' })
+    expect(loadSlot(AUTO_SAVE_SLOT)!.facing).toEqual(DEFAULT_WIZARD_PARAMS.facing)
+  })
 })

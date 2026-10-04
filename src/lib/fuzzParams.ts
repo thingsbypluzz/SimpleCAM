@@ -161,6 +161,33 @@ export function randomSurface(rng: Rng, method: 'zigzag' | 'unidirectional'): Wi
   }
 }
 
+export function randomFacing(rng: Rng): WizardParams {
+  const totalDepth = rng.range(0.5, 20, 1)
+  const toolDiameter = rng.pick(TOOLS)
+  return {
+    ...DEFAULT_WIZARD_PARAMS,
+    ...randomCommon(rng, totalDepth),
+    operation: 'facing',
+    facing: {
+      ...DEFAULT_WIZARD_PARAMS.facing,
+      side: rng.pick(['bottom', 'top', 'left', 'right'] as const),
+      toolDiameter,
+      totalDepth,
+      length: rng.range(5, 150, 1),
+      removal: rng.range(0.1, 8, 2),
+      originAlong: rng.pick(['start', 'center', 'end'] as const),
+      originAcross: rng.pick(['raw', 'finished'] as const),
+      offsetX: rng.range(-20, 20, 1),
+      offsetY: rng.range(-20, 20, 1),
+      stepover: rng.range(0.05, toolDiameter, 2),
+      cutDirection: rng.pick(['climb', 'conventional'] as const),
+      lead: rng.range(0, 5, 1),
+      clearance: rng.range(0.5, 5, 1),
+      linkingFeed: rng.int(500, 3000),
+    },
+  }
+}
+
 export function randomPocket(rng: Rng, method: 'spiral' | 'adaptive'): WizardParams {
   const totalDepth = rng.range(0.5, 12, 1)
   const shape = rng.pick(['rectCornered', 'rectCentered', 'circle'] as const)

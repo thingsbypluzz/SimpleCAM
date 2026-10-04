@@ -6,7 +6,9 @@
   co UI robi inaczej per operacja (etykieta, `pick*` z Kroku 1, metoda do
   wyświetlenia, statystyki Kroku 2, `generate`, slug nazwy pliku, etykieta
   presetu, dla kalkulatora `toolDiameter`/`methodValue`/`calcMethods`/
-  `withCalc`). Nowa operacja nie przejdzie typecheck bez wypełnienia.
+  `withCalc`, opcjonalnie `maxCalcWidthPercent` — sufit sugerowanej
+  szerokości). Nowa operacja nie przejdzie typecheck bez wypełnienia.
+  `OPERATION_LIST` — operacje w kolejności Kroku 1.
 - Metody: `methodMeta.ts` (Hole(s): Helix/Standard), `surfaceMethodMeta.ts`,
   `pocketMethodMeta.ts` (`POCKET_METHOD_LIST`) — płaskie rejestry z
   `generate`; Outline przez `outlineMeta.ts` + `lib/outline.ts`
@@ -15,7 +17,9 @@
   i podsumowanie Kroku 1, `patternLabel()`, `patternSlug()` — rozpoznają
   kolaps grid do 2 otworów), `outlineMeta.ts`, `surfaceMeta.ts`,
   `pocketMeta.ts` (`*_SHAPE_META` z `title`/`description` —
-  używane też przez `PickHeader`).
+  używane też przez `PickHeader`), `facingMeta.ts` (`FACING_SIDE_META` —
+  cztery boki; `FACING_METHOD` — jedyna metoda Facing, „Side Milling”,
+  bez pickera).
 - `materials.ts` (tabela Feedrate Calculator: Vc, fz 3/6/8+ mm,
   współczynnik Plunge, Stepdown per zaangażowanie, szerokości, nota),
   `routers.ts` (pozycje pokrętła → RPM, flaga `approximate`; Makita z

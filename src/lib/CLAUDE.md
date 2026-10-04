@@ -77,7 +77,7 @@ zaczyna od `zTo('rapid', startZ)`; końcowy retrakt robi `assembleProgram()`.
 - **Interpolacja:** przełącznik G2/G3 vs G1 w Kroku 4; mostki wymuszają G1
   dla całego programu (zapisana wartość nietknięta, tylko ignorowana).
   `interpolation.ts::forcedLinearReason()` — powód blokady (prostokąt
-  Outline, mostki).
+  Outline, Facing, mostki).
 
 ## Outline (`outline.ts`, `outlineCircle.ts`, `outlineRectangle*.ts`)
 
@@ -346,6 +346,39 @@ symulacji materiału.
   roughingu > 0), `isPocketFinishFeedValid()`; obie prawdziwe przy
   wyłączonym.
 
+## Facing (`facing.ts`, `facingGeometry.ts`)
+
+- Jeden bok detalu (`facing.side`: Bottom/Top wzdłuż X, Left/Right wzdłuż
+  Y), bez metod, bez mostków, zawsze G1. Geometria w układzie boku:
+  `u` wzdłuż (0…`length`, w stronę +X albo +Y), `v` w poprzek — 0 na
+  surowej krawędzi, dodatnie w głąb materiału. `facingPoint(facing, u, v)`
+  → XY: origin wzdłuż boku na początku / w środku / na końcu
+  (`originAlong`), w poprzek na krawędzi surowej albo gotowej
+  (`originAcross`), potem Offset X/Y.
+- **Dosuwy** (`facingPassEdges()`): krawędź po kolejnych przejściach —
+  co `stepover` (mm, źródło prawdy; % średnicy to widok), ostatni
+  wyrównany do `removal`; środek freza w `v = krawędź − r`.
+- **Przejazd** (`facingTravel()`): środek freza od `−(r + lead)` do
+  `length + r + lead` — wejście i wyjście w powietrzu. Kierunek: Climb
+  trzyma materiał po prawej stronie ruchu pod M3 (Top i Left w stronę
+  +u, Bottom i Right w stronę −u), Conventional odwrotnie.
+- **Tor** (`buildFacingToolpath()`): start poza końcem boku, odsunięty od
+  surowej krawędzi o `clearance` (`facingClearV()`), na Safe Z. Na każdy
+  poziom (`buildLevelDescents()`): plunge w powietrzu, potem dla każdego
+  dosuwu — dosunięcie i przejazd wzdłuż boku (`cut`), odsunięcie i powrót
+  na początek (`link`, posuw `facing.linkingFeed`; nigdy G0 poniżej Safe
+  Z). Po ostatnim przejściu tylko odsunięcie; retrakt robi
+  `assembleProgram()`.
+- Walidacja: wymiary i głębokość > 0, `0 < stepover ≤ średnica` (dosuw
+  większy niż naddatek daje jedno przejście), `lead ≥ 0`, `clearance > 0`,
+  `linkingFeed > 0`, dosuwy × poziomy ≤ `MAX_PASSES`
+  (`isFacingPassCountWithinLimit()`). Zaangażowanie dla kalkulatora:
+  `stepover` jako % średnicy, nie więcej niż naddatek
+  (`facingStepoverPercent()`).
+- Podglądy: `facingViewBounds()` (przejazd + pas detalu za gotową
+  krawędzią), `facingBlockCorners()` (blok od gotowej krawędzi do brzegu
+  arkusza), `facingStripCorners()` (zbierany pas).
+
 ## Walidacja (`validation.ts`)
 
 - `OPERATION_RULES` — rejestr per operacja (walidacja Generate, głębokość,
@@ -419,7 +452,9 @@ Feed = 2 × Feed (≤ Max Feed). Pocket Finishing Pass: Stock to Leave =
 Finish Feed = RPM × z × fz × chip thinning dla szerokości = Stock to Leave
 w mocy (`FeedCalcInput.finishStock`), ≤ Max Feed. Rodzaj zaangażowania z
 `OPERATION_RULES[op].engagement()`: Hole(s)/Outline — szczelina,
-Surface/Pocket Spiral — stepover, Adaptive — Optimal Load.
+Surface/Pocket Spiral/Facing — stepover, Adaptive — Optimal Load.
+Sugerowana szerokość przycięta do `OPERATION_META[op].maxCalcWidthPercent()`
+(Facing: naddatek — szerszego cięcia nie ma z czego wziąć).
 `effectiveChipLoad()` — rzeczywiste fz w Kroku 2.
 
 ## Model materiału dla podglądów (`stockModel.ts`)
@@ -434,7 +469,8 @@ booli 2D na przekrojach (`polygon-clipping`, okręgi po 72 odcinki).
   rejestrów): Hole(s) i Outline Inside — pustki na wylot; Outline Outside —
   wyspa (część); Outline On-line — wyspa wewnętrzna + pas szerokości freza
   jako pustka na wylot; Pocket — pustki `pocketVoids()` **z dnem** na
-  `-totalDepth`; Surface — poza modelem (same Surface → `null`).
+  `-totalDepth`; Surface i Facing — poza modelem (same takie presety →
+  `null`).
 - **Baza:** arkusz (`sheet` = `stockSheetRect()`), a gdy którykolwiek
   preset to Outline Outside — suma wszystkich wysp (`solid`), o grubości
   równej największej głębokości wyspy. Samotny On-line zostaje więc na
@@ -485,7 +521,7 @@ booli 2D na przekrojach (`polygon-clipping`, okręgi po 72 odcinki).
   `isWizardParamsValid()` muszą dać G-code spełniający niezmienniki (G0 w
   XY tylko na Safe Z, F > 0, brak NaN, najniższe Z = −totalDepth, spójne
   łuki, brak łuków przy G1 w Kroku 4, ostatnia linia M30/M2, ścieżka w
-  granicach Surface/ścian Pocket — Lightened: w którejś komórce, także
+  granicach Surface/ścian Pocket/przejazdu Facing — Lightened: w którejś komórce, także
   Adaptive; roughing
   Pocket w ścianie roughingu, a finishing dotyka ściany — na liście
   ruchów). `GCODE_FUZZ_SCALE`/

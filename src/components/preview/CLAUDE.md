@@ -9,6 +9,10 @@
   (Fit View). Pocket rysowany z listy ruchów silnika (`drawToolpathMoves()`:
   cięcie ciągłe, rapid kreskowany, link kropkowany w kolorze `linking`),
   Surface z `surfaceGeometry`/`surfaceRaster` (linie skanu + strzałki).
+  Facing (`drawFacingGeometry()`): blok od gotowej krawędzi w głąb detalu
+  do brzegu arkusza (dalsza krawędź bez obrysu — detal idzie dalej),
+  zbierany pas kropkowaną linią wzdłuż surowej krawędzi, ścieżka z listy
+  ruchów silnika, grot kierunku na pierwszym przejściu.
 - **Materiał:** z modelu `stockModel()` (`lib/stockModel.ts`, ten sam co
   w 3D), w zasięgu `stockSheetRect()` (footprint danych + 25%, z originem,
   kwadrat domknięty do `niceStep()` — płaszczyzna 3D). Rysowany raz, przed
@@ -17,7 +21,7 @@
   (`pocketFloorFill`, słabsze krycie) jedną ścieżką even-odd, bez obrysu.
   Wzorce rysują tylko krawędzie (`holeStroke`): otwory, kontur nominalny
   Outline, obie krawędzie On-line, kontur kieszeni / komórek Lightened.
-  Surface poza modelem — wypełnia własny obszar. Model jest pamiętany
+  Surface i Facing poza modelem — wypełniają własny obszar. Model jest pamiętany
   między rysowaniami (`cachedStockModel()` — kanwa rysuje się przy każdym
   kroku pan/zoom, a model zależy tylko od presetów, arkusza i opcji).
   Przy `cutShape` (Settings → Appearance) materiał ma kształt po frezie, a

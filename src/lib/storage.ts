@@ -16,6 +16,10 @@ import {
   type LightLayout,
   type PositioningMode,
   type RasterDirection,
+  type FacingOriginAcross,
+  type FacingOriginAlong,
+  type FacingParams,
+  type FacingSide,
   type SurfaceMethodType,
   type SurfaceParams,
   type SurfaceShape,
@@ -37,7 +41,7 @@ import { formatCustomPoints } from './customPoints'
 // the same way appearanceStorage.ts already guards PaletteId/ThemeId closes
 // the whole class of bug, not just this one instance.
 function isOperationType(value: unknown): value is OperationType {
-  return value === 'holes' || value === 'outline' || value === 'surface' || value === 'pocket'
+  return value === 'holes' || value === 'outline' || value === 'surface' || value === 'pocket' || value === 'facing'
 }
 
 function isMethodType(value: unknown): value is MethodType {
@@ -169,6 +173,13 @@ const POCKET_GUARDS: Partial<Record<keyof PocketParams, FieldGuard>> = {
   chipThinningBaseFeed: (value) => value === null || isFiniteNumber(value),
 }
 
+const FACING_GUARDS: Partial<Record<keyof FacingParams, FieldGuard>> = {
+  side: oneOf<FacingSide>(['bottom', 'top', 'left', 'right']),
+  originAlong: oneOf<FacingOriginAlong>(['start', 'center', 'end']),
+  originAcross: oneOf<FacingOriginAcross>(['raw', 'finished']),
+  cutDirection: oneOf<CutDirection>(['conventional', 'climb']),
+}
+
 const OUTPUT_GUARDS: Partial<Record<keyof OutputOptions, FieldGuard>> = {
   interpolation: oneOf<InterpolationMode>(['arc', 'linear']),
 }
@@ -198,6 +209,7 @@ function mergeWithDefaults(saved: unknown): WizardParams {
     outline: mergeSection(DEFAULT_WIZARD_PARAMS.outline, source.outline, OUTLINE_GUARDS),
     surface: mergeSection(DEFAULT_WIZARD_PARAMS.surface, source.surface, SURFACE_GUARDS),
     pocket: mergeSection(DEFAULT_WIZARD_PARAMS.pocket, source.pocket, POCKET_GUARDS),
+    facing: mergeSection(DEFAULT_WIZARD_PARAMS.facing, source.facing, FACING_GUARDS),
     feeds: mergeSection(DEFAULT_WIZARD_PARAMS.feeds, source.feeds),
     output: mergeSection(DEFAULT_WIZARD_PARAMS.output, source.output, OUTPUT_GUARDS),
   }
