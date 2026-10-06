@@ -519,6 +519,15 @@ function App() {
               {editingSlot ? 'Auto-save Mode Enabled' : 'Edit Mode — select a preset'}
             </span>
           )}
+          {/* BL-105: the same floating label for Overlay (the two modes are
+              mutually exclusive, so only one ever shows). */}
+          {overlayEnabled && (
+            <span className="absolute top-1/2 right-full mr-3 -translate-y-1/2 text-xs font-semibold whitespace-nowrap text-muted">
+              {overlaySlots.size === 0
+                ? 'Overlay Mode — select preset(s)'
+                : `Overlay Mode — ${overlaySlots.size} ${overlaySlots.size === 1 ? 'preset' : 'presets'} shown`}
+            </span>
+          )}
           {PRESET_SLOT_IDS.map((id) => {
             const preset = presetSlots[id]
             const PresetIcon = preset ? OPERATION_META[preset.operation].pickIcon(preset) : null

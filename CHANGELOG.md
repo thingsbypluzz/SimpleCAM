@@ -7,6 +7,16 @@ zgodne z [SemVer](https://semver.org/). Ten plik pozostaje głównym, czytelnym
 thingsbypluzz/SimpleCAM), ale to infrastruktura pod izolację pracy
 (branch/worktree per zadanie), nie zamiennik tego changeloga.
 
+## [0.44.0] — 2026-10-06
+
+### Dodano
+
+- **Overlay: napis przy Preset Bar** (`BL-105`). Po włączeniu oka na lewo
+  od presetów pojawia się opis trybu, tak jak w Edit Mode: „Overlay Mode —
+  select preset(s)”, a po zaznaczeniu — liczba pokazywanych presetów
+  („Overlay Mode — 2 presets shown”). Baner „Preview mode” w podglądzie
+  zostaje.
+
 ## [0.43.0] — 2026-10-06
 
 ### Dodano

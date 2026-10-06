@@ -137,7 +137,8 @@ być wierny.
 - **Overlay:** oko przełącza tryb, w którym klik w slot dodaje/usuwa preset
   z nakładki (ramka + checkmark), 2D i 3D naraz; żywy wzorzec wtedy
   ukryty (`showActivePattern`), Generate zablokowany (`canGenerate`), baner
-  "Preview mode"; zmiana selekcji re-fituje kamerę (3D z zachowaniem
+  "Preview mode", na lewo od Preset Bar napis "Overlay Mode — select
+  preset(s)" / "Overlay Mode — N presets shown"; zmiana selekcji re-fituje kamerę (3D z zachowaniem
   kąta). Wyłączenie oka czyści selekcję. Ramka wokół grupy presetów
   widoczna, gdy Overlay albo Edit Mode jest aktywny (kolor, nie grubość —
   bez skoku layoutu).
