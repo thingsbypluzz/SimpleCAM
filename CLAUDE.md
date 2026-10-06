@@ -43,9 +43,11 @@ Pięć operacji (`WizardParams.operation`):
 - **Hole(s)** — okrągłe otwory; metody Helix / Standard Hole × wzorce
   Single / Rectangular Grid / Grid Centered / N-Holes on Circle / Custom
   List; opcjonalne mostki.
-- **Outline** — kontur Rectangle Cornered / Centered / Circle z offset mode
-  Inside / Outside / On-line; metody Ramp/Standard (prostokąt) albo
-  Helix/Standard (okrąg); opcjonalne mostki.
+- **Outline** — kontur Rectangle Cornered / Centered / Circle / **Lobed
+  Circle** (okrąg główny z wypustkami — okręgami na okręgu podziałowym —
+  zlany w jeden obrys) z offset mode Inside / Outside / On-line; metody
+  Ramp/Standard (prostokąt, Lobed Circle) albo Helix/Standard (okrąg);
+  opcjonalne mostki.
 - **Surface** — planowanie po prostokącie; Zigzag / Unidirectional,
   kierunek rastra X/Y, stepover % średnicy, wejście Plunge/Helix.
 - **Pocket** — kieszeń Rectangle Cornered / Centered / Circle; metody
@@ -210,7 +212,7 @@ src/
     toolpath.ts          wspólna lista ruchów i formatter G-code
     positioning.ts, customPoints.ts        wzorce Hole(s)
     helix.ts, standardHole.ts, tabs.ts     Hole(s) i Outline Circle, mostki
-    outline.ts, outlineCircle.ts, outlineRectangle*.ts   Outline
+    outline.ts, outlineCircle.ts, outlineRectangle*.ts, outlineLobed*.ts   Outline
     surface*.ts                            Surface
     pocket*.ts                             Pocket (Spiral, Adaptive, Lightened, wejście Z)
     facing*.ts                             Facing

@@ -14,6 +14,8 @@ import {
 import { surfaceNominalBounds, surfaceToolBounds, type SurfaceBounds } from '../../lib/surfaceGeometry'
 import { buildSurfaceToolpath } from '../../lib/surface'
 import { buildFacingToolpath } from '../../lib/facing'
+import { buildLobedToolpath } from '../../lib/outlineLobed'
+import { lobedUnionLoop, loopBounds, translateLoop, type LoopBounds } from '../../lib/outlineLobedGeometry'
 import { facingBlockCorners, facingStripCorners, facingViewBounds, type FacingBounds } from '../../lib/facingGeometry'
 import { buildPocketToolpath } from '../../lib/pocket'
 import { movePoints, type MoveKind, type Toolpath } from '../../lib/toolpath'
@@ -294,6 +296,11 @@ type ResolvedPattern =
       toolBounds: SurfaceBounds
     }
   | {
+      kind: 'outlineLobed'
+      params: WizardParams
+      bounds: LoopBounds
+    }
+  | {
       kind: 'facing'
       params: WizardParams
       // Tool travel plus a band of the part behind the finished edge.
@@ -337,6 +344,18 @@ function resolvePattern(params: WizardParams): ResolvedPattern {
   }
   if (params.operation === 'outline') {
     const { outline } = params
+    if (outline.shape === 'lobedCircle') {
+      const r = outline.toolDiameter / 2
+      // Everything the shape reaches: the outline, the tool path and
+      // On-line's outer edge are all inside the circles grown by the tool
+      // radius.
+      const extent = loopBounds(translateLoop(lobedUnionLoop(outline, r), outline.offsetX, outline.offsetY))
+      return {
+        kind: 'outlineLobed',
+        params,
+        bounds: extent ?? { minX: outline.offsetX, maxX: outline.offsetX, minY: outline.offsetY, maxY: outline.offsetY },
+      }
+    }
     if (outline.shape === 'circle') {
       const { radius: toolRadius } = circleOutlineRadiusAndDirection(outline)
       return {
@@ -432,6 +451,12 @@ function expandBoundsForPattern(bounds: THREE.Box3, pattern: ResolvedPattern) {
     return
   }
   const { outline, feeds } = pattern.params
+  if (pattern.kind === 'outlineLobed') {
+    const { minX, maxX, minY, maxY } = pattern.bounds
+    bounds.expandByPoint(toThree(minX, minY, -outline.totalDepth))
+    bounds.expandByPoint(toThree(maxX, maxY, feeds.safeZ))
+    return
+  }
   if (pattern.kind === 'outlineCircle') {
     let r = Math.max(pattern.nominalRadius, pattern.toolRadius)
     // On-line's new outer wall (BL-28) reaches past the nominal radius —
@@ -446,9 +471,9 @@ function expandBoundsForPattern(bounds: THREE.Box3, pattern: ResolvedPattern) {
   }
   const corners = [...pattern.nominalCorners, ...pattern.toolCorners]
   // Same on-line under-count fix as Circle above, for the new outer wall.
-  // outline.shape !== 'circle' always holds here (pattern.kind === 'outlineRect'
+  // A rectangle shape always holds here (pattern.kind === 'outlineRect'
   // guarantees it), the check is only to narrow the type for rectCorners.
-  if (outline.offsetMode === 'onLine' && outline.shape !== 'circle') {
+  if (outline.offsetMode === 'onLine' && (outline.shape === 'rectCornered' || outline.shape === 'rectCentered')) {
     const { outerWidth, outerHeight } = onLineRectDimensions(outline.width, outline.height, outline.toolDiameter)
     corners.push(
       ...rectCorners(outline.shape, outline.width, outline.height, outerWidth, outerHeight, outline.offsetX, outline.offsetY, 'ccw'),
@@ -575,6 +600,23 @@ function buildHolesPatternObjects(
     }
   }
 
+  return objects
+}
+
+// Lobed Circle Outline (OP-8): the engine's move list; its stock comes
+// from the shared model like every Outline.
+function buildOutlineLobedPatternObjects(
+  pattern: Extract<ResolvedPattern, { kind: 'outlineLobed' }>,
+  theme: Theme,
+  span: number,
+  arrowSize: number,
+  showToolpath: boolean,
+): THREE.Object3D[] {
+  const { params } = pattern
+  const { outline, feeds } = params
+  const objects: THREE.Object3D[] = []
+  objects.push(...buildOffsetVectorObjects(outline.offsetX, outline.offsetY, theme, arrowSize))
+  if (showToolpath) objects.push(...toolpathLines3D(buildLobedToolpath(params), theme, span, feeds.safeZ))
   return objects
 }
 
@@ -843,6 +885,8 @@ function buildPatternObjects(
       return buildOutlineCirclePatternObjects(pattern, theme, span, arrowSize, showToolpath)
     case 'outlineRect':
       return buildOutlineRectPatternObjects(pattern, theme, span, arrowSize, showToolpath)
+    case 'outlineLobed':
+      return buildOutlineLobedPatternObjects(pattern, theme, span, arrowSize, showToolpath)
     case 'surface':
       return buildSurfacePatternObjects(pattern, theme, span, arrowSize, showStock, showToolpath, solidStock, stockEdges)
     case 'pocket':

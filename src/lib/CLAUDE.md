@@ -100,6 +100,42 @@ zaczyna od `zTo('rapid', startZ)`; końcowy retrakt robi `assembleProgram()`.
 - `generateOutline()` rozgałęzia po kształcie; nieprawidłowa para
   kształt/metoda spada na Standard. Zaokrąglone rogi poza zakresem.
 
+### Lobed Circle (`outlineLobedGeometry.ts`, `outlineLobed.ts`)
+
+- Obrys = suma okręgu głównego (`lobeMainDiameter`) i `lobeCount` okręgów
+  (`lobeDiameter`) ze środkami na okręgu podziałowym
+  (`lobePitchDiameter`), pierwszy pod `lobeStartAngle` (0° = +X, CCW);
+  origin w środku. Wypustki mogą na siebie nachodzić; każda musi
+  przecinać okrąg główny (`lobesAttached()`).
+- Geometria analityczna, bez booli: pętla łuków (`Loop` = `LoopArc[]`,
+  każdy ze środkiem, promieniem, kątem startu, rozwarciem, kierunkiem i
+  numerem okręgu). `lobedUnionLoop(outline, grow)` — zewnętrzny brzeg
+  sumy okręgów powiększonych o `grow` (dla każdego okręgu przedziały kąta
+  przykryte przez inne, dopełnienie to łuki brzegu, łączone końcami;
+  brana pętla o największym polu — oczka między nachodzącymi wypustkami
+  pomijane). `insetLoop(loop, d)` — odsunięcie do środka: promienie − d,
+  w każdym wierzchołku (zawsze wklęsłym) łuk CW o promieniu d wokół
+  wierzchołka.
+- Ścieżka środka freza (`lobedToolLoop()`): Outside = `lobedUnionLoop(r)`
+  (szczelina węższa niż frez sama się zamyka — frez tnie tyle, ile
+  sięgnie), On-line = `lobedUnionLoop(0)`, obie CW; Inside =
+  `lobedInsideLoop()` = `insetLoop(nominał, r)`, CCW, `null` gdy frez się
+  nie mieści (łuk o promieniu ≤ r albo próbka ścieżki bliżej obrysu niż
+  r — przewężenie węższe niż frez).
+- Metody jak prostokąt: **Standard** (plunge + płaskie okrążenie na
+  poziom) i **Ramp** (każdy łuk schodzi proporcjonalnie do długości —
+  łuki śrubowe; skok `cappedRampPitch(długość pętli, …)`; na końcu
+  płaskie okrążenie). Łuki jako G2/G3 albo G1 wg przełącznika; łuk,
+  którego końce zlałyby się w G-code (cięciwa < 0.01 mm), idzie jako
+  odcinek — sterownik odczytałby go jako pełny okrąg.
+- Start okrążenia: czubek pierwszej wypustki (`loopOutermostOnRay()` pod
+  `lobeStartAngle`), a z mostkami pół odstępu przed pierwszym mostkiem.
+- Mostki: `tabCount` na cały obrys, równo po długości ścieżki
+  (`LoopTabRange` w mm od startu okrążenia); pierwszy tam, gdzie promień
+  pod `tabStartAngle` przecina ścieżkę najdalej od środka.
+  `appendTabbedLap()` — próbki pętli co 5° + dokładne granice mostków.
+  Wymuszają G1.
+
 ## Mostki (Tabs) — Hole(s) i Outline
 
 - Checkbox "Enable Tabs": Tab Height / Tab Width (mm łuku) / Tab Count —
@@ -111,12 +147,16 @@ zaczyna od `zTo('rapid', startZ)`; końcowy retrakt robi `assembleProgram()`.
   płaski obrót czyszczący, dopiero potem przejścia z mostkami — te zawsze
   co Stepdown, nie co skok.
 - Rozstawienie równomierne, przesunięte o pół kroku (start przejścia nigdy
-  w mostku). `computeTabRanges()`/`appendTabbedCirclePass()` (`tabs.ts`) i
+  w mostku). Outline Circle i Lobed Circle mają **Tab Start**
+  (`outline.tabStartAngle`): pierwszy mostek pod tym kątem, a całe
+  przejście obrócone tak, żeby startowało pół odstępu przed nim
+  (`circlePassStartAngle()`); Hole(s) startuje zawsze od 0°. `computeTabRanges()`/`appendTabbedCirclePass()` (`tabs.ts`) i
   `computeRectTabRanges()`/`appendTabbedRectanglePass()`/`sideRangesFor()`
   (`outlineRectangleTabs.ts`) — lista punktów = suma próbkowania i
   dokładnych granic mostków (dokładny rozmiar niezależnie od
   rozdzielczości); defensywny `Math.floor` liczby i zaciśnięcie zakresów.
-- Walidacja: `0 < tabHeight < totalDepth`, `tabCount × tabWidth <` obwód,
+- Walidacja: `0 < tabHeight < totalDepth`, `tabCount × tabWidth <` obwód
+  (Lobed Circle: długość ścieżki),
   liczba całkowita 1–`MAX_TAB_COUNT` (20) (`isValidTabCount()`); prawdziwe
   wprost, gdy mostki wyłączone. Domyślne rozmiary z Settings → Tabs
   (`defaultTabHeight/Width/Count` = 1/3/3), aplikowane przy każdym
@@ -391,7 +431,9 @@ symulacji materiału.
   z niego walidacja, ostrzeżenia i read-only Pitch w Kroku 2. `isWizardParamsValid()` — cała reguła Generate (i live-save
   Edit Mode), jedno źródło prawdy dla `App.tsx` i testu niezmienników.
 - Blokujące (inline error w Kroku 2/3): frez ostro mniejszy od
-  otworu/krótszego boku (`isToolDiameterValid`, `isOutlineToolDiameterValid`,
+  otworu/krótszego boku (`isToolDiameterValid`, `isOutlineToolDiameterValid`
+  — Lobed Circle Inside: frez mieści się w wypustkach i przewężeniach;
+  `isOutlineLobeCountValid`, `isOutlineLobesAttached`,
   `isSurfaceToolDiameterValid`, `isPocketToolDiameterValid`), Stepdown, Safe
   Z/Feed XY/Plunge > 0, wymiary i głębokość > 0 (`is*SizeValid`), Start Z
   powyżej dna cięcia (z mostkami — powyżej pasma; `minStartZ()`/
@@ -402,7 +444,8 @@ symulacji materiału.
   pętli (`isPassCountWithinLimit`, `isSurfaceLineCountWithinLimit`,
   `isPocketToolpathWithinLimits` — ścieżka nie może trafić w limit, bo
   zostałaby obcięta).
-- Nieblokujące: `feedsWarnings()` (Start Z < 0), `descentWarnings()` (kąt
+- Nieblokujące: `isOutlineLobeGapTooNarrow()` (Lobed Circle Outside: frez
+  szerszy niż szczelina między wypustkami), `feedsWarnings()` (Start Z < 0), `descentWarnings()` (kąt
   zejścia helixa/rampy > `MAX_RECOMMENDED_DESCENT_DEG` = 10° — przy
   Hole(s)/Outline z efektywnego skoku, więc tylko przy Ramp > 10°; oraz
   `rampTurnsPerStepdown()` > `MAX_RECOMMENDED_TURNS_PER_STEPDOWN` = 10 —
@@ -498,7 +541,10 @@ booli 2D na przekrojach (`polygon-clipping`, okręgi po 72 odcinki).
   wypukłym pętli, co 15°). Dotyczy Pocket Rectangle (ściana
   `pocketRectWallHalfDims()`), komórek Lightened (`cellLoop(cell, r)`),
   Outline Rectangle Inside i zewnętrznej krawędzi pasa On-line (wyspa
-  zostaje ostra); Outline Outside, okręgi, Hole(s) bez zmian. Frez, który
+  zostaje ostra); Outline Outside, okręgi, Hole(s) bez zmian. Lobed
+  Circle Outside: `insetLoop(ścieżka, r)` — zaokrąglone wcięcia między
+  okręgiem głównym a wypustkami i wypełnione szczeliny, w które frez nie
+  wchodzi. Frez, który
   się nie mieści → kontur nominalny. Powyżej `MAX_ROUNDED_CELLS` (300)
   komórek Lightened zostają ostre — zaokrąglenie mnoży wierzchołki, a
   każdy bool przechodzi po wszystkich. `cutContours(params)` — te same

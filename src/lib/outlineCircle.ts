@@ -60,7 +60,12 @@ export function circleOutlineOptions(params: WizardParams): CircleToolpathOption
     interpolation: output.interpolation,
     direction,
     tabs: outline.tabsEnabled
-      ? { tabHeight: outline.tabHeight, tabWidth: outline.tabWidth, tabCount: outline.tabCount }
+      ? {
+          tabHeight: outline.tabHeight,
+          tabWidth: outline.tabWidth,
+          tabCount: outline.tabCount,
+          startAngle: (outline.tabStartAngle * Math.PI) / 180,
+        }
       : null,
   }
 }

@@ -145,7 +145,7 @@ const GEOMETRY_GUARDS: Partial<Record<keyof GeometryParams, FieldGuard>> = {
 }
 
 const OUTLINE_GUARDS: Partial<Record<keyof OutlineParams, FieldGuard>> = {
-  shape: oneOf<OutlineShape>(['rectCornered', 'rectCentered', 'circle']),
+  shape: oneOf<OutlineShape>(['rectCornered', 'rectCentered', 'circle', 'lobedCircle']),
   offsetMode: oneOf<OffsetMode>(['inside', 'outside', 'onLine']),
   // Shape/method mismatches (e.g. ramp on a circle) are already handled by
   // the Standard fallback in activeOutlineMethodMeta()/generateOutline().

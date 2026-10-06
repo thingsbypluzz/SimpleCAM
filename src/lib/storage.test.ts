@@ -279,4 +279,12 @@ describe('field validation on load (BL-57)', () => {
     storeAutoSave({ operation: 'pocket' })
     expect(loadSlot(AUTO_SAVE_SLOT)!.facing).toEqual(DEFAULT_WIZARD_PARAMS.facing)
   })
+
+  it('loads a Lobed Circle outline; older snapshots get the lobe defaults (OP-8)', () => {
+    storeAutoSave({ operation: 'outline', outline: { shape: 'lobedCircle', lobeCount: 3, lobeMainDiameter: 40 } })
+    const { outline } = loadSlot(AUTO_SAVE_SLOT)!
+    expect(outline).toMatchObject({ shape: 'lobedCircle', lobeCount: 3, lobeMainDiameter: 40, lobeDiameter: 16, tabStartAngle: 90 })
+    storeAutoSave({ operation: 'outline', outline: { shape: 'circle', diameter: 30 } })
+    expect(loadSlot(AUTO_SAVE_SLOT)!.outline.lobePitchDiameter).toBe(70)
+  })
 })

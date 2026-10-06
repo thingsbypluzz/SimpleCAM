@@ -37,6 +37,7 @@ import {
 import { endOfProgramCode } from './program'
 import { generateStandardHole } from './standardHole'
 import { generateFacing } from './facing'
+import { distanceToLoop, lobedUnionLoop, translateLoop } from './outlineLobedGeometry'
 import { facingAxes, facingClearV, facingFinalV, facingPoint, facingTravel } from './facingGeometry'
 import { generateSurfaceUnidirectional, generateSurfaceZigzag } from './surface'
 import { surfaceToolBounds } from './surfaceGeometry'
@@ -141,6 +142,9 @@ function checkProgram(lines: string[], params: WizardParams, machine: MachineSet
 // Helix entry is deliberately placed outside the material, off the start
 // corner (helixCenterFor(), surfaceZTransition.ts), so in that mode the box
 // grows by the helix's own diameter.
+// Rounding of the G-code's coordinates, seen through an arc's radius.
+const LOBED_TOLERANCE = 2e-3
+
 function containmentProblems(params: WizardParams, below: TracedPoint[]): string[] {
   const outside = (label: string, test: (p: TracedPoint) => boolean) => {
     const bad = below.find((p) => !test(p))
@@ -150,6 +154,15 @@ function containmentProblems(params: WizardParams, below: TracedPoint[]): string
     const b = surfaceToolBounds(params.surface)
     const m = EPS + (params.surface.zTransitionMode === 'helix' ? 2 * params.surface.helixRadius : 0)
     return outside('outside the Surface bounds', (p) => p.x >= b.minX - m && p.x <= b.maxX + m && p.y >= b.minY - m && p.y <= b.maxY + m)
+  }
+  if (params.operation === 'outline' && params.outline.shape === 'lobedCircle' && params.outline.offsetMode !== 'onLine') {
+    // Lobed Circle (OP-8): the tool center keeps at least its radius from
+    // the outline, Inside and Outside alike. The traced points come from
+    // G-code rounded to 4 decimals, arcs rebuilt from their rounded ends.
+    const { outline } = params
+    const nominal = translateLoop(lobedUnionLoop(outline, 0), outline.offsetX, outline.offsetY)
+    const r = outline.toolDiameter / 2
+    return outside('closer to the Lobed Circle outline than the tool radius', (p) => distanceToLoop(nominal, p) >= r - LOBED_TOLERANCE)
   }
   if (params.operation === 'facing') {
     // In the side's own frame: never deeper into the part than the last

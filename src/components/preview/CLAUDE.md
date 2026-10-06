@@ -28,7 +28,11 @@
   po obrysach nominalnych dochodzi kropkowana linia `cutContours()` —
   na prostych pokrywa się z obrysem, odchodzi od niego w narożnikach.
   Mostki: `drawGappedCircle()`/`drawGappedRectangle()` — przerywana linia
-  (`TAB_DASH`) na łuku/odcinku mostka; materiał je ignoruje.
+  (`TAB_DASH`) na łuku/odcinku mostka; materiał je ignoruje. Okrąg jest
+  obrócony o kąt startu przejścia (Tab Start). Lobed Circle
+  (`drawOutlineLobedGeometry()`): krawędzie materiału (obrys nominalny
+  albo dwie krawędzie On-line) i pętla ścieżki z tych samych próbek i
+  zakresów mostków, których używa silnik.
 - `camera2d.ts` — czysta matematyka kamery (`Camera2D = { scale, centerX,
   centerY }`): `computeFitCamera()`, `zoomAt()`, `panBy()`,
   `worldToScreen()`/`screenToWorld()`, `clampScale()`.

@@ -543,3 +543,19 @@ export function SideMillingIcon({ className }: IconProps) {
     </svg>
   )
 }
+
+// Outline Lobed Circle (OP-8): a main circle with five lobes on its rim.
+export function LobedCircleOutlineIcon({ className }: IconProps) {
+  const lobes = [90, 162, 234, 306, 18].map((deg) => {
+    const a = (deg * Math.PI) / 180
+    return { x: 12 + 7.2 * Math.cos(a), y: 12 - 7.2 * Math.sin(a) }
+  })
+  return (
+    <svg {...base} className={className}>
+      <circle cx="12" cy="12" r="6" strokeWidth={1.5} />
+      {lobes.map((p, i) => (
+        <circle key={i} cx={p.x} cy={p.y} r="2.4" strokeWidth={1.3} />
+      ))}
+    </svg>
+  )
+}

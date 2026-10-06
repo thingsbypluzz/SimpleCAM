@@ -282,3 +282,53 @@ describe('cut shape (BL-86)', () => {
     expect(cutContours({ ...pocket(40, 20, 6), pocket: { ...pocket(40, 20, 6).pocket, shape: 'circle' } })).toEqual([])
   })
 })
+
+describe('Lobed Circle (OP-8)', () => {
+  const lobed = (offsetMode: 'inside' | 'outside' | 'onLine'): WizardParams => ({
+    ...DEFAULT_WIZARD_PARAMS,
+    operation: 'outline',
+    outline: { ...DEFAULT_WIZARD_PARAMS.outline, shape: 'lobedCircle', offsetMode, toolDiameter: 6, totalDepth: 4 },
+  })
+  // Main circle ⌀60 alone; the five ⌀16 lobes add less than their own area.
+  const MAIN = Math.PI * 30 * 30
+  const LOBES = 5 * Math.PI * 8 * 8
+
+  it('Outside: the part is the merged outline; the cut shape adds the rounded notches', () => {
+    const nominal = stockModel([lobed('outside')], sheet)!
+    expect(nominal.solid).toBe(true)
+    expect(area(nominal.top)).toBeGreaterThan(MAIN)
+    expect(area(nominal.top)).toBeLessThan(MAIN + LOBES)
+    const cut = stockModel([lobed('outside')], sheet, true)!
+    expect(area(cut.top)).toBeGreaterThan(area(nominal.top))
+    expect(area(cut.top) - area(nominal.top)).toBeLessThan(60)
+    expect(cutContours(lobed('outside'))).toHaveLength(1)
+    expect(cutContours(lobed('inside'))).toHaveLength(0)
+  })
+
+  it('Inside: a through void of the outline in the sheet', () => {
+    const model = stockModel([lobed('inside')], sheet)!
+    expect(model.solid).toBe(false)
+    expect(SHEET_AREA - area(model.top)).toBeGreaterThan(MAIN)
+    expect(SHEET_AREA - area(model.top)).toBeLessThan(MAIN + LOBES)
+    expect(model.floors).toHaveLength(0)
+  })
+
+  it('On-line: a tool-wide band, with the island inside it', () => {
+    const model = stockModel([lobed('onLine')], sheet)!
+    const removed = SHEET_AREA - area(model.top)
+    // Roughly the perimeter (> 2π·30) times the tool diameter.
+    expect(removed).toBeGreaterThan(2 * Math.PI * 30 * 6)
+    expect(removed).toBeLessThan(MAIN)
+  })
+
+  it('pairs with N-Holes on the pitch circle: a hole in every lobe', () => {
+    const holes: WizardParams = {
+      ...DEFAULT_WIZARD_PARAMS,
+      operation: 'holes',
+      geometry: { ...DEFAULT_WIZARD_PARAMS.geometry, positioning: 'circle', circleHoleCount: 5, circleDiameter: 70, circleStartAngle: 90, holeDiameter: 6, totalDepth: 4 },
+    }
+    const part = stockModel([lobed('outside')], sheet)!
+    const drilled = stockModel([lobed('outside'), holes], sheet)!
+    expect(area(part.top) - area(drilled.top)).toBeCloseTo(5 * circleArea(3), 1)
+  })
+})

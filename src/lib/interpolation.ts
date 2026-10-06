@@ -10,7 +10,7 @@ import { OPERATION_RULES } from './validation'
 // flag, locking the toggle on "G1" while the file still had arcs). Pure so
 // the invariant test can check the engines agree with what the UI shows.
 export function forcedLinearReason(params: WizardParams): 'rectOutline' | 'facing' | 'tabs' | null {
-  if (params.operation === 'outline' && params.outline.shape !== 'circle') return 'rectOutline'
+  if (params.operation === 'outline' && (params.outline.shape === 'rectCornered' || params.outline.shape === 'rectCentered')) return 'rectOutline'
   if (params.operation === 'facing') return 'facing'
   return OPERATION_RULES[params.operation].tabs(params)?.tabsEnabled ? 'tabs' : null
 }

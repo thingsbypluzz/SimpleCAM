@@ -110,8 +110,11 @@ export function randomHoles(rng: Rng, method: 'helix' | 'standard'): WizardParam
 
 export function randomOutline(rng: Rng): WizardParams {
   const totalDepth = rng.range(0.5, 12, 1)
-  const shape = rng.pick(['rectCornered', 'rectCentered', 'circle'] as const)
+  const shape = rng.pick(['rectCornered', 'rectCentered', 'circle', 'lobedCircle'] as const)
   const method = shape === 'circle' ? rng.pick(['helix', 'standard'] as const) : rng.pick(['ramp', 'standard'] as const)
+  // Lobed Circle (OP-8): lobes crossing the main circle on most samples.
+  const lobeMainDiameter = rng.range(5, 80, 1)
+  const lobeDiameter = rng.range(4, 40, 1)
   return {
     ...DEFAULT_WIZARD_PARAMS,
     ...randomCommon(rng, totalDepth),
@@ -126,6 +129,12 @@ export function randomOutline(rng: Rng): WizardParams {
       width: rng.range(5, 80, 1),
       height: rng.range(5, 80, 1),
       diameter: rng.range(5, 80, 1),
+      lobeMainDiameter,
+      lobeCount: rng.int(1, 9),
+      lobeDiameter,
+      lobePitchDiameter: Math.max(0.1, Number((lobeMainDiameter + lobeDiameter * rng.range(-0.8, 0.9, 2)).toFixed(1))),
+      lobeStartAngle: rng.int(0, 359),
+      tabStartAngle: rng.int(0, 359),
       offsetX: rng.range(-20, 20, 1),
       offsetY: rng.range(-20, 20, 1),
       rampAngleDeg: rng.range(1, 15, 1),

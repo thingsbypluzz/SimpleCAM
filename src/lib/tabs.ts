@@ -53,6 +53,9 @@ interface TabbedCirclePassParams {
   radius: number
   startX: number
   startY: number
+  // Angle of the pass's start point (0 = +X) — tab ranges are measured
+  // from it, along the travel direction.
+  startAngle?: number
   cutZ: number
   liftZ: number
   tabRanges: TabRange[]
@@ -90,6 +93,7 @@ export function appendTabbedCirclePass(b: ToolpathBuilder, p: TabbedCirclePassPa
   // cutting direction — only the physical XY position each angle maps to
   // flips sign for 'cw', mirroring a full turn's direction.
   const sign = p.direction === 'cw' ? -1 : 1
+  const startAngle = p.startAngle ?? 0
 
   const points: Point3D[] = []
   let prevX = p.startX
@@ -100,8 +104,8 @@ export function appendTabbedCirclePass(b: ToolpathBuilder, p: TabbedCirclePassPa
     const angle = sortedAngles[idx]
     const midAngle = (sortedAngles[idx - 1] + angle) / 2
     const nextInTab = isInsideTab(midAngle, p.tabRanges)
-    const x = p.centerX + p.radius * Math.cos(sign * angle)
-    const y = p.centerY + p.radius * Math.sin(sign * angle)
+    const x = p.centerX + p.radius * Math.cos(startAngle + sign * angle)
+    const y = p.centerY + p.radius * Math.sin(startAngle + sign * angle)
 
     if (nextInTab && !inTab) {
       // Entering a tab: rise straight up where we already are, then move

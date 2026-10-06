@@ -151,8 +151,12 @@ const sizeStat = (Icon: IconComponent, size: string, title: string): SummaryStat
   title,
 })
 
-const roundSize = (shape: { shape: string; diameter?: number; width: number; height: number }) =>
-  shape.shape === 'circle' || shape.shape === 'circleLightened' ? `⌀${shape.diameter}` : `${shape.width}×${shape.height}`
+const roundSize = (shape: { shape: string; diameter?: number; lobeMainDiameter?: number; width: number; height: number }) =>
+  shape.shape === 'lobedCircle'
+    ? `⌀${shape.lobeMainDiameter}`
+    : shape.shape === 'circle' || shape.shape === 'circleLightened'
+      ? `⌀${shape.diameter}`
+      : `${shape.width}×${shape.height}`
 
 // The operations in Step 1's order.
 export const OPERATION_LIST: OperationType[] = ['holes', 'outline', 'surface', 'pocket', 'facing']
