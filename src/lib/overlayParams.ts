@@ -2,7 +2,7 @@ import { PRESET_SLOT_IDS, type PresetSlotId } from './storage'
 import type { WizardParams } from '../types/wizard'
 
 // Iterates PRESET_SLOT_IDS (not the Set) so the result always comes back in
-// stable [1]-[5] order regardless of click order — draw order matters for
+// stable [1]-[7] order regardless of click order — draw order matters for
 // the 2D overlay (painter's algorithm), so a predictable order is worth
 // pinning even though relative order within the overlay group itself isn't
 // currently visually significant.

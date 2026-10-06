@@ -619,11 +619,10 @@ Waga z review w nawiasie kwadratowym.
   przejście na wymiar. Do ustalenia: wykańczanie na każdym poziomie Z czy
   jednym przejściem na pełnej głębokości (lepsza powierzchnia, wymaga
   długości ostrza ≥ Depth); sugestie Feedrate Calculator.
-- **`BL-98`** *(Otwarty)* 🟢 — **Więcej slotów na presety.** Zgłoszone
-  2026-10-06. Dziś jest pięć slotów `[1]…[5]` (`PRESET_SLOT_IDS`); pomysł:
-  dwa dodatkowe (razem siedem). Do sprawdzenia: szerokość Preset Bar w
-  Header i wiersza slotów w Kroku 4 przy wąskim oknie, kolejność Overlay
-  (`deriveOverlayParams()`), stare zapisy bez nowych slotów.
+- **`BL-98`** *(Zrealizowany, 2026-10-06)* 🟢 — **Więcej slotów na
+  presety.** Było pięć slotów `[1]…[5]`; doszły `[6]` i `[7]`
+  (`PRESET_SLOT_IDS`) — Preset Bar, Krok 4, Overlay i Edit Mode biorą listę
+  z jednego miejsca. Pełny opis: `CHANGELOG.md`, `[0.40.0]`.
 - **`BL-99`** *(Otwarty)* 🟠 — **Symbol kierunku posuwu freza na
   podglądzie ścieżki.** Zgłoszone 2026-10-06 — **do przedyskutowania przed
   implementacją**. Dziś kierunek widać tylko w 2D i tylko w Surface i

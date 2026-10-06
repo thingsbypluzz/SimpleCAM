@@ -7,6 +7,15 @@ zgodne z [SemVer](https://semver.org/). Ten plik pozostaje głównym, czytelnym
 thingsbypluzz/SimpleCAM), ale to infrastruktura pod izolację pracy
 (branch/worktree per zadanie), nie zamiennik tego changeloga.
 
+## [0.40.0] — 2026-10-06
+
+### Dodano
+
+- **Siedem slotów na presety** (`BL-98`) — do `[1]…[5]` doszły `[6]` i
+  `[7]`, w Preset Bar w Header i w wierszu zapisu w Kroku 4 (tam z
+  mniejszym odstępem, żeby wiersz zmieścił się w panelu). Zapisane presety
+  zostają na swoich miejscach; Overlay i Edit Mode obejmują nowe sloty.
+
 ## [0.39.0] — 2026-10-06
 
 ### Dodano
