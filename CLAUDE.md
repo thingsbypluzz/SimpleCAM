@@ -125,11 +125,11 @@ być wierny.
   (narożniki wewnętrzne zaokrąglone promieniem freza; w 2D kropkowany
   kontur obok ciągłego obrysu nominalnego) — wyłącznik w Settings →
   Appearance.
-- **Header:** Preset Bar `[1]…[5]`, oko Overlay, ołówek Edit Mode, dark/
+- **Header:** Preset Bar `[1]…[7]`, oko Overlay, ołówek Edit Mode, dark/
   light (dark domyślny niezależnie od systemu), Settings.
 - **Auto-save i presety** (`simplecam.storage`): slot `"0"` zapisywany przy
   Generate i wczytywany przy starcie (wizard na Kroku 4 z bannerem
-  "Restored from your last session"); sloty `1`–`5` z auto-opisem
+  "Restored from your last session"); sloty `1`–`7` z auto-opisem
   (`presetLabel()`), zapis w Kroku 4 z potwierdzeniem nadpisania, usuwanie
   „×” z potwierdzeniem. Wczytanie presetu nie zmienia aktywnego kroku.
 - **Overlay:** oko przełącza tryb, w którym klik w slot dodaje/usuwa preset

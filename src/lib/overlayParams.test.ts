@@ -14,7 +14,7 @@ describe('deriveOverlayParams', () => {
     expect(after).toBe(before)
   })
 
-  it('returns selected presets in stable [1]-[5] order regardless of Set insertion order', () => {
+  it('returns selected presets in stable [1]-[7] order regardless of Set insertion order', () => {
     const preset1 = { ...DEFAULT_WIZARD_PARAMS, method: 'standard' as const }
     const preset3 = { ...DEFAULT_WIZARD_PARAMS, method: 'helix' as const }
     const overlaySlots = new Set<PresetSlotId>(['3', '1'])

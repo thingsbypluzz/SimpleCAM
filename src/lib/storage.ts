@@ -54,10 +54,10 @@ export const STORAGE_KEY = 'simplecam.storage'
 const SCHEMA_VERSION = 1
 
 // Slot "0" is the hidden auto-save snapshot (written on every Generate,
-// restored silently on startup). Slots "1"-"5" are the named presets a user
+// restored silently on startup). Slots "1"-"7" are the named presets a user
 // saves explicitly from Step 4 and switches between via the header.
 export const AUTO_SAVE_SLOT = '0' as const
-export const PRESET_SLOT_IDS = ['1', '2', '3', '4', '5'] as const
+export const PRESET_SLOT_IDS = ['1', '2', '3', '4', '5', '6', '7'] as const
 export type PresetSlotId = (typeof PRESET_SLOT_IDS)[number]
 export type SlotId = typeof AUTO_SAVE_SLOT | PresetSlotId
 
@@ -239,7 +239,7 @@ export function clearAllSlots(): void {
   writeStorage({ version: SCHEMA_VERSION, slots: {} })
 }
 
-// All occupied preset slots (1-5), read once at startup for the header —
+// All occupied preset slots (1-7), read once at startup for the header —
 // excludes the hidden auto-save slot (0).
 export function loadPresetSlots(): Partial<Record<PresetSlotId, WizardParams>> {
   const storage = readStorage()

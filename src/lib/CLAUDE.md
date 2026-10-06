@@ -517,7 +517,7 @@ booli 2D na przekrojach (`polygon-clipping`, okręgi po 72 odcinki).
 - `format.ts` — liczby w G-code: 4 miejsca, bez zbędnych zer i `-0`.
 - `download.ts::buildFilename()` — `op-<pattern|shape slug>-<data>.gcode`.
 - `overlayParams.ts::deriveOverlayParams()` — parametry nałożonych presetów
-  w stałej kolejności `[1]…[5]`; bez zaznaczeń zawsze ta sama zamrożona
+  w stałej kolejności `[1]…[7]`; bez zaznaczeń zawsze ta sama zamrożona
   pusta tablica (nowa referencja = zmiana selekcji dla podglądów).
 
 ## Testy

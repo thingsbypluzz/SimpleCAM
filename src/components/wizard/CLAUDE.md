@@ -102,9 +102,10 @@
   `routerDialHint()`, `config/routers.ts`; ten sam komponent w Feedrate
   Calculator). Step 3 Summary: MiniStat SPINDLE (RPM, a z routerem
   „dial N”).
-- **Krok 4, sloty presetów `[1]…[5]`:** zapisany slot wygląda jak w Preset
+- **Krok 4, sloty presetów `[1]…[7]`:** zapisany slot wygląda jak w Preset
   Bar w Header (ramka akcentu + ikona z `OPERATION_META[op].pickIcon()`),
-  pusty ma przerywaną, przygaszoną ramkę z numerem; `title` i `aria-label`
+  pusty ma przerywaną, przygaszoną ramkę z numerem; odstęp `gap-1.5`, żeby
+  siedem slotów zmieściło się w panelu razem z paskiem przewijania; `title` i `aria-label`
   mówią „Overwrite preset…” albo „Save… — empty”. Po zapisie krótki zielony
   „✓”; nadpisanie z potwierdzeniem, usuwanie tylko w Header.
 - `Checkbox.tsx` — natywny input `sr-only`, własny box z `CheckIcon`, kolory

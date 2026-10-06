@@ -153,7 +153,8 @@ export function Step4Output({
         <span className="text-xs font-medium text-muted">
           Save current settings as preset
         </span>
-        <div className="flex gap-3">
+        {/* gap-1.5: seven 44 px slots have to fit the 420 px panel, scrollbar included. */}
+        <div className="flex gap-1.5">
           {PRESET_SLOT_IDS.map((id) => {
             const existing = presetSlots[id]
             const justSaved = savedSlot === id
