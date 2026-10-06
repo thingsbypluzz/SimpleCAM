@@ -654,6 +654,21 @@ Waga z review w nawiasie kwadratowym.
   komunikaty błędów, zapis w `localStorage` i Reset do wartości
   fabrycznych, wersjonowanie formatu, czy routery też, co z materiałem
   zapamiętanym w `simplecam.feedCalc`, gdy zniknie z tabeli.
+- **`BL-102`** *(Otwarty)* 🟠 — **Pocket: kształt Lobed Circle.**
+  Zgłoszone 2026-10-06, po `OP-8`. Kieszeń o obrysie okręgu z wypustkami.
+  Wariant prosty: kształt jest sumą okręgów, więc wybranie każdego okręgu
+  osobno istniejącym silnikiem Pocket Circle (Spiral i Adaptive, wejście
+  Helix) daje dokładnie tę sumę — okrąg główny, potem wypustki, element
+  po elemencie z retraktem jak w Lightened; pola i walidacja „wypustka
+  przecina okrąg główny” z Outline (`outlineLobedGeometry.ts`), w modelu
+  materiału jedna pustka z dnem. Kompromisy: część wypustki nachodząca na
+  okrąg główny jest cięta drugi raz w powietrzu; frez musi mieścić się w
+  wypustce; Helix Radius względem najmniejszego okręgu. Do ustalenia:
+  Finishing Pass — okrąg po okręgu (puste przejazdy) czy jedno okrążenie
+  po wspólnym konturze (pętla Inside z Outline, wymaga freza mieszczącego
+  się w przewężeniach). Wariant bez pustych przejazdów (wybieranie samego
+  „księżyca” wypustki) świadomie poza zakresem — pierścienie odsuwane od
+  wspólnego konturu rozpadają się na osobne obszary.
 - **`BL-61`** *(Zrealizowany, 2026-09-27)* 🔴 **[Low, kosztowne w czasie]**
   — **Podglądy duplikują geometrię silnika** — jedna lista ruchów (jak
   Adaptive) dla G-code i podglądu 3D, po jednej operacji na raz. Etapy 1–2
@@ -679,7 +694,8 @@ tylko kamień milowy wielkości całego etapu implementacji, z własną,
 dziś nieznaną taksonomią (operacja → pattern/sub-choice → parametry).
 Numer `OP-#` jest identyfikatorem, nie kolejnością realizacji. `OP-1`
 (Outline), `OP-2` (Pocket), `OP-3` (Surface), `OP-5` (Pocket Adaptive),
-`OP-6` (Lightened Pocket) i `OP-7` (Facing) zaimplementowane — patrz `CLAUDE.md`, "Kluczowe decyzje projektowe"
+`OP-6` (Lightened Pocket), `OP-7` (Facing) i `OP-8` (Lobed Circle)
+zaimplementowane — patrz `CLAUDE.md`, "Kluczowe decyzje projektowe"
 (pełne rozstrzygnięcia sesji `/grill-me` dla Surface, 2026-09-12, dla
 Pocket, 2026-09-21, i dla Adaptive, 2026-09-25; historia implementacji w
 `CHANGELOG.md`, `[0.14.0]`, `[0.18.0]` i `[0.19.0]`).
@@ -765,6 +781,24 @@ Pocket, 2026-09-21, i dla Adaptive, 2026-09-25; historia implementacji w
   - Feedrate Calculator z sugestią Stepover. Finishing Pass odłożony →
     `BL-97`.
   Pełny opis: `CHANGELOG.md`, `[0.38.0]`.
+
+- **`OP-8` — Outline: kształt Lobed Circle (okrąg z wypustkami).**
+  Zgłoszone 2026-10-06 (kapsel felgi: okrąg z uszami na otwory).
+  **Zrealizowany** (2026-10-06, `0.41.0`). Punktem wyjścia był pomysł
+  „merge objects” — łączenia presetów w jeden obrys. **Rozważone i
+  odrzucone:** wymagałoby odsuwania dowolnych wielokątów, ścieżek tylko z
+  odcinków G1 i programów z kilku presetów naraz, czyli kroku w stronę
+  CAD-a wbrew założeniu „jedna operacja, bez CAD-a”. Zamiast tego jeden
+  parametryczny kształt. Ustalenia `/grill-me` (2026-10-06):
+  - Obrys = suma okręgu głównego i N okręgów ze środkami na okręgu
+    podziałowym; pola: Diameter, Depth, Lobes: Count (1–100), Pitch
+    Diameter, Lobe Diameter, Start Angle. Otwory osobną operacją Hole(s).
+  - Wypustki mogą nachodzić; odłączona albo schowana blokuje Generate.
+  - Outside: frez tnie tyle, ile sięgnie (notka przy wąskiej szczelinie);
+    Inside: frez musi mieścić się w wypustkach i przewężeniach (blokada).
+  - Ramp + Standard; G2/G3 jak Outline Circle; mostki równo po długości
+    ścieżki z polem Tab Start (także w Outline Circle).
+  Pełny opis: `CHANGELOG.md`, `[0.41.0]`.
 
 **Każda z `OP-#` wymaga własnej, pełnej sesji `/grill-me` przed
 napisaniem jakiegokolwiek kodu** — nieporównywalnie większy zakres

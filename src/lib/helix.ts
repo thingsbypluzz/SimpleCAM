@@ -10,6 +10,25 @@ export interface CircleTabsOptions {
   tabHeight: number
   tabWidth: number
   tabCount: number
+  // Where the first tab is centered, rad, 0 = +X, CCW (Circle Outline's Tab
+  // Start). Omitted (Hole(s)): passes start at 0° and the first tab sits
+  // half a spacing after it.
+  startAngle?: number
+}
+
+// The angle every pass of a circle toolpath starts (and ends) at. With a
+// Tab Start the whole pass is turned so that the first tab — half a tab
+// spacing along the travel direction — lands on it; otherwise 0.
+export function circlePassStartAngle(opts: Pick<CircleToolpathOptions, 'tabs' | 'direction'>): number {
+  const tabs = opts.tabs
+  const count = tabs ? Math.floor(tabs.tabCount) : 0
+  if (!tabs || tabs.startAngle === undefined || count <= 0) return 0
+  return tabs.startAngle - ((opts.direction === 'cw' ? -1 : 1) * Math.PI) / count
+}
+
+function passStart(cx: number, cy: number, radius: number, startAngle: number) {
+  // Exactly (cx + radius, cy) at 0 — Hole(s)' output stays digit for digit.
+  return startAngle === 0 ? { x: cx + radius, y: cy } : { x: cx + radius * Math.cos(startAngle), y: cy + radius * Math.sin(startAngle) }
 }
 
 export interface CircleToolpathOptions {
@@ -37,8 +56,16 @@ export interface CircleToolpathOptions {
 // right — climb milling, the app's convention for every contour. Circle
 // Outline needs both directions, since keeping climb flips the winding
 // between Inside and Outside cuts (see CLAUDE.md's Outline design notes).
-export function appendFullTurn(b: ToolpathBuilder, cx: number, cy: number, radius: number, direction: 'cw' | 'ccw', z: number) {
-  b.arc('cut', { x: cx, y: cy }, direction, fullTurn, z, { from: { x: cx + radius, y: cy }, radius })
+export function appendFullTurn(
+  b: ToolpathBuilder,
+  cx: number,
+  cy: number,
+  radius: number,
+  direction: 'cw' | 'ccw',
+  z: number,
+  startAngle = 0,
+) {
+  b.arc('cut', { x: cx, y: cy }, direction, fullTurn, z, { from: passStart(cx, cy, radius, startAngle), radius })
 }
 
 // G-code for a circle toolpath (Hole(s), Circle Outline). Tabs force G1 for
@@ -78,7 +105,9 @@ export function circleToolpathGcode(toolpath: Toolpath, opts: CircleToolpathOpti
 // preview are both made from it.
 export function buildHelixCircleToolpath(cx: number, cy: number, opts: CircleToolpathOptions): Toolpath {
   const { radius, tabs } = opts
-  const b = new ToolpathBuilder({ x: cx + radius, y: cy, z: opts.safeZ })
+  const startAngle = circlePassStartAngle(opts)
+  const start = passStart(cx, cy, radius, startAngle)
+  const b = new ToolpathBuilder({ x: start.x, y: start.y, z: opts.safeZ })
   b.zTo('rapid', opts.startZ)
 
   let currentZ = opts.startZ
@@ -90,7 +119,7 @@ export function buildHelixCircleToolpath(cx: number, cy: number, opts: CircleToo
 
     for (const turnDepth of computeDepthPasses(spiralDepth, opts.pitch)) {
       currentZ -= turnDepth
-      appendFullTurn(b, cx, cy, radius, opts.direction, currentZ)
+      appendFullTurn(b, cx, cy, radius, opts.direction, currentZ, startAngle)
     }
 
     // Square off the helical ledge the spiral's last turn leaves behind —
@@ -104,7 +133,7 @@ export function buildHelixCircleToolpath(cx: number, cy: number, opts: CircleToo
     // above its target. Same idea as the untabbed path's flat finishing
     // pass below (a pure cleanup revolution) — just needed at this new
     // transition boundary too, not only at the true bottom.
-    appendFullTurn(b, cx, cy, radius, opts.direction, currentZ)
+    appendFullTurn(b, cx, cy, radius, opts.direction, currentZ, startAngle)
 
     for (const passDepth of computeDepthPasses(tabs.tabHeight, opts.stepdown)) {
       currentZ -= passDepth
@@ -113,8 +142,9 @@ export function buildHelixCircleToolpath(cx: number, cy: number, opts: CircleToo
         centerX: cx,
         centerY: cy,
         radius,
-        startX: cx + radius,
-        startY: cy,
+        startX: start.x,
+        startY: start.y,
+        startAngle,
         cutZ: currentZ,
         liftZ: tabBandTopZ,
         tabRanges,
@@ -124,11 +154,11 @@ export function buildHelixCircleToolpath(cx: number, cy: number, opts: CircleToo
   } else {
     for (const turnDepth of computeDepthPasses(opts.totalDepth + opts.startZ, opts.pitch)) {
       currentZ -= turnDepth
-      appendFullTurn(b, cx, cy, radius, opts.direction, currentZ)
+      appendFullTurn(b, cx, cy, radius, opts.direction, currentZ, startAngle)
     }
 
     // Flat finishing pass at full depth.
-    appendFullTurn(b, cx, cy, radius, opts.direction, currentZ)
+    appendFullTurn(b, cx, cy, radius, opts.direction, currentZ, startAngle)
   }
 
   return b.build()

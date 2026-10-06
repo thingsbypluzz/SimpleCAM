@@ -149,7 +149,7 @@ export function buildRectRampToolpath(cx: number, cy: number, opts: RectToolpath
 export function rectOutlineOptions(params: WizardParams): RectToolpathOptions {
   const { outline, feeds } = params
   const shape = outline.shape
-  if (shape === 'circle') throw new Error('outlineRectangle called with a circle outline shape')
+  if (shape !== 'rectCornered' && shape !== 'rectCentered') throw new Error('outlineRectangle called with a non-rectangle outline shape')
   const { toolWidth, toolHeight } = rectToolDimensions(
     outline.width,
     outline.height,

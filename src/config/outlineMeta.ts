@@ -1,5 +1,12 @@
 import type { ComponentType } from 'react'
-import { CircleOutlineIcon, HelixIcon, RectangleOutlineCenteredIcon, RectangleOutlineIcon, StandardHoleIcon } from '../components/icons'
+import {
+  CircleOutlineIcon,
+  HelixIcon,
+  LobedCircleOutlineIcon,
+  RectangleOutlineCenteredIcon,
+  RectangleOutlineIcon,
+  StandardHoleIcon,
+} from '../components/icons'
 import { fmt } from '../lib/format'
 import { METHOD_META } from './methodMeta'
 import type { OffsetMode, OutlineParams, OutlineShape, OutlineMethod } from '../types/wizard'
@@ -30,18 +37,28 @@ export const OUTLINE_SHAPE_META: Record<OutlineShape, OutlineShapeMeta> = {
     description: 'Circular outline, centered at the origin.',
     Icon: CircleOutlineIcon,
   },
+  lobedCircle: {
+    value: 'lobedCircle',
+    title: 'Lobed Circle',
+    description:
+      'A main circle with lobes — smaller circles on a pitch circle — merged into one outline, centered at the origin. Pair it with Hole(s) N-Holes on Circle (same count, pitch diameter and start angle) to put a hole in every lobe.',
+    Icon: LobedCircleOutlineIcon,
+  },
 }
 
 export const OUTLINE_SHAPE_LIST: OutlineShapeMeta[] = [
   OUTLINE_SHAPE_META.rectCornered,
   OUTLINE_SHAPE_META.rectCentered,
   OUTLINE_SHAPE_META.circle,
+  OUTLINE_SHAPE_META.lobedCircle,
 ]
 
 export function outlineShapeIcon(shape: OutlineShape) {
   return OUTLINE_SHAPE_META[shape].Icon
 }
 
+// 'rect' is the Ramp/Standard family — rectangles and the Lobed Circle,
+// whose ramp also runs along the whole perimeter.
 export function outlineMethodFamily(shape: OutlineShape): 'rect' | 'circle' {
   return shape === 'circle' ? 'circle' : 'rect'
 }
@@ -72,7 +89,7 @@ export const OUTLINE_METHOD_LIST: Record<'rect' | 'circle', OutlineMethodMeta[]>
       title: 'Ramp',
       shortLabel: 'Ramp',
       description:
-        'Continuous descent around the whole perimeter, no steeper than the Ramp Angle and at most one Stepdown per lap — mirrors Helix, adapted for a straight-sided shape.',
+        'Continuous descent around the whole perimeter, no steeper than the Ramp Angle and at most one Stepdown per lap — like Helix, for a shape that is not a plain circle.',
       Icon: HelixIcon,
       stepdown: { fieldLabel: 'Stepdown [max mm per lap]', shortLabel: 'STEP' },
     },
@@ -139,6 +156,8 @@ export function outlineShapeLines(outline: OutlineParams): string[] {
       return ['RECTANGLE', 'CENTERED', `(${fmt(outline.width)}×${fmt(outline.height)})`]
     case 'circle':
       return ['CIRCLE', `(⌀${fmt(outline.diameter)})`]
+    case 'lobedCircle':
+      return ['LOBED', 'CIRCLE', `(⌀${fmt(outline.lobeMainDiameter)}+${Math.floor(outline.lobeCount)})`]
   }
 }
 
@@ -159,6 +178,8 @@ export function outlineShapeLabel(outline: OutlineParams): string {
       return `Rectangle Centered ${fmt(outline.width)}×${fmt(outline.height)} (${offset})`
     case 'circle':
       return `Circle ⌀${fmt(outline.diameter)} (${offset})`
+    case 'lobedCircle':
+      return `Lobed Circle ⌀${fmt(outline.lobeMainDiameter)} + ${Math.floor(outline.lobeCount)}×⌀${fmt(outline.lobeDiameter)} (${offset})`
   }
 }
 
@@ -171,5 +192,7 @@ export function outlineShapeSlug(outline: OutlineParams): string {
       return 'rectangle-centered'
     case 'circle':
       return 'circle-outline'
+    case 'lobedCircle':
+      return 'lobed-circle-outline'
   }
 }

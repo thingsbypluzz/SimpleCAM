@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
+  isOutlineLobeGapTooNarrow,
+  isOutlineLobesAttached,
   OPERATION_RULES,
   facingFootprint,
   isFacingPassCountWithinLimit,
@@ -930,5 +932,59 @@ describe('OPERATION_RULES.rampPathLength (BL-81)', () => {
 
   it('Facing has no ramp', () => {
     expect(length({ ...p, operation: 'facing' })).toBeNull()
+  })
+})
+
+describe('Lobed Circle validators (OP-8)', () => {
+  const lobed = (patch: Partial<WizardParams['outline']> = {}): WizardParams => ({
+    ...DEFAULT_WIZARD_PARAMS,
+    operation: 'outline',
+    outline: { ...DEFAULT_WIZARD_PARAMS.outline, shape: 'lobedCircle', offsetMode: 'outside', method: 'standard', toolDiameter: 6, ...patch },
+  })
+
+  it('accepts the default cap in every offset mode and with either method', () => {
+    for (const offsetMode of ['inside', 'outside', 'onLine'] as const) {
+      for (const method of ['ramp', 'standard'] as const) expect(isWizardParamsValid(lobed({ offsetMode, method }))).toBe(true)
+    }
+  })
+
+  it('needs a whole lobe count from 1 to 100', () => {
+    expect(isWizardParamsValid(lobed({ lobeCount: 1 }))).toBe(true)
+    expect(isWizardParamsValid(lobed({ lobeCount: 0 }))).toBe(false)
+    expect(isWizardParamsValid(lobed({ lobeCount: 2.5 }))).toBe(false)
+    expect(isWizardParamsValid(lobed({ lobeCount: 101 }))).toBe(false)
+  })
+
+  it('blocks lobes that are apart from the main circle or hidden inside it, but not overlapping lobes', () => {
+    expect(isOutlineLobesAttached(lobed({ lobePitchDiameter: 80 }).outline)).toBe(false)
+    expect(isWizardParamsValid(lobed({ lobePitchDiameter: 80 }))).toBe(false)
+    expect(isWizardParamsValid(lobed({ lobePitchDiameter: 20, lobeDiameter: 10 }))).toBe(false)
+    expect(isWizardParamsValid(lobed({ lobeCount: 12, lobeDiameter: 30 }))).toBe(true)
+  })
+
+  it('Inside: the tool has to fit the lobes and their necks; Outside never blocks on the tool', () => {
+    expect(isOutlineToolDiameterValid(lobed({ offsetMode: 'inside', toolDiameter: 16 }).outline)).toBe(false)
+    expect(isOutlineToolDiameterValid(lobed({ offsetMode: 'inside', lobePitchDiameter: 75 }).outline)).toBe(false)
+    expect(isOutlineToolDiameterValid(lobed({ offsetMode: 'outside', toolDiameter: 16 }).outline)).toBe(true)
+  })
+
+  it('notes an Outside gap narrower than the tool without blocking', () => {
+    const tight = lobed({ lobeCount: 12, lobeDiameter: 17 })
+    expect(isOutlineLobeGapTooNarrow(tight.outline)).toBe(true)
+    expect(isWizardParamsValid(tight)).toBe(true)
+    expect(isOutlineLobeGapTooNarrow(lobed().outline)).toBe(false)
+    expect(isOutlineLobeGapTooNarrow({ ...tight.outline, offsetMode: 'inside' })).toBe(false)
+  })
+
+  it('limits tabs by the tool path length and reports the footprint and the ramp lap', () => {
+    const tabs = { tabsEnabled: true, tabHeight: 1, tabWidth: 4, tabCount: 5 }
+    expect(isOutlineTabWidthValid(lobed(tabs).outline)).toBe(true)
+    expect(isOutlineTabWidthValid(lobed({ ...tabs, tabWidth: 80 }).outline)).toBe(false)
+    // Outside, ⌀6 tool, five lobes from 90°: the top lobe's tip is at 35 + 8 + 3.
+    const footprint = outlineFootprint(lobed().outline)
+    expect(footprint.y).toBeGreaterThan(46 + 30)
+    expect(footprint.y).toBeLessThan(2 * 46)
+    expect(OPERATION_RULES.outline.rampPathLength(lobed({ method: 'ramp' }))).toBeGreaterThan(Math.PI * 66)
+    expect(OPERATION_RULES.outline.rampPathLength(lobed({ method: 'standard' }))).toBeNull()
   })
 })

@@ -19,8 +19,12 @@
   Depth, potem Hole Diameter + Start Angle; Custom List: lista, potem Hole
   Diameter + Depth; Single: sama ta para) →
   Tool Diameter → Method → Ramp + Pitch (tylko Helix) → Tabs → Offset.
-  Outline: wymiary + Depth → Offset Mode → Tool Diameter → Method
-  → Ramp + Pitch (tylko Circle Helix / Rectangle Ramp) → Tabs → Offset. Surface:
+  Outline: wymiary + Depth → (Lobed Circle: grupa Lobes — Count + Pitch
+  Diameter, potem Lobe Diameter + Start) → Offset Mode → Tool Diameter →
+  Method → Ramp + Pitch (tylko Circle Helix / Rectangle i Lobed Circle
+  Ramp) → Tabs (Circle i Lobed Circle: dodatkowo Tab Start w pierwszej z
+  trzech kolumn) → Offset. Lobed Circle ma własne pole średnicy okręgu
+  głównego (`lobeMainDiameter`), niezależne od Outline Circle. Surface:
   Width + Height + Depth → Tool Diameter → Method + Raster
   Direction → Stepover → Z-Transition + Helix Radius + Ramp Angle (jeden
   wiersz) → Offset.

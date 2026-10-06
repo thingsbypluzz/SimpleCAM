@@ -123,3 +123,67 @@ describe('generateCircleOutlineHelix / Standard — tabs', () => {
     expect(lines.some((l) => l.startsWith('G1 X'))).toBe(true)
   })
 })
+
+describe('Tab Start (OP-8)', () => {
+  const tabbed = (offsetMode: 'inside' | 'outside', tabStartAngle: number): WizardParams => ({
+    ...DEFAULT_WIZARD_PARAMS,
+    operation: 'outline',
+    outline: {
+      ...DEFAULT_WIZARD_PARAMS.outline,
+      shape: 'circle',
+      offsetMode,
+      method: 'standard',
+      diameter: 40,
+      toolDiameter: 4,
+      totalDepth: 2,
+      tabsEnabled: true,
+      tabHeight: 1,
+      tabWidth: 3,
+      tabCount: 4,
+      tabStartAngle,
+    },
+    feeds: { ...DEFAULT_WIZARD_PARAMS.feeds, stepdown: 1, startZ: 0 },
+  })
+  const xy = (line: string) => ({ x: Number(/X(-?[\d.]+)/.exec(line)![1]), y: Number(/Y(-?[\d.]+)/.exec(line)![1]) })
+  const z = (line: string) => Number(/Z(-?[\d.]+)/.exec(line)![1])
+  // Angles of the points crossed at the tab band top (Z-1) while cutting the bottom pass.
+  const tabAngles = (lines: string[]) => {
+    const cuts = lines.filter((l) => /^G1 X/.test(l))
+    const bottomStart = cuts.findIndex((l) => z(l) === -2)
+    return cuts
+      .slice(bottomStart)
+      .filter((l, i, all) => z(l) === -1 && i > 0 && z(all[i - 1]) === -1)
+      .map((l) => (Math.atan2(xy(l).y, xy(l).x) * 180) / Math.PI)
+  }
+
+  it('centers the first tab on Tab Start and starts the pass half a spacing before it', () => {
+    // Inside travels counter-clockwise: 4 tabs from 90° → start at 45°, radius 18.
+    const inside = generateCircleOutlineStandard(tabbed('inside', 90), DEFAULT_MACHINE_SETTINGS)
+    const start = xy(inside.find((l) => /^G0 X/.test(l))!)
+    expect(start.x).toBeCloseTo(18 * Math.cos(Math.PI / 4), 3)
+    expect(start.y).toBeCloseTo(18 * Math.sin(Math.PI / 4), 3)
+    const angles = tabAngles(inside)
+    expect(angles.length).toBeGreaterThan(0)
+    // Every lifted point lies within half a tab (3 mm on r = 18 → ±4.8°) of 90°, 180°, -90° or 0°.
+    for (const a of angles) {
+      const nearest = Math.round(a / 90) * 90
+      expect(Math.abs(a - nearest)).toBeLessThan(4.9)
+    }
+    expect(angles.some((a) => Math.abs(a - 90) < 4.9)).toBe(true)
+
+    // Outside travels clockwise: start half a spacing "before" the tab is at 135°, radius 22.
+    const outside = generateCircleOutlineStandard(tabbed('outside', 90), DEFAULT_MACHINE_SETTINGS)
+    const outStart = xy(outside.find((l) => /^G0 X/.test(l))!)
+    expect(outStart.x).toBeCloseTo(22 * Math.cos((3 * Math.PI) / 4), 3)
+    expect(outStart.y).toBeCloseTo(22 * Math.sin((3 * Math.PI) / 4), 3)
+    expect(tabAngles(outside).some((a) => Math.abs(a - 90) < 4.2)).toBe(true)
+  })
+
+  it('moves the tabs with the angle', () => {
+    const angles = tabAngles(generateCircleOutlineStandard(tabbed('inside', 30), DEFAULT_MACHINE_SETTINGS))
+    for (const a of angles) {
+      const offset = ((((a - 30) % 90) + 135) % 90) - 45
+      expect(Math.abs(offset)).toBeLessThan(4.9)
+    }
+  })
+})

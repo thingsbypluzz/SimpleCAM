@@ -6,7 +6,9 @@ export type InterpolationMode = 'arc' | 'linear'
 
 export type OperationType = 'holes' | 'outline' | 'surface' | 'pocket' | 'facing'
 
-export type OutlineShape = 'rectCornered' | 'rectCentered' | 'circle'
+// 'lobedCircle' (OP-8): a main circle with N lobe circles on a pitch circle
+// merged into one outline — see lib/outlineLobedGeometry.ts.
+export type OutlineShape = 'rectCornered' | 'rectCentered' | 'circle' | 'lobedCircle'
 
 export type OffsetMode = 'inside' | 'outside' | 'onLine'
 
@@ -35,7 +37,7 @@ export type PocketMethodType = 'spiral' | 'adaptive'
 // default matches them.
 export type CutDirection = 'conventional' | 'climb'
 
-// 'ramp' only valid for rectCornered/rectCentered; 'helix' only for circle;
+// 'ramp' only valid for rectCornered/rectCentered/lobedCircle; 'helix' only for circle;
 // 'standard' is valid for every shape, which is why it's the shared default.
 export type OutlineMethod = 'ramp' | 'standard' | 'helix'
 
@@ -83,7 +85,15 @@ export interface OutlineParams {
   tabHeight: number
   tabWidth: number
   tabCount: number
-  rampAngleDeg: number // Circle Helix / Rectangle Ramp only — caps the pitch per turn/lap below Stepdown (BL-80)
+  rampAngleDeg: number // Circle Helix / Rectangle and Lobed Circle Ramp only — caps the pitch per turn/lap below Stepdown (BL-80)
+  // Lobed Circle only (OP-8).
+  lobeMainDiameter: number // mm, the main circle
+  lobeCount: number
+  lobePitchDiameter: number // mm, the circle the lobe centers sit on
+  lobeDiameter: number // mm, each lobe
+  lobeStartAngle: number // deg, first lobe, 0 = +X, CCW
+  // Circle and Lobed Circle: where the first tab sits, deg, 0 = +X, CCW.
+  tabStartAngle: number
 }
 
 export interface SurfaceParams {
@@ -239,6 +249,12 @@ export const DEFAULT_WIZARD_PARAMS: WizardParams = {
     tabWidth: 3,
     tabCount: 3,
     rampAngleDeg: 2,
+    lobeMainDiameter: 60,
+    lobeCount: 5,
+    lobePitchDiameter: 70,
+    lobeDiameter: 16,
+    lobeStartAngle: 90,
+    tabStartAngle: 90,
   },
   surface: {
     shape: 'rectCornered',

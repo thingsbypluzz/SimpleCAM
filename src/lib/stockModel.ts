@@ -1,6 +1,7 @@
 import polygonClipping, { type MultiPolygon, type Polygon, type Ring } from 'polygon-clipping'
 import type { Point2D, WizardParams } from '../types/wizard'
 import { onLineCircleEdges } from './outlineCircle'
+import { insetLoop, lobedInsideLoop, lobedUnionLoop, loopPolygon, translateLoop, type Loop } from './outlineLobedGeometry'
 import { onLineRectDimensions, rectCorners, rectToolDimensions } from './outlineRectangleGeometry'
 import { pocketCenter, pocketRectWallHalfDims } from './pocketGeometry'
 import { cellLoop, isLightenedShape, lightenedCells } from './pocketLightened'
@@ -120,14 +121,34 @@ function pocketCutVoids(pocket: WizardParams['pocket']): SheetVoid[] {
   ]
 }
 
+// Lobed Circle (OP-8), in the shape's place on the sheet.
+function lobedPolygon(outline: WizardParams['outline'], loop: Loop | null): Point2D[] {
+  return loop ? loopPolygon(translateLoop(loop, outline.offsetX, outline.offsetY)) : []
+}
+
+// Lobed Circle cut Outside: the part the tool actually leaves — its path
+// (the circles grown by the tool radius) inset by the tool radius, which
+// rounds every notch between the main circle and a lobe and fills a gap
+// the tool can't enter. Null for the other modes: Inside leaves the nominal
+// outline, On-line's band is drawn from the tool path either way.
+function lobedCutEdge(outline: WizardParams['outline']): Point2D[] | null {
+  const r = outline.toolDiameter / 2
+  if (outline.offsetMode !== 'outside' || !(r > 0)) return null
+  const polygon = lobedPolygon(outline, insetLoop(lobedUnionLoop(outline, r), r))
+  return polygon.length >= 3 ? polygon : null
+}
+
 // Rectangle Outline's one edge the tool rounds (BL-86): Inside — the void
 // (tool path grown by the tool radius); On-line — the band's outer edge
 // (the nominal rectangle grown by it; the inner island keeps its sharp
 // corners). Null where nothing changes: Outside (the tool goes around the
-// part's corners), a circle, a tool that does not fit.
+// part's corners), a circle, a tool that does not fit. The Lobed Circle has
+// its own rule (lobedCutEdge()).
 function outlineCutEdge(outline: WizardParams['outline']): Point2D[] | null {
   const r = outline.toolDiameter / 2
-  if (outline.shape === 'circle' || outline.offsetMode === 'outside' || !(r > 0)) return null
+  if (outline.shape === 'lobedCircle') return lobedCutEdge(outline)
+  if (outline.shape === 'circle') return null
+  if (outline.offsetMode === 'outside' || !(r > 0)) return null
   const { toolWidth, toolHeight } = rectToolDimensions(outline.width, outline.height, outline.toolDiameter, outline.offsetMode)
   if (!(toolWidth > 0 && toolHeight > 0)) return null
   return roundedOffsetLoop(
@@ -219,10 +240,32 @@ function stockFeatures(params: WizardParams, grid: number, cutShape: boolean): S
   if (params.operation === 'outline') {
     const { outline } = params
     const depth = outline.totalDepth
+    if (outline.shape === 'lobedCircle') {
+      const r = outline.toolDiameter / 2
+      const nominal: SheetVoid = { polygon: lobedPolygon(outline, lobedUnionLoop(outline, 0)) }
+      if (isDegenerate(nominal)) return { islands: [], voids: [], part: false }
+      if (outline.offsetMode === 'inside') return { islands: [], voids: [{ region: [ring(nominal)], depth, floor: false }], part: false }
+      if (outline.offsetMode === 'outside') {
+        const cut = cutShape ? lobedCutEdge(outline) : null
+        return { islands: [{ region: [ring(cut ? { polygon: cut } : nominal)], depth }], voids: [], part: true }
+      }
+      // On-line: the band the tool removes, from the outline grown by the
+      // tool radius in to the outline inset by it (no island when the
+      // tool doesn't fit inside).
+      const outer: SheetVoid = { polygon: lobedPolygon(outline, lobedUnionLoop(outline, r)) }
+      const inner: SheetVoid = { polygon: lobedPolygon(outline, lobedInsideLoop(outline, r)) }
+      const hasInner = !isDegenerate(inner)
+      return {
+        islands: hasInner ? [{ region: [ring(inner)], depth }] : [],
+        voids: [{ region: hasInner ? [ring(outer), ring(inner)] : [ring(outer)], depth, floor: false }],
+        part: false,
+      }
+    }
+    const shape = outline.shape
     const edge = (radius: number, width: number, height: number): SheetVoid =>
-      outline.shape === 'circle'
+      shape === 'circle'
         ? { circle: { x: outline.offsetX, y: outline.offsetY }, radius }
-        : { polygon: rectCorners(outline.shape, outline.width, outline.height, width, height, outline.offsetX, outline.offsetY, 'ccw') }
+        : { polygon: rectCorners(shape, outline.width, outline.height, width, height, outline.offsetX, outline.offsetY, 'ccw') }
     const nominal = edge(outline.diameter / 2, outline.width, outline.height)
     const cutEdge = cutShape ? outlineCutEdge(outline) : null
     if (outline.offsetMode === 'inside') {

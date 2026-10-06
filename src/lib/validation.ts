@@ -7,6 +7,16 @@ import { parseCustomPointsText } from './customPoints'
 import { rectToolDimensions } from './outlineRectangleGeometry'
 import { circleOutlineOptions, circleOutlineRadiusAndDirection } from './outlineCircle'
 import { rectOutlineOptions } from './outlineRectangle'
+import { lobedOutlineOptions } from './outlineLobed'
+import {
+  lobedInsideLoop,
+  lobedOutsideGapTooNarrow,
+  lobedUnionLoop,
+  lobesAttached,
+  loopBounds,
+  loopLength,
+  MAX_LOBE_COUNT,
+} from './outlineLobedGeometry'
 import { holeCircleOptions } from './helix'
 import { surfaceStepoverMm, surfaceToolBounds } from './surfaceGeometry'
 import { facingPassEdges, facingToolBounds } from './facingGeometry'
@@ -248,6 +258,10 @@ function outlineRampDescent(params: WizardParams): RampDescent | null {
     return { unit: 'turn', pathLength: 2 * Math.PI * opts.radius, pitch: opts.pitch, ...common }
   }
   if (outline.method !== 'ramp') return null
+  if (outline.shape === 'lobedCircle') {
+    const opts = lobedOutlineOptions(params)
+    return { unit: 'lap', pathLength: loopLength(opts.loop), pitch: opts.rampPitch, ...common }
+  }
   const opts = rectOutlineOptions(params)
   return { unit: 'lap', pathLength: 2 * (opts.toolWidth + opts.toolHeight), pitch: opts.rampPitch, ...common }
 }
@@ -319,6 +333,7 @@ export function isHolesSizeValid(geometry: GeometryParams): boolean {
 
 export function isOutlineSizeValid(outline: OutlineParams): boolean {
   if (!(outline.totalDepth > 0)) return false
+  if (outline.shape === 'lobedCircle') return outline.lobeMainDiameter > 0 && outline.lobeDiameter > 0 && outline.lobePitchDiameter > 0
   return outline.shape === 'circle' ? outline.diameter > 0 : outline.width > 0 && outline.height > 0
 }
 
@@ -439,7 +454,45 @@ export function isOutlineToolDiameterValid(outline: OutlineParams): boolean {
   if (outline.offsetMode !== 'inside') return true
   // Strict for the same zero-radius reason as isToolDiameterValid (BL-49).
   if (outline.shape === 'circle') return outline.toolDiameter < outline.diameter
+  // Lobed Circle: the tool has to get into every lobe through its neck.
+  if (outline.shape === 'lobedCircle') {
+    return !isOutlineLobesValid(outline) || lobedInsideLoop(outline, outline.toolDiameter / 2) !== null
+  }
   return outline.toolDiameter < Math.min(outline.width, outline.height)
+}
+
+// Lobed Circle (OP-8): a whole number of lobes, each one crossing the main
+// circle — attached to it and sticking out of it. True for other shapes.
+export function isOutlineLobeCountValid(outline: OutlineParams): boolean {
+  if (outline.shape !== 'lobedCircle') return true
+  return Number.isInteger(outline.lobeCount) && outline.lobeCount >= 1 && outline.lobeCount <= MAX_LOBE_COUNT
+}
+
+export function isOutlineLobesAttached(outline: OutlineParams): boolean {
+  return outline.shape !== 'lobedCircle' || !isOutlineSizeValid(outline) || lobesAttached(outline)
+}
+
+function isOutlineLobesValid(outline: OutlineParams): boolean {
+  return isOutlineSizeValid(outline) && isOutlineLobeCountValid(outline) && isOutlineLobesAttached(outline)
+}
+
+// Length of the Lobed Circle's tool path in the current offset mode (0
+// when there is none).
+function lobedToolPathLength(outline: OutlineParams): number {
+  const r = outline.toolDiameter / 2
+  if (outline.offsetMode === 'inside') return loopLength(lobedInsideLoop(outline, r) ?? [])
+  return loopLength(lobedUnionLoop(outline, outline.offsetMode === 'outside' ? r : 0))
+}
+
+// Non-blocking (OP-8): cut Outside, the tool can't enter a gap between
+// lobes narrower than itself — the material there stays.
+export function isOutlineLobeGapTooNarrow(outline: OutlineParams): boolean {
+  return (
+    outline.shape === 'lobedCircle' &&
+    outline.offsetMode === 'outside' &&
+    isOutlineLobesValid(outline) &&
+    lobedOutsideGapTooNarrow(outline, outline.toolDiameter / 2)
+  )
 }
 
 // Same rule as isTabHeightValid above, reading outline.* fields.
@@ -461,6 +514,9 @@ export function isOutlineTabCountValid(outline: OutlineParams): boolean {
 // tabCount/tabWidth apply to every side regardless of that side's length.
 export function isOutlineTabWidthValid(outline: OutlineParams): boolean {
   if (!outline.tabsEnabled) return true
+  if (outline.shape === 'lobedCircle') {
+    return outline.tabCount * outline.tabWidth < lobedToolPathLength(outline)
+  }
   if (outline.shape === 'circle') {
     const circumference = 2 * Math.PI * Math.max(0, outlineCircleRadius(outline))
     return outline.tabCount * outline.tabWidth < circumference
@@ -480,6 +536,11 @@ export function isOutlineTabWidthValid(outline: OutlineParams): boolean {
 // only translates the shape, so — like patternSpan()'s max-min span — it
 // never affects footprint size, only where it sits.
 export function outlineFootprint(outline: OutlineParams): { x: number; y: number } {
+  if (outline.shape === 'lobedCircle') {
+    const grow = outline.offsetMode === 'outside' ? outline.toolDiameter / 2 : 0
+    const bounds = loopBounds(lobedUnionLoop(outline, grow))
+    return bounds ? { x: bounds.maxX - bounds.minX, y: bounds.maxY - bounds.minY } : { x: 0, y: 0 }
+  }
   if (outline.shape === 'circle') {
     const diameter = 2 * Math.max(0, outlineCircleRadius(outline))
     return { x: diameter, y: diameter }
@@ -842,6 +903,8 @@ export const OPERATION_RULES: Record<OperationType, OperationRules> = {
     isValid: (p) =>
       isOutlineToolDiameterValid(p.outline) &&
       isOutlineSizeValid(p.outline) &&
+      isOutlineLobeCountValid(p.outline) &&
+      isOutlineLobesAttached(p.outline) &&
       isOutlineTabHeightValid(p.outline) &&
       isOutlineTabWidthValid(p.outline) &&
       isOutlineTabCountValid(p.outline) &&

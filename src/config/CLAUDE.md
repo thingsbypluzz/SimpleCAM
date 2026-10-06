@@ -15,7 +15,9 @@
   (metody ograniczone per kształt).
 - Wzorce/kształty: `positioningMeta.ts` (`POSITIONING_META`, ikony, linie
   i podsumowanie Kroku 1, `patternLabel()`, `patternSlug()` — rozpoznają
-  kolaps grid do 2 otworów), `outlineMeta.ts`, `surfaceMeta.ts`,
+  kolaps grid do 2 otworów), `outlineMeta.ts` (rodzina metod
+  `outlineMethodFamily()`: Ramp/Standard dla prostokątów i Lobed Circle,
+  Helix/Standard dla okręgu), `surfaceMeta.ts`,
   `pocketMeta.ts` (`*_SHAPE_META` z `title`/`description` —
   używane też przez `PickHeader`), `facingMeta.ts` (`FACING_SIDE_META` —
   cztery boki; `FACING_METHOD` — jedyna metoda Facing, „Side Milling”,

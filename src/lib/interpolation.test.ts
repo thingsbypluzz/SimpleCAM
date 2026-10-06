@@ -31,3 +31,11 @@ describe('forcedLinearReason', () => {
     expect(forcedLinearReason(withOp('facing'))).toBe('facing')
   })
 })
+
+describe('Lobed Circle (OP-8)', () => {
+  it('follows the toggle like Circle Outline; tabs force G1', () => {
+    const lobed = { ...DEFAULT_WIZARD_PARAMS.outline, shape: 'lobedCircle' as const }
+    expect(forcedLinearReason(withOp('outline', { outline: lobed }))).toBeNull()
+    expect(forcedLinearReason(withOp('outline', { outline: { ...lobed, tabsEnabled: true } }))).toBe('tabs')
+  })
+})

@@ -1,12 +1,26 @@
 import { getFixedColors, getPaletteAccents, type PaletteId } from '../../config/palettes'
 import { resolvePoints } from '../../lib/positioning'
 import { computeTabRanges, type TabRange } from '../../lib/tabs'
-import { circleOutlineRadiusAndDirection, onLineCircleEdges } from '../../lib/outlineCircle'
+import { circleOutlineOptions, circleOutlineRadiusAndDirection, onLineCircleEdges } from '../../lib/outlineCircle'
 import { onLineRectDimensions, rectCorners, rectToolDimensions } from '../../lib/outlineRectangleGeometry'
 import { sideRangesFor, type SideTabRange } from '../../lib/outlineRectangleTabs'
 import { surfaceNominalBounds, surfaceStepoverMm, surfaceToolBounds, type SurfaceBounds } from '../../lib/surfaceGeometry'
 import { computeRasterLines, zigzagWaypoints, type RasterLine } from '../../lib/surfaceRaster'
 import { buildFacingToolpath } from '../../lib/facing'
+import { circlePassStartAngle } from '../../lib/helix'
+import { lobedOutlineOptions, type LoopTabRange } from '../../lib/outlineLobed'
+import {
+  arcPoint,
+  lobedInsideLoop,
+  lobedUnionLoop,
+  loopBounds,
+  loopPointAtLength,
+  loopPolygon,
+  loopSamplePositions,
+  translateLoop,
+  type Loop,
+  type LoopBounds,
+} from '../../lib/outlineLobedGeometry'
 import { facingBlockCorners, facingStripCorners, facingViewBounds, type FacingBounds } from '../../lib/facingGeometry'
 import { pocketCenter } from '../../lib/pocketGeometry'
 import { buildPocketToolpath } from '../../lib/pocket'
@@ -82,6 +96,9 @@ function drawGappedCircle(
   py: number,
   radius: number,
   tabRanges: TabRange[],
+  // Angle of the pass's start point — tab ranges are measured from it
+  // (they are symmetric about it, so the travel direction doesn't matter).
+  rotation = 0,
 ) {
   if (tabRanges.length === 0) {
     ctx.beginPath()
@@ -94,7 +111,7 @@ function drawGappedCircle(
     if (worldHi <= worldLo) return
     ctx.setLineDash(dashed ? TAB_DASH : [])
     ctx.beginPath()
-    ctx.arc(px, py, radius, -worldHi, -worldLo)
+    ctx.arc(px, py, radius, -(worldHi + rotation), -(worldLo + rotation))
     ctx.stroke()
   }
 
@@ -263,6 +280,20 @@ type ResolvedPattern =
       nominalRadius: number
       toolRadius: number
       tabRanges: TabRange[]
+      // Where every pass starts — turned by Tab Start when tabs are on.
+      startAngle: number
+    }
+  | {
+      kind: 'outlineLobed'
+      params: WizardParams
+      // Edges of the stock, in place: the nominal outline, or On-line's
+      // inner and outer edge.
+      edges: Point2D[][]
+      // Tool-center loop (in place, travel direction, from the lap start)
+      // and its tabs.
+      loop: Loop
+      tabRanges: LoopTabRange[]
+      bounds: LoopBounds
     }
   | {
       kind: 'outlineRect'
@@ -366,6 +397,31 @@ function resolvePattern(params: WizardParams): ResolvedPattern {
   }
   if (params.operation === 'outline') {
     const { outline } = params
+    if (outline.shape === 'lobedCircle') {
+      const opts = lobedOutlineOptions(params)
+      const place = (loop: Loop | null) => (loop ? translateLoop(loop, outline.offsetX, outline.offsetY) : [])
+      const r = outline.toolDiameter / 2
+      const nominal = place(lobedUnionLoop(outline, 0))
+      const edgeLoops = outline.offsetMode === 'onLine' ? [place(lobedInsideLoop(outline, r)), place(lobedUnionLoop(outline, r))] : [nominal]
+      const loop = place(opts.loop)
+      const extent = [nominal, loop, ...edgeLoops].map(loopBounds).filter((b): b is LoopBounds => b !== null)
+      return {
+        kind: 'outlineLobed',
+        params,
+        edges: edgeLoops.map(loopPolygon).filter((polygon) => polygon.length >= 3),
+        loop,
+        tabRanges: opts.tabs ? opts.tabs.ranges : [],
+        bounds:
+          extent.length > 0
+            ? {
+                minX: Math.min(...extent.map((b) => b.minX)),
+                maxX: Math.max(...extent.map((b) => b.maxX)),
+                minY: Math.min(...extent.map((b) => b.minY)),
+                maxY: Math.max(...extent.map((b) => b.maxY)),
+              }
+            : { minX: outline.offsetX, maxX: outline.offsetX, minY: outline.offsetY, maxY: outline.offsetY },
+      }
+    }
     if (outline.shape === 'circle') {
       const { radius: toolRadius } = circleOutlineRadiusAndDirection(outline)
       const tabRanges = outline.tabsEnabled
@@ -378,6 +434,7 @@ function resolvePattern(params: WizardParams): ResolvedPattern {
         nominalRadius: outline.diameter / 2,
         toolRadius: Math.max(0, toolRadius),
         tabRanges,
+        startAngle: circlePassStartAngle(circleOutlineOptions(params)),
       }
     }
     // Direction never affects what gets drawn (a filled/stroked closed
@@ -632,7 +689,7 @@ function drawOutlineCircleGeometry(
   showStock: boolean,
   showToolpath: boolean,
 ) {
-  const { center, nominalRadius, toolRadius, tabRanges, params } = pattern
+  const { center, nominalRadius, toolRadius, tabRanges, startAngle, params } = pattern
   const [px, py] = toPx(center.x, center.y)
 
   if (showStock) {
@@ -643,16 +700,77 @@ function drawOutlineCircleGeometry(
         : [nominalRadius]
     ctx.strokeStyle = theme.holeStroke
     ctx.lineWidth = 1
-    for (const r of edges) drawGappedCircle(ctx, px, py, r * scale, tabRanges)
+    for (const r of edges) drawGappedCircle(ctx, px, py, r * scale, tabRanges, startAngle)
   }
 
   if (showToolpath) {
     ctx.strokeStyle = theme.toolpath
     ctx.lineWidth = 1.5
-    drawGappedCircle(ctx, px, py, toolRadius * scale, tabRanges)
+    drawGappedCircle(ctx, px, py, toolRadius * scale, tabRanges, startAngle)
 
     ctx.beginPath()
-    ctx.arc(px + toolRadius * scale, py, 2, 0, Math.PI * 2)
+    ctx.arc(px + toolRadius * scale * Math.cos(startAngle), py - toolRadius * scale * Math.sin(startAngle), 2, 0, Math.PI * 2)
+    ctx.fillStyle = theme.toolpath
+    ctx.fill()
+  }
+
+  drawOffsetVector(ctx, toPx, params.outline.offsetX, params.outline.offsetY, theme, arrowSize)
+}
+
+// Lobed Circle Outline (OP-8): the stock's edges (nominal outline, or
+// On-line's two), and the tool-center loop with every tab dashed — sampled
+// from the same loop and tab ranges the engine cuts.
+function drawOutlineLobedGeometry(
+  ctx: CanvasRenderingContext2D,
+  toPx: (x: number, y: number) => [number, number],
+  pattern: Extract<ResolvedPattern, { kind: 'outlineLobed' }>,
+  theme: Theme,
+  arrowSize: number,
+  showStock: boolean,
+  showToolpath: boolean,
+) {
+  const { edges, loop, tabRanges, params } = pattern
+
+  if (showStock) {
+    ctx.strokeStyle = theme.holeStroke
+    ctx.lineWidth = 1
+    for (const polygon of edges) {
+      ctx.beginPath()
+      polygon.forEach((p, i) => {
+        const [x, y] = toPx(p.x, p.y)
+        if (i === 0) ctx.moveTo(x, y)
+        else ctx.lineTo(x, y)
+      })
+      ctx.closePath()
+      ctx.stroke()
+    }
+  }
+
+  if (showToolpath && loop.length > 0) {
+    const positions = [...new Set([...loopSamplePositions(loop), ...tabRanges.flatMap((r) => [r.start, r.end])])].sort((a, b) => a - b)
+    const inTabAt = (s: number) => tabRanges.some((r) => s > r.start && s < r.end)
+    ctx.strokeStyle = theme.toolpath
+    ctx.lineWidth = 1.5
+    let i = 1
+    while (i < positions.length) {
+      const dashed = inTabAt((positions[i - 1] + positions[i]) / 2)
+      ctx.beginPath()
+      const from = loopPointAtLength(loop, positions[i - 1])
+      ctx.moveTo(...toPx(from.x, from.y))
+      while (i < positions.length && inTabAt((positions[i - 1] + positions[i]) / 2) === dashed) {
+        const p = i === positions.length - 1 ? arcPoint(loop[0], 0) : loopPointAtLength(loop, positions[i])
+        ctx.lineTo(...toPx(p.x, p.y))
+        i++
+      }
+      ctx.setLineDash(dashed ? TAB_DASH : [])
+      ctx.stroke()
+    }
+    ctx.setLineDash([])
+
+    const start = arcPoint(loop[0], 0)
+    const [startX, startY] = toPx(start.x, start.y)
+    ctx.beginPath()
+    ctx.arc(startX, startY, 2, 0, Math.PI * 2)
     ctx.fillStyle = theme.toolpath
     ctx.fill()
   }
@@ -963,6 +1081,9 @@ function drawPatternGeometry(
       break
     case 'outlineRect':
       drawOutlineRectGeometry(ctx, toPx, pattern, theme, arrowSize, showStock, showToolpath)
+      break
+    case 'outlineLobed':
+      drawOutlineLobedGeometry(ctx, toPx, pattern, theme, arrowSize, showStock, showToolpath)
       break
     case 'surface':
       drawSurfaceGeometry(ctx, toPx, pattern, theme, arrowSize, showStock, showToolpath)

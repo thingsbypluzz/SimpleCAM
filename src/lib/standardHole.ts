@@ -3,7 +3,7 @@ import type { WizardParams } from '../types/wizard'
 import { assembleProgram } from './program'
 import { computeDepthPasses } from './depthPasses'
 import { appendTabbedCirclePass, computeTabRanges } from './tabs'
-import { appendFullTurn, circleToolpathGcode, holeCircleOptions, type CircleToolpathOptions } from './helix'
+import { appendFullTurn, circlePassStartAngle, circleToolpathGcode, holeCircleOptions, type CircleToolpathOptions } from './helix'
 import { ToolpathBuilder, type Toolpath } from './toolpath'
 
 // Passes accumulate Z via repeated float subtraction — this tolerance on
@@ -29,7 +29,10 @@ const TAB_BAND_EPSILON = 1e-9
 // move list for G-code and the 3D preview (BL-61).
 export function buildStandardCircleToolpath(cx: number, cy: number, opts: CircleToolpathOptions): Toolpath {
   const { radius, tabs } = opts
-  const b = new ToolpathBuilder({ x: cx + radius, y: cy, z: opts.safeZ })
+  const startAngle = circlePassStartAngle(opts)
+  const startX = startAngle === 0 ? cx + radius : cx + radius * Math.cos(startAngle)
+  const startY = startAngle === 0 ? cy : cy + radius * Math.sin(startAngle)
+  const b = new ToolpathBuilder({ x: startX, y: startY, z: opts.safeZ })
   b.zTo('rapid', opts.startZ)
 
   const tabBandTopZ = tabs ? -(opts.totalDepth - tabs.tabHeight) : 0
@@ -44,15 +47,16 @@ export function buildStandardCircleToolpath(cx: number, cy: number, opts: Circle
         centerX: cx,
         centerY: cy,
         radius,
-        startX: cx + radius,
-        startY: cy,
+        startX,
+        startY,
+        startAngle,
         cutZ: currentZ,
         liftZ: tabBandTopZ,
         tabRanges,
         direction: opts.direction,
       })
     } else {
-      appendFullTurn(b, cx, cy, radius, opts.direction, currentZ)
+      appendFullTurn(b, cx, cy, radius, opts.direction, currentZ, startAngle)
     }
   }
 

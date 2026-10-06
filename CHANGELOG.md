@@ -7,6 +7,39 @@ zgodne z [SemVer](https://semver.org/). Ten plik pozostaje głównym, czytelnym
 thingsbypluzz/SimpleCAM), ale to infrastruktura pod izolację pracy
 (branch/worktree per zadanie), nie zamiennik tego changeloga.
 
+## [0.41.0] — 2026-10-06
+
+### Dodano
+
+- **Outline: kształt Lobed Circle** (`OP-8`) — okrąg główny z wypustkami
+  (mniejszymi okręgami na okręgu podziałowym) zlany w jeden obrys, np.
+  kapsel felgi z uszami na otwory. Otwory w uszach robi osobna operacja
+  Hole(s) N-Holes on Circle z tymi samymi liczbami (liczba, średnica
+  podziałowa, kąt startu).
+  - Krok 2: Diameter, Depth i grupa Lobes — Count (1–100), Pitch
+    Diameter, Lobe Diameter, Start Angle. Domyślnie ⌀60 z pięcioma
+    wypustkami ⌀16 na ⌀70, pierwsza u góry.
+  - Wypustki mogą na siebie nachodzić; każda musi przecinać okrąg główny
+    (odłączona albo w całości schowana blokuje Generate).
+  - Inside / Outside / On-line. Outside tnie tyle, ile frez sięgnie: we
+    wcięciach zostaje zaokrąglenie o promieniu freza, a szczelina węższa
+    niż frez zostaje niewybrana (żółta notka w Kroku 2, podgląd pokazuje
+    kształt po frezie). Inside wymaga, żeby frez mieścił się w każdej
+    wypustce i w jej przewężeniu.
+  - Metody Ramp i Standard. Obrys to same łuki, więc przełącznik G2/G3 vs
+    G1 działa jak w Outline Circle; mostki wymuszają G1.
+  - Mostki rozłożone równo po długości ścieżki.
+- **Tab Start [°]** w Outline Circle i Lobed Circle — kąt, pod którym
+  leży pierwszy mostek (domyślnie 90°). Tab Count = liczba wypustek i Tab
+  Start = Start Angle stawia mostek na czubku każdej wypustki.
+
+### Zmieniono
+
+- **Outline Circle z mostkami zaczyna przejście w innym miejscu**: pół
+  odstępu przed pierwszym mostkiem, który leży teraz na Tab Start (90°),
+  a nie pół odstępu za punktem 0°. Liczba, rozmiar i odstępy mostków bez
+  zmian; Hole(s) bez zmian.
+
 ## [0.40.0] — 2026-10-06
 
 ### Dodano
