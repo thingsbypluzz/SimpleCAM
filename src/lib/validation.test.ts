@@ -899,3 +899,36 @@ describe('Facing validators (OP-7)', () => {
     expect(facingFootprint(facing({ lead: 1, clearance: 2, removal: 1 }).facing)).toEqual({ x: 58, y: 3 })
   })
 })
+
+describe('OPERATION_RULES.rampPathLength (BL-81)', () => {
+  const p = DEFAULT_WIZARD_PARAMS
+  const length = (params: WizardParams) => OPERATION_RULES[params.operation].rampPathLength(params)
+
+  it('Hole(s): the helix circle, none for Standard', () => {
+    // ⌀8 hole, ⌀3.175 tool → radius 2.4125.
+    expect(length({ ...p, operation: 'holes', method: 'helix' })).toBeCloseTo(2 * Math.PI * 2.4125)
+    expect(length({ ...p, operation: 'holes', method: 'standard' })).toBeNull()
+  })
+
+  it('Outline: Circle Helix and Rectangle Ramp only', () => {
+    const outline = (patch: Partial<WizardParams['outline']>): WizardParams => ({ ...p, operation: 'outline', outline: { ...p.outline, ...patch } })
+    expect(length(outline({ shape: 'circle', method: 'helix' }))).toBeGreaterThan(0)
+    expect(length(outline({ shape: 'rectCornered', method: 'ramp' }))).toBeGreaterThan(0)
+    expect(length(outline({ shape: 'rectCornered', method: 'standard' }))).toBeNull()
+    expect(length(outline({ shape: 'circle', method: 'standard' }))).toBeNull()
+  })
+
+  it('Surface and Pocket: the entry helix, none for Plunge; Adaptive always', () => {
+    const surface = (zTransitionMode: 'plunge' | 'helix'): WizardParams => ({ ...p, operation: 'surface', surface: { ...p.surface, zTransitionMode, helixRadius: 1 } })
+    expect(length(surface('helix'))).toBeCloseTo(2 * Math.PI)
+    expect(length(surface('plunge'))).toBeNull()
+    const pocket = (patch: Partial<WizardParams['pocket']>): WizardParams => ({ ...p, operation: 'pocket', pocket: { ...p.pocket, helixRadius: 1.5, ...patch } })
+    expect(length(pocket({ zTransitionMode: 'helix' }))).toBeCloseTo(3 * Math.PI)
+    expect(length(pocket({ zTransitionMode: 'plunge' }))).toBeNull()
+    expect(length(pocket({ zTransitionMode: 'plunge', method: 'adaptive' }))).toBeCloseTo(3 * Math.PI)
+  })
+
+  it('Facing has no ramp', () => {
+    expect(length({ ...p, operation: 'facing' })).toBeNull()
+  })
+})

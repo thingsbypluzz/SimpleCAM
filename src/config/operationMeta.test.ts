@@ -108,4 +108,18 @@ describe('OPERATION_META calculator hooks (BL-68)', () => {
     expect(OPERATION_META.facing.maxCalcWidthPercent!(narrow)).toBe(15)
     expect(OPERATION_META.facing.filenameSlug(p)).toBe('facing-bottom')
   })
+
+  it('writes the calculator Ramp Angle into the operation section, only when given (BL-81)', () => {
+    const p = DEFAULT_WIZARD_PARAMS
+    const patch = { toolDiameter: 6, rampAngleDeg: 3.5 }
+    expect(OPERATION_META.holes.withCalc(p, { method: 'helix', ...patch }).geometry?.rampAngleDeg).toBe(3.5)
+    expect(OPERATION_META.outline.withCalc(p, { method: 'ramp', ...patch }).outline?.rampAngleDeg).toBe(3.5)
+    expect(OPERATION_META.surface.withCalc(p, { method: 'zigzag', ...patch }).surface?.rampAngleDeg).toBe(3.5)
+    expect(OPERATION_META.pocket.withCalc(p, { method: 'spiral', ...patch }).pocket?.rampAngleDeg).toBe(3.5)
+    for (const op of ['holes', 'outline', 'surface', 'pocket'] as const) {
+      const section = op === 'holes' ? 'geometry' : op
+      const out = OPERATION_META[op].withCalc(p, { method: OPERATION_META[op].methodValue(p), toolDiameter: 6 })
+      expect(out[section]?.rampAngleDeg).toBe(2)
+    }
+  })
 })

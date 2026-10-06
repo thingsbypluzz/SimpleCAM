@@ -31,6 +31,8 @@ export interface MaterialSpec {
   aeAdaptive: number
   // Suggested Stock to Leave for Pocket's Finishing Pass [mm] (BL-78).
   finishStock: number
+  // Suggested Ramp Angle of a helix or ramp descent [°] (BL-81).
+  rampAngleDeg: number
   note?: string
 }
 
@@ -77,6 +79,29 @@ export function engagementChipThinning(engagement: Engagement): number {
 export function effectiveChipLoad(feed: number, rpm: number, flutes: number, engagement: Engagement): number | null {
   if (!(feed > 0) || !(rpm > 0) || !(flutes > 0)) return null
   return feed / (rpm * flutes * engagementChipThinning(engagement))
+}
+
+const RAMP_ANGLE_STEP = 0.5
+
+// Ramp Angle the calculator suggests (BL-81): the material's angle scaled
+// by the machine's rigidity, on a 0.5° grid. On a short path (a small
+// helix) a gentle angle takes many turns to descend one Stepdown, so the
+// angle is raised to the one that needs `maxTurns` — never above `maxDeg`.
+// `pathLength` is one turn/lap of the descent.
+export function suggestedRampAngle(
+  material: MaterialSpec,
+  rigidity: Rigidity,
+  pathLength: number,
+  stepdown: number,
+  limits: { minDeg: number; maxDeg: number; maxTurns: number },
+): { angleDeg: number; baseDeg: number; raisedForTurns: boolean } {
+  const clamp = (deg: number) => Math.min(limits.maxDeg, Math.max(limits.minDeg, deg))
+  const baseDeg = clamp(Math.round((material.rampAngleDeg * rigidityFactor(rigidity)) / RAMP_ANGLE_STEP) * RAMP_ANGLE_STEP)
+  if (!(pathLength > 0) || !(stepdown > 0)) return { angleDeg: baseDeg, baseDeg, raisedForTurns: false }
+  const neededDeg = (Math.atan(stepdown / (limits.maxTurns * pathLength)) * 180) / Math.PI
+  const needed = clamp(Math.ceil(neededDeg / RAMP_ANGLE_STEP - 1e-9) * RAMP_ANGLE_STEP)
+  const angleDeg = Math.max(baseDeg, needed)
+  return { angleDeg, baseDeg, raisedForTurns: angleDeg > baseDeg }
 }
 
 const FINISH_STOCK_STEP = 0.05

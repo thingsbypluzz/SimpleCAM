@@ -21,7 +21,8 @@
   cztery boki; `FACING_METHOD` — jedyna metoda Facing, „Side Milling”,
   bez pickera).
 - `materials.ts` (tabela Feedrate Calculator: Vc, fz 3/6/8+ mm,
-  współczynnik Plunge, Stepdown per zaangażowanie, szerokości, nota),
+  współczynnik Plunge, Stepdown per zaangażowanie, szerokości, Stock to
+  Leave, Ramp Angle, nota),
   `routers.ts` (pozycje pokrętła → RPM, flaga `approximate`; Makita z
   instrukcji, reszta równomiernie w zakresie).
 
