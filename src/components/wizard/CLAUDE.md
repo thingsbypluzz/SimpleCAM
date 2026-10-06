@@ -112,7 +112,9 @@
   pusty ma przerywaną, przygaszoną ramkę z numerem; odstęp `gap-1.5`, żeby
   siedem slotów zmieściło się w panelu razem z paskiem przewijania; `title` i `aria-label`
   mówią „Overwrite preset…” albo „Save… — empty”. Po zapisie krótki zielony
-  „✓”; nadpisanie z potwierdzeniem, usuwanie tylko w Header.
+  „✓”; nadpisanie z potwierdzeniem. Usuwanie tylko tutaj: „×” w prawym
+  górnym rogu zapisanego slotu po najechaniu/fokusie, z potwierdzeniem
+  (`onDeletePreset`); usunięty preset wypada też z Overlay i z edycji.
 - `Checkbox.tsx` — natywny input `sr-only`, własny box z `CheckIcon`, kolory
   zaznaczenia `selected-*` (jak zaznaczona opcja, nie `--accent`),
   `peer-focus-visible` dla fokusu klawiatury; `<label>` jest `relative`,

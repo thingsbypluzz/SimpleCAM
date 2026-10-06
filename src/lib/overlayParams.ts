@@ -14,12 +14,39 @@ import type { WizardParams } from '../types/wizard'
 // view (and rebuild the 3D scene a second time) on every keystroke.
 const NO_OVERLAY: readonly WizardParams[] = Object.freeze([])
 
+//
+// `editingSlot` (BL-107) is the preset being edited inside the overlay: it
+// is left out here, because the previews draw it from the wizard's live
+// parameters instead of its saved copy.
 export function deriveOverlayParams(
   overlaySlots: ReadonlySet<PresetSlotId>,
   presetSlots: Partial<Record<PresetSlotId, WizardParams>>,
+  editingSlot: PresetSlotId | null = null,
 ): readonly WizardParams[] {
   if (overlaySlots.size === 0) return NO_OVERLAY
-  return PRESET_SLOT_IDS.filter((id) => overlaySlots.has(id))
+  const shown = PRESET_SLOT_IDS.filter((id) => overlaySlots.has(id) && id !== editingSlot)
     .map((id) => presetSlots[id])
     .filter((params): params is WizardParams => params !== undefined)
+  return shown.length === 0 ? NO_OVERLAY : shown
+}
+
+// The same presets as last time, in the same order (BL-107): every live
+// save in Edit Mode replaces presetSlots, and the previews rebuild on a new
+// overlayParams reference — so an unchanged list keeps its old reference.
+export function sameOverlayParams(a: readonly WizardParams[], b: readonly WizardParams[]): boolean {
+  return a.length === b.length && a.every((params, i) => params === b[i])
+}
+
+// Which presets are on screen — a change re-fits the previews' view. With
+// an overlay up, the edited preset counts too (it is shown, as the live
+// pattern), so moving the edit between shown presets keeps the view. With
+// no overlay the key is empty: loading or editing a single preset never
+// re-fits.
+export function overlayFitKey(
+  overlaySlots: ReadonlySet<PresetSlotId>,
+  presetSlots: Partial<Record<PresetSlotId, WizardParams>>,
+  editingSlot: PresetSlotId | null = null,
+): string {
+  if (overlaySlots.size === 0) return ''
+  return PRESET_SLOT_IDS.filter((id) => (overlaySlots.has(id) || id === editingSlot) && presetSlots[id] !== undefined).join(',')
 }

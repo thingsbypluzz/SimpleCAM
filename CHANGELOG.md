@@ -7,6 +7,54 @@ zgodne z [SemVer](https://semver.org/). Ten plik pozostaje głównym, czytelnym
 thingsbypluzz/SimpleCAM), ale to infrastruktura pod izolację pracy
 (branch/worktree per zadanie), nie zamiennik tego changeloga.
 
+## [0.45.0] — 2026-10-07
+
+### Dodano
+
+- **Overlay z edycją jednego z podglądanych presetów** (`BL-107`). Tryby
+  Overlay i Edit Mode zastąpiły dwa znaczki na każdym zapisanym slocie w
+  Preset Bar: ptaszek w lewym górnym rogu dokłada preset do nakładki,
+  ołówek w prawym górnym rogu bierze go do edycji z auto-zapisem. Puste
+  kółka pojawiają się po najechaniu, włączone są wypełnione i widoczne
+  stale. Oba znaczki są niezależne i mogą działać naraz.
+  - Edytowany jest zawsze jeden preset: ołówek na innym slocie przenosi
+    edycję, na tym samym ją kończy. Edycja nie dokłada presetu do nakładki.
+  - Edytowany preset jest rysowany na żywo z pól wizarda, pozostałe
+    presety nakładki są przygaszone; materiał to nadal jeden wspólny
+    model. Przy niepoprawnych polach znika tylko ścieżka edytowanego.
+  - Podczas edycji działają Generate, Copy, Download i zakładka G-Code;
+    baner „Preview mode” pojawia się tylko przy samej nakładce.
+  - Kamera dopasowuje się tylko, gdy zmienia się zestaw pokazywanych
+    presetów — nie przy edycji pól ani przy przeniesieniu edycji między
+    widocznymi presetami.
+- **Kolor edycji** — drugi akcent w każdym motywie (Sloppy Indigo —
+  bursztyn, Shopfloor Amber — cyjan, Arcade — róż): znaczek i przycisk
+  ołówka oraz ramka edytowanego slotu. Napis Overlay przy Preset Bar jest
+  w kolorze akcentu; przy nakładce i edycji naraz oba napisy stoją w dwóch
+  wierszach.
+- **Usuwanie presetów w Kroku 4** (`BL-109`): „×” po najechaniu na
+  zapisany slot, z potwierdzeniem.
+
+### Zmieniono
+
+- Klik w slot w Preset Bar wczytuje preset tylko wtedy, gdy nic nie jest
+  w nakładce ani w edycji; inaczej nic nie robi.
+- Przycisk oka: przy aktywnej nakładce czyści ją, zgaszony pokazuje
+  wszystkie zapisane presety. Przycisk ołówka kończy edycję (bez edycji
+  jest nieaktywny).
+- Zniknęły napisy „Edit Mode — select a preset” i „Overlay Mode — select
+  preset(s)” oraz „×” usuwania w Preset Bar.
+
+## [0.44.0] — 2026-10-06
+
+### Dodano
+
+- **Overlay: napis przy Preset Bar** (`BL-105`). Po włączeniu oka na lewo
+  od presetów pojawia się opis trybu, tak jak w Edit Mode: „Overlay Mode —
+  select preset(s)”, a po zaznaczeniu — liczba pokazywanych presetów
+  („Overlay Mode — 2 presets shown”). Baner „Preview mode” w podglądzie
+  zostaje.
+
 ## [0.43.0] — 2026-10-06
 
 ### Dodano

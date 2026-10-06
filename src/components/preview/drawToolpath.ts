@@ -1106,6 +1106,10 @@ function drawPatternGeometry(
 // canvas edges instead, like a ruler.
 const EDGE_MARGIN = 24
 
+// BL-107: how much of an overlaid preset stays visible next to the one
+// being edited — shared with the 3D Preview.
+export const DIMMED_OVERLAY_OPACITY = 0.35
+
 export function drawToolpath(
   ctx: CanvasRenderingContext2D,
   width: number,
@@ -1120,6 +1124,11 @@ export function drawToolpath(
   showStock = true,
   showToolpath = true,
   cutShape = false,
+  // BL-107: Overlay with one preset being edited — the live pattern is that
+  // preset, the overlaid ones are drawn faded behind it; its own toolpath
+  // is left out while its parameters are invalid.
+  dimOverlay = false,
+  showActiveToolpath = true,
 ) {
   const theme = buildTheme(paletteId, isDark, themeId)
 
@@ -1239,9 +1248,22 @@ export function drawToolpath(
       for (const floor of model.floors) fillRegion(ctx, toPx, floor.region, theme.pocketFloorFill)
     }
   }
-  for (const pattern of allPatterns) {
-    drawPatternGeometry(ctx, toPx, camera.scale, pattern, theme, arrowSize, showStock, showToolpath, sheetBounds)
-  }
+  allPatterns.forEach((pattern, index) => {
+    const isActive = showActivePattern && index === allPatterns.length - 1
+    ctx.globalAlpha = dimOverlay && !isActive ? DIMMED_OVERLAY_OPACITY : 1
+    drawPatternGeometry(
+      ctx,
+      toPx,
+      camera.scale,
+      pattern,
+      theme,
+      arrowSize,
+      showStock,
+      showToolpath && (!isActive || showActiveToolpath),
+      sheetBounds,
+    )
+  })
+  ctx.globalAlpha = 1
 
   // BL-86: next to each nominal outline (solid, above), the contour the
   // tool actually leaves — dotted. It runs along the nominal one on

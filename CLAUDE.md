@@ -127,26 +127,41 @@ być wierny.
   (narożniki wewnętrzne zaokrąglone promieniem freza; w 2D kropkowany
   kontur obok ciągłego obrysu nominalnego) — wyłącznik w Settings →
   Appearance.
-- **Header:** Preset Bar `[1]…[7]`, oko Overlay, ołówek Edit Mode, dark/
+- **Header:** Preset Bar `[1]…[7]`, oko Overlay, ołówek edycji, dark/
   light (dark domyślny niezależnie od systemu), Settings.
 - **Auto-save i presety** (`simplecam.storage`): slot `"0"` zapisywany przy
   Generate i wczytywany przy starcie (wizard na Kroku 4 z bannerem
   "Restored from your last session"); sloty `1`–`7` z auto-opisem
   (`presetLabel()`), zapis w Kroku 4 z potwierdzeniem nadpisania, usuwanie
-  „×” z potwierdzeniem. Wczytanie presetu nie zmienia aktywnego kroku.
-- **Overlay:** oko przełącza tryb, w którym klik w slot dodaje/usuwa preset
-  z nakładki (ramka + checkmark), 2D i 3D naraz; żywy wzorzec wtedy
-  ukryty (`showActivePattern`), Generate zablokowany (`canGenerate`), baner
-  "Preview mode"; zmiana selekcji re-fituje kamerę (3D z zachowaniem
-  kąta). Wyłączenie oka czyści selekcję. Ramka wokół grupy presetów
-  widoczna, gdy Overlay albo Edit Mode jest aktywny (kolor, nie grubość —
-  bez skoku layoutu).
-- **Edit Mode** (ołówek): klik w slot = wczytanie + uzbrojenie live-save
-  (radio; ponowny klik rozbraja, tryb zostaje); każda poprawna zmiana
-  zapisuje się od razu do slotu (tylko gdy `isWizardParamsValid`); napis
-  "Edit Mode — select a preset" / "Auto-save Mode Enabled" (kolor błędu
-  przy niepoprawnych parametrach). Overlay i Edit Mode wzajemnie się
-  wyłączają; stan tylko w pamięci; Edit Mode nie blokuje Generate.
+  też w Kroku 4 („×” po najechaniu na zapisany slot, z potwierdzeniem). Wczytanie presetu nie zmienia aktywnego kroku.
+- **Preset Bar — znaczki na slotach.** Zajęty slot ma dwa narożne
+  znaczki: lewy górny (ptaszek, kolor akcentu) — Overlay, prawy górny
+  (ołówek, kolor `--edit`) — edycja. Puste kółko po najechaniu/fokusie,
+  wypełnione i stale widoczne, gdy włączone. Klik w sam slot wczytuje
+  preset tylko wtedy, gdy nic nie jest w Overlay ani w edycji — inaczej
+  nic nie robi.
+- **Overlay:** aktywny, gdy co najmniej jeden slot ma ptaszek (bez
+  osobnego trybu); 2D i 3D naraz. Żywy wzorzec wtedy ukryty
+  (`showActivePattern`), Generate zablokowany (`canGenerate`), baner
+  "Preview mode", na lewo od Preset Bar napis "Overlay Mode — N presets
+  shown"; zmiana zestawu pokazywanych presetów re-fituje kamerę (3D z
+  zachowaniem kąta). Przycisk oka świeci przy aktywnym Overlay i wtedy
+  klik czyści nakładkę; zgaszony — zaznacza wszystkie zapisane presety.
+- **Edycja presetu** (live-save): ołówek na slocie wczytuje preset i
+  uzbraja go (radio — ołówek na innym slocie przenosi edycję, na tym samym
+  rozbraja); każda poprawna zmiana zapisuje się od razu do slotu (tylko
+  gdy `isWizardParamsValid`); napis "Auto-save Mode Enabled" (kolor błędu
+  przy niepoprawnych parametrach). Przycisk ołówka w Header świeci podczas
+  edycji i klik ją rozbraja (bez edycji nieaktywny). Stan tylko w
+  pamięci; edycja nie blokuje Generate.
+- **Overlay + edycja naraz:** niezależne — edycja nie dokłada presetu do
+  nakładki. Edytowany preset jest rysowany z żywych parametrów wizarda
+  jako żywy wzorzec (także gdy ma ptaszek), pozostałe presety nakładki
+  przygaszone; Generate i zakładka G-Code działają dla niego, baner
+  "Preview mode" znika. Przeniesienie edycji między pokazywanymi
+  presetami i edycja pól nie ruszają kamery. Oba napisy przy Preset Bar w
+  dwóch wierszach (Overlay nad edycją). Ramka wokół grupy presetów
+  widoczna, gdy cokolwiek jest w Overlay albo w edycji.
 - **Settings Modal:** Machine, Controller, Tabs, Tool Diameters, Feed
   Tables, Appearance, Privacy, Reset, About (szczegóły: `src/components/CLAUDE.md`).
 - **Feedrate Calculator:** ikona przy Feedrate XY w Kroku 3; z materiału,

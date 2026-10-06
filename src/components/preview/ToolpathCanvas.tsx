@@ -12,6 +12,14 @@ interface ToolpathCanvasProps {
   themeId: ThemeId
   overlayParams: readonly WizardParams[]
   showActivePattern: boolean
+  // BL-107: Overlay with one preset being edited — overlaid presets faded,
+  // the edited (live) one's toolpath hidden while its parameters are invalid.
+  dimOverlay: boolean
+  activeToolpathVisible: boolean
+  // Which presets are shown — a change re-fits the view. Kept apart from
+  // overlayParams, whose contents also change when only the edited preset
+  // moves between the overlay and the live pattern.
+  fitKey: string
   stockVisible: boolean
   toolpathVisible: boolean
   // Stock as the tool leaves it — appearance.cutShapeEnabled.
@@ -30,7 +38,7 @@ export interface Saved2DView {
   fitScale: number
   // The overlay selection the view belongs to — a different one on the
   // next mount means a fresh fit, same as a selection change while mounted.
-  overlayParams: readonly WizardParams[]
+  fitKey: string
 }
 
 // Wheel deltaY -> zoom factor, exponential so repeated small scroll ticks
@@ -45,6 +53,9 @@ export function ToolpathCanvas({
   themeId,
   overlayParams,
   showActivePattern,
+  dimOverlay,
+  activeToolpathVisible,
+  fitKey,
   stockVisible,
   toolpathVisible,
   cutShapeEnabled,
@@ -58,7 +69,7 @@ export function ToolpathCanvas({
   // selection it was framed for.
   const [restored] = useState(() => {
     const saved = viewMemory?.current
-    return saved && saved.overlayParams === overlayParams ? saved : null
+    return saved && saved.fitKey === fitKey ? saved : null
   })
   const [camera, setCamera] = useState<Camera2D | null>(restored?.camera ?? null)
   // Mirrors `camera` state but readable from native event handlers below
@@ -68,14 +79,14 @@ export function ToolpathCanvas({
   // camera2d.ts) is relative to this, not an absolute constant.
   const fitScaleRef = useRef(restored?.fitScale ?? 1)
   const hasFittedRef = useRef(restored !== null)
-  const prevOverlayParamsRef = useRef(overlayParams)
+  const prevFitKeyRef = useRef(fitKey)
   const panStateRef = useRef<{ startX: number; startY: number; startCamera: Camera2D } | null>(null)
 
   useEffect(() => {
     cameraRef.current = camera
     // BL-76: remember the view for the next mount (see viewMemory).
-    if (camera && viewMemory) viewMemory.current = { camera, fitScale: fitScaleRef.current, overlayParams }
-  }, [camera, viewMemory, overlayParams])
+    if (camera && viewMemory) viewMemory.current = { camera, fitScale: fitScaleRef.current, fitKey }
+  }, [camera, viewMemory, fitKey])
 
   // Fit-to-data: recomputed from current bounds + current canvas size.
   // Used for the initial view, the Fit View button, and the BL-3
@@ -124,6 +135,8 @@ export function ToolpathCanvas({
         stockVisible,
         toolpathVisible,
         cutShapeEnabled,
+        dimOverlay,
+        activeToolpathVisible,
       )
     }
 
@@ -143,6 +156,8 @@ export function ToolpathCanvas({
     stockVisible,
     toolpathVisible,
     cutShapeEnabled,
+    dimOverlay,
+    activeToolpathVisible,
   ])
 
   // One-time initial fit, once the container has a real size — mirrors
@@ -161,10 +176,10 @@ export function ToolpathCanvas({
   // when it does this; 2D has no angle, so this is simply a full re-fit.
   useEffect(() => {
     if (!hasFittedRef.current) return
-    if (prevOverlayParamsRef.current === overlayParams) return
-    prevOverlayParamsRef.current = overlayParams
+    if (prevFitKeyRef.current === fitKey) return
+    prevFitKeyRef.current = fitKey
     fitToData()
-  }, [overlayParams, fitToData])
+  }, [fitKey, fitToData])
 
   // Wheel-to-zoom (zoom to cursor) and right-drag-to-pan. Native listeners
   // (not React's onWheel/onContextMenu) so wheel can reliably

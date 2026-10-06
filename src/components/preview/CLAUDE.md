@@ -39,8 +39,14 @@
 - `ToolpathCanvas.tsx` — właściciel kamery: scroll = zoom do kursora, prawy
   przycisk + przeciąganie = pan (menu kontekstowe wyłączone), zoom
   `0.2×`–`20×` względem skali fitu. Fit przy pierwszym montażu; edycja
-  parametrów nie rusza kamery; zmiana selekcji Overlay = pełny re-fit. Fit
+  parametrów nie rusza kamery; zmiana zestawu pokazywanych presetów (prop
+  `fitKey`) = pełny re-fit. Fit
   View w prawym dolnym rogu. **Pamięć widoku** (`viewMemory`, ref z
   `App.tsx`) — kamera + skala fitu zapisywane przy każdej zmianie,
-  odtwarzane przy ponownym montażu dla tej samej selekcji Overlay; tylko w
+  odtwarzane przy ponownym montażu dla tego samego `fitKey`; tylko w
   sesji. Bez gestów dotykowych (`BL-8`).
+- **Edycja presetu w Overlay** (`dimOverlay`): presety nakładki rysowane z
+  kryciem `DIMMED_OVERLAY_OPACITY` (`globalAlpha` na cały wzorzec), żywy
+  wzorzec — edytowany preset — normalnie i na wierzchu.
+  `activeToolpathVisible = false` ukrywa tylko jego ścieżkę (niepoprawne
+  parametry); `toolpathVisible` to wyłącznie przełącznik Hide/Show.

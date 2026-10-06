@@ -35,7 +35,7 @@ import {
   XIcon,
 } from './components/icons'
 import { OPERATION_META } from './config/operationMeta'
-import { deriveOverlayParams } from './lib/overlayParams'
+import { deriveOverlayParams, overlayFitKey, sameOverlayParams } from './lib/overlayParams'
 import { presetLabel } from './lib/presetLabel'
 import {
   AUTO_SAVE_SLOT,
@@ -196,8 +196,10 @@ function App() {
   // remembered inputs (material, flutes, tool material).
   const [isFeedCalcOpen, setIsFeedCalcOpen] = useState(false)
   const [feedCalc, setFeedCalc] = useState(loadFeedCalcSettings)
-  const [overlayEnabled, setOverlayEnabled] = useState(false)
+  // Overlay has no switch of its own (BL-107): it is on while any preset
+  // is picked for it (the checkmark badge on a slot).
   const [overlaySlots, setOverlaySlots] = useState<Set<PresetSlotId>>(new Set())
+  const overlayEnabled = overlaySlots.size > 0
   // BL-36: independent of overlayEnabled/canGenerate — pure view toggles,
   // local-only (not persisted), shared between the 2D and 3D Preview Tabs.
   const [stockVisible, setStockVisible] = useState(true)
@@ -205,15 +207,9 @@ function App() {
   // BL-95: 3D only — opaque, lit stock instead of the translucent one.
   const [stockSolid, setStockSolid] = useState(false)
   const [justLoadedSlot, setJustLoadedSlot] = useState<PresetSlotId | null>(null)
-  // BL-25: global toggle for edit mode, next to overlayEnabled — mutually
-  // exclusive with it (see handleToggleEditMode/handleToggleOverlay). While
-  // on, clicking a preset slot loads it AND arms it for live auto-save
-  // (radio-button style: only one slot armed at a time); while off, Preset
-  // Bar clicks are plain, ordinary loads with no arming path at all.
-  const [editModeEnabled, setEditModeEnabled] = useState(false)
-  // BL-25: the preset slot currently armed for live auto-save. "No slot
-  // selected" is a valid state even while editModeEnabled is true (before
-  // the first pick, or after re-clicking the armed slot to deselect it).
+  // BL-25: the preset slot armed for live auto-save (the pencil badge on a
+  // slot; one at a time). BL-107: independent of Overlay — the edited
+  // preset is shown as the live pattern whether or not it is overlaid.
   // Session-only, never persisted — always starts unarmed on reload.
   const [editingSlot, setEditingSlot] = useState<PresetSlotId | null>(null)
   // BL-47: bumped whenever params are replaced wholesale by a preset load,
@@ -267,10 +263,24 @@ function App() {
   // memoizing, a fresh array literal on every App render (e.g. every
   // wizard keystroke) would trigger that rebuild constantly, not just on
   // an actual overlay-selection change.
-  const overlayParams = useMemo(
-    () => deriveOverlayParams(overlaySlots, presetSlots),
-    [overlaySlots, presetSlots],
+  // BL-107: the armed preset is left out — the previews draw it from the
+  // live params. Every live save replaces presetSlots, so an unchanged
+  // list keeps its previous reference (overlayParamsRef).
+  const overlayParamsRef = useRef<readonly WizardParams[]>([])
+  const overlayParams = useMemo(() => {
+    const next = deriveOverlayParams(overlaySlots, presetSlots, editingSlot)
+    if (sameOverlayParams(next, overlayParamsRef.current)) return overlayParamsRef.current
+    overlayParamsRef.current = next
+    return next
+  }, [overlaySlots, presetSlots, editingSlot])
+  const previewFitKey = useMemo(
+    () => overlayFitKey(overlaySlots, presetSlots, editingSlot),
+    [overlaySlots, presetSlots, editingSlot],
   )
+  // Plain Overlay (nothing armed for editing) hides the live pattern and
+  // blocks Generate; with a preset armed, the live pattern IS that preset.
+  const overlayHidesLive = overlayEnabled && editingSlot === null
+  const editingInOverlay = editingSlot !== null && overlayParams.length > 0
 
   // BL-63: the 2D/3D previews rebuild from a deferred copy of params — a
   // keystroke re-renders the fields right away and the (possibly heavy,
@@ -283,7 +293,7 @@ function App() {
   // note. Judged on the deferred copy, the one the previews actually draw.
   // Overlay hides the live pattern, so its validity doesn't matter there.
   const previewToolpathBlocked =
-    !overlayEnabled && !(previewParams === params ? isGeometryValid : isWizardParamsValid(previewParams))
+    !overlayHidesLive && !(previewParams === params ? isGeometryValid : isWizardParamsValid(previewParams))
 
   // BL-76: each preview's last view, kept here because switching tabs
   // unmounts the preview itself — restored when its tab comes back.
@@ -360,9 +370,7 @@ function App() {
     saveFeedCalcSettings(DEFAULT_FEED_CALC_SETTINGS)
     setFeedCalc(DEFAULT_FEED_CALC_SETTINGS)
     setGeneratedGCode(null)
-    setEditModeEnabled(false)
     setEditingSlot(null)
-    setOverlayEnabled(false)
     setOverlaySlots(new Set())
   }
 
@@ -389,14 +397,12 @@ function App() {
     return true
   }
 
-  // BL-25: plain, ordinary load — the only thing a Preset Bar click does
-  // outside edit mode. No arming path exists here at all; that only ever
-  // happens through handlePresetSlotClick below, and only while
-  // editModeEnabled. BL-39: doesn't touch activeStep — whichever wizard
-  // step was open stays open across a preset switch.
+  // Plain load — what a click on a Preset Bar slot does, and only while
+  // nothing is overlaid or edited (BL-107). BL-39: doesn't touch activeStep
+  // — whichever wizard step was open stays open across a preset switch.
   const handleLoadPreset = (id: PresetSlotId) => {
     const preset = presetSlots[id]
-    if (!preset) return
+    if (!preset || overlayEnabled || editingSlot) return
     setParams(preset)
     setParamsLoadGeneration((n) => n + 1)
     setGeneratedGCode(null)
@@ -407,14 +413,11 @@ function App() {
     setTimeout(() => setJustLoadedSlot((s) => (s === id ? null : s)), 1500)
   }
 
-  // BL-25: Preset Bar click while edit mode is armed — radio-button style.
-  // Clicking the already-armed slot deselects it (edit mode itself stays
-  // on, "nothing selected" is a valid state). Clicking any other occupied
-  // slot loads it AND arms it in the same action — the explicit Edit Mode
-  // toggle is the deliberate gesture now, so load+arm together is safe and
-  // predictable, unlike the old two-click model this replaces. BL-39:
-  // doesn't touch activeStep either, same reasoning as handleLoadPreset.
-  const handlePresetSlotClick = (id: PresetSlotId) => {
+  // BL-25/BL-107: the pencil badge on a slot — radio-button style. On the
+  // armed slot it disarms; on any other it loads that preset AND arms it
+  // (the previous one keeps what was saved). Overlay membership is not
+  // touched either way.
+  const handleEditSlot = (id: PresetSlotId) => {
     const preset = presetSlots[id]
     if (!preset) return
     if (editingSlot === id) {
@@ -428,6 +431,7 @@ function App() {
     setEditingSlot(id)
   }
 
+  // The checkmark badge on a slot.
   const handleToggleOverlaySlot = (id: PresetSlotId) => {
     setOverlaySlots((prev) => {
       const next = new Set(prev)
@@ -437,29 +441,10 @@ function App() {
     })
   }
 
-  // Turning overlay off also clears the selection — re-enabling starts from
-  // a clean slate rather than silently resuming a stale comparison set.
-  // Turning overlay ON drops BL-25 edit mode first — overlay clicks mean
-  // something else entirely, the two mechanisms never run at the same time.
+  // The eye: clears the overlay, or — with nothing overlaid — shows every
+  // saved preset.
   const handleToggleOverlay = () => {
-    if (overlayEnabled) {
-      setOverlaySlots(new Set())
-    } else {
-      setEditModeEnabled(false)
-      setEditingSlot(null)
-    }
-    setOverlayEnabled((v) => !v)
-  }
-
-  // BL-25: symmetric to handleToggleOverlay — turning edit mode on drops
-  // Overlay first, since both repurpose the same Preset Bar click.
-  const handleToggleEditMode = () => {
-    if (!editModeEnabled && overlayEnabled) {
-      setOverlaySlots(new Set())
-      setOverlayEnabled(false)
-    }
-    if (editModeEnabled) setEditingSlot(null)
-    setEditModeEnabled((v) => !v)
+    setOverlaySlots(overlayEnabled ? new Set() : new Set(PRESET_SLOT_IDS.filter((id) => presetSlots[id])))
   }
 
   const handleDeletePreset = (id: PresetSlotId) => {
@@ -472,10 +457,14 @@ function App() {
       delete next[id]
       return next
     })
-    // BL-25: the deleted slot can no longer be a live-save target — clears
-    // the selection but leaves editModeEnabled itself untouched (a slot-less
-    // edit mode is a normal, valid state).
+    // The deleted slot can no longer be edited or overlaid.
     if (editingSlot === id) setEditingSlot(null)
+    setOverlaySlots((prev) => {
+      if (!prev.has(id)) return prev
+      const next = new Set(prev)
+      next.delete(id)
+      return next
+    })
   }
 
   return (
@@ -499,7 +488,7 @@ function App() {
         <div
           className={[
             'relative flex items-center justify-self-center gap-2 rounded-lg border px-2 py-2 transition-colors',
-            overlayEnabled || editModeEnabled ? 'border-border' : 'border-transparent',
+            overlayEnabled || editingSlot ? 'border-border' : 'border-transparent',
           ].join(' ')}
         >
           {/* BL-25: absolutely positioned off the LEFT edge of the preset
@@ -510,83 +499,104 @@ function App() {
               validity-colored "Auto-save Mode Enabled" once a slot is
               picked (green/red per isGeometryValid — red flags moments
               live-save is being skipped for invalid params). */}
-          {editModeEnabled && (
-            <span
-              className={`absolute top-1/2 right-full mr-3 -translate-y-1/2 text-xs font-semibold whitespace-nowrap ${
-                editingSlot ? (isGeometryValid ? 'text-status-success' : 'text-status-error') : 'text-muted'
-              }`}
-            >
-              {editingSlot ? 'Auto-save Mode Enabled' : 'Edit Mode — select a preset'}
-            </span>
+          {(overlayEnabled || editingSlot) && (
+            <div className="absolute top-1/2 right-full mr-3 flex -translate-y-1/2 flex-col items-end gap-0.5 text-xs font-semibold whitespace-nowrap">
+              {/* BL-105: Overlay's label, in Overlay's color; with a preset
+                  being edited too it sits above Edit's (BL-107). */}
+              {overlayEnabled && (
+                <span className="text-accent-fg">
+                  {`Overlay Mode — ${overlaySlots.size} ${overlaySlots.size === 1 ? 'preset' : 'presets'} shown`}
+                </span>
+              )}
+              {editingSlot && (
+                <span className={isGeometryValid ? 'text-status-success' : 'text-status-error'}>
+                  Auto-save Mode Enabled
+                </span>
+              )}
+            </div>
           )}
           {PRESET_SLOT_IDS.map((id) => {
             const preset = presetSlots[id]
             const PresetIcon = preset ? OPERATION_META[preset.operation].pickIcon(preset) : null
-            const isOverlaySelected = overlayEnabled && overlaySlots.has(id)
-            const isEditingSlot = editModeEnabled && editingSlot === id
-            // BL-25: edit-mode selection uses the checkmark badge below
-            // (same visual grammar as Overlay's multi-select), not this
-            // flash — the two never coincide since editModeEnabled and a
-            // plain load are mutually exclusive click paths.
-            const isJustLoaded = !overlayEnabled && !editModeEnabled && justLoadedSlot === id
-            const isSelected = isOverlaySelected || isEditingSlot
+            const isOverlaySelected = overlaySlots.has(id)
+            const isEditingSlot = editingSlot === id
+            // A plain click loads the preset — only while nothing is
+            // overlaid or edited (loading over an armed slot would be
+            // live-saved straight into it).
+            const canLoad = !overlayEnabled && !editingSlot
+            const isJustLoaded = canLoad && justLoadedSlot === id
             const baseClassName = !preset
               ? 'flex h-11 w-11 cursor-default items-center justify-center rounded-md border border-empty-border text-xs font-semibold text-empty-fg'
-              : isSelected
-                ? 'flex h-11 w-11 items-center justify-center rounded-md border-2 border-accent text-accent-fg hover:bg-accent-bg shadow-[var(--glow-accent)]'
-                : 'flex h-11 w-11 items-center justify-center rounded-md border border-accent-border text-accent-fg hover:bg-accent-bg shadow-[var(--glow-accent)]'
+              : isEditingSlot
+                ? 'flex h-11 w-11 items-center justify-center rounded-md border-2 border-edit text-edit-fg shadow-[var(--glow-edit)]'
+                : isOverlaySelected
+                  ? 'flex h-11 w-11 items-center justify-center rounded-md border-2 border-accent text-accent-fg shadow-[var(--glow-accent)]'
+                  : `flex h-11 w-11 items-center justify-center rounded-md border border-accent-border text-accent-fg shadow-[var(--glow-accent)]${canLoad ? ' hover:bg-accent-bg' : ''}`
+            // The two corner badges (BL-107): an empty ring on hover/focus,
+            // filled while on — so the state never rests on color alone.
+            const badgeBase =
+              'absolute flex h-5 w-5 items-center justify-center rounded-full border transition-opacity focus-visible:opacity-100'
+            const badgeHidden = ' opacity-0 group-hover:opacity-100 group-focus-within:opacity-100'
             return (
               <div key={id} className="group relative">
                 <button
                   type="button"
-                  onClick={() =>
-                    overlayEnabled
-                      ? handleToggleOverlaySlot(id)
-                      : editModeEnabled
-                        ? handlePresetSlotClick(id)
-                        : handleLoadPreset(id)
-                  }
+                  onClick={() => handleLoadPreset(id)}
                   disabled={!preset}
-                  // Selection only exists in Overlay/Edit Mode; a plain
-                  // load is a one-shot action, not a toggle.
-                  aria-pressed={preset && (overlayEnabled || editModeEnabled) ? isSelected : undefined}
+                  aria-disabled={preset && !canLoad ? true : undefined}
                   title={
                     !preset
                       ? `Preset [${id}] — empty`
-                      : overlayEnabled
-                        ? `${isOverlaySelected ? 'Remove' : 'Add'} preset [${id}] — ${presetLabel(preset)} ${isOverlaySelected ? 'from' : 'to'} overlay`
-                        : editModeEnabled
-                          ? isEditingSlot
-                            ? `Editing preset [${id}] — ${presetLabel(preset)} (auto-saving, click to deselect)`
-                            : `Select preset [${id}] — ${presetLabel(preset)} (loads it and starts auto-save)`
-                          : `Load preset [${id}] — ${presetLabel(preset)}`
+                      : canLoad
+                        ? `Load preset [${id}] — ${presetLabel(preset)}`
+                        : `Preset [${id}] — ${presetLabel(preset)}`
                   }
-                  className={`${baseClassName} transition-shadow duration-700${isJustLoaded ? ' ring-2 ring-accent ring-offset-2 ring-offset-bg' : ''}`}
+                  className={`${baseClassName}${preset && !canLoad ? ' cursor-default' : ''} transition-shadow duration-700${isJustLoaded ? ' ring-2 ring-accent ring-offset-2 ring-offset-bg' : ''}`}
                 >
                   {PresetIcon ? <PresetIcon className="h-7 w-7" /> : id}
                 </button>
-                {preset && isSelected && (
-                  <span
-                    aria-hidden="true"
-                    className="absolute -top-1 -left-1 flex h-4 w-4 items-center justify-center rounded-full bg-accent text-btn-fg"
-                  >
-                    <CheckIcon className="h-2.5 w-2.5" />
-                  </span>
-                )}
-                {preset && !overlayEnabled && (
+                {preset && (
                   <button
                     type="button"
-                    onClick={() => handleDeletePreset(id)}
-                    aria-label={`Delete preset ${id}`}
-                    title="Delete preset"
-                    className="absolute -top-1.5 -right-1.5 flex h-5 w-5 items-center justify-center rounded-full bg-status-delete-bg text-xs leading-none font-bold text-status-delete-fg opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100 focus-visible:opacity-100"
+                    onClick={() => handleToggleOverlaySlot(id)}
+                    aria-pressed={isOverlaySelected}
+                    aria-label={`Show preset ${id} in overlay`}
+                    title={`${isOverlaySelected ? 'Remove' : 'Add'} preset [${id}] ${isOverlaySelected ? 'from' : 'to'} overlay`}
+                    className={`${badgeBase} -top-1.5 -left-1.5 ${
+                      isOverlaySelected
+                        ? 'border-accent bg-accent text-btn-fg'
+                        : `border-accent bg-bg text-accent-fg${badgeHidden}`
+                    }`}
                   >
-                    ×
+                    <CheckIcon className="h-3 w-3" />
+                  </button>
+                )}
+                {preset && (
+                  <button
+                    type="button"
+                    onClick={() => handleEditSlot(id)}
+                    aria-pressed={isEditingSlot}
+                    aria-label={`Edit preset ${id}`}
+                    title={
+                      isEditingSlot
+                        ? `Editing preset [${id}] (auto-saving) — click to stop`
+                        : `Edit preset [${id}] — loads it and auto-saves further changes`
+                    }
+                    className={`${badgeBase} -top-1.5 -right-1.5 ${
+                      isEditingSlot
+                        ? 'border-edit bg-edit text-edit-on'
+                        : `border-edit bg-bg text-edit-fg${badgeHidden}`
+                    }`}
+                  >
+                    <PencilIcon className="h-3 w-3" />
                   </button>
                 )}
               </div>
             )
           })}
+          {/* BL-107: the eye and the pencil show whether anything is
+              overlaid / edited and switch it off; the unlit eye shows every
+              saved preset at once. Picking happens on the slots' badges. */}
           <button
             type="button"
             onClick={handleToggleOverlay}
@@ -594,8 +604,8 @@ function App() {
             aria-pressed={overlayEnabled}
             title={
               overlayEnabled
-                ? 'Overlay preview: on — click preset slots to add/remove them from the 2D/3D overlay'
-                : 'Overlay preview: off — click to compare saved presets against the current pattern'
+                ? 'Overlay preview: on — click to remove every preset from the overlay'
+                : 'Overlay preview: off — click to show all saved presets (or use the checkmark on a preset)'
             }
             className={[
               'ml-11 flex h-11 w-11 items-center justify-center rounded-md border transition',
@@ -606,25 +616,22 @@ function App() {
           >
             <EyeIcon className="h-5 w-5" />
           </button>
-          {/* BL-25: Edit Mode toggle — same visual pattern as the Overlay
-              eye button, always clickable (never disabled), mutually
-              exclusive with Overlay via handleToggleEditMode/
-              handleToggleOverlay. */}
           <button
             type="button"
-            onClick={handleToggleEditMode}
-            aria-label="Toggle preset edit mode"
-            aria-pressed={editModeEnabled}
+            onClick={() => setEditingSlot(null)}
+            disabled={!editingSlot}
+            aria-label="Stop editing the preset"
+            aria-pressed={editingSlot !== null}
             title={
-              editModeEnabled
-                ? 'Edit mode: on — click a preset slot to load it and auto-save further changes back to it live'
-                : 'Edit mode: off — click to select a preset and auto-save changes back to it'
+              editingSlot
+                ? `Editing preset [${editingSlot}] — click to stop auto-saving`
+                : 'Not editing — use the pencil on a preset to edit it'
             }
             className={[
               'flex h-11 w-11 items-center justify-center rounded-md border transition',
-              editModeEnabled
-                ? 'border-2 border-accent bg-accent-bg text-accent-fg shadow-[var(--glow-accent)]'
-                : 'border-border text-value hover:bg-border/40',
+              editingSlot
+                ? 'border-2 border-edit bg-edit-bg text-edit-fg shadow-[var(--glow-edit)]'
+                : 'border-border text-value opacity-50',
             ].join(' ')}
           >
             <PencilIcon className="h-5 w-5" />
@@ -727,10 +734,11 @@ function App() {
                         onChange={updateParams}
                         generatedGCode={generatedGCode}
                         onGenerate={handleGenerate}
-                        canGenerate={isGeometryValid && !overlayEnabled}
-                        overlayActive={overlayEnabled}
+                        canGenerate={isGeometryValid && !overlayHidesLive}
+                        overlayActive={overlayHidesLive}
                         presetSlots={presetSlots}
                         onSaveToPreset={handleSaveToPreset}
+                        onDeletePreset={handleDeletePreset}
                         warnings={step4Warnings}
                       />
                     </>
@@ -890,7 +898,7 @@ function App() {
           </div>
 
           <div className="relative flex flex-1 flex-col overflow-hidden shadow-[var(--preview-inset)]">
-            {overlayEnabled && previewTab !== 'gcode' && (
+            {overlayHidesLive && previewTab !== 'gcode' && (
               <div className="pointer-events-none absolute top-3 left-1/2 z-10 -translate-x-1/2 rounded-full bg-accent px-3 py-1 text-xs font-semibold text-btn-fg shadow-lg">
                 Preview mode
               </div>
@@ -912,9 +920,12 @@ function App() {
                 paletteId={appearance.palette}
                 themeId={appearance.theme}
                 overlayParams={overlayParams}
-                showActivePattern={!overlayEnabled}
+                showActivePattern={!overlayHidesLive}
+                dimOverlay={editingInOverlay}
+                activeToolpathVisible={!previewToolpathBlocked}
+                fitKey={previewFitKey}
                 stockVisible={stockVisible}
-                toolpathVisible={toolpathVisible && !previewToolpathBlocked}
+                toolpathVisible={toolpathVisible}
                 cutShapeEnabled={appearance.cutShapeEnabled}
                 onToggleStockVisible={() => setStockVisible((v) => !v)}
                 onToggleToolpathVisible={() => setToolpathVisible((v) => !v)}
@@ -936,11 +947,14 @@ function App() {
                   paletteId={appearance.palette}
                   themeId={appearance.theme}
                   overlayParams={overlayParams}
-                  showActivePattern={!overlayEnabled}
+                  showActivePattern={!overlayHidesLive}
+                  dimOverlay={editingInOverlay}
+                  activeToolpathVisible={!previewToolpathBlocked}
+                  fitKey={previewFitKey}
                   gridLabelsEnabled={appearance.grid3DLabelsEnabled}
                   gridLabelSize={appearance.grid3DLabelSize}
                   stockVisible={stockVisible}
-                  toolpathVisible={toolpathVisible && !previewToolpathBlocked}
+                  toolpathVisible={toolpathVisible}
                   stockSolid={stockSolid}
                   stockEdgesEnabled={appearance.stockEdges3DEnabled}
                   cutShapeEnabled={appearance.cutShapeEnabled}

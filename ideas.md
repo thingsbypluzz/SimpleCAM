@@ -694,12 +694,11 @@ Waga z review w nawiasie kwadratowym.
   implementacji). Do sprawdzenia: otwieranie w nowej karcie
   (`rel="noopener noreferrer"`), czy sekcja Privacy wymaga wzmianki (sam
   link nie wysyła nic, dopóki nie zostanie kliknięty).
-- **`BL-105`** *(Otwarty)* 🟢 — **Overlay: napis przy Preset Bar.**
-  Zgłoszone 2026-10-06. Po włączeniu oka Overlay pokazać na lewo od
-  presetów opis, tak jak w Edit Mode („Edit Mode — select a preset”) —
-  np. „Overlay Mode — select preset(s)”. Do ustalenia: czy napis zmienia
-  się po zaznaczeniu presetów (np. liczba wybranych) i co z banerem
-  „Preview mode” w podglądzie — zostaje czy napis go zastępuje.
+- **`BL-105`** *(Zrealizowany, 2026-10-06)* 🟢 — **Overlay: napis przy
+  Preset Bar.** Po włączeniu oka Overlay na lewo od presetów pojawia się
+  napis jak w Edit Mode: „Overlay Mode — select preset(s)”, a po
+  zaznaczeniu „Overlay Mode — N preset(s) shown”. Baner „Preview mode” w
+  podglądzie zostaje (tłumaczy, czemu nie widać żywego wzorca).
 - **`BL-106`** *(Zrealizowany, 2026-10-06)* 🟠 — **Outline Lobed Circle:
   tryb Add / Subtract.** Po `OP-8`. Okręgi na okręgu podziałowym można
   dodać do okręgu głównego (wypustki) albo z niego wyciąć (wcięcia).
@@ -709,7 +708,7 @@ Waga z review w nawiasie kwadratowym.
   Geometria lustrzana do Add (różnica okręgów, `outsetLoop()`), nadal
   dokładne łuki. Subtract w Pocket poza zakresem. Pełny opis:
   `CHANGELOG.md`, `[0.43.0]`.
-- **`BL-107`** *(Otwarty)* 🔴 — **Overlay z jednoczesną edycją jednego z
+- **`BL-107`** *(Zrealizowany, 2026-10-06)* 🔴 — **Overlay z jednoczesną edycją jednego z
   podglądanych presetów.** Zgłoszone 2026-10-06 — **sesja `/grill-me`
   obowiązkowa**. Dziś Overlay i Edit Mode wzajemnie się wyłączają, a w
   Overlay żywy wzorzec jest ukryty i Generate zablokowany. Pomysł:
@@ -727,6 +726,50 @@ Waga z review w nawiasie kwadratowym.
   presetach); kamera (dziś zmiana selekcji re-fituje); kolory w motywach
   bez drugiego akcentu (Sloppy Indigo, Shopfloor Amber) i reguła „stan
   nigdy tylko kolorem”; relacja z `BL-105` (napis przy Preset Bar).
+  **Obsługa po pierwszych testach (zmieniona względem ustaleń niżej):**
+  zamiast dwóch trybów — dwa znaczki na każdym slocie (ptaszek = Overlay,
+  ołówek = edycja), niezależne; edycja nie dokłada presetu do nakładki;
+  klik w slot wczytuje tylko, gdy nic nie jest w Overlay ani w edycji;
+  oko = wyczyść nakładkę / pokaż wszystkie, ołówek w Header = zakończ
+  edycję; usuwanie presetów w Kroku 4 (`BL-109`). Podglądy, Generate,
+  kolory i kamera — jak ustalono.
+  **Ustalenia z `/grill-me` (2026-10-06):**
+  - *Maszyna stanów.* Oko i ołówek to niezależne przełączniki, mogą
+    świecić naraz. Ołówek ma pierwszeństwo: gdy świeci, klik w slot
+    wybiera preset do edycji (radio) i dokłada go do nakładki, jeśli go
+    tam nie było; gdy nie świeci, klik dodaje/usuwa z nakładki jak dziś.
+    Sam ołówek = dzisiejszy Edit Mode. Ponowny klik w edytowany slot
+    rozbraja go, preset zostaje w nakładce. Wyłączenie oka w trybie
+    łączonym zostawia zwykły Edit Mode z uzbrojonym presetem. Włączenie
+    oka w Edit Mode nie gasi ołówka — edytowany preset staje się
+    pierwszym w nakładce, kolejne kliki przełączają edycję i dokładają
+    presety. Wyłączenie ołówka rozbraja edycję, nakładka zostaje.
+  - *Podglądy.* Edytowany preset rysowany z żywych parametrów wizarda
+    (nie z wersji w slocie), normalnie; ścieżki pozostałych przygaszone
+    (mniejsze krycie). Materiał — wspólny model jak dziś. Przy
+    niepoprawnych parametrach edytowanego: jego kształt zostaje, ścieżka
+    znika, napis „Fix the highlighted fields…”, reszta bez zmian;
+    live-save wtedy nie zapisuje.
+  - *Generate.* Z uzbrojonym presetem Generate, Copy, Download i zakładka
+    G-Code działają dla niego; bez uzbrojonego Overlay blokuje jak dziś
+    (baner „Preview mode” tylko wtedy).
+  - *Kolory.* Nowy token koloru Edit w każdym motywie (Arcade — magenta,
+    Sloppy Indigo — bursztyn, Shopfloor Amber — turkus/cyjan; nie może
+    mylić się z błędem ani ostrzeżeniem). Ołówek i edytowany slot zawsze
+    w kolorze Edit (także w zwykłym Edit Mode), oko i podglądane sloty w
+    kolorze Overlay. Poza kolorem: podglądane sloty mają ptaszek,
+    edytowany — mały ołówek.
+  - *Kamera.* Re-fit tylko, gdy zmienia się zestaw pokazywanych presetów;
+    edycja pól i przełączenie edytowanego presetu już widocznego nie
+    ruszają widoku.
+  - *Napisy.* Gdy świecą oba tryby — dwa napisy w dwóch wierszach na lewo
+    od Preset Bar: Overlay w kolorze Overlay nad napisem Edit w kolorze
+    Edit (napis Edit po uzbrojeniu zielony/czerwony wg poprawności).
+- **`BL-109`** *(Zrealizowany, 2026-10-07)* 🟢 — **Usuwanie presetów w
+  Kroku 4.** Razem z `BL-107`: „×” po najechaniu na zapisany slot w Kroku
+  4, z potwierdzeniem; z Preset Bar usuwanie zniknęło (prawy górny róg
+  slotu zajął znaczek edycji). Usunięty preset wypada z Overlay i z
+  edycji.
 - **`BL-108`** *(Otwarty)* 🟠 — **Pocket: kształt Donut (kieszeń
   pierścieniowa).** Zgłoszone 2026-10-06. Nowy kształt w Pocket: okrąg z
   zostawionym środkiem (wyspą) o wybranej średnicy — wybierany jest

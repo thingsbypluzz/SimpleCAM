@@ -20,7 +20,7 @@ import { facingBlockCorners, facingStripCorners, facingViewBounds, type FacingBo
 import { buildPocketToolpath } from '../../lib/pocket'
 import { movePoints, type MoveKind, type Toolpath } from '../../lib/toolpath'
 import { pocketCenter } from '../../lib/pocketGeometry'
-import { stockSheetRect } from '../preview/drawToolpath'
+import { DIMMED_OVERLAY_OPACITY, stockSheetRect } from '../preview/drawToolpath'
 import { stockModel, type StockModel } from '../../lib/stockModel'
 import type { MultiPolygon, Ring } from 'polygon-clipping'
 import type { Point2D, PocketShape, WizardParams } from '../../types/wizard'
@@ -1057,6 +1057,10 @@ export function buildToolpathScene(
   solidStock = false,
   stockEdges = true,
   cutShape = false,
+  // BL-107: see drawToolpath() — overlaid presets faded, the edited one's
+  // toolpath left out while its parameters are invalid.
+  dimOverlay = false,
+  showActiveToolpath = true,
 ): BuiltScene {
   const theme = buildTheme(paletteId, isDark, themeId)
 
@@ -1319,11 +1323,38 @@ export function buildToolpathScene(
     minY: -gridCenterZ - gridSize / 2,
     maxY: -gridCenterZ + gridSize / 2,
   }
-  for (const pattern of allPatterns) {
-    objects.push(...buildPatternObjects(pattern, theme, span, arrowSize, showStock, showToolpath, solidStock, stockEdges, sheetBounds))
-  }
+  allPatterns.forEach((pattern, index) => {
+    const isActive = showActivePattern && index === allPatterns.length - 1
+    const patternObjects = buildPatternObjects(
+      pattern,
+      theme,
+      span,
+      arrowSize,
+      showStock,
+      showToolpath && (!isActive || showActiveToolpath),
+      solidStock,
+      stockEdges,
+      sheetBounds,
+    )
+    if (dimOverlay && !isActive) patternObjects.forEach(dimLines)
+    objects.push(...patternObjects)
+  })
 
   return { objects, labels, bounds, background: theme.material }
+}
+
+// BL-107: fades a pattern's lines (toolpath, outline, offset vector) — its
+// meshes (a Surface/Facing stock block) keep their own opacity. Every line
+// owns its material, so this never leaks into another pattern.
+function dimLines(obj: THREE.Object3D) {
+  obj.traverse((child) => {
+    if (!(child instanceof THREE.Line)) return
+    const materials = Array.isArray(child.material) ? child.material : [child.material]
+    for (const material of materials) {
+      material.transparent = true
+      material.opacity *= DIMMED_OVERLAY_OPACITY
+    }
+  })
 }
 
 export function disposeObject3D(obj: THREE.Object3D) {

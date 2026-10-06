@@ -578,7 +578,13 @@ booli 2D na przekrojach (`polygon-clipping`, okręgi po 72 odcinki).
 - `download.ts::buildFilename()` — `op-<pattern|shape slug>-<data>.gcode`.
 - `overlayParams.ts::deriveOverlayParams()` — parametry nałożonych presetów
   w stałej kolejności `[1]…[7]`; bez zaznaczeń zawsze ta sama zamrożona
-  pusta tablica (nowa referencja = zmiana selekcji dla podglądów).
+  pusta tablica. Preset edytowany w nakładce (`editingSlot`) jest pomijany
+  — podglądy rysują go z żywych parametrów. `sameOverlayParams()` pozwala
+  `App.tsx` zachować referencję listy, gdy live-save podmienia
+  `presetSlots` (nowa referencja = przebudowa sceny 3D);
+  `overlayFitKey()` — identyfikatory pokazywanych slotów (z edytowanym,
+  gdy jest nakładka; bez nakładki pusty), klucz re-fitu kamery w obu
+  podglądach.
 
 ## Testy
 
