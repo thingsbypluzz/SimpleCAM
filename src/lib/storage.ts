@@ -3,6 +3,7 @@ import {
   type CutDirection,
   type GeometryParams,
   type InterpolationMode,
+  type LobeMode,
   type MethodType,
   type OffsetMode,
   type OperationType,
@@ -147,6 +148,7 @@ const GEOMETRY_GUARDS: Partial<Record<keyof GeometryParams, FieldGuard>> = {
 const OUTLINE_GUARDS: Partial<Record<keyof OutlineParams, FieldGuard>> = {
   shape: oneOf<OutlineShape>(['rectCornered', 'rectCentered', 'circle', 'lobedCircle']),
   offsetMode: oneOf<OffsetMode>(['inside', 'outside', 'onLine']),
+  lobeMode: oneOf<LobeMode>(['add', 'subtract']),
   // Shape/method mismatches (e.g. ramp on a circle) are already handled by
   // the Standard fallback in activeOutlineMethodMeta()/generateOutline().
   method: oneOf<OutlineMethod>(['ramp', 'standard', 'helix']),

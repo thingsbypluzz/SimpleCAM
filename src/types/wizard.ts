@@ -12,6 +12,10 @@ export type OutlineShape = 'rectCornered' | 'rectCentered' | 'circle' | 'lobedCi
 
 export type OffsetMode = 'inside' | 'outside' | 'onLine'
 
+// Lobed Circle (BL-106): the lobe circles are added to the main circle, or
+// cut out of it (notches on its rim).
+export type LobeMode = 'add' | 'subtract'
+
 export type SurfaceShape = 'rectCornered' | 'rectCentered'
 
 export type SurfaceMethodType = 'zigzag' | 'unidirectional'
@@ -88,6 +92,7 @@ export interface OutlineParams {
   rampAngleDeg: number // Circle Helix / Rectangle and Lobed Circle Ramp only — caps the pitch per turn/lap below Stepdown (BL-80)
   // Lobed Circle only (OP-8).
   lobeMainDiameter: number // mm, the main circle
+  lobeMode: LobeMode
   lobeCount: number
   lobePitchDiameter: number // mm, the circle the lobe centers sit on
   lobeDiameter: number // mm, each lobe
@@ -250,6 +255,7 @@ export const DEFAULT_WIZARD_PARAMS: WizardParams = {
     tabCount: 3,
     rampAngleDeg: 2,
     lobeMainDiameter: 60,
+    lobeMode: 'add',
     lobeCount: 5,
     lobePitchDiameter: 70,
     lobeDiameter: 16,

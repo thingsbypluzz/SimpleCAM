@@ -332,3 +332,36 @@ describe('Lobed Circle (OP-8)', () => {
     expect(area(part.top) - area(drilled.top)).toBeCloseTo(5 * circleArea(3), 1)
   })
 })
+
+describe('Lobed Circle — Subtract (BL-106)', () => {
+  const notched = (offsetMode: 'inside' | 'outside' | 'onLine'): WizardParams => ({
+    ...DEFAULT_WIZARD_PARAMS,
+    operation: 'outline',
+    outline: { ...DEFAULT_WIZARD_PARAMS.outline, shape: 'lobedCircle', lobeMode: 'subtract', lobePitchDiameter: 60, offsetMode, toolDiameter: 6, totalDepth: 4 },
+  })
+  const MAIN = Math.PI * 30 * 30
+
+  it('Outside: the part is the main circle with the notches cut out, sharp either way', () => {
+    const nominal = stockModel([notched('outside')], sheet)!
+    expect(nominal.solid).toBe(true)
+    expect(area(nominal.top)).toBeLessThan(MAIN)
+    expect(area(nominal.top)).toBeGreaterThan(MAIN - 5 * Math.PI * 8 * 8)
+    expect(area(stockModel([notched('outside')], sheet, true)!.top)).toBeCloseTo(area(nominal.top), 6)
+    expect(cutContours(notched('outside'))).toHaveLength(0)
+  })
+
+  it('Inside: the cut shape rounds the teeth — a slightly smaller hole', () => {
+    const nominal = SHEET_AREA - area(stockModel([notched('inside')], sheet)!.top)
+    const cut = SHEET_AREA - area(stockModel([notched('inside')], sheet, true)!.top)
+    expect(cut).toBeLessThan(nominal)
+    expect(nominal - cut).toBeLessThan(30)
+    expect(cutContours(notched('inside'))).toHaveLength(1)
+  })
+
+  it('On-line: a band around the notched outline with the island inside', () => {
+    const model = stockModel([notched('onLine')], sheet)!
+    const removed = SHEET_AREA - area(model.top)
+    expect(removed).toBeGreaterThan(2 * Math.PI * 30 * 6)
+    expect(removed).toBeLessThan(MAIN)
+  })
+})

@@ -4,7 +4,7 @@ import { DEFAULT_WIZARD_PARAMS, type OutlineParams, type WizardParams } from '..
 import { arcRadiusMismatches } from './gcodeTestUtils'
 import { generateOutline } from './outline'
 import { buildLobedToolpath, lobedOutlineOptions } from './outlineLobed'
-import { lobedUnionLoop, distanceToLoop, loopLength } from './outlineLobedGeometry'
+import { lobedNominalLoop, lobedUnionLoop, distanceToLoop, loopLength } from './outlineLobedGeometry'
 import { movePoints, type Point3D } from './toolpath'
 
 const params = (outline: Partial<OutlineParams> = {}, feeds: Partial<WizardParams['feeds']> = {}): WizardParams => ({
@@ -124,5 +124,44 @@ describe('Lobed Circle tabs', () => {
     for (const q of crossings) expect(Math.hypot(q.x, q.y)).toBeGreaterThan(45.5)
     expect(Math.min(...points.map((q) => q.z))).toBeCloseTo(-4, 9)
     expect(generateOutline(p, DEFAULT_MACHINE_SETTINGS).some((l) => /^G[23] /.test(l))).toBe(false)
+  })
+})
+
+describe('Lobed Circle — Subtract (BL-106)', () => {
+  const notched = (outline: Partial<OutlineParams> = {}, feeds: Partial<WizardParams['feeds']> = {}) =>
+    params({ lobeMode: 'subtract', lobePitchDiameter: 60, ...outline }, feeds)
+
+  it('keeps the tool a radius off the notched outline in every mode, with consistent arcs', () => {
+    for (const method of ['standard', 'ramp'] as const) {
+      for (const offsetMode of ['outside', 'inside'] as const) {
+        const p = notched({ method, offsetMode })
+        const nominal = lobedNominalLoop(p.outline)
+        const cutting = trace(p).filter((q) => q.z < 0)
+        expect(cutting.length).toBeGreaterThan(10)
+        for (const pt of cutting) expect(distanceToLoop(nominal, pt)).toBeGreaterThan(3 - 1e-6)
+        const lines = generateOutline(p, DEFAULT_MACHINE_SETTINGS)
+        expect(lines.some((l) => /^G[23] /.test(l))).toBe(true)
+        expect(arcRadiusMismatches(lines)).toEqual([])
+      }
+    }
+    expect(arcRadiusMismatches(generateOutline(notched({ offsetMode: 'onLine' }), DEFAULT_MACHINE_SETTINGS))).toEqual([])
+  })
+
+  it('starts on the main circle half-way between two notches', () => {
+    // First notch at 90°, five of them: start at 126°, radius 30 + 3.
+    const { start } = buildLobedToolpath(notched())
+    expect(start.x).toBeCloseTo(33 * Math.cos((126 * Math.PI) / 180), 6)
+    expect(start.y).toBeCloseTo(33 * Math.sin((126 * Math.PI) / 180), 6)
+  })
+
+  it('cuts nothing Outside when the tool does not fit the notches', () => {
+    expect(buildLobedToolpath(notched({ toolDiameter: 16 })).moves.filter((m) => m.kind === 'cut')).toHaveLength(0)
+  })
+
+  it('takes tabs along the notched path', () => {
+    const opts = lobedOutlineOptions(notched({ tabsEnabled: true, tabHeight: 1, tabWidth: 4, tabCount: 5, tabStartAngle: 126 }, { stepdown: 1 }))
+    expect(opts.tabs!.ranges).toHaveLength(5)
+    const points = trace(notched({ tabsEnabled: true, tabHeight: 1, tabWidth: 4, tabCount: 5, tabStartAngle: 126 }, { stepdown: 1 }))
+    expect(Math.min(...points.map((q) => q.z))).toBeCloseTo(-4, 9)
   })
 })

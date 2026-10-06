@@ -287,4 +287,13 @@ describe('field validation on load (BL-57)', () => {
     storeAutoSave({ operation: 'outline', outline: { shape: 'circle', diameter: 30 } })
     expect(loadSlot(AUTO_SAVE_SLOT)!.outline.lobePitchDiameter).toBe(70)
   })
+
+  it('loads the Lobed Circle mode; a snapshot saved before it is Add (BL-106)', () => {
+    storeAutoSave({ operation: 'outline', outline: { shape: 'lobedCircle', lobeMode: 'subtract' } })
+    expect(loadSlot(AUTO_SAVE_SLOT)!.outline.lobeMode).toBe('subtract')
+    storeAutoSave({ operation: 'outline', outline: { shape: 'lobedCircle', lobeMode: 'bogus' } })
+    expect(loadSlot(AUTO_SAVE_SLOT)!.outline.lobeMode).toBe('add')
+    storeAutoSave({ operation: 'outline', outline: { shape: 'lobedCircle' } })
+    expect(loadSlot(AUTO_SAVE_SLOT)!.outline.lobeMode).toBe('add')
+  })
 })

@@ -4,6 +4,7 @@ import {
   isOutlineLobeCountValid,
   isOutlineLobeGapTooNarrow,
   isOutlineLobesAttached,
+  isOutlineNotchesSeparate,
   isOutlineSizeValid,
   isOutlineTabCountValid,
   isOutlineTabHeightValid,
@@ -23,6 +24,8 @@ import { PickHeader } from './PickHeader'
 import { RampAngleFields } from './RampAngleFields'
 import { OffsetModePicker } from './OffsetModePicker'
 import { OutlineMethodPicker } from './OutlineMethodPicker'
+import { TextToggle } from './TextToggle'
+import { LOBE_MODE_OPTIONS } from './toggleOptions'
 import { useNumberField } from './useNumberField'
 
 interface Step2GeometryOutlineProps {
@@ -69,6 +72,8 @@ export function Step2GeometryOutline({ params, onChange, machine, toolDiameters,
   const isLobed = outline.shape === 'lobedCircle'
   const lobeCountInvalid = !isOutlineLobeCountValid(outline)
   const lobesDetached = !isOutlineLobesAttached(outline)
+  const isSubtract = isLobed && outline.lobeMode === 'subtract'
+  const notchesOverlap = !isOutlineNotchesSeparate(outline)
 
   // BL-66: the same conditions that show the errors below also mark the
   // fields they concern (aria-invalid -> error styling in inputClass).
@@ -174,7 +179,7 @@ export function Step2GeometryOutline({ params, onChange, machine, toolDiameters,
                     min="1"
                     max={MAX_LOBE_COUNT}
                     className={inputClass}
-                    aria-invalid={lobeCountInvalid}
+                    aria-invalid={lobeCountInvalid || notchesOverlap}
                     {...lobeCountField}
                   />
                 </FieldRow>
@@ -189,7 +194,7 @@ export function Step2GeometryOutline({ params, onChange, machine, toolDiameters,
                     step="0.1"
                     min="0"
                     className={inputClass}
-                    aria-invalid={!(outline.lobePitchDiameter > 0) || lobesDetached}
+                    aria-invalid={!(outline.lobePitchDiameter > 0) || lobesDetached || notchesOverlap}
                     {...lobePitchField}
                   />
                 </FieldRow>
@@ -203,7 +208,7 @@ export function Step2GeometryOutline({ params, onChange, machine, toolDiameters,
                     step="0.1"
                     min="0"
                     className={inputClass}
-                    aria-invalid={!(outline.lobeDiameter > 0) || lobesDetached || (toolInvalid && isLobed)}
+                    aria-invalid={!(outline.lobeDiameter > 0) || lobesDetached || notchesOverlap || (toolInvalid && isLobed)}
                     {...lobeDiameterField}
                   />
                 </FieldRow>
@@ -220,6 +225,11 @@ export function Step2GeometryOutline({ params, onChange, machine, toolDiameters,
         {lobeCountInvalid && (
           <p className="text-sm text-status-error">Lobe count must be a whole number from 1 to {MAX_LOBE_COUNT}.</p>
         )}
+        {notchesOverlap && (
+          <p className="text-sm text-status-error">
+            In Subtract the notches can't touch or overlap — some of the main circle's rim has to stay between them.
+          </p>
+        )}
         {lobesDetached && (
           <p className="text-sm text-status-error">
             Every lobe has to cross the main circle — with these sizes it is either apart from it or hidden inside it.
@@ -227,9 +237,18 @@ export function Step2GeometryOutline({ params, onChange, machine, toolDiameters,
         )}
       </div>
 
-      <div className="flex flex-col gap-1">
-        <span className="text-sm font-medium text-value">Offset Mode</span>
-        <OffsetModePicker params={params} onChange={onChange} />
+      {/* Lobed Circle: Add / Subtract to the right of Offset Mode (BL-106). */}
+      <div className="flex gap-4">
+        <div className="flex min-w-0 flex-col gap-1">
+          <span className="text-sm font-medium text-value">Offset Mode</span>
+          <OffsetModePicker params={params} onChange={onChange} />
+        </div>
+        {isLobed && (
+          <div className="flex min-w-0 flex-col gap-1">
+            <span className="text-sm font-medium text-value">Lobes</span>
+            <TextToggle options={LOBE_MODE_OPTIONS} value={outline.lobeMode} onChange={(v) => updateOutline({ lobeMode: v })} />
+          </div>
+        )}
       </div>
 
       <div className="flex flex-col gap-4">
@@ -253,7 +272,11 @@ export function Step2GeometryOutline({ params, onChange, machine, toolDiameters,
           <p className="text-sm text-status-error">
             {isRect
               ? "Tool diameter must be smaller than the shorter side for an Inside cut."
-              : isLobed
+: isSubtract
+                ? outline.offsetMode === 'inside'
+                  ? "The tool doesn't fit for an Inside cut — it is too wide to pass between two notches."
+                  : "The tool doesn't fit into the notches — it has to be smaller than a notch and than its opening."
+                : isLobed
                 ? "The tool doesn't fit for an Inside cut — it has to be smaller than a lobe and than the neck between each lobe and the main circle."
                 : "Tool diameter must be smaller than the shape diameter for an Inside cut."}
           </p>

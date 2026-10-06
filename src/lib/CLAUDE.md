@@ -116,12 +116,23 @@ zaczyna od `zTo('rapid', startZ)`; końcowy retrakt robi `assembleProgram()`.
   pomijane). `insetLoop(loop, d)` — odsunięcie do środka: promienie − d,
   w każdym wierzchołku (zawsze wklęsłym) łuk CW o promieniu d wokół
   wierzchołka.
-- Ścieżka środka freza (`lobedToolLoop()`): Outside = `lobedUnionLoop(r)`
-  (szczelina węższa niż frez sama się zamyka — frez tnie tyle, ile
-  sięgnie), On-line = `lobedUnionLoop(0)`, obie CW; Inside =
-  `lobedInsideLoop()` = `insetLoop(nominał, r)`, CCW, `null` gdy frez się
-  nie mieści (łuk o promieniu ≤ r albo próbka ścieżki bliżej obrysu niż
-  r — przewężenie węższe niż frez).
+- **Tryb** `lobeMode`: **Add** (suma, jak wyżej) albo **Subtract** —
+  okręgi wycięte z okręgu głównego. Obrys Subtract
+  (`lobedDifferenceLoop()`): łuki okręgu głównego (CCW) na przemian z
+  łukami wcięć obchodzonymi CW, wierzchołki wypukłe („zęby”); wcięcia nie
+  mogą się stykać (`notchesSeparate()`). `outsetLoop(loop, d)` — lustro
+  `insetLoop()`: łuk CCW + d, łuk CW − d, łuk CCW o promieniu d wokół
+  każdego wierzchołka. `lobedNominalLoop()` — obrys wg trybu.
+- Ścieżka środka freza (`lobedCenterLoop()`, w silniku
+  `lobedToolLoop()`), Outside i On-line CW, Inside CCW; `null`, gdy frez
+  się nie mieści (kontrola próbkami: każdy punkt ścieżki co najmniej r od
+  obrysu):
+
+  | | Add | Subtract |
+  |---|---|---|
+  | Outside | `lobedUnionLoop(r)` — zawsze jest; szczelina węższa niż frez sama się zamyka | `outsetLoop(nominał, r)` — frez musi mieścić się we wcięciu |
+  | On-line | obrys | obrys |
+  | Inside | `insetLoop(nominał, r)` — frez w wypustkach i przewężeniach | `lobedDifferenceLoop(r, r)` — powiększone wcięcia nie mogą się zetknąć |
 - Metody jak prostokąt: **Standard** (plunge + płaskie okrążenie na
   poziom) i **Ramp** (każdy łuk schodzi proporcjonalnie do długości —
   łuki śrubowe; skok `cappedRampPitch(długość pętli, …)`; na końcu
@@ -129,7 +140,8 @@ zaczyna od `zTo('rapid', startZ)`; końcowy retrakt robi `assembleProgram()`.
   którego końce zlałyby się w G-code (cięciwa < 0.01 mm), idzie jako
   odcinek — sterownik odczytałby go jako pełny okrąg.
 - Start okrążenia: czubek pierwszej wypustki (`loopOutermostOnRay()` pod
-  `lobeStartAngle`), a z mostkami pół odstępu przed pierwszym mostkiem.
+  `lobeStartAngle`), w Subtract obwód okręgu głównego w połowie drogi do
+  następnego wcięcia; z mostkami pół odstępu przed pierwszym mostkiem.
 - Mostki: `tabCount` na cały obrys, równo po długości ścieżki
   (`LoopTabRange` w mm od startu okrążenia); pierwszy tam, gdzie promień
   pod `tabStartAngle` przecina ścieżkę najdalej od środka.
@@ -432,8 +444,9 @@ symulacji materiału.
   Edit Mode), jedno źródło prawdy dla `App.tsx` i testu niezmienników.
 - Blokujące (inline error w Kroku 2/3): frez ostro mniejszy od
   otworu/krótszego boku (`isToolDiameterValid`, `isOutlineToolDiameterValid`
-  — Lobed Circle Inside: frez mieści się w wypustkach i przewężeniach;
-  `isOutlineLobeCountValid`, `isOutlineLobesAttached`,
+  — Lobed Circle: frez mieści się tam, gdzie ścieżka tego wymaga (tabela
+  w sekcji Lobed Circle); `isOutlineLobeCountValid`,
+  `isOutlineLobesAttached`, `isOutlineNotchesSeparate` (Subtract),
   `isSurfaceToolDiameterValid`, `isPocketToolDiameterValid`), Stepdown, Safe
   Z/Feed XY/Plunge > 0, wymiary i głębokość > 0 (`is*SizeValid`), Start Z
   powyżej dna cięcia (z mostkami — powyżej pasma; `minStartZ()`/
@@ -444,7 +457,7 @@ symulacji materiału.
   pętli (`isPassCountWithinLimit`, `isSurfaceLineCountWithinLimit`,
   `isPocketToolpathWithinLimits` — ścieżka nie może trafić w limit, bo
   zostałaby obcięta).
-- Nieblokujące: `isOutlineLobeGapTooNarrow()` (Lobed Circle Outside: frez
+- Nieblokujące: `isOutlineLobeGapTooNarrow()` (Lobed Circle Add, Outside: frez
   szerszy niż szczelina między wypustkami), `feedsWarnings()` (Start Z < 0), `descentWarnings()` (kąt
   zejścia helixa/rampy > `MAX_RECOMMENDED_DESCENT_DEG` = 10° — przy
   Hole(s)/Outline z efektywnego skoku, więc tylko przy Ramp > 10°; oraz
@@ -542,9 +555,10 @@ booli 2D na przekrojach (`polygon-clipping`, okręgi po 72 odcinki).
   `pocketRectWallHalfDims()`), komórek Lightened (`cellLoop(cell, r)`),
   Outline Rectangle Inside i zewnętrznej krawędzi pasa On-line (wyspa
   zostaje ostra); Outline Outside, okręgi, Hole(s) bez zmian. Lobed
-  Circle Outside: `insetLoop(ścieżka, r)` — zaokrąglone wcięcia między
-  okręgiem głównym a wypustkami i wypełnione szczeliny, w które frez nie
-  wchodzi. Frez, który
+  Circle (`lobedCutLoop()`): Add cięty Outside — `insetLoop(ścieżka, r)`,
+  zaokrąglone wcięcia między okręgiem głównym a wypustkami i wypełnione
+  szczeliny, w które frez nie wchodzi; Subtract cięty Inside —
+  `outsetLoop(ścieżka, r)`, zaokrąglone zęby. Frez, który
   się nie mieści → kontur nominalny. Powyżej `MAX_ROUNDED_CELLS` (300)
   komórek Lightened zostają ostre — zaokrąglenie mnoży wierzchołki, a
   każdy bool przechodzi po wszystkich. `cutContours(params)` — te same

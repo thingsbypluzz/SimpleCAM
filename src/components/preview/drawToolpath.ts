@@ -11,8 +11,8 @@ import { circlePassStartAngle } from '../../lib/helix'
 import { lobedOutlineOptions, type LoopTabRange } from '../../lib/outlineLobed'
 import {
   arcPoint,
-  lobedInsideLoop,
-  lobedUnionLoop,
+  lobedNominalLoop,
+  lobedOnLineEdges,
   loopBounds,
   loopPointAtLength,
   loopPolygon,
@@ -401,8 +401,9 @@ function resolvePattern(params: WizardParams): ResolvedPattern {
       const opts = lobedOutlineOptions(params)
       const place = (loop: Loop | null) => (loop ? translateLoop(loop, outline.offsetX, outline.offsetY) : [])
       const r = outline.toolDiameter / 2
-      const nominal = place(lobedUnionLoop(outline, 0))
-      const edgeLoops = outline.offsetMode === 'onLine' ? [place(lobedInsideLoop(outline, r)), place(lobedUnionLoop(outline, r))] : [nominal]
+      const nominal = place(lobedNominalLoop(outline))
+      const onLine = lobedOnLineEdges(outline, r)
+      const edgeLoops = outline.offsetMode === 'onLine' ? [place(onLine.inner), place(onLine.outer)] : [nominal]
       const loop = place(opts.loop)
       const extent = [nominal, loop, ...edgeLoops].map(loopBounds).filter((b): b is LoopBounds => b !== null)
       return {

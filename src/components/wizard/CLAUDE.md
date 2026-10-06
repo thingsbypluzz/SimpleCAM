@@ -20,7 +20,8 @@
   Diameter + Depth; Single: sama ta para) →
   Tool Diameter → Method → Ramp + Pitch (tylko Helix) → Tabs → Offset.
   Outline: wymiary + Depth → (Lobed Circle: grupa Lobes — Count + Pitch
-  Diameter, potem Lobe Diameter + Start) → Offset Mode → Tool Diameter →
+  Diameter, potem Lobe Diameter + Start) → Offset Mode (Lobed Circle: na
+  prawo od niego toggle Lobes: Add | Subtract) → Tool Diameter →
   Method → Ramp + Pitch (tylko Circle Helix / Rectangle i Lobed Circle
   Ramp) → Tabs (Circle i Lobed Circle: dodatkowo Tab Start w pierwszej z
   trzech kolumn) → Offset. Lobed Circle ma własne pole średnicy okręgu

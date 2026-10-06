@@ -7,6 +7,44 @@ zgodne z [SemVer](https://semver.org/). Ten plik pozostaje głównym, czytelnym
 thingsbypluzz/SimpleCAM), ale to infrastruktura pod izolację pracy
 (branch/worktree per zadanie), nie zamiennik tego changeloga.
 
+## [0.43.0] — 2026-10-06
+
+### Dodano
+
+- **Outline Lobed Circle: tryb Add / Subtract** (`BL-106`). Okręgi na
+  okręgu podziałowym można teraz nie tylko dodać do okręgu głównego
+  (wypustki), ale i z niego wyciąć — wcięcia na obwodzie, kształt
+  pokrętła. Przełącznik „Lobes: Add | Subtract” w Kroku 2, na prawo od
+  Offset Mode; pola bez zmian, zapisane presety wczytują się jako Add.
+  - W Subtract wcięcia nie mogą się stykać ani nachodzić na siebie
+    (między nimi musi zostać obwód okręgu głównego); w Add nachodzenie
+    nadal jest dozwolone.
+  - Outside: frez musi mieścić się we wcięciu i w jego wejściu — inaczej
+    Generate jest zablokowany (bez częściowego wcinania). Inside: frez
+    musi przejść między sąsiednimi wcięciami.
+  - Kształt po frezie: przy Inside zęby między wcięciami mają
+    zaokrąglenie o promieniu freza; przy Outside detal wychodzi dokładnie
+    jak obrys (frez objeżdża wcięcie od środka i ostre zęby od zewnątrz).
+  - Metody, G2/G3, mostki i Tab Start działają jak w Add.
+
+## [0.42.0] — 2026-10-06
+
+### Dodano
+
+- **Settings → Feed Tables** (`BL-101A`) — tabele, z których liczy
+  Feedrate Calculator, w jednym miejscu i tylko do odczytu: tabela
+  materiałów (ta sama co w kalkulatorze) z notami do materiałów oraz
+  pokrętła routerów — RPM na każdą pozycję, z wyróżnionym routerem
+  wybranym w Machine. Dotąd tabelę materiałów było widać tylko w
+  zwijanej sekcji kalkulatora, a pokrętło tylko dla wybranego routera.
+  Przełącznik Rigidity nad tabelą materiałów pokazuje wartości dla
+  maszyny Light / Medium / Rigid (domyślnie dla ustawionej w Machine):
+  przeliczane są fz, Stepdown dla szczeliny i stepover oraz Ramp Angle.
+
+### Zmieniono
+
+- Settings Modal jest szerszy (920 px zamiast 820 px).
+
 ## [0.41.0] — 2026-10-06
 
 ### Dodano

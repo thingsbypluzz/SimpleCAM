@@ -7,9 +7,11 @@ import { isRouterId, ROUTER_IDS, ROUTERS } from '../config/routers'
 import { DEFAULT_TOOL_DIAMETER_OPTIONS, type ToolDiameterOption } from '../types/toolDiameters'
 import { formatToolDiameterLabel } from '../lib/toolDiameterOptions'
 import { isToolDiameterEntryValid, isValidTabCount, MAX_TOOL_DIAMETER_COUNT } from '../lib/validation'
+import { MaterialNotes, MaterialTable, RouterTable } from './FeedTables'
 import { Checkbox } from './wizard/Checkbox'
 import { inputClass } from './wizard/FieldRow'
 import { NumberInput } from './wizard/NumberInput'
+import { TextToggle } from './wizard/TextToggle'
 import { roundToStepPrecision } from './wizard/useNumberField'
 import { useModalFocus } from './useModalFocus'
 
@@ -33,13 +35,14 @@ type LimitField = 'spindleMinRpm' | 'spindleMaxRpm' | 'maxFeed'
 // the field list and per-field step/label differ.
 type NumericField = TravelField | TabDefaultField | SpindleField | LimitField
 type CodeField = 'headerText' | 'footerText'
-type SectionId = 'machine' | 'controller' | 'tabs' | 'toolDiameters' | 'appearance' | 'privacy' | 'reset' | 'about'
+type SectionId = 'machine' | 'controller' | 'tabs' | 'toolDiameters' | 'feedTables' | 'appearance' | 'privacy' | 'reset' | 'about'
 
 const SECTIONS: { id: SectionId; label: string }[] = [
   { id: 'machine', label: 'Machine' },
   { id: 'controller', label: 'Controller' },
   { id: 'tabs', label: 'Tabs' },
   { id: 'toolDiameters', label: 'Tool Diameters' },
+  { id: 'feedTables', label: 'Feed Tables' },
   { id: 'appearance', label: 'Appearance' },
   { id: 'privacy', label: 'Privacy' },
   { id: 'reset', label: 'Reset' },
@@ -124,6 +127,9 @@ export function SettingsModal({
   onClose,
 }: SettingsModalProps) {
   const [activeSection, setActiveSection] = useState<SectionId>('machine')
+  // Feed Tables: which machine rigidity the material table is shown for —
+  // a view switch only, starting on the machine's own setting.
+  const [tablesRigidity, setTablesRigidity] = useState<Rigidity>(machine.rigidity)
   // Local text per field so an in-progress edit (e.g. typing "400" one
   // digit at a time) never round-trips through a half-valid number — only
   // committed to machine settings (and localStorage) on blur. Shared by
@@ -306,7 +312,7 @@ export function SettingsModal({
         role="dialog"
         aria-modal="true"
         aria-labelledby="settings-modal-title"
-        className="relative flex h-[640px] w-[820px] overflow-hidden rounded-lg border border-border bg-bg shadow-xl"
+        className="relative flex h-[640px] w-[920px] overflow-hidden rounded-lg border border-border bg-bg shadow-xl"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Sibling of the scrollable content pane below, not a child of it —
@@ -546,6 +552,49 @@ export function SettingsModal({
                 job, not a live link, so editing these later doesn't change a job that already has
                 tabs on.
               </p>
+            </>
+          )}
+
+          {activeSection === 'feedTables' && (
+            <>
+              <h2 className="text-sm font-semibold text-fg">Feed Tables</h2>
+              <p className="text-sm text-muted">
+                The numbers behind the Feedrate Calculator (the calculator icon next to Feedrate XY in Step 3). Read-only
+                — they are built into the app. The Rigidity switch only changes what this table shows; the machine's own
+                setting (✓) is in Machine.
+              </p>
+
+              <div className="flex flex-col gap-2 text-xs text-muted">
+                <div className="flex items-center justify-between gap-3">
+                  <h3 className="text-sm font-medium text-value">Materials</h3>
+                  <div className="flex items-center gap-2">
+                    <span>Rigidity</span>
+                    <TextToggle
+                      options={RIGIDITY_OPTIONS.map((o) => {
+                        const short = o.label.split(' (')[0]
+                        return {
+                          value: o.value,
+                          label: o.value === machine.rigidity ? `${short} ✓` : short,
+                          title: o.value === machine.rigidity ? `${o.label} — your machine (Settings → Machine)` : o.label,
+                        }
+                      })}
+                      value={tablesRigidity}
+                      onChange={setTablesRigidity}
+                    />
+                  </div>
+                </div>
+                <MaterialTable rigidity={tablesRigidity} />
+                <MaterialNotes />
+              </div>
+
+              <div className="flex flex-col gap-2 border-t border-border pt-4 text-xs text-muted">
+                <h3 className="text-sm font-medium text-value">Router speed dials</h3>
+                <p>
+                  Spindle speed in RPM for every position of a hand-set router's dial — used when a router is picked in
+                  Machine. * The maker publishes only the range; the positions in between are spread evenly across it.
+                </p>
+                <RouterTable selected={machine.router} />
+              </div>
             </>
           )}
 

@@ -20,7 +20,10 @@ export interface LoopArc {
 
 export type Loop = LoopArc[]
 
-type LobedParams = Pick<OutlineParams, 'lobeMainDiameter' | 'lobeCount' | 'lobePitchDiameter' | 'lobeDiameter' | 'lobeStartAngle'>
+type LobedParams = Pick<
+  OutlineParams,
+  'lobeMainDiameter' | 'lobeMode' | 'lobeCount' | 'lobePitchDiameter' | 'lobeDiameter' | 'lobeStartAngle'
+>
 
 const TWO_PI = 2 * Math.PI
 const EPS = 1e-9
@@ -157,7 +160,12 @@ function exposedArcs(discs: Disc[], i: number): LoopArc[] {
 // dropped: the outline is the outer contour. Empty when there is no shape.
 export function lobedUnionLoop(outline: LobedParams, grow = 0): Loop {
   const discs = lobedDiscs(outline, grow)
-  const arcs = discs.flatMap((_, i) => exposedArcs(discs, i))
+  return largestLoop(discs.flatMap((_, i) => exposedArcs(discs, i)))
+}
+
+// Chains arcs end to start into closed loops and returns the one enclosing
+// the largest area (counter-clockwise) — the outer contour.
+function largestLoop(arcs: LoopArc[]): Loop {
   if (arcs.length === 0) return []
 
   const used = new Array<boolean>(arcs.length).fill(false)
@@ -195,6 +203,29 @@ export function lobedUnionLoop(outline: LobedParams, grow = 0): Loop {
   return best
 }
 
+// Subtract (BL-106): the main circle with the lobe circles cut out of it —
+// arcs of the main circle (CCW) alternating with the part of each lobe
+// circle that lies inside it, walked clockwise (a concave notch). The main
+// circle can be shrunk and the lobes grown: by the tool radius that is the
+// Inside tool path, exactly. Assumes the notches don't overlap each other
+// (validation's rule for Subtract).
+export function lobedDifferenceLoop(outline: LobedParams, shrinkMain = 0, growLobes = 0): Loop {
+  const main: Disc = { center: { x: 0, y: 0 }, radius: outline.lobeMainDiameter / 2 - shrinkMain }
+  if (!(main.radius > 0)) return []
+  const lobes = lobeCenters(outline).map((center) => ({ center, radius: outline.lobeDiameter / 2 + growLobes }))
+  const arcs = exposedArcs([main, ...lobes], 0)
+  lobes.forEach((lobe, i) => {
+    const d = Math.hypot(lobe.center.x, lobe.center.y)
+    // Not touching the main circle, or wholly inside it (a hole, not a notch).
+    if (!(lobe.radius > 0) || d >= main.radius + lobe.radius - EPS || d + lobe.radius <= main.radius + EPS) return
+    if (d + main.radius <= lobe.radius + EPS) return
+    const toward = Math.atan2(-lobe.center.y, -lobe.center.x)
+    const half = Math.acos(Math.max(-1, Math.min(1, (d * d + lobe.radius * lobe.radius - main.radius * main.radius) / (2 * d * lobe.radius))))
+    if (half > EPS) arcs.push({ center: lobe.center, radius: lobe.radius, start: toward + half, sweep: 2 * half, ccw: false, circle: i + 1 })
+  })
+  return largestLoop(arcs)
+}
+
 // The loop moved inward by `d`: every arc keeps its center and span with
 // its radius reduced by `d`, and each vertex between two arcs (always a
 // concave one on a union of discs — a cusp pointing into the shape) gets a
@@ -219,6 +250,35 @@ export function insetLoop(loop: Loop, d: number): Loop | null {
     const sweep = norm(from - to)
     if (sweep > EPS && sweep < TWO_PI - EPS) {
       result.push({ center: vertex, radius: d, start: from, sweep, ccw: false, circle: -1 })
+    }
+  }
+  return result
+}
+
+// The loop moved outward by `d` — insetLoop()'s mirror, for a loop whose
+// vertices are all convex (the Subtract outline: teeth between the main
+// circle and its notches): a CCW arc grows by `d`, a clockwise (concave)
+// one shrinks by it, and every vertex gets a CCW fillet of radius `d`
+// around it. null when a concave arc is too small to take `d` — the tool
+// doesn't fit the notch.
+export function outsetLoop(loop: Loop, d: number): Loop | null {
+  if (loop.length === 0) return []
+  if (loop.some((arc) => !arc.ccw && !(arc.radius - d > EPS))) return null
+  const grown = (arc: LoopArc): LoopArc => ({ ...arc, radius: arc.ccw ? arc.radius + d : arc.radius - d })
+  if (loop.length === 1) return [grown(loop[0])]
+  // Direction from the vertex away from the material, as seen from an arc.
+  const outward = (arc: LoopArc, vertex: Point2D) =>
+    arc.ccw ? Math.atan2(vertex.y - arc.center.y, vertex.x - arc.center.x) : Math.atan2(arc.center.y - vertex.y, arc.center.x - vertex.x)
+  const result: Loop = []
+  for (let k = 0; k < loop.length; k++) {
+    const arc = loop[k]
+    const next = loop[(k + 1) % loop.length]
+    result.push(grown(arc))
+    const vertex = arcPoint(arc, 1)
+    const from = outward(arc, vertex)
+    const sweep = norm(outward(next, vertex) - from)
+    if (sweep > EPS && sweep < TWO_PI - EPS) {
+      result.push({ center: vertex, radius: d, start: from, sweep, ccw: true, circle: -1 })
     }
   }
   return result
@@ -378,25 +438,89 @@ export function lobesAttached(outline: LobedParams): boolean {
   return pitchRadius < mainRadius + lobeRadius - EPS && pitchRadius > Math.abs(mainRadius - lobeRadius) + EPS
 }
 
-// Tool-center loop for an Inside cut (CCW), or null when the tool doesn't
-// fit: an arc too small to inset, or the path coming closer than the tool
-// radius to the outline somewhere (a neck between the main circle and a
-// lobe narrower than the tool).
-export function lobedInsideLoop(outline: LobedParams, toolRadius: number): Loop | null {
-  const nominal = lobedUnionLoop(outline, 0)
-  if (nominal.length === 0) return null
-  const inset = insetLoop(nominal, toolRadius)
-  if (inset === null) return null
-  const tolerance = 1e-6
-  for (const p of loopPolygon(inset)) {
-    if (distanceToLoop(nominal, p) < toolRadius - tolerance) return null
-  }
-  return inset
+// The outline as drawn: the lobes added to the main circle, or cut out of it.
+export function lobedNominalLoop(outline: LobedParams): Loop {
+  return outline.lobeMode === 'subtract' ? lobedDifferenceLoop(outline) : lobedUnionLoop(outline, 0)
 }
 
-// Outside: the tool can't get into a gap narrower than itself — the grown
-// circles merge there and the path has fewer arcs than the outline.
+// Subtract (BL-106): neighbouring notches (grown by `grow`) stay apart —
+// some of the main circle's rim is left between them, so the part is one
+// piece.
+export function notchesSeparate(outline: LobedParams, grow = 0): boolean {
+  const count = lobeCountOf(outline)
+  if (count < 2) return true
+  return Math.abs(outline.lobePitchDiameter) * Math.sin(Math.PI / count) > outline.lobeDiameter + 2 * grow + EPS
+}
+
+// Every sampled point of `path` keeps at least `clearance` from `outline`.
+function keepsClearance(outline: Loop, path: Loop, clearance: number): boolean {
+  const tolerance = 1e-6
+  return loopPolygon(path).every((p) => distanceToLoop(outline, p) >= clearance - tolerance)
+}
+
+// Tool-center loop for an Inside cut (CCW), or null when the tool doesn't
+// fit. Add: the outline inset by the tool radius — null for an arc too
+// small to inset, or a neck between the main circle and a lobe narrower
+// than the tool. Subtract: the main circle shrunk and the notches grown by
+// the tool radius — null when the grown notches would meet.
+export function lobedInsideLoop(outline: LobedParams, toolRadius: number): Loop | null {
+  const nominal = lobedNominalLoop(outline)
+  if (nominal.length === 0) return null
+  if (outline.lobeMode === 'subtract') {
+    if (!notchesSeparate(outline, toolRadius)) return null
+    const loop = lobedDifferenceLoop(outline, toolRadius, toolRadius)
+    return loop.length > 0 && keepsClearance(nominal, loop, toolRadius) ? loop : null
+  }
+  const inset = insetLoop(nominal, toolRadius)
+  return inset !== null && keepsClearance(nominal, inset, toolRadius) ? inset : null
+}
+
+// Tool-center loop for an Outside cut (CCW; the engine reverses it), or
+// null when the tool doesn't fit. Add: the circles grown by the tool
+// radius — always there, a gap too narrow for the tool just closes up.
+// Subtract: the outline moved out by the tool radius — null when the tool
+// can't get into a notch.
+export function lobedOutsideLoop(outline: LobedParams, toolRadius: number): Loop | null {
+  if (outline.lobeMode !== 'subtract') return lobedUnionLoop(outline, toolRadius)
+  const nominal = lobedNominalLoop(outline)
+  if (nominal.length === 0) return null
+  const outset = outsetLoop(nominal, toolRadius)
+  return outset !== null && keepsClearance(nominal, outset, toolRadius) ? outset : null
+}
+
+// Tool-center loop for an offset mode (CCW), or null when the tool doesn't
+// fit; On-line runs on the outline itself.
+export function lobedCenterLoop(outline: LobedParams, offsetMode: OutlineParams['offsetMode'], toolRadius: number): Loop | null {
+  if (offsetMode === 'inside') return lobedInsideLoop(outline, toolRadius)
+  if (offsetMode === 'outside') return lobedOutsideLoop(outline, toolRadius)
+  return lobedNominalLoop(outline)
+}
+
+// The contour the cut actually leaves where it differs from the outline
+// (BL-86), or null. Add cut Outside: the tool path inset by the tool
+// radius — rounded notches between the main circle and the lobes.
+// Subtract cut Inside: the tool path moved out by it — rounded teeth.
+export function lobedCutLoop(outline: LobedParams, offsetMode: OutlineParams['offsetMode'], toolRadius: number): Loop | null {
+  if (!(toolRadius > 0)) return null
+  if (outline.lobeMode !== 'subtract' && offsetMode === 'outside') return insetLoop(lobedUnionLoop(outline, toolRadius), toolRadius)
+  if (outline.lobeMode === 'subtract' && offsetMode === 'inside') {
+    const path = lobedInsideLoop(outline, toolRadius)
+    return path ? outsetLoop(path, toolRadius) : null
+  }
+  return null
+}
+
+// On-line's two edges: the outline moved out and in by the tool radius.
+// Either can be missing when the tool doesn't fit there.
+export function lobedOnLineEdges(outline: LobedParams, toolRadius: number): { inner: Loop | null; outer: Loop | null } {
+  const outer = outline.lobeMode === 'subtract' ? outsetLoop(lobedNominalLoop(outline), toolRadius) : lobedUnionLoop(outline, toolRadius)
+  return { inner: lobedInsideLoop(outline, toolRadius), outer }
+}
+
+// Add, Outside: the tool can't get into a gap narrower than itself — the
+// grown circles merge there and the path has fewer arcs than the outline.
 export function lobedOutsideGapTooNarrow(outline: LobedParams, toolRadius: number): boolean {
+  if (outline.lobeMode === 'subtract') return false
   const nominal = lobedUnionLoop(outline, 0)
   return nominal.length > 0 && lobedUnionLoop(outline, toolRadius).length < nominal.length
 }

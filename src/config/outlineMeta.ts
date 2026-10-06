@@ -41,7 +41,7 @@ export const OUTLINE_SHAPE_META: Record<OutlineShape, OutlineShapeMeta> = {
     value: 'lobedCircle',
     title: 'Lobed Circle',
     description:
-      'A main circle with lobes — smaller circles on a pitch circle — merged into one outline, centered at the origin. Pair it with Hole(s) N-Holes on Circle (same count, pitch diameter and start angle) to put a hole in every lobe.',
+      'A main circle with lobes — smaller circles on a pitch circle — added to it as one outline, or cut out of it as notches (Add / Subtract). Centered at the origin. Pair it with Hole(s) N-Holes on Circle (same count, pitch diameter and start angle) to put a hole in every lobe.',
     Icon: LobedCircleOutlineIcon,
   },
 }
@@ -146,6 +146,9 @@ export function offsetModeLabel(mode: OffsetMode): string {
   }
 }
 
+// Lobed Circle: lobes added to the main circle, or cut out of it (BL-106).
+const lobeSign = (outline: OutlineParams) => (outline.lobeMode === 'subtract' ? '−' : '+')
+
 // Short lines stacked in the narrow (80px) collapsed-bar badge — same
 // convention as positioningMeta.ts's positioningLines().
 export function outlineShapeLines(outline: OutlineParams): string[] {
@@ -157,7 +160,7 @@ export function outlineShapeLines(outline: OutlineParams): string[] {
     case 'circle':
       return ['CIRCLE', `(⌀${fmt(outline.diameter)})`]
     case 'lobedCircle':
-      return ['LOBED', 'CIRCLE', `(⌀${fmt(outline.lobeMainDiameter)}+${Math.floor(outline.lobeCount)})`]
+      return ['LOBED', 'CIRCLE', `(⌀${fmt(outline.lobeMainDiameter)}${lobeSign(outline)}${Math.floor(outline.lobeCount)})`]
   }
 }
 
@@ -179,7 +182,7 @@ export function outlineShapeLabel(outline: OutlineParams): string {
     case 'circle':
       return `Circle ⌀${fmt(outline.diameter)} (${offset})`
     case 'lobedCircle':
-      return `Lobed Circle ⌀${fmt(outline.lobeMainDiameter)} + ${Math.floor(outline.lobeCount)}×⌀${fmt(outline.lobeDiameter)} (${offset})`
+      return `Lobed Circle ⌀${fmt(outline.lobeMainDiameter)} ${lobeSign(outline)} ${Math.floor(outline.lobeCount)}×⌀${fmt(outline.lobeDiameter)} (${offset})`
   }
 }
 

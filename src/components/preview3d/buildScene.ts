@@ -346,10 +346,10 @@ function resolvePattern(params: WizardParams): ResolvedPattern {
     const { outline } = params
     if (outline.shape === 'lobedCircle') {
       const r = outline.toolDiameter / 2
-      // Everything the shape reaches: the outline, the tool path and
-      // On-line's outer edge are all inside the circles grown by the tool
-      // radius.
-      const extent = loopBounds(translateLoop(lobedUnionLoop(outline, r), outline.offsetX, outline.offsetY))
+      // Everything the shape reaches — outline, tool path, On-line's outer
+      // edge — lies inside the circles (Add) or the main circle (Subtract)
+      // grown by the tool radius.
+      const extent = loopBounds(translateLoop(lobedUnionLoop({ ...outline, lobeMode: 'add' }, r), outline.offsetX, outline.offsetY))
       return {
         kind: 'outlineLobed',
         params,

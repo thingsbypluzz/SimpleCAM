@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
+  isOutlineNotchesSeparate,
   isOutlineLobeGapTooNarrow,
   isOutlineLobesAttached,
   OPERATION_RULES,
@@ -986,5 +987,47 @@ describe('Lobed Circle validators (OP-8)', () => {
     expect(footprint.y).toBeLessThan(2 * 46)
     expect(OPERATION_RULES.outline.rampPathLength(lobed({ method: 'ramp' }))).toBeGreaterThan(Math.PI * 66)
     expect(OPERATION_RULES.outline.rampPathLength(lobed({ method: 'standard' }))).toBeNull()
+  })
+})
+
+describe('Lobed Circle — Subtract validators (BL-106)', () => {
+  const notched = (patch: Partial<WizardParams['outline']> = {}): WizardParams => ({
+    ...DEFAULT_WIZARD_PARAMS,
+    operation: 'outline',
+    outline: {
+      ...DEFAULT_WIZARD_PARAMS.outline,
+      shape: 'lobedCircle',
+      lobeMode: 'subtract',
+      lobePitchDiameter: 60,
+      offsetMode: 'outside',
+      method: 'standard',
+      toolDiameter: 6,
+      ...patch,
+    },
+  })
+
+  it('accepts notches on the rim in every offset mode', () => {
+    for (const offsetMode of ['inside', 'outside', 'onLine'] as const) expect(isWizardParamsValid(notched({ offsetMode }))).toBe(true)
+  })
+
+  it('blocks notches that touch or overlap — the same values are fine in Add', () => {
+    const dense = { lobeCount: 12 }
+    expect(isOutlineNotchesSeparate(notched(dense).outline)).toBe(false)
+    expect(isWizardParamsValid(notched(dense))).toBe(false)
+    expect(isWizardParamsValid(notched({ ...dense, lobeMode: 'add' }))).toBe(true)
+  })
+
+  it('blocks a tool that does not fit: Outside into a notch, Inside between two', () => {
+    expect(isOutlineToolDiameterValid(notched({ toolDiameter: 16 }).outline)).toBe(false)
+    expect(isWizardParamsValid(notched({ toolDiameter: 16 }))).toBe(false)
+    expect(isOutlineToolDiameterValid(notched({ offsetMode: 'inside', lobeCount: 9 }).outline)).toBe(false)
+    expect(isOutlineToolDiameterValid(notched({ offsetMode: 'onLine', toolDiameter: 16 }).outline)).toBe(true)
+  })
+
+  it('never shows the Add-only gap note, and its footprint is the main circle plus the tool', () => {
+    expect(isOutlineLobeGapTooNarrow(notched({ lobeCount: 9 }).outline)).toBe(false)
+    const footprint = outlineFootprint(notched().outline)
+    expect(footprint.x).toBeCloseTo(66, 6)
+    expect(footprint.y).toBeLessThanOrEqual(66 + 1e-9)
   })
 })

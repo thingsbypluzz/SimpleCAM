@@ -2,11 +2,12 @@
 
 ## Settings Modal (`SettingsModal.tsx`)
 
-- Nakładka `bg-black/50 backdrop-blur-sm`; podgląd 3D wstrzymany
+- Okno 920×640 px. Nakładka `bg-black/50 backdrop-blur-sm`; podgląd 3D wstrzymany
   (`renderPaused`). Fokus/Escape/pułapka Tab — `useModalFocus.ts` (wspólne
   z kalkulatorem).
 - Settings Nav w kolejności: **Machine**, **Controller**, **Tabs**,
-  **Tool Diameters**, **Appearance**, **Privacy**, **Reset**, **About**
+  **Tool Diameters**, **Feed Tables**, **Appearance**, **Privacy**,
+  **Reset**, **About**
   (zawsze ostatnia); aktywna pozycja z `aria-current`.
 - **Machine** — tylko fizyka maszyny: X/Y/Z travel (zapis `onBlur`, tylko
   `> 0`), Spindle Speed + Min/Max RPM w jednym wierszu (Min < Max, Min może
@@ -29,6 +30,15 @@
   Preview Color Palette, Cut Shape (checkbox — materiał w podglądach w kształcie
   po frezie, `cutShapeEnabled`), Stock Edges 3D (checkbox — obrys krawędzi materiału),
   Grid Labels 3D (checkbox + rozmiar).
+- **Feed Tables:** tabele Feedrate Calculator tylko do odczytu
+  (`FeedTables.tsx`): `MaterialTable` (ten sam komponent co sekcja
+  „Material table” w kalkulatorze — tam surowa tabela z wyróżnionym
+  wybranym materiałem; tutaj z przełącznikiem Rigidity, który tylko
+  zmienia widok: kolumny skalowane przez sztywność — fz, Stepdown dla
+  szczeliny i stepover, Ramp Angle — są przeliczone i oznaczone ‡,
+  domyślnie dla sztywności z Machine, oznaczonej ✓), `MaterialNotes` (noty wszystkich materiałów) i
+  `RouterTable` (RPM na każdą pozycję pokrętła, wyróżniony router z
+  Machine, gwiazdka przy wartościach rozłożonych równomiernie).
 - **Privacy:** statyczny tekst — brak backendu/kont/trackingu/cookies,
   dane tylko w `localStorage`; jawnie ujawniony jedyny wyjątek: arkusz
   Google Fonts (Space Grotesk dla Arcade) wysyła standardowe dane żądania
