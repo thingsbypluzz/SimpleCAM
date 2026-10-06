@@ -642,15 +642,12 @@ Waga z review w nawiasie kwadratowym.
   (dziś model materiału pokazuje tylko stan końcowy — to osobny, duży
   temat); wysokość walca; zachowanie w Overlay i przy `renderPaused`;
   wydajność przy ścieżkach rzędu setek tysięcy ruchów.
-- **`BL-101A`** *(Otwarty)* 🟢 — **Podgląd tabel Feedrate Calculator w
-  Settings Modal.** Zgłoszone 2026-10-06, wydzielone z `BL-101`. Dziś
-  tabelę materiałów (`config/materials.ts`: Vc, fz, Plunge, Stepdown,
-  szerokości, Stock to Leave, Ramp Angle) widać tylko w kalkulatorze, w
-  zwijanej sekcji „Material table”, a pokrętła routerów
-  (`config/routers.ts`) tylko dla wybranego routera. Pomysł: nowa pozycja
-  w Settings Nav z obiema tabelami do odczytu. Do ustalenia: nazwa i
-  miejsce w Settings Nav, czy sekcja w kalkulatorze zostaje, układ przy
-  dziesięciu kolumnach.
+- **`BL-101A`** *(Zrealizowany, 2026-10-06)* 🟢 — **Podgląd tabel Feedrate
+  Calculator w Settings Modal.** Wydzielone z `BL-101`. Wdrożone: sekcja
+  Settings → Feed Tables (po Tool Diameters) z tabelą materiałów, notami
+  i pokrętłami wszystkich routerów, tylko do odczytu; sekcja „Material
+  table” w kalkulatorze zostaje (wspólny komponent). Pełny opis:
+  `CHANGELOG.md`, `[0.42.0]`.
 - **`BL-101B`** *(Otwarty)* 🔴 — **Edycja tabel Feedrate Calculator,
   eksport i import.** Zgłoszone 2026-10-06, wydzielone z `BL-101`; po
   `BL-101A` (edycja w tym samym miejscu co podgląd). Dziś wartości są
@@ -677,6 +674,73 @@ Waga z review w nawiasie kwadratowym.
   się w przewężeniach). Wariant bez pustych przejazdów (wybieranie samego
   „księżyca” wypustki) świadomie poza zakresem — pierścienie odsuwane od
   wspólnego konturu rozpadają się na osobne obszary.
+- **`BL-103`** *(Otwarty)* 🔴 — **Przełącznik Simple / Advanced Mode.**
+  Zgłoszone 2026-10-06 — **sesja `/grill-me` obowiązkowa**. Przełącznik w
+  prawym górnym rogu (Header); w Simple Mode część dzisiejszych opcji
+  jest schowana. Do przegadania: które pola i funkcje znikają w Simple
+  (per operacja i per krok — np. Ramp Angle, Lead/Clearance, Linking
+  Feed, Tab Start, Offset, Start Z, Feedrate Calculator, Overlay/Edit
+  Mode, sekcje Settings); jakie wartości mają schowane pola (domyślne
+  czy ostatnio ustawione — i co z presetem zapisanym w Advanced z
+  wartością inną niż domyślna); czy Simple chowa też całe operacje,
+  kształty albo metody; tryb domyślny dla nowego użytkownika; gdzie żyje
+  wybór (`simplecam.appearance` czy osobny klucz); walidacja schowanego
+  pola z błędem (jak go pokazać); oznaczenie w UI, że coś jest ukryte;
+  miejsce przełącznika w Header obok dark/light i Settings oraz Artifact
+  Interface Anatomy.
+- **`BL-104`** *(Otwarty)* 🟢 — **Settings → About: link do kanału na
+  Instagramie.** Zgłoszone 2026-10-06. Przy „Envisioned by ThingsByPluzz”
+  dodać link do kanału na Instagramie (adres do podania przy
+  implementacji). Do sprawdzenia: otwieranie w nowej karcie
+  (`rel="noopener noreferrer"`), czy sekcja Privacy wymaga wzmianki (sam
+  link nie wysyła nic, dopóki nie zostanie kliknięty).
+- **`BL-105`** *(Otwarty)* 🟢 — **Overlay: napis przy Preset Bar.**
+  Zgłoszone 2026-10-06. Po włączeniu oka Overlay pokazać na lewo od
+  presetów opis, tak jak w Edit Mode („Edit Mode — select a preset”) —
+  np. „Overlay Mode — select preset(s)”. Do ustalenia: czy napis zmienia
+  się po zaznaczeniu presetów (np. liczba wybranych) i co z banerem
+  „Preview mode” w podglądzie — zostaje czy napis go zastępuje.
+- **`BL-106`** *(Zrealizowany, 2026-10-06)* 🟠 — **Outline Lobed Circle:
+  tryb Add / Subtract.** Po `OP-8`. Okręgi na okręgu podziałowym można
+  dodać do okręgu głównego (wypustki) albo z niego wyciąć (wcięcia).
+  Ustalenia z rozmowy: przełącznik „Lobes: Add | Subtract” na prawo od
+  Offset Mode; w Subtract wcięcia nie mogą się stykać; frez niemieszczący
+  się we wcięciu (Outside) blokuje Generate — bez częściowego wcinania.
+  Geometria lustrzana do Add (różnica okręgów, `outsetLoop()`), nadal
+  dokładne łuki. Subtract w Pocket poza zakresem. Pełny opis:
+  `CHANGELOG.md`, `[0.43.0]`.
+- **`BL-107`** *(Otwarty)* 🔴 — **Overlay z jednoczesną edycją jednego z
+  podglądanych presetów.** Zgłoszone 2026-10-06 — **sesja `/grill-me`
+  obowiązkowa**. Dziś Overlay i Edit Mode wzajemnie się wyłączają, a w
+  Overlay żywy wzorzec jest ukryty i Generate zablokowany. Pomysł:
+  podglądać kilka presetów naraz i jeden z nich edytować na żywo.
+  Pomysły na UI (od użytkownika): Overlay i Edit dostają różne kolory
+  obwódki (w motywach Arcade są dwa dominujące kolory) — oko i wybrane
+  presety świecą kolorem Overlay; kliknięcie ołówka (inny kolor) pozwala
+  wybrać jeden preset do edycji: trafia do Overlay, jeśli go tam nie
+  było, a kolor jego obwódki zmienia się na kolor Edit. Do przegadania:
+  dokładna maszyna stanów (oko, ołówek, klik w slot w każdej kombinacji;
+  wyjście z trybów); jak rozróżnić w podglądach preset edytowany od
+  pozostałych (kolor ścieżki, krycie); live-save przy niepoprawnych
+  parametrach i napis stanu; czy Generate działa dla edytowanego presetu;
+  wspólny model materiału przy każdej zmianie (wydajność przy kilku
+  presetach); kamera (dziś zmiana selekcji re-fituje); kolory w motywach
+  bez drugiego akcentu (Sloppy Indigo, Shopfloor Amber) i reguła „stan
+  nigdy tylko kolorem”; relacja z `BL-105` (napis przy Preset Bar).
+- **`BL-108`** *(Otwarty)* 🟠 — **Pocket: kształt Donut (kieszeń
+  pierścieniowa).** Zgłoszone 2026-10-06. Nowy kształt w Pocket: okrąg z
+  zostawionym środkiem (wyspą) o wybranej średnicy — wybierany jest
+  pierścień między średnicą zewnętrzną a wewnętrzną. Do przegadania:
+  pola (Diameter + Island Diameter; frez musi mieścić się w szerokości
+  pierścienia); wejście — Plunge albo Helix na środkowym okręgu
+  pierścienia zamiast w środku kieszeni (dzisiejsze silniki zaczynają od
+  środka i rosną na zewnątrz); Spiral — pierścienie w obie strony od
+  toru wejścia albo od wyspy na zewnątrz; Adaptive — osobny przypadek
+  (szczelina po okręgu poszerzana do obu ścian; pokrewne wycinkom
+  pierścienia w Circle Lightened, `pocketSectorAdaptive.ts`); Finishing
+  Pass na obu ścianach (zewnętrzna CCW, wyspa CW dla climb); model
+  materiału — pustka z dnem i wyspą, kształt po frezie bez zmian (same
+  okręgi); relacja z Circle Lightened (Hub) i z `BL-102`.
 - **`BL-61`** *(Zrealizowany, 2026-09-27)* 🔴 **[Low, kosztowne w czasie]**
   — **Podglądy duplikują geometrię silnika** — jedna lista ruchów (jak
   Adaptive) dla G-code i podglądu 3D, po jednej operacji na raz. Etapy 1–2

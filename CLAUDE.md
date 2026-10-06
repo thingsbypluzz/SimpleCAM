@@ -44,8 +44,8 @@ Pięć operacji (`WizardParams.operation`):
   Single / Rectangular Grid / Grid Centered / N-Holes on Circle / Custom
   List; opcjonalne mostki.
 - **Outline** — kontur Rectangle Cornered / Centered / Circle / **Lobed
-  Circle** (okrąg główny z wypustkami — okręgami na okręgu podziałowym —
-  zlany w jeden obrys) z offset mode Inside / Outside / On-line; metody
+  Circle** (okrąg główny z okręgami na okręgu podziałowym: dodanymi jako
+  wypustki albo wyciętymi jako wcięcia — Add / Subtract) z offset mode Inside / Outside / On-line; metody
   Ramp/Standard (prostokąt, Lobed Circle) albo Helix/Standard (okrąg);
   opcjonalne mostki.
 - **Surface** — planowanie po prostokącie; Zigzag / Unidirectional,
@@ -147,8 +147,8 @@ być wierny.
   "Edit Mode — select a preset" / "Auto-save Mode Enabled" (kolor błędu
   przy niepoprawnych parametrach). Overlay i Edit Mode wzajemnie się
   wyłączają; stan tylko w pamięci; Edit Mode nie blokuje Generate.
-- **Settings Modal:** Machine, Controller, Tabs, Tool Diameters, Appearance, Privacy,
-  Reset, About (szczegóły: `src/components/CLAUDE.md`).
+- **Settings Modal:** Machine, Controller, Tabs, Tool Diameters, Feed
+  Tables, Appearance, Privacy, Reset, About (szczegóły: `src/components/CLAUDE.md`).
 - **Feedrate Calculator:** ikona przy Feedrate XY w Kroku 3; z materiału,
   freza i limitów maszyny liczy RPM, posuwy, Stepdown i szerokość, „Apply
   selected” zapisuje zaznaczone (UI: `src/components/CLAUDE.md`, model:

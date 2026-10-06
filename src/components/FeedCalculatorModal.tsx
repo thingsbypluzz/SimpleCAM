@@ -1,5 +1,6 @@
 import { useState, type ReactNode } from 'react'
 import { MATERIAL_IDS, MATERIALS, type MaterialId } from '../config/materials'
+import { MaterialTable } from './FeedTables'
 import { nearestDialPosition, ROUTERS } from '../config/routers'
 import { OPERATION_META, type CalcPatch } from '../config/operationMeta'
 import {
@@ -495,52 +496,8 @@ export function FeedCalculatorModal({ params, machine, settings, toolDiameters, 
 
             <details className="text-xs text-muted">
               <summary className="cursor-pointer font-medium text-value">Material table</summary>
-              <p className="mt-2">
-                Starting values for a carbide tool, before the rigidity factor. fz in mm/tooth for a 3 / 6 / 8+ mm tool
-                (in between: linear); Stepdown ×⌀ for a slot / stepover / Adaptive; widths in % of ⌀; Pocket
-                Finishing Pass Stock to Leave in mm; Ramp Angle of a helix or ramp descent in °.
-              </p>
-              <div className="mt-2 overflow-x-auto">
-                <table className="w-full text-right tabular-nums">
-                  <thead>
-                    <tr className="text-muted">
-                      <th className="py-1 pr-2 text-left font-medium">Material</th>
-                      <th className="px-1 py-1 font-medium">Vc m/min</th>
-                      <th className="px-1 py-1 font-medium">fz 3/6/8</th>
-                      <th className="px-1 py-1 font-medium">Plunge</th>
-                      <th className="px-1 py-1 font-medium">Stepdown ×⌀</th>
-                      <th className="px-1 py-1 font-medium">Stepover / Load %</th>
-                      <th className="px-1 py-1 font-medium">Finish stock mm</th>
-                      <th className="py-1 pl-1 font-medium">Ramp °</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {MATERIAL_IDS.map((id) => {
-                      const m = MATERIALS[id]
-                      return (
-                        <tr
-                          key={id}
-                          className={`border-t border-border ${id === settings.material ? 'font-semibold text-selected-fg' : ''}`}
-                        >
-                          <td className="py-1 pr-2 text-left">{m.label}</td>
-                          <td className="px-1 py-1">
-                            {m.vc[0]}–{m.vc[1]}
-                          </td>
-                          <td className="px-1 py-1">{m.fz.map((f) => fmt(f)).join(' / ')}</td>
-                          <td className="px-1 py-1">×{fmt(m.plungeFactor)}</td>
-                          <td className="px-1 py-1">
-                            {fmt(m.ap.slot)} / {fmt(m.ap.stepover)} / {fmt(m.ap.optimalLoad)}
-                          </td>
-                          <td className="px-1 py-1">
-                            {m.aeStepover} / {m.aeAdaptive}
-                          </td>
-                          <td className="px-1 py-1">{fmt(m.finishStock)}</td>
-                          <td className="py-1 pl-1">{fmt(m.rampAngleDeg)}</td>
-                        </tr>
-                      )
-                    })}
-                  </tbody>
-                </table>
+              <div className="mt-2">
+                <MaterialTable selected={settings.material} />
               </div>
             </details>
           </div>

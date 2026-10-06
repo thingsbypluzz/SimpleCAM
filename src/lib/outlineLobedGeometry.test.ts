@@ -4,7 +4,13 @@ import {
   arcPoint,
   distanceToLoop,
   insetLoop,
+  lobedCutLoop,
+  lobedDifferenceLoop,
   lobedInsideLoop,
+  lobedNominalLoop,
+  lobedOutsideLoop,
+  notchesSeparate,
+  outsetLoop,
   lobedOutsideGapTooNarrow,
   lobedUnionLoop,
   lobesAttached,
@@ -175,5 +181,76 @@ describe('loop helpers', () => {
     expect(isClosed(reversed)).toBe(true)
     expect(reversed.every((arc) => !arc.ccw)).toBe(true)
     expect(polygonArea(loopPolygon(reversed))).toBeCloseTo(-polygonArea(loopPolygon(loop)), 6)
+  })
+})
+
+describe('Subtract (BL-106)', () => {
+  // Notches ⌀16 on ⌀60 pitch cut out of a ⌀60 main circle: each notch is
+  // centered on the rim.
+  const notched = (patch: Partial<OutlineParams> = {}) => lobed({ lobeMode: 'subtract', lobePitchDiameter: 60, ...patch })
+
+  it('the outline alternates main-circle arcs with clockwise notch arcs', () => {
+    const loop = lobedNominalLoop(notched())
+    expect(loop).toHaveLength(10)
+    expect(isClosed(loop)).toBe(true)
+    expect(loop.filter((arc) => arc.circle === 0 && arc.ccw)).toHaveLength(5)
+    expect(loop.filter((arc) => arc.circle > 0 && !arc.ccw)).toHaveLength(5)
+    const area = polygonArea(loopPolygon(loop))
+    expect(area).toBeLessThan(Math.PI * 30 * 30)
+    expect(area).toBeGreaterThan(Math.PI * 30 * 30 - 5 * Math.PI * 8 * 8)
+    // Same as the difference loop with nothing shrunk or grown.
+    expect(lobedDifferenceLoop(notched())).toHaveLength(10)
+  })
+
+  it('Outside: the outline moved out, with a fillet around every tooth', () => {
+    const nominal = lobedNominalLoop(notched())
+    const path = lobedOutsideLoop(notched(), 3)!
+    expect(path).toHaveLength(20)
+    expect(isClosed(path)).toBe(true)
+    expect(path.filter((arc) => arc.circle === 0).every((arc) => Math.abs(arc.radius - 33) < 1e-9)).toBe(true)
+    expect(path.filter((arc) => arc.circle > 0).every((arc) => Math.abs(arc.radius - 5) < 1e-9)).toBe(true)
+    expect(path.filter((arc) => arc.circle === -1).every((arc) => arc.ccw && Math.abs(arc.radius - 3) < 1e-9)).toBe(true)
+    for (const p of loopPolygon(path)) expect(distanceToLoop(nominal, p)).toBeGreaterThan(3 - 1e-6)
+    expect(outsetLoop(nominal, 3)).toHaveLength(20)
+  })
+
+  it('Outside: a tool that does not fit a notch has no path', () => {
+    expect(lobedOutsideLoop(notched(), 8)).toBeNull() // as wide as the notch
+    // A notch set deeper in: its opening (13.6 mm) is narrower than the ⌀14 tool that fits its ⌀16 circle.
+    expect(lobedOutsideLoop(notched({ lobePitchDiameter: 50 }), 7)).toBeNull()
+    expect(lobedOutsideLoop(notched({ lobePitchDiameter: 50 }), 6)).not.toBeNull()
+    expect(lobedOutsideLoop(notched(), 3)).not.toBeNull()
+  })
+
+  it('Inside: the main circle shrunk and the notches grown by the tool radius', () => {
+    const nominal = lobedNominalLoop(notched())
+    const path = lobedInsideLoop(notched(), 3)!
+    expect(path).toHaveLength(10)
+    expect(path.filter((arc) => arc.circle === 0).every((arc) => Math.abs(arc.radius - 27) < 1e-9)).toBe(true)
+    expect(path.filter((arc) => arc.circle > 0).every((arc) => Math.abs(arc.radius - 11) < 1e-9)).toBe(true)
+    for (const p of loopPolygon(path)) expect(distanceToLoop(nominal, p)).toBeGreaterThan(3 - 1e-6)
+    // The grown notches of a dense pattern meet: no room for the tool between them.
+    expect(lobedInsideLoop(notched({ lobeCount: 9 }), 3)).toBeNull()
+  })
+
+  it('notches have to stay apart', () => {
+    expect(notchesSeparate(notched())).toBe(true)
+    // 12 notches ⌀16 on ⌀60: centers 15.5 mm apart.
+    expect(notchesSeparate(notched({ lobeCount: 12 }))).toBe(false)
+    expect(notchesSeparate(notched({ lobeCount: 1, lobeDiameter: 50 }))).toBe(true)
+    expect(notchesSeparate(notched(), 3)).toBe(true)
+    expect(notchesSeparate(notched({ lobeCount: 9 }), 3)).toBe(false)
+  })
+
+  it('the cut shape differs from the outline only where the tool rounds it', () => {
+    // Subtract cut Inside: rounded teeth — a bigger hole than the outline.
+    const nominalArea = polygonArea(loopPolygon(lobedNominalLoop(notched())))
+    const cut = lobedCutLoop(notched(), 'inside', 3)!
+    expect(polygonArea(loopPolygon(cut))).toBeLessThan(nominalArea)
+    expect(nominalArea - polygonArea(loopPolygon(cut))).toBeLessThan(30)
+    expect(lobedCutLoop(notched(), 'outside', 3)).toBeNull()
+    // Add is the other way round.
+    expect(lobedCutLoop(lobed(), 'outside', 3)).not.toBeNull()
+    expect(lobedCutLoop(lobed(), 'inside', 3)).toBeNull()
   })
 })

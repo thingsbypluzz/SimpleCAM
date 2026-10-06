@@ -9,9 +9,9 @@ import { circleOutlineOptions, circleOutlineRadiusAndDirection } from './outline
 import { rectOutlineOptions } from './outlineRectangle'
 import { lobedOutlineOptions } from './outlineLobed'
 import {
-  lobedInsideLoop,
+  lobedCenterLoop,
   lobedOutsideGapTooNarrow,
-  lobedUnionLoop,
+  notchesSeparate,
   lobesAttached,
   loopBounds,
   loopLength,
@@ -451,13 +451,10 @@ function outlineCircleRadius(outline: OutlineParams): number {
 // never "don't fit" the same way (Outside only ever grows the cut,
 // On-line uses nominal dimensions untouched), so they're always valid.
 export function isOutlineToolDiameterValid(outline: OutlineParams): boolean {
+  if (outline.shape === 'lobedCircle') return isOutlineLobedToolValid(outline)
   if (outline.offsetMode !== 'inside') return true
   // Strict for the same zero-radius reason as isToolDiameterValid (BL-49).
   if (outline.shape === 'circle') return outline.toolDiameter < outline.diameter
-  // Lobed Circle: the tool has to get into every lobe through its neck.
-  if (outline.shape === 'lobedCircle') {
-    return !isOutlineLobesValid(outline) || lobedInsideLoop(outline, outline.toolDiameter / 2) !== null
-  }
   return outline.toolDiameter < Math.min(outline.width, outline.height)
 }
 
@@ -472,16 +469,30 @@ export function isOutlineLobesAttached(outline: OutlineParams): boolean {
   return outline.shape !== 'lobedCircle' || !isOutlineSizeValid(outline) || lobesAttached(outline)
 }
 
+// Subtract (BL-106): the notches must leave some rim between them.
+export function isOutlineNotchesSeparate(outline: OutlineParams): boolean {
+  return outline.shape !== 'lobedCircle' || outline.lobeMode !== 'subtract' || notchesSeparate(outline)
+}
+
 function isOutlineLobesValid(outline: OutlineParams): boolean {
-  return isOutlineSizeValid(outline) && isOutlineLobeCountValid(outline) && isOutlineLobesAttached(outline)
+  return (
+    isOutlineSizeValid(outline) && isOutlineLobeCountValid(outline) && isOutlineLobesAttached(outline) && isOutlineNotchesSeparate(outline)
+  )
+}
+
+// Lobed Circle: the tool has to fit wherever its path needs fillets or
+// room — Add cut Inside (every lobe and its neck), Subtract cut Outside
+// (every notch) and Inside (between the grown notches). Add cut Outside
+// always works: a gap too narrow simply stays uncut.
+function isOutlineLobedToolValid(outline: OutlineParams): boolean {
+  if (outline.offsetMode === 'onLine' || !isOutlineLobesValid(outline)) return true
+  return lobedCenterLoop(outline, outline.offsetMode, outline.toolDiameter / 2) !== null
 }
 
 // Length of the Lobed Circle's tool path in the current offset mode (0
 // when there is none).
 function lobedToolPathLength(outline: OutlineParams): number {
-  const r = outline.toolDiameter / 2
-  if (outline.offsetMode === 'inside') return loopLength(lobedInsideLoop(outline, r) ?? [])
-  return loopLength(lobedUnionLoop(outline, outline.offsetMode === 'outside' ? r : 0))
+  return loopLength(lobedCenterLoop(outline, outline.offsetMode, outline.toolDiameter / 2) ?? [])
 }
 
 // Non-blocking (OP-8): cut Outside, the tool can't enter a gap between
@@ -537,8 +548,7 @@ export function isOutlineTabWidthValid(outline: OutlineParams): boolean {
 // never affects footprint size, only where it sits.
 export function outlineFootprint(outline: OutlineParams): { x: number; y: number } {
   if (outline.shape === 'lobedCircle') {
-    const grow = outline.offsetMode === 'outside' ? outline.toolDiameter / 2 : 0
-    const bounds = loopBounds(lobedUnionLoop(outline, grow))
+    const bounds = loopBounds(lobedCenterLoop(outline, outline.offsetMode === 'outside' ? 'outside' : 'onLine', outline.toolDiameter / 2) ?? [])
     return bounds ? { x: bounds.maxX - bounds.minX, y: bounds.maxY - bounds.minY } : { x: 0, y: 0 }
   }
   if (outline.shape === 'circle') {
@@ -905,6 +915,7 @@ export const OPERATION_RULES: Record<OperationType, OperationRules> = {
       isOutlineSizeValid(p.outline) &&
       isOutlineLobeCountValid(p.outline) &&
       isOutlineLobesAttached(p.outline) &&
+      isOutlineNotchesSeparate(p.outline) &&
       isOutlineTabHeightValid(p.outline) &&
       isOutlineTabWidthValid(p.outline) &&
       isOutlineTabCountValid(p.outline) &&

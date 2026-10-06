@@ -4,8 +4,8 @@ import { computeDepthPasses } from './depthPasses'
 import {
   arcLength,
   arcPoint,
-  lobedInsideLoop,
-  lobedUnionLoop,
+  lobeCountOf,
+  lobedCenterLoop,
   loopLength,
   loopOutermostOnRay,
   loopPointAtLength,
@@ -54,13 +54,10 @@ const rad = (deg: number) => (deg * Math.PI) / 180
 
 // Tool-center loop for the offset mode, in travel direction (Outside and
 // On-line clockwise, Inside counter-clockwise — climb under M3), before the
-// lap start is chosen. Outside: the union of the circles grown by the tool
-// radius — a gap narrower than the tool closes up. Inside: the outline
-// inset by the tool radius, empty when the tool doesn't fit.
+// lap start is chosen. Empty when the tool doesn't fit (Add cut Inside,
+// Subtract cut Outside or Inside) — see lobedCenterLoop().
 export function lobedToolLoop(outline: OutlineParams): Loop {
-  const r = outline.toolDiameter / 2
-  if (outline.offsetMode === 'inside') return lobedInsideLoop(outline, r) ?? []
-  const loop = lobedUnionLoop(outline, outline.offsetMode === 'outside' ? r : 0)
+  const loop = lobedCenterLoop(outline, outline.offsetMode, outline.toolDiameter / 2) ?? []
   return outlineDirectionForOffsetMode(outline.offsetMode) === 'cw' ? reverseLoop(loop) : loop
 }
 
@@ -87,8 +84,10 @@ export function lobedOutlineOptions(params: WizardParams): LobedToolpathOptions 
   const { outline, feeds, output } = params
   const base = lobedToolLoop(outline)
   const tabbed = outline.tabsEnabled ? withTabs(base, outline) : null
-  // Without tabs a lap starts at the tip of the first lobe.
-  const loop = tabbed ? tabbed.loop : loopStartingAt(base, loopOutermostOnRay(base, rad(outline.lobeStartAngle)))
+  // Without tabs a lap starts at the tip of the first lobe — or, with the
+  // lobes cut out (Subtract), on the main circle half-way to the next notch.
+  const startAngle = outline.lobeStartAngle + (outline.lobeMode === 'subtract' ? 180 / Math.max(1, lobeCountOf(outline)) : 0)
+  const loop = tabbed ? tabbed.loop : loopStartingAt(base, loopOutermostOnRay(base, rad(startAngle)))
   return {
     loop,
     totalDepth: outline.totalDepth,

@@ -3,6 +3,7 @@ import type {
   FacingOriginAcross,
   FacingOriginAlong,
   InterpolationMode,
+  LobeMode,
   RasterDirection,
   ZTransitionMode,
 } from '../../types/wizard'
@@ -45,6 +46,12 @@ export const FACING_ORIGIN_ALONG_OPTIONS: readonly TextToggleOption<FacingOrigin
 export const FACING_ORIGIN_ACROSS_OPTIONS: readonly TextToggleOption<FacingOriginAcross>[] = [
   { value: 'raw', label: 'Raw Edge', title: 'Origin on the edge as it is now — the finished edge ends up inside the material' },
   { value: 'finished', label: 'Finished', title: 'Origin on the edge the cut leaves — the raw edge sticks out past it' },
+]
+
+// Lobed Circle (BL-106).
+export const LOBE_MODE_OPTIONS: readonly TextToggleOption<LobeMode>[] = [
+  { value: 'add', label: 'Add', title: 'The lobe circles are added to the main circle' },
+  { value: 'subtract', label: 'Subtract', title: 'The lobe circles are cut out of the main circle — notches on its rim' },
 ]
 
 export const INTERPOLATION_OPTIONS: readonly TextToggleOption<InterpolationMode>[] = [

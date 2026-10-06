@@ -130,6 +130,7 @@ export function randomOutline(rng: Rng): WizardParams {
       height: rng.range(5, 80, 1),
       diameter: rng.range(5, 80, 1),
       lobeMainDiameter,
+      lobeMode: rng.pick(['add', 'add', 'subtract'] as const),
       lobeCount: rng.int(1, 9),
       lobeDiameter,
       lobePitchDiameter: Math.max(0.1, Number((lobeMainDiameter + lobeDiameter * rng.range(-0.8, 0.9, 2)).toFixed(1))),

@@ -37,7 +37,7 @@ import {
 import { endOfProgramCode } from './program'
 import { generateStandardHole } from './standardHole'
 import { generateFacing } from './facing'
-import { distanceToLoop, lobedUnionLoop, translateLoop } from './outlineLobedGeometry'
+import { distanceToLoop, lobedNominalLoop, translateLoop } from './outlineLobedGeometry'
 import { facingAxes, facingClearV, facingFinalV, facingPoint, facingTravel } from './facingGeometry'
 import { generateSurfaceUnidirectional, generateSurfaceZigzag } from './surface'
 import { surfaceToolBounds } from './surfaceGeometry'
@@ -160,7 +160,7 @@ function containmentProblems(params: WizardParams, below: TracedPoint[]): string
     // the outline, Inside and Outside alike. The traced points come from
     // G-code rounded to 4 decimals, arcs rebuilt from their rounded ends.
     const { outline } = params
-    const nominal = translateLoop(lobedUnionLoop(outline, 0), outline.offsetX, outline.offsetY)
+    const nominal = translateLoop(lobedNominalLoop(outline), outline.offsetX, outline.offsetY)
     const r = outline.toolDiameter / 2
     return outside('closer to the Lobed Circle outline than the tool radius', (p) => distanceToLoop(nominal, p) >= r - LOBED_TOLERANCE)
   }
