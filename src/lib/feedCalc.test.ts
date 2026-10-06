@@ -7,6 +7,7 @@ import { chipThinningFactor } from './pocketAdaptiveMath'
 import { OPERATION_RULES } from './validation'
 import {
   computeFeeds,
+  suggestedRampAngle,
   effectiveChipLoad,
   engagementChipThinning,
   suggestedChipLoad,
@@ -251,5 +252,43 @@ describe('routerDialHint (BL-79)', () => {
 
   it('is null without a router', () => {
     expect(routerDialHint(null, 18000)).toBeNull()
+  })
+})
+
+describe('suggestedRampAngle (BL-81)', () => {
+  const limits = { minDeg: 0.5, maxDeg: 10, maxTurns: 10 }
+  // A long path: the turn limit never applies.
+  const long = (material: keyof typeof MATERIALS, rigidity: 'light' | 'medium' | 'rigid') =>
+    suggestedRampAngle(MATERIALS[material], rigidity, 200, 1, limits)
+
+  it('takes the material angle, scaled by rigidity on a 0.5° grid', () => {
+    expect(long('softwood', 'medium')).toEqual({ angleDeg: 5, baseDeg: 5, raisedForTurns: false })
+    expect(long('softwood', 'light').angleDeg).toBe(4) // 3.75
+    expect(long('softwood', 'rigid').angleDeg).toBe(6.5) // 6.25
+    expect(long('aluminium', 'medium').angleDeg).toBe(2)
+    expect(long('brass', 'light').angleDeg).toBe(1) // 1.125
+    expect(long('brass', 'rigid').angleDeg).toBe(2) // 1.875
+  })
+
+  it('raises the angle on a short path so one Stepdown takes at most 10 turns', () => {
+    // ⌀4 hole, ⌀3.175 tool: path 2π × 0.4125 ≈ 2.59 mm. Aluminium's 2° gives
+    // 0.09 mm per turn — 11 turns for a 1 mm Stepdown; 2.5° gives 0.113.
+    const path = 2 * Math.PI * 0.4125
+    const r = suggestedRampAngle(MATERIALS.aluminium, 'medium', path, 1, limits)
+    expect(r).toEqual({ angleDeg: 2.5, baseDeg: 2, raisedForTurns: true })
+    expect(1 / (path * Math.tan((r.angleDeg * Math.PI) / 180))).toBeLessThanOrEqual(10)
+  })
+
+  it('never suggests more than the recommended maximum', () => {
+    const r = suggestedRampAngle(MATERIALS.brass, 'medium', 0.5, 3, limits)
+    expect(r.angleDeg).toBe(10)
+    expect(r.raisedForTurns).toBe(true)
+  })
+
+  it('every material has an angle inside the validated range', () => {
+    for (const material of Object.values(MATERIALS)) {
+      expect(material.rampAngleDeg).toBeGreaterThanOrEqual(0.5)
+      expect(material.rampAngleDeg).toBeLessThanOrEqual(10)
+    }
   })
 })

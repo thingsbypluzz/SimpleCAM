@@ -7,6 +7,25 @@ zgodne z [SemVer](https://semver.org/). Ten plik pozostaje głównym, czytelnym
 thingsbypluzz/SimpleCAM), ale to infrastruktura pod izolację pracy
 (branch/worktree per zadanie), nie zamiennik tego changeloga.
 
+## [0.39.0] — 2026-10-06
+
+### Dodano
+
+- **Feedrate Calculator sugeruje Ramp Angle** (`BL-81`). Kąt zejścia
+  helixa albo rampy startował dotąd wszędzie z 2° i był ustawiany
+  ręcznie. Kalkulator ma teraz wiersz „Ramp Angle [°]” z checkboxem,
+  zapisywany przez „Apply selected” do pola Ramp w Kroku 2.
+  - Kąt z nowej kolumny tabeli materiałów (od 1,5° dla mosiądzu i 2° dla
+    aluminium i akrylu do 5° dla miękkiego drewna, MDF i HDPE), pomnożony
+    przez sztywność maszyny i zaokrąglony do 0,5°.
+  - Na krótkiej ścieżce (mały helix) łagodny kąt oznaczałby dziesiątki
+    obrotów: sugestia rośnie wtedy do kąta, przy którym zejście o jeden
+    Stepdown bierze najwyżej 10 obrotów — nigdy powyżej 10° — a wiersz
+    mówi, z jakiej wartości ją podniesiono.
+  - Wiersz pokazuje się tylko dla metod schodzących po helixie albo
+    rampie: Hole(s) Helix, Outline Circle Helix i Rectangle Ramp, Surface
+    i Pocket z Z-Transition Helix, Pocket Adaptive.
+
 ## [0.38.0] — 2026-10-04
 
 ### Dodano

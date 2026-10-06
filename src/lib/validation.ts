@@ -807,6 +807,9 @@ interface OperationRules {
   // The Hole(s)/Outline helix or rectangle ramp (BL-80), or null.
   rampDescent: (params: WizardParams) => RampDescent | null
   descentAngleDeg: (params: WizardParams) => number | null
+  // One turn/lap of the descent the Ramp Angle applies to (BL-81: the
+  // Feedrate Calculator's suggestion), or null without a helix/ramp.
+  rampPathLength: (params: WizardParams) => number | null
   // How the tool meets the material with the current method and width —
   // the Feedrate Calculator's model and Step 2's live chip load (BL-68).
   engagement: (params: WizardParams) => Engagement
@@ -830,6 +833,7 @@ export const OPERATION_RULES: Record<OperationType, OperationRules> = {
     zSpan: (p) => zSpan(p.geometry, p.feeds),
     rampDescent: holesRampDescent,
     descentAngleDeg: (p) => rampDescentAngleDeg(holesRampDescent(p)),
+    rampPathLength: (p) => holesRampDescent(p)?.pathLength ?? null,
     engagement: () => ({ kind: 'slot' }),
   },
   outline: {
@@ -847,6 +851,7 @@ export const OPERATION_RULES: Record<OperationType, OperationRules> = {
     zSpan: (p) => outlineZSpan(p.outline, p.feeds),
     rampDescent: outlineRampDescent,
     descentAngleDeg: (p) => rampDescentAngleDeg(outlineRampDescent(p)),
+    rampPathLength: (p) => outlineRampDescent(p)?.pathLength ?? null,
     engagement: () => ({ kind: 'slot' }),
   },
   surface: {
@@ -864,6 +869,7 @@ export const OPERATION_RULES: Record<OperationType, OperationRules> = {
     zSpan: (p) => surfaceZSpan(p.surface, p.feeds),
     rampDescent: () => null,
     descentAngleDeg: (p) => (p.surface.zTransitionMode === 'helix' ? p.surface.rampAngleDeg : null),
+    rampPathLength: (p) => (p.surface.zTransitionMode === 'helix' ? 2 * Math.PI * p.surface.helixRadius : null),
     engagement: (p) => ({ kind: 'stepover', percent: p.surface.stepoverPercent }),
   },
   pocket: {
@@ -887,6 +893,7 @@ export const OPERATION_RULES: Record<OperationType, OperationRules> = {
     zSpan: (p) => pocketZSpan(p.pocket, p.feeds),
     rampDescent: () => null,
     descentAngleDeg: (p) => (effectivePocketZTransitionMode(p.pocket) === 'helix' ? p.pocket.rampAngleDeg : null),
+    rampPathLength: (p) => (effectivePocketZTransitionMode(p.pocket) === 'helix' ? 2 * Math.PI * p.pocket.helixRadius : null),
     engagement: (p) =>
       p.pocket.method === 'adaptive'
         ? { kind: 'optimalLoad', percent: p.pocket.optimalLoadPercent }
@@ -907,6 +914,7 @@ export const OPERATION_RULES: Record<OperationType, OperationRules> = {
     zSpan: (p) => p.feeds.safeZ + p.facing.totalDepth,
     rampDescent: () => null,
     descentAngleDeg: () => null,
+    rampPathLength: () => null,
     engagement: (p) => ({ kind: 'stepover', percent: facingStepoverPercent(p.facing) }),
   },
 }

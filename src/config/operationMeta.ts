@@ -53,8 +53,8 @@ export interface CalcMethodOption {
 // What the Feedrate Calculator writes back into the operation's own
 // section (BL-68): the method and tool it computed for, always, plus the
 // width (stepover / optimal load), Adaptive's linking feed and
-// chip-thinning base, and Pocket's Finishing Pass Stock to Leave and Finish
-// Feed (BL-78) when those results were selected.
+// chip-thinning base, Pocket's Finishing Pass Stock to Leave and Finish
+// Feed (BL-78) and the Ramp Angle (BL-81) when those results were selected.
 export interface CalcPatch {
   method: string
   toolDiameter: number
@@ -63,6 +63,8 @@ export interface CalcPatch {
   chipThinningBaseFeed?: number
   stockToLeave?: number
   finishFeed?: number
+  // BL-81: the helix/ramp descent angle, when the method has one.
+  rampAngleDeg?: number
 }
 
 // Everything the UI does differently per operation, in one entry per
@@ -185,7 +187,10 @@ export const OPERATION_META: Record<OperationType, OperationMeta> = {
     toolDiameter: (p) => p.geometry.toolDiameter,
     methodValue: (p) => p.method,
     calcMethods: () => methodOptions(METHOD_LIST),
-    withCalc: (p, c) => ({ method: c.method as MethodType, geometry: { ...p.geometry, toolDiameter: c.toolDiameter } }),
+    withCalc: (p, c) => ({
+      method: c.method as MethodType,
+      geometry: { ...p.geometry, toolDiameter: c.toolDiameter, rampAngleDeg: c.rampAngleDeg ?? p.geometry.rampAngleDeg },
+    }),
   },
   outline: {
     label: 'Outline',
@@ -217,7 +222,12 @@ export const OPERATION_META: Record<OperationType, OperationMeta> = {
     methodValue: (p) => activeOutlineMethodMeta(p.outline).value,
     calcMethods: (p) => methodOptions(OUTLINE_METHOD_LIST[outlineMethodFamily(p.outline.shape)]),
     withCalc: (p, c) => ({
-      outline: { ...p.outline, method: c.method as OutlineMethod, toolDiameter: c.toolDiameter },
+      outline: {
+        ...p.outline,
+        method: c.method as OutlineMethod,
+        toolDiameter: c.toolDiameter,
+        rampAngleDeg: c.rampAngleDeg ?? p.outline.rampAngleDeg,
+      },
     }),
   },
   surface: {
@@ -252,6 +262,7 @@ export const OPERATION_META: Record<OperationType, OperationMeta> = {
         method: c.method as SurfaceMethodType,
         toolDiameter: c.toolDiameter,
         stepoverPercent: c.widthPercent ?? p.surface.stepoverPercent,
+        rampAngleDeg: c.rampAngleDeg ?? p.surface.rampAngleDeg,
       },
     }),
   },
@@ -293,6 +304,7 @@ export const OPERATION_META: Record<OperationType, OperationMeta> = {
       }
       if (c.stockToLeave !== undefined) pocket.stockToLeave = c.stockToLeave
       if (c.finishFeed !== undefined) pocket.finishFeed = c.finishFeed
+      if (c.rampAngleDeg !== undefined) pocket.rampAngleDeg = c.rampAngleDeg
       return { pocket }
     },
   },  facing: {

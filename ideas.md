@@ -396,19 +396,13 @@ faktycznym.
   rozkłada zejście na cały obwód; ostrzeżenie > 10 obrotów na Stepdown z
   sugestią Standard; kalkulator bez zmian. Pełny opis: `CHANGELOG.md`,
   `[0.27.0]`.
-- **`BL-81`** *(Otwarty)* 🟠 — **Feedrate Calculator sugeruje Ramp
-  Angle.** Dziś kalkulator nie proponuje kąta zejścia dla żadnej
-  operacji — Ramp Angle (Surface/Pocket, a od `BL-80` także Hole(s)
-  Helix, Outline Circle Helix i Rectangle Ramp) startuje z domyślnych 2°
-  i jest ustawiany ręcznie. Pomysł (zgłoszone 2026-09-30): kąt zależny od
-  materiału (nowa kolumna w tabeli materiałów, np. łagodniej dla
-  aluminium/mosiądzu, stromiej dla drewna/tworzyw), ewentualnie
-  skorygowany o sztywność maszyny; nowy wiersz z checkboxem w modalu
-  (tylko gdy aktywna metoda ma helix/rampę — `rampDescent()`/Z-Transition
-  Helix), zapis przez `CalcPatch` + `OPERATION_META[op].withCalc()` do
-  `geometry`/`outline`/`surface`/`pocket.rampAngleDeg`. Do ustalenia:
-  wartości per materiał, czy uwzględnić promień helixa (liczba obrotów),
-  zachowanie przy Adaptive (wejście zawsze Helix).
+- **`BL-81`** *(Zrealizowany, 2026-10-06)* 🟠 — **Feedrate Calculator
+  sugeruje Ramp Angle.** Kalkulator nie proponował kąta zejścia — Ramp
+  Angle startował z 2° i był ustawiany ręcznie. Wdrożone: kolumna Ramp w
+  tabeli materiałów × sztywność maszyny (siatka 0,5°), wiersz z checkboxem
+  tylko dla metod z helixem albo rampą (także Adaptive), przy małym
+  promieniu kąt podniesiony do limitu 10 obrotów na Stepdown (najwyżej
+  10°). Pełny opis: `CHANGELOG.md`, `[0.39.0]`.
 - **`BL-82`** *(Otwarty)* 🟠 — **Outline po trójkącie / wycinku
   (przelotowe okna).** Z sesji `/grill-me` `OP-6` (2026-09-30): Lightening
   Pocket zawsze wybiera całą komórkę, a przy cięciu na wylot
@@ -625,6 +619,42 @@ Waga z review w nawiasie kwadratowym.
   przejście na wymiar. Do ustalenia: wykańczanie na każdym poziomie Z czy
   jednym przejściem na pełnej głębokości (lepsza powierzchnia, wymaga
   długości ostrza ≥ Depth); sugestie Feedrate Calculator.
+- **`BL-98`** *(Otwarty)* 🟢 — **Więcej slotów na presety.** Zgłoszone
+  2026-10-06. Dziś jest pięć slotów `[1]…[5]` (`PRESET_SLOT_IDS`); pomysł:
+  dwa dodatkowe (razem siedem). Do sprawdzenia: szerokość Preset Bar w
+  Header i wiersza slotów w Kroku 4 przy wąskim oknie, kolejność Overlay
+  (`deriveOverlayParams()`), stare zapisy bez nowych slotów.
+- **`BL-99`** *(Otwarty)* 🟠 — **Symbol kierunku posuwu freza na
+  podglądzie ścieżki.** Zgłoszone 2026-10-06 — **do przedyskutowania przed
+  implementacją**. Dziś kierunek widać tylko w 2D i tylko w Surface i
+  Facing (grot na linii przejścia); reszta operacji i cały podgląd 3D nie
+  pokazują, w którą stronę jedzie frez. Do ustalenia: forma (groty wzdłuż
+  ścieżki, jeden grot na przejście, znacznik startu/końca, gradient
+  koloru), gęstość przy długich ścieżkach (Adaptive, Lightened), 2D i 3D
+  czy jedno z nich, stały rozmiar ekranowy w 3D, wyłącznik w podglądzie
+  albo w Settings → Appearance, relacja z animacją (`BL-100`).
+- **`BL-100`** *(Otwarty)* 🔴 — **Animacja ścieżki w podglądzie.**
+  Zgłoszone 2026-10-06. Odtwarzanie programu ruch po ruchu z wyborem
+  prędkości ×1…×16; frez pokazany jako walec o średnicy równej Tool
+  Diameter. Źródłem jest lista ruchów silnika (`lib/toolpath.ts`) z jej
+  posuwami, więc czas wynika z G-code. Do ustalenia: 3D, 2D czy oba;
+  sterowanie (Play/Pause, suwak postępu, powrót na start); prędkość
+  rapidów (G0 nie ma posuwu w programie); czy materiał ma ubywać w trakcie
+  (dziś model materiału pokazuje tylko stan końcowy — to osobny, duży
+  temat); wysokość walca; zachowanie w Overlay i przy `renderPaused`;
+  wydajność przy ścieżkach rzędu setek tysięcy ruchów.
+- **`BL-101`** *(Otwarty)* 🔴 — **Podgląd i edycja tabel Feedrate
+  Calculator, z eksportem i importem.** Zgłoszone 2026-10-06. Dziś tabela
+  materiałów (`config/materials.ts`: Vc, fz, Plunge, Stepdown, szerokości,
+  Stock to Leave, Ramp Angle) i pokrętła routerów (`config/routers.ts`) są
+  wpisane w kod, a kalkulator pokazuje tabelę materiałów tylko do odczytu.
+  Pomysł: edycja wartości w appce, własne materiały, eksport do pliku i
+  wczytanie z zewnątrz — np. YAML. Do ustalenia: gdzie edycja (Settings
+  albo sam kalkulator), format (YAML wymaga parsera — biblioteka albo
+  własny podzbiór; JSON jest bez zależności), walidacja wczytanego pliku i
+  komunikaty błędów, zapis w `localStorage` i Reset do wartości
+  fabrycznych, wersjonowanie formatu, czy routery też, co z materiałem
+  zapamiętanym w `simplecam.feedCalc`, gdy zniknie z tabeli.
 - **`BL-61`** *(Zrealizowany, 2026-09-27)* 🔴 **[Low, kosztowne w czasie]**
   — **Podglądy duplikują geometrię silnika** — jedna lista ruchów (jak
   Adaptive) dla G-code i podglądu 3D, po jednej operacji na raz. Etapy 1–2

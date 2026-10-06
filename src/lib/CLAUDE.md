@@ -383,7 +383,8 @@ symulacji materiału.
 
 - `OPERATION_RULES` — rejestr per operacja (walidacja Generate, głębokość,
   mostki, footprint do ostrzeżeń o maszynie, `rampDescent()`/
-  `descentAngleDeg()`, `engagement()` dla Feedrate Calculator).
+  `descentAngleDeg()`, `rampPathLength()` i `engagement()` dla Feedrate
+  Calculator).
   `rampDescent()` — helix/rampa Hole(s)/Outline aktywnej metody (`unit`
   turn/lap, długość ścieżki, `pitch`, Stepdown, głębokość, kąt) wprost z
   `holeCircleOptions()`/`circleOutlineOptions()`/`rectOutlineOptions()`;
@@ -450,7 +451,12 @@ Adaptive) × sztywność (Adaptive bez sztywności), siatka 0.05 mm; Linking
 Feed = 2 × Feed (≤ Max Feed). Pocket Finishing Pass: Stock to Leave =
 `finishStock` materiału [mm] ≤ D/2, siatka 0.05 (`suggestedFinishStock()`);
 Finish Feed = RPM × z × fz × chip thinning dla szerokości = Stock to Leave
-w mocy (`FeedCalcInput.finishStock`), ≤ Max Feed. Rodzaj zaangażowania z
+w mocy (`FeedCalcInput.finishStock`), ≤ Max Feed. Ramp Angle
+(`suggestedRampAngle()`): `rampAngleDeg` materiału × sztywność, siatka
+0.5°; gdy zejście o Stepdown po ścieżce jednego obrotu/okrążenia
+(`OPERATION_RULES[op].rampPathLength()` — null bez helixa/rampy) wzięłoby
+ponad `MAX_RECOMMENDED_TURNS_PER_STEPDOWN` obrotów, kąt rośnie do tego
+limitu, najwyżej do `MAX_RECOMMENDED_DESCENT_DEG`. Rodzaj zaangażowania z
 `OPERATION_RULES[op].engagement()`: Hole(s)/Outline — szczelina,
 Surface/Pocket Spiral/Facing — stepover, Adaptive — Optimal Load.
 Sugerowana szerokość przycięta do `OPERATION_META[op].maxCalcWidthPercent()`

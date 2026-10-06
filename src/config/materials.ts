@@ -5,7 +5,8 @@ import type { MaterialSpec } from '../lib/feedCalc'
 // depend on the machine, the tool's stick-out and its condition; a test cut
 // has the last word. `ap` is Stepdown ×D per engagement (slot / stepover /
 // Adaptive), `aeStepover`/`aeAdaptive` are widths in % of D, `finishStock` the
-// Pocket Finishing Pass's Stock to Leave in mm (BL-78).
+// Pocket Finishing Pass's Stock to Leave in mm (BL-78), `rampAngleDeg` the
+// descent angle of a helix or ramp (BL-81).
 export type MaterialId =
   | 'softwood'
   | 'hardwood'
@@ -28,6 +29,7 @@ export const MATERIALS: Record<MaterialId, MaterialSpec> = {
     aeStepover: 45,
     aeAdaptive: 20,
     finishStock: 0.3,
+    rampAngleDeg: 5,
   },
   hardwood: {
     label: 'Hardwood (oak, beech)',
@@ -38,6 +40,7 @@ export const MATERIALS: Record<MaterialId, MaterialSpec> = {
     aeStepover: 40,
     aeAdaptive: 15,
     finishStock: 0.3,
+    rampAngleDeg: 3,
   },
   mdf: {
     label: 'MDF',
@@ -48,6 +51,7 @@ export const MATERIALS: Record<MaterialId, MaterialSpec> = {
     aeStepover: 45,
     aeAdaptive: 20,
     finishStock: 0.3,
+    rampAngleDeg: 5,
     note: 'Very abrasive dust — use extraction; edges fuzz if the chip load is too low.',
   },
   plywood: {
@@ -59,6 +63,7 @@ export const MATERIALS: Record<MaterialId, MaterialSpec> = {
     aeStepover: 40,
     aeAdaptive: 15,
     finishStock: 0.3,
+    rampAngleDeg: 3,
   },
   pom: {
     label: 'Delrin / POM',
@@ -69,6 +74,7 @@ export const MATERIALS: Record<MaterialId, MaterialSpec> = {
     aeStepover: 40,
     aeAdaptive: 15,
     finishStock: 0.25,
+    rampAngleDeg: 3,
     note: 'Too low a chip load rubs instead of cutting and melts the material — keep the feed up. Single-flute (O-flute) tools clear chips best.',
   },
   acrylic: {
@@ -80,6 +86,7 @@ export const MATERIALS: Record<MaterialId, MaterialSpec> = {
     aeStepover: 35,
     aeAdaptive: 10,
     finishStock: 0.2,
+    rampAngleDeg: 2,
     note: 'Melts and re-welds chips when it runs hot, cracks when pushed too hard — single-flute tool, air blast.',
   },
   hdpe: {
@@ -91,6 +98,7 @@ export const MATERIALS: Record<MaterialId, MaterialSpec> = {
     aeStepover: 45,
     aeAdaptive: 20,
     finishStock: 0.25,
+    rampAngleDeg: 5,
     note: 'Soft and gummy — keep the chip load high to avoid melting.',
   },
   pvc: {
@@ -102,6 +110,7 @@ export const MATERIALS: Record<MaterialId, MaterialSpec> = {
     aeStepover: 35,
     aeAdaptive: 12,
     finishStock: 0.25,
+    rampAngleDeg: 3,
     note: 'Releases corrosive fumes when it overheats — keep it cool.',
   },
   aluminium: {
@@ -113,6 +122,7 @@ export const MATERIALS: Record<MaterialId, MaterialSpec> = {
     aeStepover: 25,
     aeAdaptive: 8,
     finishStock: 0.15,
+    rampAngleDeg: 2,
     note: 'Clear the chips (air or mist) — recut chips weld to the tool. 1–2 flutes.',
   },
   brass: {
@@ -124,6 +134,7 @@ export const MATERIALS: Record<MaterialId, MaterialSpec> = {
     aeStepover: 25,
     aeAdaptive: 8,
     finishStock: 0.1,
+    rampAngleDeg: 1.5,
   },
 }
 

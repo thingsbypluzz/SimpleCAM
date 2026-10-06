@@ -2,12 +2,25 @@ import { useState, type ReactNode } from 'react'
 import { MATERIAL_IDS, MATERIALS, type MaterialId } from '../config/materials'
 import { nearestDialPosition, ROUTERS } from '../config/routers'
 import { OPERATION_META, type CalcPatch } from '../config/operationMeta'
-import { computeFeeds, rigidityFactor, suggestedChipLoad, suggestedFinishStock, tableChipLoad, type ToolMaterial } from '../lib/feedCalc'
+import {
+  computeFeeds,
+  rigidityFactor,
+  suggestedChipLoad,
+  suggestedFinishStock,
+  suggestedRampAngle,
+  tableChipLoad,
+  type ToolMaterial,
+} from '../lib/feedCalc'
 import { isValidFluteCount, MAX_FLUTES, type FeedCalcSettings } from '../lib/feedCalcStorage'
 import { fmt } from '../lib/format'
 import { resolveToolDiameterSelectOptions } from '../lib/toolDiameterOptions'
 import { engagementAngleFor } from '../lib/pocketAdaptiveMath'
-import { OPERATION_RULES } from '../lib/validation'
+import {
+  MAX_RECOMMENDED_DESCENT_DEG,
+  MAX_RECOMMENDED_TURNS_PER_STEPDOWN,
+  MIN_RAMP_ANGLE_DEG,
+  OPERATION_RULES,
+} from '../lib/validation'
 import type { MachineSettings, Rigidity } from '../types/machine'
 import type { ToolDiameterOption } from '../types/toolDiameters'
 import type { WizardParams } from '../types/wizard'
@@ -33,7 +46,7 @@ interface FeedCalculatorModalProps {
   onClose: () => void
 }
 
-type ResultKey = 'rpm' | 'feed' | 'plunge' | 'stepdown' | 'width' | 'linking' | 'finishStock' | 'finishFeed'
+type ResultKey = 'rpm' | 'feed' | 'plunge' | 'stepdown' | 'width' | 'linking' | 'finishStock' | 'finishFeed' | 'rampAngle'
 
 const TOOL_MATERIAL_OPTIONS = [
   { value: 'carbide', label: 'Carbide' },
@@ -70,6 +83,7 @@ export function FeedCalculatorModal({ params, machine, settings, toolDiameters, 
     linking: true,
     finishStock: true,
     finishFeed: true,
+    rampAngle: true,
   })
 
   const material = MATERIALS[settings.material]
@@ -120,6 +134,21 @@ export function FeedCalculatorModal({ params, machine, settings, toolDiameters, 
     finishStock: stockInEffect,
   })
   const isAdaptive = engagement.kind === 'optimalLoad'
+
+  // BL-81: Ramp Angle, only when this method descends along a helix or a
+  // ramp — for the Stepdown in effect (suggested when taken), like the
+  // width above.
+  const rules = OPERATION_RULES[params.operation]
+  const rampPathLength = rules.rampPathLength(draft)
+  const currentRampAngle = rules.rampDescent(draft)?.rampAngleDeg ?? rules.descentAngleDeg(draft)
+  const ramp =
+    rampPathLength !== null && currentRampAngle !== null
+      ? suggestedRampAngle(material, machine.rigidity, rampPathLength, checks.stepdown ? r.stepdown : params.feeds.stepdown, {
+          minDeg: MIN_RAMP_ANGLE_DEG,
+          maxDeg: MAX_RECOMMENDED_DESCENT_DEG,
+          maxTurns: MAX_RECOMMENDED_TURNS_PER_STEPDOWN,
+        })
+      : null
   const widthLabel = isAdaptive ? 'Optimal Load [%]' : 'Stepover [%]'
 
   // BL-69: a hand-set router ignores S — show which dial position gives
@@ -162,6 +191,19 @@ export function FeedCalculatorModal({ params, machine, settings, toolDiameters, 
           },
         ]
       : []),
+    ...(ramp !== null && currentRampAngle !== null
+      ? [
+          {
+            key: 'rampAngle' as const,
+            label: 'Ramp Angle [°]',
+            current: fmt(currentRampAngle),
+            proposed: fmt(ramp.angleDeg),
+            note: ramp.raisedForTurns
+              ? `Raised from ${fmt(ramp.baseDeg)}° — the helix/ramp is short, a gentler angle would take more than ${MAX_RECOMMENDED_TURNS_PER_STEPDOWN} turns per Stepdown.`
+              : undefined,
+          },
+        ]
+      : []),
   ]
 
   const methodOptions = meta.calcMethods(params)
@@ -196,6 +238,7 @@ export function FeedCalculatorModal({ params, machine, settings, toolDiameters, 
     if (isAdaptive && checks.feed) calc.chipThinningBaseFeed = r.baseFeed
     if (isFinishing && checks.finishStock) calc.stockToLeave = suggestedStock
     if (isFinishing && checks.finishFeed && r.finishFeed !== null) calc.finishFeed = r.finishFeed
+    if (ramp !== null && checks.rampAngle) calc.rampAngleDeg = ramp.angleDeg
     const feeds = {
       ...params.feeds,
       ...(checks.feed ? { feedrateXY: r.feed } : {}),
@@ -425,6 +468,15 @@ export function FeedCalculatorModal({ params, machine, settings, toolDiameters, 
                     {fmt(r.stepdown)} mm
                   </li>
                   {r.linkingFeed !== null && <li>Linking Feed = 2 × Feed, at most Max Feed = {r.linkingFeed} mm/min</li>}
+                  {ramp !== null && (
+                    <li>
+                      Ramp Angle = {fmt(material.rampAngleDeg)}° (table) × {rigidityFactor(machine.rigidity)} (
+                      {RIGIDITY_LABEL[machine.rigidity]}), to 0.5° = {fmt(ramp.baseDeg)}°
+                      {ramp.raisedForTurns
+                        ? ` → ${fmt(ramp.angleDeg)}° so one Stepdown takes at most ${MAX_RECOMMENDED_TURNS_PER_STEPDOWN} turns (never above ${MAX_RECOMMENDED_DESCENT_DEG}°)`
+                        : ''}
+                    </li>
+                  )}
                   {stockInEffect !== null && r.finishChipThinning !== null && (
                     <li>
                       Finish Feed = {r.rpm} × {settings.flutes} × {chipLoadText(r.chipLoad)} ×{' '}
@@ -446,7 +498,7 @@ export function FeedCalculatorModal({ params, machine, settings, toolDiameters, 
               <p className="mt-2">
                 Starting values for a carbide tool, before the rigidity factor. fz in mm/tooth for a 3 / 6 / 8+ mm tool
                 (in between: linear); Stepdown ×⌀ for a slot / stepover / Adaptive; widths in % of ⌀; Pocket
-                Finishing Pass Stock to Leave in mm.
+                Finishing Pass Stock to Leave in mm; Ramp Angle of a helix or ramp descent in °.
               </p>
               <div className="mt-2 overflow-x-auto">
                 <table className="w-full text-right tabular-nums">
@@ -458,7 +510,8 @@ export function FeedCalculatorModal({ params, machine, settings, toolDiameters, 
                       <th className="px-1 py-1 font-medium">Plunge</th>
                       <th className="px-1 py-1 font-medium">Stepdown ×⌀</th>
                       <th className="px-1 py-1 font-medium">Stepover / Load %</th>
-                      <th className="py-1 pl-1 font-medium">Finish stock mm</th>
+                      <th className="px-1 py-1 font-medium">Finish stock mm</th>
+                      <th className="py-1 pl-1 font-medium">Ramp °</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -481,7 +534,8 @@ export function FeedCalculatorModal({ params, machine, settings, toolDiameters, 
                           <td className="px-1 py-1">
                             {m.aeStepover} / {m.aeAdaptive}
                           </td>
-                          <td className="py-1 pl-1">{fmt(m.finishStock)}</td>
+                          <td className="px-1 py-1">{fmt(m.finishStock)}</td>
+                          <td className="py-1 pl-1">{fmt(m.rampAngleDeg)}</td>
                         </tr>
                       )
                     })}
