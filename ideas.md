@@ -642,18 +642,26 @@ Waga z review w nawiasie kwadratowym.
   (dziś model materiału pokazuje tylko stan końcowy — to osobny, duży
   temat); wysokość walca; zachowanie w Overlay i przy `renderPaused`;
   wydajność przy ścieżkach rzędu setek tysięcy ruchów.
-- **`BL-101`** *(Otwarty)* 🔴 — **Podgląd i edycja tabel Feedrate
-  Calculator, z eksportem i importem.** Zgłoszone 2026-10-06. Dziś tabela
-  materiałów (`config/materials.ts`: Vc, fz, Plunge, Stepdown, szerokości,
-  Stock to Leave, Ramp Angle) i pokrętła routerów (`config/routers.ts`) są
-  wpisane w kod, a kalkulator pokazuje tabelę materiałów tylko do odczytu.
-  Pomysł: edycja wartości w appce, własne materiały, eksport do pliku i
-  wczytanie z zewnątrz — np. YAML. Do ustalenia: gdzie edycja (Settings
-  albo sam kalkulator), format (YAML wymaga parsera — biblioteka albo
-  własny podzbiór; JSON jest bez zależności), walidacja wczytanego pliku i
-  komunikaty błędów, zapis w `localStorage` i Reset do wartości
-  fabrycznych, wersjonowanie formatu, czy routery też, co z materiałem
-  zapamiętanym w `simplecam.feedCalc`, gdy zniknie z tabeli.
+- **`BL-101A`** *(Otwarty)* 🟢 — **Podgląd tabel Feedrate Calculator w
+  Settings Modal.** Zgłoszone 2026-10-06, wydzielone z `BL-101`. Dziś
+  tabelę materiałów (`config/materials.ts`: Vc, fz, Plunge, Stepdown,
+  szerokości, Stock to Leave, Ramp Angle) widać tylko w kalkulatorze, w
+  zwijanej sekcji „Material table”, a pokrętła routerów
+  (`config/routers.ts`) tylko dla wybranego routera. Pomysł: nowa pozycja
+  w Settings Nav z obiema tabelami do odczytu. Do ustalenia: nazwa i
+  miejsce w Settings Nav, czy sekcja w kalkulatorze zostaje, układ przy
+  dziesięciu kolumnach.
+- **`BL-101B`** *(Otwarty)* 🔴 — **Edycja tabel Feedrate Calculator,
+  eksport i import.** Zgłoszone 2026-10-06, wydzielone z `BL-101`; po
+  `BL-101A` (edycja w tym samym miejscu co podgląd). Dziś wartości są
+  wpisane w kod. Pomysł: edycja wartości w appce, własne materiały,
+  eksport do pliku i wczytanie z zewnątrz — np. YAML; zakres do wyboru
+  (sama edycja, sam eksport/import albo oba). Do ustalenia: format (YAML
+  wymaga parsera — biblioteka albo własny podzbiór; JSON jest bez
+  zależności), walidacja wczytanego pliku i komunikaty błędów, zapis w
+  `localStorage` i Reset do wartości fabrycznych, wersjonowanie formatu,
+  czy routery też, co z materiałem zapamiętanym w `simplecam.feedCalc`,
+  gdy zniknie z tabeli.
 - **`BL-102`** *(Otwarty)* 🟠 — **Pocket: kształt Lobed Circle.**
   Zgłoszone 2026-10-06, po `OP-8`. Kieszeń o obrysie okręgu z wypustkami.
   Wariant prosty: kształt jest sumą okręgów, więc wybranie każdego okręgu
