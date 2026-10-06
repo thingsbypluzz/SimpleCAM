@@ -112,11 +112,17 @@ Adaptive, kropkowane w kolorze `linking` palety). Każdy styl = osobne
   (`hasFramedRef`) — **ref zerowany na starcie efektu setupu** (StrictMode
   uruchamia go dwa razy na tej samej instancji; bez resetu kamera ląduje w
   (0,0,0) i OrbitControls są martwe). Edycja parametrów nie rusza kamery;
-  zmiana selekcji Overlay re-fituje odległość przy zachowanym kącie.
+  zmiana zestawu pokazywanych presetów (prop `fitKey`) re-fituje odległość
+  przy zachowanym kącie.
 - **Pamięć widoku** (`viewMemory`, ref z `App.tsx`): przy odmontowaniu
-  zapis position/target/up/near/far + selekcji Overlay; przy następnym
-  montażu odtworzenie zamiast Front (inna selekcja → re-fit odległości).
+  zapis position/target/up/near/far + `fitKey`; przy następnym
+  montażu odtworzenie zamiast Front (inny `fitKey` → re-fit odległości).
   Tylko w sesji.
+- **Edycja presetu w Overlay** (`dimOverlay`): linie presetów nakładki
+  (ścieżka, obrys, wektor offsetu) dostają krycie
+  `DIMMED_OVERLAY_OPACITY` (`dimLines()`; siatki — bloki Surface/Facing —
+  bez zmian), żywy wzorzec normalnie. `activeToolpathVisible = false`
+  ukrywa tylko ścieżkę żywego wzorca.
 - Presety widoku `cameraPresets.ts` (`VIEW_PRESETS`, `frameCamera()`;
   `direction` = pozycja kamery względem celu). `front` patrzy wzdłuż +Y z
   lekkim podniesieniem; `isometric` z ćwiartki III. Fit View = te same

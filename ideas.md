@@ -708,7 +708,7 @@ Waga z review w nawiasie kwadratowym.
   Geometria lustrzana do Add (różnica okręgów, `outsetLoop()`), nadal
   dokładne łuki. Subtract w Pocket poza zakresem. Pełny opis:
   `CHANGELOG.md`, `[0.43.0]`.
-- **`BL-107`** *(Otwarty)* 🔴 — **Overlay z jednoczesną edycją jednego z
+- **`BL-107`** *(Zrealizowany, 2026-10-06)* 🔴 — **Overlay z jednoczesną edycją jednego z
   podglądanych presetów.** Zgłoszone 2026-10-06 — **sesja `/grill-me`
   obowiązkowa**. Dziś Overlay i Edit Mode wzajemnie się wyłączają, a w
   Overlay żywy wzorzec jest ukryty i Generate zablokowany. Pomysł:
@@ -726,6 +726,13 @@ Waga z review w nawiasie kwadratowym.
   presetach); kamera (dziś zmiana selekcji re-fituje); kolory w motywach
   bez drugiego akcentu (Sloppy Indigo, Shopfloor Amber) i reguła „stan
   nigdy tylko kolorem”; relacja z `BL-105` (napis przy Preset Bar).
+  **Obsługa po pierwszych testach (zmieniona względem ustaleń niżej):**
+  zamiast dwóch trybów — dwa znaczki na każdym slocie (ptaszek = Overlay,
+  ołówek = edycja), niezależne; edycja nie dokłada presetu do nakładki;
+  klik w slot wczytuje tylko, gdy nic nie jest w Overlay ani w edycji;
+  oko = wyczyść nakładkę / pokaż wszystkie, ołówek w Header = zakończ
+  edycję; usuwanie presetów w Kroku 4 (`BL-109`). Podglądy, Generate,
+  kolory i kamera — jak ustalono.
   **Ustalenia z `/grill-me` (2026-10-06):**
   - *Maszyna stanów.* Oko i ołówek to niezależne przełączniki, mogą
     świecić naraz. Ołówek ma pierwszeństwo: gdy świeci, klik w slot
@@ -757,16 +764,12 @@ Waga z review w nawiasie kwadratowym.
     ruszają widoku.
   - *Napisy.* Gdy świecą oba tryby — dwa napisy w dwóch wierszach na lewo
     od Preset Bar: Overlay w kolorze Overlay nad napisem Edit w kolorze
-    Edit (napis Edit po uzbrojeniu nadal zielony/czerwony wg poprawności —
-    do potwierdzenia przy implementacji).
-- **`BL-109`** *(Otwarty)* 🟢 — **Usuwanie presetów w Kroku 4.**
-  Zgłoszone 2026-10-06. Przenieść albo dodać usuwanie presetów do Kroku 4
-  wizarda (tam, gdzie są sloty zapisu) — dziś jedyną drogą jest „×”
-  pojawiający się po najechaniu na slot w Preset Bar. Do ustalenia:
-  przeniesienie czy druga droga (czy „×” w Headerze zostaje), forma w
-  Kroku 4 (np. „×” przy zajętym slocie obok zapisu), potwierdzenie jak
-  dziś, zachowanie w Overlay i Edit Mode (usunięcie uzbrojonego albo
-  podglądanego presetu).
+    Edit (napis Edit po uzbrojeniu zielony/czerwony wg poprawności).
+- **`BL-109`** *(Zrealizowany, 2026-10-07)* 🟢 — **Usuwanie presetów w
+  Kroku 4.** Razem z `BL-107`: „×” po najechaniu na zapisany slot w Kroku
+  4, z potwierdzeniem; z Preset Bar usuwanie zniknęło (prawy górny róg
+  slotu zajął znaczek edycji). Usunięty preset wypada z Overlay i z
+  edycji.
 - **`BL-108`** *(Otwarty)* 🟠 — **Pocket: kształt Donut (kieszeń
   pierścieniowa).** Zgłoszone 2026-10-06. Nowy kształt w Pocket: okrąg z
   zostawionym środkiem (wyspą) o wybranej średnicy — wybierany jest

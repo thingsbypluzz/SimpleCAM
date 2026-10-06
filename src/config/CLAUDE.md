@@ -41,6 +41,12 @@
   token z innych bloków — patrz banner nad blokami), wpis w `THEME_LIST`,
   `FIXED_COLORS`/`DEFAULT_ACCENTS` w `palettes.ts`; bez zmian w
   komponentach.
+- **Kolor Edit** — drugi akcent w każdym motywie (`--edit`, `--edit-fg`,
+  `--edit-bg`, `--edit-on` = tekst na `--edit`, `--glow-edit`): ołówek
+  edycji (przycisk i znaczek na slocie) i edytowany slot; Overlay używa
+  akcentu. Sloppy Indigo — bursztyn,
+  Shopfloor Amber — cyjan, Arcade — róż. Nie może zlewać się z kolorem
+  błędu ani ostrzeżenia danego motywu.
 - Arcade są dark-only (light i `.dark` identyczne). Dwa akcenty: cyjan =
   struktura/nawigacja (`--accent-*`), róż = wybór/dane użytkownika
   (`--selected-border`/`--selected-fg`/`--stat-value`; w innych motywach

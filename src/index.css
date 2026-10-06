@@ -69,6 +69,13 @@ body {
   --accent-bg: #eef2ff;
   --accent-border: #a5b4fc;
   --accent-strong: #6366f1;
+  /* Edit Mode (pencil, edited preset) — a second accent, apart from
+     Overlay's, which uses the accent itself. */
+  --edit: #d97706;
+  --edit-fg: #b45309;
+  --edit-bg: #fffbeb;
+  --edit-on: #ffffff;
+  --glow-edit: none;
   --selected-bg: #ffffff;
   --selected-border: var(--accent-strong);
   --selected-fg: var(--accent-fg);
@@ -129,6 +136,11 @@ body {
   --accent-bg: rgba(30, 27, 75, 0.4);
   --accent-border: #3730a3;
   --accent-strong: #6366f1;
+  --edit: #fbbf24;
+  --edit-fg: #fcd34d;
+  --edit-bg: rgba(69, 45, 3, 0.45);
+  --edit-on: #1c1917;
+  --glow-edit: none;
   --selected-bg: rgba(49, 46, 129, 0.4);
   --selected-border: var(--accent-strong);
   --selected-fg: var(--accent-fg);
@@ -190,6 +202,11 @@ body {
   --accent-bg: #fef3c7;
   --accent-border: #fcd34d;
   --accent-strong: #d97706;
+  --edit: #0e7490;
+  --edit-fg: #155e75;
+  --edit-bg: #ecfeff;
+  --edit-on: #ffffff;
+  --glow-edit: none;
   --selected-bg: #ffffff;
   --selected-border: var(--accent-strong);
   --selected-fg: var(--accent-fg);
@@ -253,6 +270,11 @@ body {
   --accent-bg: rgba(69, 45, 3, 0.55);
   --accent-border: #78350f;
   --accent-strong: #b45309;
+  --edit: #22d3ee;
+  --edit-fg: #67e8f9;
+  --edit-bg: rgba(8, 51, 68, 0.5);
+  --edit-on: #083344;
+  --glow-edit: none;
   --selected-bg: rgba(69, 45, 3, 0.85);
   --selected-border: var(--accent-strong);
   --selected-fg: var(--accent-fg);
@@ -325,6 +347,11 @@ body {
   --accent-bg: rgba(0, 240, 255, .06);
   --accent-border: rgba(0, 240, 255, .28);
   --accent-strong: #00b3c4;
+  --edit: #ff2a85;
+  --edit-fg: #ff8ec0;
+  --edit-bg: rgba(255, 42, 133, .08);
+  --edit-on: #ffffff;
+  --glow-edit: inset 0 0 6px rgba(255, 42, 133, .14);
   --selected-bg: rgba(255, 42, 133, .11);
   --selected-border: #d1005f;
   --selected-fg: #ff5fa8;
@@ -395,6 +422,11 @@ body {
   --accent-bg: rgba(0, 240, 255, .06);
   --accent-border: rgba(0, 240, 255, .28);
   --accent-strong: #00b3c4;
+  --edit: #ff2a85;
+  --edit-fg: #ff8ec0;
+  --edit-bg: rgba(255, 42, 133, .08);
+  --edit-on: #ffffff;
+  --glow-edit: inset 0 0 6px rgba(255, 42, 133, .14);
   --selected-bg: rgba(255, 42, 133, .11);
   --selected-border: #d1005f;
   --selected-fg: #ff5fa8;
@@ -472,6 +504,11 @@ body {
   --accent-bg: rgba(0, 240, 255, .07);
   --accent-border: rgba(0, 240, 255, .35);
   --accent-strong: #00f0ff;
+  --edit: #ff2a85;
+  --edit-fg: #ff8ec0;
+  --edit-bg: rgba(255, 42, 133, .09);
+  --edit-on: #ffffff;
+  --glow-edit: 0 0 10px rgba(255, 42, 133, .40), inset 0 0 8px rgba(255, 42, 133, .16);
   --selected-bg: rgba(255, 42, 133, .16);
   --selected-border: #ff2a85;
   --selected-fg: #ff2a85;
@@ -538,6 +575,11 @@ body {
   --accent-bg: rgba(0, 240, 255, .07);
   --accent-border: rgba(0, 240, 255, .35);
   --accent-strong: #00f0ff;
+  --edit: #ff2a85;
+  --edit-fg: #ff8ec0;
+  --edit-bg: rgba(255, 42, 133, .09);
+  --edit-on: #ffffff;
+  --glow-edit: 0 0 10px rgba(255, 42, 133, .40), inset 0 0 8px rgba(255, 42, 133, .16);
   --selected-bg: rgba(255, 42, 133, .16);
   --selected-border: #ff2a85;
   --selected-fg: #ff2a85;
@@ -610,6 +652,10 @@ body {
   --color-accent-bg: var(--accent-bg);
   --color-accent-border: var(--accent-border);
   --color-accent-strong: var(--accent-strong);
+  --color-edit: var(--edit);
+  --color-edit-fg: var(--edit-fg);
+  --color-edit-bg: var(--edit-bg);
+  --color-edit-on: var(--edit-on);
   --color-selected-bg: var(--selected-bg);
   --color-selected-border: var(--selected-border);
   --color-selected-fg: var(--selected-fg);

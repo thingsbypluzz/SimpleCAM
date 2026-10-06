@@ -18,6 +18,8 @@ interface Step4OutputProps {
   overlayActive: boolean
   presetSlots: Partial<Record<PresetSlotId, WizardParams>>
   onSaveToPreset: (id: PresetSlotId) => boolean
+  // BL-109: the only place a preset is deleted from (asks to confirm).
+  onDeletePreset: (id: PresetSlotId) => void
   warnings: string[]
 }
 
@@ -41,6 +43,7 @@ export function Step4Output({
   overlayActive,
   presetSlots,
   onSaveToPreset,
+  onDeletePreset,
   warnings,
 }: Step4OutputProps) {
   const { output } = params
@@ -108,7 +111,7 @@ export function Step4Output({
       {!canGenerate && (
         <p className="text-sm text-status-error">
           {overlayActive
-            ? 'Turn off preset overlay (the eye icon in the header) to generate G-code.'
+            ? 'Turn off preset overlay (the eye icon in the header) or pick a preset to edit (the pencil icon) to generate G-code.'
             : 'Fix the highlighted errors in Step 2 / Step 3 before generating.'}
         </p>
       )}
@@ -151,7 +154,7 @@ export function Step4Output({
 
       <div className="flex flex-col gap-2 border-t border-border pt-4">
         <span className="text-xs font-medium text-muted">
-          Save current settings as preset
+          Save current settings as preset — hover a saved one to delete it
         </span>
         {/* gap-1.5: seven 44 px slots have to fit the 420 px panel, scrollbar included. */}
         <div className="flex gap-1.5">
@@ -167,22 +170,34 @@ export function Step4Output({
               ? `Overwrite preset [${id}] — ${presetLabel(existing)}`
               : `Save current settings to preset [${id}] — empty`
             return (
-              <button
-                key={id}
-                type="button"
-                onClick={() => handleSaveToPreset(id)}
-                title={label}
-                aria-label={label}
-                className={
-                  justSaved
-                    ? 'flex h-11 w-11 items-center justify-center rounded-md border border-status-success bg-status-success-bg text-sm font-semibold text-status-success'
-                    : existing
-                      ? 'flex h-11 w-11 items-center justify-center rounded-md border border-accent-border text-accent-fg shadow-[var(--glow-accent)] hover:bg-accent-bg'
-                      : 'flex h-11 w-11 items-center justify-center rounded-md border border-dashed border-empty-border text-xs font-semibold text-empty-fg hover:border-field-border hover:text-muted'
-                }
-              >
-                {justSaved ? '✓' : PresetIcon ? <PresetIcon className="h-7 w-7" /> : id}
-              </button>
+              <div key={id} className="group relative">
+                <button
+                  type="button"
+                  onClick={() => handleSaveToPreset(id)}
+                  title={label}
+                  aria-label={label}
+                  className={
+                    justSaved
+                      ? 'flex h-11 w-11 items-center justify-center rounded-md border border-status-success bg-status-success-bg text-sm font-semibold text-status-success'
+                      : existing
+                        ? 'flex h-11 w-11 items-center justify-center rounded-md border border-accent-border text-accent-fg shadow-[var(--glow-accent)] hover:bg-accent-bg'
+                        : 'flex h-11 w-11 items-center justify-center rounded-md border border-dashed border-empty-border text-xs font-semibold text-empty-fg hover:border-field-border hover:text-muted'
+                  }
+                >
+                  {justSaved ? '✓' : PresetIcon ? <PresetIcon className="h-7 w-7" /> : id}
+                </button>
+                {existing && (
+                  <button
+                    type="button"
+                    onClick={() => onDeletePreset(id)}
+                    aria-label={`Delete preset ${id}`}
+                    title={`Delete preset [${id}] — ${presetLabel(existing)}`}
+                    className="absolute -top-1.5 -right-1.5 flex h-5 w-5 items-center justify-center rounded-full bg-status-delete-bg text-xs leading-none font-bold text-status-delete-fg opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100 focus-visible:opacity-100"
+                  >
+                    ×
+                  </button>
+                )}
+              </div>
             )
           })}
         </div>

@@ -15,6 +15,11 @@ interface Scene3DProps {
   themeId: ThemeId
   overlayParams: readonly WizardParams[]
   showActivePattern: boolean
+  // BL-107: see ToolpathCanvas — faded overlay, the edited preset's own
+  // toolpath visibility, and the key whose change re-fits the view.
+  dimOverlay: boolean
+  activeToolpathVisible: boolean
+  fitKey: string
   gridLabelsEnabled: boolean
   gridLabelSize: Grid3DLabelSize
   stockVisible: boolean
@@ -56,7 +61,7 @@ export interface Saved3DView {
   // The overlay selection the view was framed for — a different one on
   // the next mount re-fits the distance (angle kept), same as a selection
   // change while mounted.
-  overlayParams: readonly WizardParams[]
+  fitKey: string
 }
 
 const PRESET_BUTTONS: { name: ViewPresetName; label: string }[] = [
@@ -73,6 +78,9 @@ export function Scene3D({
   themeId,
   overlayParams,
   showActivePattern,
+  dimOverlay,
+  activeToolpathVisible,
+  fitKey,
   gridLabelsEnabled,
   gridLabelSize,
   stockVisible,
@@ -102,7 +110,7 @@ export function Scene3D({
     renderPausedRef.current = renderPaused
   }, [renderPaused])
   const hasFramedRef = useRef(false)
-  const prevOverlayParamsRef = useRef(overlayParams)
+  const prevFitKeyRef = useRef(fitKey)
 
   // One-time scene/camera/renderer/controls setup.
   useEffect(() => {
@@ -208,7 +216,7 @@ export function Scene3D({
           up: { x: camera.up.x, y: camera.up.y, z: camera.up.z },
           near: camera.near,
           far: camera.far,
-          overlayParams: prevOverlayParamsRef.current,
+          fitKey: prevFitKeyRef.current,
         }
       }
       cancelAnimationFrame(frameId)
@@ -262,6 +270,8 @@ export function Scene3D({
       stockSolid,
       stockEdgesEnabled,
       cutShapeEnabled,
+      dimOverlay,
+      activeToolpathVisible,
     )
     renderer.setClearColor(background, 1)
     objects.forEach((obj) => contentGroup.add(obj))
@@ -277,10 +287,8 @@ export function Scene3D({
     // the last tab switch (BL-76) replaces the default framing; framed for
     // a different overlay selection, it keeps its angle and re-fits.
     const saved = !hasFramedRef.current ? viewMemory?.current : null
-    const overlayParamsChanged = saved
-      ? saved.overlayParams !== overlayParams
-      : prevOverlayParamsRef.current !== overlayParams
-    prevOverlayParamsRef.current = overlayParams
+    const overlayParamsChanged = saved ? saved.fitKey !== fitKey : prevFitKeyRef.current !== fitKey
+    prevFitKeyRef.current = fitKey
 
     if (saved) {
       camera.position.set(saved.position.x, saved.position.y, saved.position.z)
@@ -324,6 +332,9 @@ export function Scene3D({
     stockSolid,
     stockEdgesEnabled,
     cutShapeEnabled,
+    dimOverlay,
+    activeToolpathVisible,
+    fitKey,
     viewMemory,
   ])
 
