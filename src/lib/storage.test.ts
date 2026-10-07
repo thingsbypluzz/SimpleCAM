@@ -296,4 +296,11 @@ describe('field validation on load (BL-57)', () => {
     storeAutoSave({ operation: 'outline', outline: { shape: 'lobedCircle' } })
     expect(loadSlot(AUTO_SAVE_SLOT)!.outline.lobeMode).toBe('add')
   })
+
+  it('loads a Pocket Donut; older snapshots get the default island (BL-108)', () => {
+    storeAutoSave({ operation: 'pocket', pocket: { shape: 'donut', diameter: 60, islandDiameter: 25 } })
+    expect(loadSlot(AUTO_SAVE_SLOT)!.pocket).toMatchObject({ shape: 'donut', diameter: 60, islandDiameter: 25 })
+    storeAutoSave({ operation: 'pocket', pocket: { shape: 'circle', diameter: 30 } })
+    expect(loadSlot(AUTO_SAVE_SLOT)!.pocket.islandDiameter).toBe(20)
+  })
 })

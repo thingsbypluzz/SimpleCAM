@@ -766,20 +766,22 @@ Waga z review w nawiasie kwadratowym.
   4, z potwierdzeniem; z Preset Bar usuwanie zniknęło (prawy górny róg
   slotu zajął znaczek edycji). Usunięty preset wypada z Overlay i z
   edycji.
-- **`BL-108`** *(Otwarty)* 🟠 — **Pocket: kształt Donut (kieszeń
-  pierścieniowa).** Zgłoszone 2026-10-06. Nowy kształt w Pocket: okrąg z
-  zostawionym środkiem (wyspą) o wybranej średnicy — wybierany jest
-  pierścień między średnicą zewnętrzną a wewnętrzną. Do przegadania:
-  pola (Diameter + Island Diameter; frez musi mieścić się w szerokości
-  pierścienia); wejście — Plunge albo Helix na środkowym okręgu
-  pierścienia zamiast w środku kieszeni (dzisiejsze silniki zaczynają od
-  środka i rosną na zewnątrz); Spiral — pierścienie w obie strony od
-  toru wejścia albo od wyspy na zewnątrz; Adaptive — osobny przypadek
-  (szczelina po okręgu poszerzana do obu ścian; pokrewne wycinkom
-  pierścienia w Circle Lightened, `pocketSectorAdaptive.ts`); Finishing
-  Pass na obu ścianach (zewnętrzna CCW, wyspa CW dla climb); model
-  materiału — pustka z dnem i wyspą, kształt po frezie bez zmian (same
-  okręgi); relacja z Circle Lightened (Hub) i z `BL-102`.
+- **`BL-108`** *(Zrealizowany, 2026-10-07)* 🟠 — **Pocket: kształt Donut
+  (kieszeń pierścieniowa).** Okrąg z zostawionym środkiem (wyspą) —
+  wybierany jest pierścień między Diameter a Island ⌀. Ustalenia z
+  rozmowy: tylko Spiral (Adaptive osobno — `BL-110`), od wyspy na
+  zewnątrz; wejście Plunge albo Helix = zejście po pierwszym okrążeniu pod
+  Ramp Angle (bez pola Helix Radius); Finishing Pass na obu ścianach
+  (zewnętrzna CCW, wyspa CW); w modelu materiału pustka z dnem i wyspą.
+- **`BL-110`** *(Otwarty)* 🔴 — **Pocket Donut: metoda Adaptive.**
+  Zgłoszone 2026-10-07 przy `BL-108`. Stałe zaangażowanie w pierścieniu:
+  helix w środku szerokości pierścienia, faza A do okręgu stycznego do
+  obu ścian, potem okręgi styczne do wyspy i ściany zewnętrznej przesuwane
+  dookoła (rodzina `wing` z `pocketSectorAdaptive.ts`, tu na pełne 360° i
+  kończąca się na już wybranym okręgu startowym zamiast narożnikami). Do
+  przegadania: jedno skrzydło dookoła czy dwa po 180°, wąski pierścień
+  (okrąg wpisany mniejszy niż helix), kierunek Climb/Conventional na obu
+  ścianach, limity kroków.
 - **`BL-61`** *(Zrealizowany, 2026-09-27)* 🔴 **[Low, kosztowne w czasie]**
   — **Podglądy duplikują geometrię silnika** — jedna lista ruchów (jak
   Adaptive) dla G-code i podglądu 3D, po jednej operacji na raz. Etapy 1–2

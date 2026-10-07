@@ -165,7 +165,7 @@ const SURFACE_GUARDS: Partial<Record<keyof SurfaceParams, FieldGuard>> = {
 }
 
 const POCKET_GUARDS: Partial<Record<keyof PocketParams, FieldGuard>> = {
-  shape: oneOf<PocketShape>(['rectCornered', 'rectCentered', 'circle', 'rectLightened', 'circleLightened']),
+  shape: oneOf<PocketShape>(['rectCornered', 'rectCentered', 'circle', 'donut', 'rectLightened', 'circleLightened']),
   lightLayout: oneOf<LightLayout>(['xgrid', 'triangles']),
   // A stored 'raster' (method removed, BL-73) fails the guard and falls back
   // to the default, Spiral.

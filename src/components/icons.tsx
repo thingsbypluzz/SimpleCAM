@@ -473,6 +473,18 @@ export function PocketCircleIcon({ className }: IconProps) {
   )
 }
 
+// Pocket Donut (BL-108): the outer circle, the island left standing in the
+// middle (filled) and one lap of the tool between them.
+export function PocketDonutIcon({ className }: IconProps) {
+  return (
+    <svg {...base} className={className}>
+      <circle cx="12" cy="12" r="8" strokeWidth={1} />
+      <circle cx="12" cy="12" r="5.5" strokeWidth={0.7} strokeDasharray="1.6 1.2" />
+      <circle cx="12" cy="12" r="3" strokeWidth={1} fill="currentColor" fillOpacity={0.25} />
+    </svg>
+  )
+}
+
 // Pocket Rectangle Lightened (OP-6): a wide frame with a Warren zigzag of
 // ribs — the material left between the cut-out triangles — origin dot in
 // the center.

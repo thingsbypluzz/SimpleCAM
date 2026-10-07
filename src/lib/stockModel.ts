@@ -21,7 +21,7 @@ export function pocketVoids(pocket: WizardParams['pocket']): SheetVoid[] {
       .map((polygon) => ({ polygon }))
   }
   const c = pocketCenter(pocket)
-  if (pocket.shape === 'circle') return [{ circle: c, radius: pocket.diameter / 2 }]
+  if (pocket.shape === 'circle' || pocket.shape === 'donut') return [{ circle: c, radius: pocket.diameter / 2 }]
   const hw = pocket.width / 2
   const hh = pocket.height / 2
   return [
@@ -91,7 +91,7 @@ const MAX_ROUNDED_CELLS = 300
 // (which validation rejects) stays nominal.
 function pocketCutVoids(pocket: WizardParams['pocket']): SheetVoid[] {
   const r = pocket.toolDiameter / 2
-  if (!(r > 0) || pocket.shape === 'circle') return pocketVoids(pocket)
+  if (!(r > 0) || pocket.shape === 'circle' || pocket.shape === 'donut') return pocketVoids(pocket)
   if (isLightenedShape(pocket.shape)) {
     const cells = lightenedCells(pocket)
     if (cells.length > MAX_ROUNDED_CELLS) return pocketVoids(pocket)
@@ -158,7 +158,7 @@ function outlineCutEdge(outline: WizardParams['outline']): Point2D[] | null {
 export function cutContours(params: WizardParams): Point2D[][] {
   if (params.operation === 'pocket') {
     const { pocket } = params
-    if (pocket.shape === 'circle' || !(pocket.toolDiameter > 0)) return []
+    if (pocket.shape === 'circle' || pocket.shape === 'donut' || !(pocket.toolDiameter > 0)) return []
     if (isLightenedShape(pocket.shape) && lightenedCells(pocket).length > MAX_ROUNDED_CELLS) return []
     return pocketCutVoids(params.pocket).flatMap((v) => ('polygon' in v ? [v.polygon] : []))
   }
@@ -224,6 +224,19 @@ function stockFeatures(params: WizardParams, grid: number, cutShape: boolean): S
   const ring = (v: SheetVoid) => outlineRing(v, grid)
   if (params.operation === 'pocket') {
     const depth = params.pocket.totalDepth
+    // Donut (BL-108): the ring down to the floor; the island keeps standing
+    // (a hole in the void's region — it stays part of the uncut stock).
+    if (params.pocket.shape === 'donut') {
+      const outer: SheetVoid = { circle: pocketCenter(params.pocket), radius: params.pocket.diameter / 2 }
+      const island: SheetVoid = { circle: pocketCenter(params.pocket), radius: params.pocket.islandDiameter / 2 }
+      if (isDegenerate(outer)) return { islands: [], voids: [], part: false }
+      const hasIsland = !isDegenerate(island) && island.radius < outer.radius
+      return {
+        islands: [],
+        voids: [{ region: hasIsland ? [ring(outer), ring(island)] : [ring(outer)], depth, floor: true }],
+        part: false,
+      }
+    }
     return {
       islands: [],
       voids: (cutShape ? pocketCutVoids(params.pocket) : pocketVoids(params.pocket))

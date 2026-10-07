@@ -5,6 +5,7 @@ import {
   isPocketHelixRadiusValid,
   isPocketOptimalLoadValid,
   isPocketRampAngleValid,
+  isPocketIslandValid,
   isPocketSizeValid,
   isPocketStepoverValid,
   isPocketRampLengthValid,
@@ -29,7 +30,7 @@ import {
   optimalLoadPercentFromMm,
 } from '../../lib/pocketAdaptiveMath'
 import { effectivePocketZTransitionMode } from '../../lib/pocketZTransition'
-import { pocketStepoverMm, spiralRampEngagementDeg } from '../../lib/pocketGeometry'
+import { effectivePocketMethod, pocketStepoverMm, spiralRampEngagementDeg } from '../../lib/pocketGeometry'
 import { fmt } from '../../lib/format'
 import { resolveToolDiameterSelectOptions } from '../../lib/toolDiameterOptions'
 import type { ToolDiameterOption } from '../../types/toolDiameters'
@@ -82,6 +83,7 @@ export function Step2GeometryPocket({ params, onChange, machine, toolDiameters, 
   const widthField = useNumberField(pocket.width, (v) => updatePocket({ width: v }))
   const heightField = useNumberField(pocket.height, (v) => updatePocket({ height: v }))
   const diameterField = useNumberField(pocket.diameter, (v) => updatePocket({ diameter: v }))
+  const islandField = useNumberField(pocket.islandDiameter, (v) => updatePocket({ islandDiameter: v }))
   const stepoverField = useNumberField(pocket.stepoverPercent, (v) => updatePocket({ stepoverPercent: v }))
   const rampLengthField = useNumberField(pocket.rampLengthFactor, (v) => updatePocket({ rampLengthFactor: v }))
   const helixRadiusField = useNumberField(pocket.helixRadius, (v) => updatePocket({ helixRadius: v }))
@@ -100,10 +102,11 @@ export function Step2GeometryPocket({ params, onChange, machine, toolDiameters, 
   const rampAngleField = useNumberField(pocket.rampAngleDeg, (v) => updatePocket({ rampAngleDeg: v }))
   const stockToLeaveField = useNumberField(pocket.stockToLeave, (v) => updatePocket({ stockToLeave: v }))
 
-  const isRect = pocket.shape !== 'circle' && pocket.shape !== 'circleLightened'
+  const isDonut = pocket.shape === 'donut'
+  const isRect = pocket.shape !== 'circle' && pocket.shape !== 'circleLightened' && !isDonut
   const isLightened = isLightenedShape(pocket.shape)
   const cellsInvalid = !isPocketLightCellsValid(pocket)
-  const isAdaptive = pocket.method === 'adaptive'
+  const isAdaptive = effectivePocketMethod(pocket) === 'adaptive'
   const zMode = effectivePocketZTransitionMode(pocket)
   const loadValid = isPocketOptimalLoadValid(pocket)
   const thinning = chipThinningFactor(pocket.optimalLoadPercent)
@@ -120,6 +123,7 @@ export function Step2GeometryPocket({ params, onChange, machine, toolDiameters, 
   const widthInvalid = !(pocket.width > 0) || (toolInvalid && widthIsShorter)
   const heightInvalid = !(pocket.height > 0) || (toolInvalid && !widthIsShorter)
   const diameterInvalid = !(pocket.diameter > 0) || toolInvalid
+  const islandInvalid = !isPocketIslandValid(pocket) || (isDonut && toolInvalid)
   const depthInvalid = !(pocket.totalDepth > 0)
   const stepoverInvalid = !isPocketStepoverValid(pocket)
   const rampLengthInvalid = !isPocketRampLengthValid(pocket)
@@ -193,6 +197,24 @@ export function Step2GeometryPocket({ params, onChange, machine, toolDiameters, 
                 />
               </FieldRow>
             </div>
+            {isDonut && (
+              <div className="min-w-0 flex-1">
+                <FieldRow
+                  label="Island ⌀ [mm]"
+                  hint="Diameter of the island left standing in the middle. The ring between it and the Diameter is cleared."
+                >
+                  <NumberInput
+                    type="number"
+                    step="0.1"
+                    min="0"
+                    max={pocket.diameter}
+                    className={inputClass}
+                    aria-invalid={islandInvalid}
+                    {...islandField}
+                  />
+                </FieldRow>
+              </div>
+            )}
             <div className="min-w-0 flex-1">
               <FieldRow label="Depth [mm]">
                 <NumberInput
@@ -208,7 +230,13 @@ export function Step2GeometryPocket({ params, onChange, machine, toolDiameters, 
             </div>
           </div>
         )}
-        {!isPocketSizeValid(pocket) && <p className="text-sm text-status-error">Dimensions and depth must be greater than 0.</p>}
+        {!isPocketSizeValid(pocket) && (
+          <p className="text-sm text-status-error">
+            {isPocketIslandValid(pocket)
+              ? 'Dimensions and depth must be greater than 0.'
+              : 'Island diameter must be greater than 0 and smaller than the Diameter.'}
+          </p>
+        )}
       </div>
 
       {isLightened && <LightenedFields params={params} onChange={updatePocket} />}
@@ -232,7 +260,9 @@ export function Step2GeometryPocket({ params, onChange, machine, toolDiameters, 
         </ToolChipLoad>
         {toolInvalid && (
           <p className="text-sm text-status-error">
-            {isRect
+            {isDonut
+              ? 'The tool must fit between the island and the outer wall — at most half the difference of the two diameters.'
+              : isRect
               ? 'Tool diameter must be smaller than the shorter side.'
               : "Tool diameter must be smaller than the pocket's diameter."}
           </p>
@@ -406,6 +436,9 @@ export function Step2GeometryPocket({ params, onChange, machine, toolDiameters, 
           <div className="flex min-w-0 flex-1 flex-col gap-1">
             <span className="flex items-center gap-1.5 text-sm font-medium text-value">
               Z-Transition
+              {isDonut && (
+                <HintPopover text="Donut enters on its first lap, right next to the island: Plunge goes straight down at the lap's start, Helix ramps down along the lap itself at the Ramp Angle." />
+              )}
               {isAdaptive && (
                 <HintPopover text="Adaptive always enters with a Helix — constant engagement can't grow outward from a plunged hole the size of the tool." />
               )}
@@ -418,7 +451,7 @@ export function Step2GeometryPocket({ params, onChange, machine, toolDiameters, 
             />
           </div>
           <div className="min-w-0 flex-1">
-            {zMode === 'helix' && (
+            {zMode === 'helix' && !isDonut && (
               <FieldRow label="Helix R. [mm]">
                 <NumberInput
                   type="number"

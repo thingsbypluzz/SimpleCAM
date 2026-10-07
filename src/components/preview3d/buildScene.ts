@@ -319,7 +319,7 @@ function resolvePattern(params: WizardParams): ResolvedPattern {
   if (params.operation === 'pocket') {
     const { pocket } = params
     const center = pocketCenter(pocket)
-    if (pocket.shape === 'circle' || pocket.shape === 'circleLightened') {
+    if (pocket.shape === 'circle' || pocket.shape === 'circleLightened' || pocket.shape === 'donut') {
       return { kind: 'pocket', params, center, shape: pocket.shape, nominalRadius: pocket.diameter / 2, nominalCorners: [] }
     }
     const nominalCorners: Point2D[] = [
@@ -413,7 +413,7 @@ function resolvePattern(params: WizardParams): ResolvedPattern {
 function expandBoundsForPattern(bounds: THREE.Box3, pattern: ResolvedPattern) {
   if (pattern.kind === 'pocket') {
     const { pocket, feeds } = pattern.params
-    if (pattern.shape === 'circle' || pattern.shape === 'circleLightened') {
+    if (pattern.shape === 'circle' || pattern.shape === 'circleLightened' || pattern.shape === 'donut') {
       const r = pattern.nominalRadius
       bounds.expandByPoint(toThree(pattern.center.x - r, pattern.center.y - r, -pocket.totalDepth))
       bounds.expandByPoint(toThree(pattern.center.x + r, pattern.center.y + r, feeds.safeZ))

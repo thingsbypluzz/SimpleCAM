@@ -240,6 +240,16 @@ export function randomPocket(rng: Rng, method: 'spiral' | 'adaptive'): WizardPar
   }
 }
 
+// Pocket Donut (BL-108) — Spiral only. The island is drawn as a share of
+// the room the tool leaves, so most samples have a ring it fits in.
+export function randomPocketDonut(rng: Rng): WizardParams {
+  const base = randomPocket(rng, 'spiral')
+  const diameter = rng.range(20, 120, 1)
+  const room = diameter - 2 * base.pocket.toolDiameter
+  const islandDiameter = Number(Math.max(0.5, room * rng.range(0.05, 1.05, 2)).toFixed(2))
+  return { ...base, pocket: { ...base.pocket, shape: 'donut', diameter, islandDiameter } }
+}
+
 // Lightened Pocket shapes (OP-6) — Spiral only. Sizes and counts kept so a
 // fair share of samples have cells the tool fits.
 export function randomPocketLightened(rng: Rng): WizardParams {

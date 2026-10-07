@@ -2,6 +2,7 @@ import type { ComponentType } from 'react'
 import {
   PocketCircleIcon,
   PocketCircleLightenedIcon,
+  PocketDonutIcon,
   PocketRectangleCenteredIcon,
   PocketRectangleIcon,
   PocketRectLightenedIcon,
@@ -35,6 +36,13 @@ export const POCKET_SHAPE_META: Record<PocketShape, PocketShapeMeta> = {
     description: 'Circular pocket, centered at the origin. Spiral or Adaptive.',
     Icon: PocketCircleIcon,
   },
+  donut: {
+    value: 'donut',
+    title: 'Donut',
+    description:
+      'Ring-shaped pocket, centered at the origin: the area between the Diameter and an island left standing in the middle. Spiral only.',
+    Icon: PocketDonutIcon,
+  },
   rectLightened: {
     value: 'rectLightened',
     title: 'Rectangle Lightened',
@@ -55,6 +63,7 @@ export const POCKET_SHAPE_LIST: PocketShapeMeta[] = [
   POCKET_SHAPE_META.rectCornered,
   POCKET_SHAPE_META.rectCentered,
   POCKET_SHAPE_META.circle,
+  POCKET_SHAPE_META.donut,
   POCKET_SHAPE_META.rectLightened,
   POCKET_SHAPE_META.circleLightened,
 ]
@@ -81,6 +90,8 @@ export function pocketShapeLines(pocket: PocketParams): string[] {
       return ['POCKET', 'CENTERED', `(${fmt(pocket.width)}×${fmt(pocket.height)})`]
     case 'circle':
       return ['POCKET', `(⌀${fmt(pocket.diameter)})`]
+    case 'donut':
+      return ['POCKET', 'DONUT', `(⌀${fmt(pocket.diameter)}/⌀${fmt(pocket.islandDiameter)})`]
     case 'rectLightened':
       return ['LIGHTENED', `(${fmt(pocket.width)}×${fmt(pocket.height)})`]
     case 'circleLightened':
@@ -102,6 +113,8 @@ export function pocketShapeLabel(pocket: PocketParams): string {
       return `Pocket Centered ${fmt(pocket.width)}×${fmt(pocket.height)}`
     case 'circle':
       return `Pocket ⌀${fmt(pocket.diameter)}`
+    case 'donut':
+      return `Pocket Donut ⌀${fmt(pocket.diameter)}/⌀${fmt(pocket.islandDiameter)}`
     case 'rectLightened':
       return `Lightened ${fmt(pocket.width)}×${fmt(pocket.height)} ${lightenedPatternLabel(pocket)}`
     case 'circleLightened':
@@ -118,6 +131,8 @@ export function pocketShapeSlug(pocket: PocketParams): string {
       return 'pocket-rectangle-centered'
     case 'circle':
       return 'pocket-circle'
+    case 'donut':
+      return 'pocket-donut'
     case 'rectLightened':
       return 'pocket-rect-lightened'
     case 'circleLightened':

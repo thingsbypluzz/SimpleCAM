@@ -14,6 +14,7 @@ import {
   randomMachine,
   randomOutline,
   randomPocket,
+  randomPocketDonut,
   randomPocketLightened,
   randomPocketLightenedAdaptive,
   randomFacing,
@@ -30,8 +31,10 @@ import { buildPocketToolpath, generatePocketAdaptive, generatePocketSpiral } fro
 import {
   pocketCenter,
   pocketCircleWallRadius,
+  pocketDonutWalls,
   pocketRectWallHalfDims,
   pocketRoughCircleWallRadius,
+  pocketRoughDonutWalls,
   pocketRoughRectWallHalfDims,
 } from './pocketGeometry'
 import { endOfProgramCode } from './program'
@@ -188,6 +191,13 @@ function containmentProblems(params: WizardParams, below: TracedPoint[]): string
       return outside('past a Lightened cell wall', (p) => cells.some((cell) => cellWallDistance(cell, p) >= r - EPS))
     }
     const c = pocketCenter(params.pocket)
+    if (params.pocket.shape === 'donut') {
+      const { inner, outer } = pocketDonutWalls(params.pocket)
+      return outside('past a Donut wall', (p) => {
+        const rho = Math.hypot(p.x - c.x, p.y - c.y)
+        return rho <= outer + EPS && rho >= inner - EPS
+      })
+    }
     if (params.pocket.shape === 'circle') {
       const r = pocketCircleWallRadius(params.pocket)
       return outside('past the Pocket wall', (p) => Math.hypot(p.x - c.x, p.y - c.y) <= r + EPS)
@@ -212,14 +222,19 @@ function pocketFinishProblems(params: WizardParams): string[] {
   const toolR = pocket.toolDiameter / 2
   const cellDepth = (p: Point3D) => Math.max(...cells.map((cell) => cellWallDistance(cell, p)))
   const rough = isCircle ? pocketRoughCircleWallRadius(pocket) : pocketRoughRectWallHalfDims(pocket)
+  const donut = pocket.shape === 'donut' ? { final: pocketDonutWalls(pocket), rough: pocketRoughDonutWalls(pocket) } : null
+  const rho = (p: Point3D) => Math.hypot(p.x - c.x, p.y - c.y)
   const inRough = (p: Point3D) =>
-    lightened
+    donut
+      ? rho(p) <= donut.rough.outer + EPS && rho(p) >= donut.rough.inner - EPS
+      : lightened
       ? cellDepth(p) >= toolR + pocketStockToLeave(pocket) - EPS
       : typeof rough === 'number'
         ? Math.hypot(p.x - c.x, p.y - c.y) <= rough + EPS
         : Math.abs(p.x - c.x) <= rough.halfWidth + EPS && Math.abs(p.y - c.y) <= rough.halfHeight + EPS
   // Distance from the final wall (0 = on it).
   const wallGap = (p: Point3D) => {
+    if (donut) return Math.min(donut.final.outer - rho(p), rho(p) - donut.final.inner)
     if (lightened) return cellDepth(p) - toolR
     if (isCircle) return pocketCircleWallRadius(pocket) - Math.hypot(p.x - c.x, p.y - c.y)
     const { halfWidth, halfHeight } = pocketRectWallHalfDims(pocket)
@@ -261,6 +276,7 @@ const SUITES: Suite[] = [
   { name: 'Facing', samples: 60, build: randomFacing, generate: generateFacing },
   { name: 'Pocket Spiral', samples: 40, build: (r) => randomPocket(r, 'spiral'), generate: generatePocketSpiral },
   { name: 'Pocket Adaptive', samples: 25, build: (r) => randomPocket(r, 'adaptive'), generate: generatePocketAdaptive },
+  { name: 'Pocket Donut', samples: 40, build: randomPocketDonut, generate: generatePocketSpiral },
   { name: 'Pocket Lightened', samples: 30, build: randomPocketLightened, generate: generatePocketSpiral },
   { name: 'Pocket Lightened Adaptive', samples: 10, build: randomPocketLightenedAdaptive, generate: generatePocketAdaptive },
 ]

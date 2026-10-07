@@ -1,5 +1,13 @@
 import type { PocketParams, Point2D, WizardParams } from '../types/wizard'
-import { pocketCenter, pocketCircleWallRadius, pocketRectWallHalfDims, pocketStockToLeave } from './pocketGeometry'
+import {
+  effectivePocketMethod,
+  pocketCenter,
+  pocketCircleWallRadius,
+  pocketDonutWalls,
+  pocketRectWallHalfDims,
+  pocketRoughDonutWalls,
+  pocketStockToLeave,
+} from './pocketGeometry'
 import { buildLevelDescents } from './surfaceZTransition'
 import { fullTurn, ToolpathBuilder, type ArcDirection, type Move, type Point3D } from './toolpath'
 import { cellInscribed, cellLoop, cellWallDistance, loopNearestFraction, type LightCell } from './pocketLightened'
@@ -45,8 +53,8 @@ interface FinishFrame {
   depthToCenter: number
 }
 
-function finishDirection(pocket: Pick<PocketParams, 'method' | 'cutDirection'>): ArcDirection {
-  return pocket.method === 'adaptive' && pocket.cutDirection === 'conventional' ? 'cw' : 'ccw'
+function finishDirection(pocket: Pick<PocketParams, 'shape' | 'method' | 'cutDirection'>): ArcDirection {
+  return effectivePocketMethod(pocket) === 'adaptive' && pocket.cutDirection === 'conventional' ? 'cw' : 'ccw'
 }
 
 function finishFrame(pocket: PocketParams): FinishFrame {
@@ -122,6 +130,10 @@ function rectLapCorners(pocket: PocketParams, direction: ArcDirection): Point2D[
 export function appendPocketFinish(b: ToolpathBuilder, params: Pick<WizardParams, 'pocket' | 'feeds'>): void {
   const { pocket, feeds } = params
   if (!pocket.finishingEnabled) return
+  if (pocket.shape === 'donut') {
+    appendDonutFinish(b, params)
+    return
+  }
   const direction = finishDirection(pocket)
   const frame = finishFrame(pocket)
   const lead = finishLead(pocket, frame, direction)
@@ -146,6 +158,78 @@ export function appendPocketFinish(b: ToolpathBuilder, params: Pick<WizardParams
     // Back to the lead-in start for the next lap's descent; after the last
     // lap the tool retracts right where the lead-out ended.
     if (lead.sweep < Math.PI && idx < levels.length - 1) b.lineTo('finish', lead.start.x, lead.start.y)
+  })
+}
+
+// One wall of a Donut, entered at angle 0: the lead arc's center and its two
+// ends (both in the roughed band), or — when no arc fits — the point on the
+// roughed band's edge the tool comes straight in from.
+interface DonutWallLead {
+  entry: Point2D
+  wallRadius: number
+  arc: { center: Point2D; start: Point2D; end: Point2D } | null
+  straightFrom: Point2D
+}
+
+// Donut (BL-108): two laps per level — the outer wall CCW, then the island
+// CW, so both are climb cuts (the wall on the right of travel). Each lap
+// enters and leaves on a quarter arc tangent to its wall, as close to the
+// tool radius as the roughed band allows; the lead arcs themselves always
+// turn CCW (on the island they bend away from it). A band with no room for
+// an arc is entered straight across the stock. Between the walls the tool
+// crosses the cleared band without retracting.
+function appendDonutFinish(b: ToolpathBuilder, params: Pick<WizardParams, 'pocket' | 'feeds'>): void {
+  const { pocket, feeds } = params
+  const c = pocketCenter(pocket)
+  const walls = pocketDonutWalls(pocket)
+  const band = pocketRoughDonutWalls(pocket)
+  const toolR = pocket.toolDiameter / 2
+  const stock = pocketStockToLeave(pocket)
+  const inBand = (x: number, y: number) => {
+    const rho = Math.hypot(x, y)
+    return rho >= band.inner - 1e-9 && rho <= band.outer + 1e-9
+  }
+  // side: −1 = outer wall (the band lies inward), +1 = island (outward).
+  // Travel at angle 0 runs +Y on the outer wall (CCW) and −Y on the island
+  // (CW); the lead starts behind the entry point and ends ahead of it.
+  const wallLead = (wallRadius: number, side: 1 | -1): DonutWallLead => {
+    const entry = { x: c.x + wallRadius, y: c.y }
+    const straightFrom = { x: c.x + (side < 0 ? band.outer : band.inner), y: c.y }
+    const fits = (r: number) => inBand(wallRadius + side * r, r)
+    const candidates = [toolR, ...Array.from({ length: 60 }, (_, k) => toolR - ((toolR - stock) * (k + 1)) / 60)]
+    const r = candidates.find((v) => v > 0 && fits(v))
+    if (r === undefined) return { entry, wallRadius, arc: null, straightFrom }
+    const x = c.x + wallRadius + side * r
+    return {
+      entry,
+      wallRadius,
+      arc: { center: { x, y: c.y }, start: { x, y: c.y + side * r }, end: { x, y: c.y - side * r } },
+      straightFrom,
+    }
+  }
+  const outer = wallLead(walls.outer, -1)
+  const island = wallLead(walls.inner, 1)
+  const startOf = (w: DonutWallLead) => (w.arc ? w.arc.start : w.straightFrom)
+  const lap = (w: DonutWallLead, direction: ArcDirection, toZ: number) => {
+    if (w.arc) b.arc('finish', w.arc.center, 'ccw', Math.PI / 2)
+    else b.lineTo('finish', w.entry.x, w.entry.y)
+    b.arc('finish', c, direction, fullTurn, toZ, { from: w.entry, radius: w.wallRadius })
+    if (w.arc) b.arc('finish', w.arc.center, 'ccw', Math.PI / 2)
+    else b.lineTo('finish', w.straightFrom.x, w.straightFrom.y)
+  }
+
+  const first = startOf(outer)
+  b.zTo('rapid', feeds.safeZ)
+  b.rapidXY(first.x, first.y)
+  b.zTo('rapid', feeds.startZ)
+  const levels = buildLevelDescents(feeds.startZ, pocket.totalDepth, feeds.stepdown)
+  levels.forEach(({ toZ }, idx) => {
+    b.zTo('plunge', toZ)
+    lap(outer, 'ccw', toZ)
+    const next = startOf(island)
+    b.lineTo('finish', next.x, next.y)
+    lap(island, 'cw', toZ)
+    if (idx < levels.length - 1) b.lineTo('finish', first.x, first.y)
   })
 }
 

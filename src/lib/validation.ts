@@ -26,9 +26,12 @@ import { engagementAngleFor, MAX_OPTIMAL_LOAD_PERCENT, MIN_OPTIMAL_LOAD_PERCENT 
 import { exceedsPassLimit, MAX_PASSES } from './depthPasses'
 import { exceedsLineLimit, rasterExceedsLineLimit } from './surfaceRaster'
 import {
+  effectivePocketMethod,
   pocketCircleWallRadius,
+  pocketDonutWalls,
   pocketRectWallHalfDims,
   pocketRoughCircleWallRadius,
+  pocketRoughDonutWalls,
   pocketRoughRectWallHalfDims,
   pocketStepoverMm,
   pocketStockToLeave,
@@ -157,7 +160,21 @@ export function isPocketToolpathWithinLimits(params: WizardParams): boolean {
   // Adaptive per Lightened cell (BL-83 triangles, BL-85 sectors): the
   // entry helix repeats in every cell (turns capped over all of them, like
   // Spiral), and every cell's rings and remnants must reach their walls.
-  if (pocket.method === 'adaptive' && isLightenedShape(pocket.shape)) {
+  const method = effectivePocketMethod(pocket)
+  // Donut: the Helix entry descends along the first lap; rings from the
+  // island's wall out to the outer one.
+  if (pocket.shape === 'donut') {
+    const { inner, outer } = pocketRoughDonutWalls(pocket)
+    if (
+      pocket.zTransitionMode === 'helix' &&
+      isPocketRampAngleValid(pocket) &&
+      inner > 0 &&
+      entryHelixExceedsTurnLimit(params.feeds.startZ, pocket.totalDepth, params.feeds.stepdown, inner, pocket.rampAngleDeg)
+    )
+      return false
+    return !exceedsLineLimit(inner, outer, pocketStepoverMm(pocket))
+  }
+  if (method === 'adaptive' && isLightenedShape(pocket.shape)) {
     const cells = lightenedCells(pocket)
     if (
       isPocketRampAngleValid(pocket) &&
@@ -177,7 +194,7 @@ export function isPocketToolpathWithinLimits(params: WizardParams): boolean {
         : !cellAdaptiveExceedsLimits(planCellAdaptive(cell, { ...opts, sign: 1 })),
     )
   }
-  if (pocket.method === 'adaptive') return !adaptiveExceedsLimits(params)
+  if (method === 'adaptive') return !adaptiveExceedsLimits(params)
   if (
     pocket.zTransitionMode === 'helix' &&
     isPocketRampAngleValid(pocket) &&
@@ -343,9 +360,17 @@ export function isSurfaceSizeValid(surface: SurfaceParams): boolean {
 
 export function isPocketSizeValid(pocket: PocketParams): boolean {
   if (!(pocket.totalDepth > 0)) return false
+  if (pocket.shape === 'donut') return pocket.diameter > 0 && isPocketIslandValid(pocket)
   return pocket.shape === 'circle' || pocket.shape === 'circleLightened'
     ? pocket.diameter > 0
     : pocket.width > 0 && pocket.height > 0
+}
+
+// Donut (BL-108): an island of its own, smaller than the circle around it.
+// Vacuously valid for every other shape.
+export function isPocketIslandValid(pocket: PocketParams): boolean {
+  if (pocket.shape !== 'donut') return true
+  return pocket.islandDiameter > 0 && pocket.islandDiameter < pocket.diameter
 }
 
 // Lightened shapes (OP-6): the pattern's own ranges — whole counts, a rib
@@ -658,13 +683,19 @@ export function isPocketToolDiameterValid(pocket: PocketParams): boolean {
   // Lightened: checked per cell (isPocketLightCellsValid).
   if (isLightenedShape(pocket.shape)) return true
   if (pocket.shape === 'circle') return pocket.toolDiameter < pocket.diameter
+  // Donut: the tool has to fit between the island and the outer wall (a
+  // ring exactly as wide as the tool is one slot lap).
+  if (pocket.shape === 'donut') {
+    const { inner, outer } = pocketDonutWalls(pocket)
+    return pocket.toolDiameter > 0 && outer >= inner - 1e-9
+  }
   return pocket.toolDiameter < Math.min(pocket.width, pocket.height)
 }
 
 // Adaptive derives its own pass spacing from Optimal Load — stepover isn't
 // used (or shown) there.
 export function isPocketStepoverValid(pocket: PocketParams): boolean {
-  if (pocket.method === 'adaptive') return true
+  if (effectivePocketMethod(pocket) === 'adaptive') return true
   return pocket.stepoverPercent >= 1 && pocket.stepoverPercent <= 100
 }
 
@@ -673,12 +704,12 @@ export const MIN_RAMP_LENGTH_FACTOR = 1
 export const MAX_RAMP_LENGTH_FACTOR = 10
 
 export function isPocketRampLengthValid(pocket: PocketParams): boolean {
-  if (pocket.method !== 'spiral') return true
+  if (effectivePocketMethod(pocket) !== 'spiral') return true
   return pocket.rampLengthFactor >= MIN_RAMP_LENGTH_FACTOR && pocket.rampLengthFactor <= MAX_RAMP_LENGTH_FACTOR
 }
 
 export function isPocketOptimalLoadValid(pocket: PocketParams): boolean {
-  if (pocket.method !== 'adaptive') return true
+  if (effectivePocketMethod(pocket) !== 'adaptive') return true
   return pocket.optimalLoadPercent >= MIN_OPTIMAL_LOAD_PERCENT && pocket.optimalLoadPercent <= MAX_OPTIMAL_LOAD_PERCENT
 }
 
@@ -708,6 +739,11 @@ export function isPocketStockToLeaveValid(pocket: PocketParams): boolean {
   // Lightened: the roughing room is checked per cell (isPocketLightCellsValid).
   if (isLightenedShape(pocket.shape)) return true
   if (pocket.shape === 'circle') return pocketRoughCircleWallRadius(pocket) > 0
+  // Donut: stock on both walls, and still a lap's width between them.
+  if (pocket.shape === 'donut') {
+    const { inner, outer } = pocketRoughDonutWalls(pocket)
+    return outer >= inner - 1e-9
+  }
   const { halfWidth, halfHeight } = pocketRoughRectWallHalfDims(pocket)
   return halfWidth > 0 && halfHeight > 0
 }
@@ -718,7 +754,7 @@ export function isPocketFinishFeedValid(pocket: PocketParams): boolean {
 }
 
 export function isPocketLinkingFeedValid(pocket: PocketParams): boolean {
-  if (pocket.method !== 'adaptive') return true
+  if (effectivePocketMethod(pocket) !== 'adaptive') return true
   return pocket.linkingFeed > 0
 }
 
@@ -727,7 +763,7 @@ export function isPocketLinkingFeedValid(pocket: PocketParams): boolean {
 // below one tool diameter leaves Adaptive's main benefit — deep, light
 // passes — unused.
 export function isPocketHelixRadiusSmall(pocket: PocketParams): boolean {
-  return pocket.method === 'adaptive' && pocket.helixRadius > 0 && pocket.helixRadius < pocket.toolDiameter * 0.25
+  return effectivePocketMethod(pocket) === 'adaptive' && pocket.helixRadius > 0 && pocket.helixRadius < pocket.toolDiameter * 0.25
 }
 
 // What the Step 3 hint's Apply button sets Stepdown to — mid-range of the
@@ -737,7 +773,7 @@ export function suggestedAdaptiveStepdown(pocket: PocketParams): number {
 }
 
 export function isAdaptiveStepdownShallow(pocket: PocketParams, stepdown: number): boolean {
-  return pocket.method === 'adaptive' && stepdown > 0 && stepdown < pocket.toolDiameter
+  return effectivePocketMethod(pocket) === 'adaptive' && stepdown > 0 && stepdown < pocket.toolDiameter
 }
 
 // The roughing wall's nearest distance from the pocket's own center —
@@ -768,6 +804,8 @@ export function pocketMaxHelixRadius(pocket: PocketParams): number {
 }
 
 export function isPocketHelixRadiusValid(pocket: PocketParams): boolean {
+  // Donut: the Helix entry runs on the first lap — no radius of its own.
+  if (pocket.shape === 'donut') return true
   if (effectivePocketZTransitionMode(pocket) !== 'helix') return true
   return pocket.helixRadius > 0 && pocket.helixRadius <= pocketMaxHelixRadius(pocket)
 }
@@ -779,6 +817,10 @@ export function isPocketHelixRadiusValid(pocket: PocketParams): boolean {
 export function pocketFootprint(pocket: PocketParams): { x: number; y: number } {
   // Lightened: the outer size of the lightened area.
   if (pocket.shape === 'circleLightened') return { x: pocket.diameter, y: pocket.diameter }
+  if (pocket.shape === 'donut') {
+    const diameter = 2 * Math.max(0, pocketDonutWalls(pocket).outer)
+    return { x: diameter, y: diameter }
+  }
   if (pocket.shape === 'rectLightened') return { x: pocket.width, y: pocket.height }
   if (pocket.shape === 'circle') {
     const diameter = 2 * Math.max(0, pocketCircleWallRadius(pocket))
@@ -967,9 +1009,12 @@ export const OPERATION_RULES: Record<OperationType, OperationRules> = {
     zSpan: (p) => pocketZSpan(p.pocket, p.feeds),
     rampDescent: () => null,
     descentAngleDeg: (p) => (effectivePocketZTransitionMode(p.pocket) === 'helix' ? p.pocket.rampAngleDeg : null),
-    rampPathLength: (p) => (effectivePocketZTransitionMode(p.pocket) === 'helix' ? 2 * Math.PI * p.pocket.helixRadius : null),
+    rampPathLength: (p) =>
+      effectivePocketZTransitionMode(p.pocket) !== 'helix'
+        ? null
+        : 2 * Math.PI * (p.pocket.shape === 'donut' ? Math.max(0, pocketRoughDonutWalls(p.pocket).inner) : p.pocket.helixRadius),
     engagement: (p) =>
-      p.pocket.method === 'adaptive'
+      effectivePocketMethod(p.pocket) === 'adaptive'
         ? { kind: 'optimalLoad', percent: p.pocket.optimalLoadPercent }
         : { kind: 'stepover', percent: p.pocket.stepoverPercent },
   },

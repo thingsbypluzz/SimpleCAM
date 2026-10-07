@@ -20,13 +20,15 @@ import {
   type RectRingDims,
 } from './pocketSpiral'
 import {
+  effectivePocketMethod,
   pocketCenter,
   pocketStockToLeave,
   pocketRoughCircleWallRadius,
+  pocketRoughDonutWalls,
   pocketRoughRectWallHalfDims,
   pocketStepoverMm,
 } from './pocketGeometry'
-import { toolpathToGcode, ToolpathBuilder, type ArcDirection, type Toolpath } from './toolpath'
+import { fullTurn, toolpathToGcode, ToolpathBuilder, type ArcDirection, type Toolpath } from './toolpath'
 
 function pocketStartPoint(pocket: WizardParams['pocket']): Point2D {
   return pocketCenter(pocket)
@@ -65,6 +67,22 @@ function spiralRectLevel(b: ToolpathBuilder, cx: number, cy: number, toZ: number
   }
 }
 
+// Donut (BL-108): rings from the island outward. The first lap runs right
+// next to the island — a Helix entry already cut it (its flat turn), a
+// Plunge entry cuts it here — then every ring is a Circle ring.
+function spiralDonutLevel(b: ToolpathBuilder, cx: number, cy: number, toZ: number, params: WizardParams): void {
+  const { pocket } = params
+  const { inner, outer } = pocketRoughDonutWalls(pocket)
+  if (pocket.zTransitionMode !== 'helix') {
+    b.arc('cut', { x: cx, y: cy }, 'ccw', fullTurn, toZ, { from: { x: cx + inner, y: cy }, radius: inner })
+  }
+  const radii = pocketCircleRingRadii(inner, outer, pocketStepoverMm(pocket))
+  let angle = 0
+  for (let i = 1; i < radii.length; i++) {
+    angle = appendCircleRing(b, radii[i - 1], radii[i], angle, cx, cy, toZ, pocket.rampLengthFactor)
+  }
+}
+
 const LEVEL_CLEAR: Record<Exclude<PocketMethodType, 'adaptive'>, (pocket: WizardParams['pocket']) => LevelClear> = {
   spiral: (pocket) => (pocket.shape === 'circle' ? spiralCircleLevel : spiralRectLevel),
 }
@@ -87,9 +105,22 @@ const LEVEL_CLEAR: Record<Exclude<PocketMethodType, 'adaptive'>, (pocket: Wizard
 //
 // Both methods rough to the roughing wall; the optional finishing wall
 // pass (lib/pocketFinish.ts, BL-42) follows the whole roughing.
-export function buildPocketToolpath(params: WizardParams, method = params.pocket.method): Toolpath {
+export function buildPocketToolpath(params: WizardParams, method = effectivePocketMethod(params.pocket)): Toolpath {
   const { pocket, feeds } = params
   const center = pocketCenter(pocket)
+
+  // Donut: Spiral only, entered on its first lap instead of the center (the
+  // island stands there) — Plunge at the lap's start, Helix down the lap
+  // itself.
+  if (pocket.shape === 'donut') {
+    const entryRadius = pocketRoughDonutWalls(pocket).inner
+    const entry = { point: { x: center.x + entryRadius, y: center.y }, helixRadius: entryRadius }
+    const b = new ToolpathBuilder({ x: entry.point.x, y: entry.point.y, z: feeds.safeZ })
+    b.zTo('rapid', feeds.startZ)
+    appendSpiralLevels(b, params, center, (toZ) => spiralDonutLevel(b, center.x, center.y, toZ, params), entry)
+    appendPocketFinish(b, params)
+    return b.build()
+  }
 
   // Lightened shapes are Spiral-only (OP-6 stage 1), whatever is stored.
   if (isLightenedShape(pocket.shape)) return buildLightenedToolpath(params)
@@ -117,9 +148,18 @@ export function buildPocketToolpath(params: WizardParams, method = params.pocket
 // point and down to just above the previous floor (levelEntryZ()); then the
 // Plunge/Helix entry and the level's clearing. The tool starts over the
 // entry point at Start Z.
-function appendSpiralLevels(b: ToolpathBuilder, params: WizardParams, center: Point2D, clearLevel: (toZ: number) => void): void {
+function appendSpiralLevels(
+  b: ToolpathBuilder,
+  params: WizardParams,
+  center: Point2D,
+  clearLevel: (toZ: number) => void,
+  // Donut: where the tool goes down and the radius a Helix entry turns on —
+  // by default the pocket's own entry point and Helix Radius.
+  entryOverride?: { point: Point2D; helixRadius: number },
+): void {
   const { pocket, feeds, output } = params
-  const entry = pocketEntryPoint(center.x, center.y, pocket.zTransitionMode, pocket.helixRadius)
+  const helixRadius = entryOverride?.helixRadius ?? pocket.helixRadius
+  const entry = entryOverride?.point ?? pocketEntryPoint(center.x, center.y, pocket.zTransitionMode, pocket.helixRadius)
   let previousToZ = feeds.startZ
   buildLevelDescents(feeds.startZ, pocket.totalDepth, feeds.stepdown).forEach(({ toZ }, idx) => {
     const entryZ = levelEntryZ(idx, previousToZ, feeds.startZ)
@@ -136,7 +176,7 @@ function appendSpiralLevels(b: ToolpathBuilder, params: WizardParams, center: Po
       rampAngleDeg: pocket.rampAngleDeg,
       feedrateXY: feeds.feedrateXY,
       plungeRate: feeds.plungeRate,
-      helixRadius: pocket.helixRadius,
+      helixRadius,
       interpolation: output.interpolation,
       centerX: center.x,
       centerY: center.y,
@@ -151,7 +191,7 @@ function appendSpiralLevels(b: ToolpathBuilder, params: WizardParams, center: Po
 // lightenedCells()' order (snake / CCW around the circle).
 function buildLightenedToolpath(params: WizardParams): Toolpath {
   const { pocket, feeds } = params
-  if (pocket.method === 'adaptive') return buildLightenedAdaptiveToolpath(params)
+  if (effectivePocketMethod(pocket) === 'adaptive') return buildLightenedAdaptiveToolpath(params)
   const cells = lightenedCells(pocket)
   const isHelix = pocket.zTransitionMode === 'helix'
   const roughWallDepth = pocket.toolDiameter / 2 + pocketStockToLeave(pocket)
