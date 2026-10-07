@@ -827,7 +827,10 @@ Waga z review w nawiasie kwadratowym.
   obcy albo z nowszego formatu odrzucany w całości, presety ze znanego
   pliku naprawiane strażnikami pól; ramka z nazwą projektu w kolorze
   edycji („Untitled” przed pierwszym zapisem), z kropką przy
-  niezapisanych zmianach, pamiętana po odświeżeniu.
+  niezapisanych zmianach, pamiętana po odświeżeniu. Doprecyzowanie
+  (2026-10-08): preset w pliku niesie tylko sekcję własnej operacji,
+  posuwy i opcje wyjścia; sekcje innych operacji po wczytaniu mają
+  wartości domyślne.
 - **`BL-113`** *(Otwarty)* 🟠 — **Settings: Help / Templates — gotowe
   zestawy presetów jako samouczek.** Zgłoszone 2026-10-07. Po `BL-112`
   (zapis i wczytywanie zestawów presetów): nowa pozycja w Settings Nav —

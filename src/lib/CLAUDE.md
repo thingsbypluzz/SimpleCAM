@@ -535,7 +535,12 @@ symulacji materiału.
   pusty slot), slot `"0"` bez zmian.
 - **Plik projektu** (`projectFile.ts`, czyste funkcje):
   `buildProjectFile()` — JSON `{ app: "OnlyPaths", kind: "project",
-  format, name, savedAt, appVersion, slots: { "1"…"7": params | null } }`;
+  format, name, savedAt, appVersion, slots: { "1"…"7": preset | null } }`;
+  preset w pliku (`presetForFile()`) niesie tylko to, czego używa jego
+  operacja: `operation`, sekcję tej operacji, `feeds`, `output` (i
+  `method` dla Hole(s)) — sekcje pozostałych operacji, które preset w
+  przeglądarce trzyma w komplecie, nie są zapisywane i po wczytaniu mają
+  wartości domyślne;
   `parseProjectFile()` — odrzuca w całości plik, który nie jest JSON-em
   (`notJson`), nie jest projektem OnlyPaths (`notProject`) albo ma
   `format` wyższy niż `PROJECT_FORMAT` (`newerFormat`); presety ze

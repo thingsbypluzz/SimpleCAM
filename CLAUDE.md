@@ -135,7 +135,8 @@ być wierny.
   domyślny niezależnie od systemu), Settings.
 - **Projekt** (`lib/projectFile.ts`, `simplecam.project`): siedem slotów
   presetów jako jeden plik JSON (`onlypaths-<nazwa>-<data>.json`) — bez
-  ustawień maszyny, narzędzi i wyglądu. Save pyta o nazwę
+  ustawień maszyny, narzędzi i wyglądu; każdy preset tylko z sekcją
+  własnej operacji, posuwami i opcjami wyjścia. Save pyta o nazwę
   (`ProjectNameModal`) i pobiera plik; Load zastępuje wszystkie sloty (z
   potwierdzeniem, gdy któryś jest zajęty), zaznacza wczytane presety w
   Overlay i rozbraja edycję; parametry w wizardzie zostają. Plik obcy albo

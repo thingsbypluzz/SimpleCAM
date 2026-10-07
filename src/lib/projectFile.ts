@@ -47,9 +47,35 @@ export function projectNameFromFilename(filename: string): string {
   return sanitizeProjectName(base.replace(/[-_]+/g, ' '))
 }
 
+// A preset as it is written to the file: only what its own operation uses —
+// the operation's section, the feeds and the output options. A preset in
+// the browser carries every operation's section (the wizard keeps them so
+// switching operations loses nothing); in a file they would only be bulk.
+// Loading fills the missing sections with defaults (mergeWithDefaults()).
+// The top-level `method` is the Hole(s) method — every other operation
+// keeps its method inside its own section.
+function presetForFile(params: WizardParams): Partial<WizardParams> {
+  const { operation, feeds, output } = params
+  switch (operation) {
+    case 'holes':
+      return { operation, method: params.method, geometry: params.geometry, feeds, output }
+    case 'outline':
+      return { operation, outline: params.outline, feeds, output }
+    case 'surface':
+      return { operation, surface: params.surface, feeds, output }
+    case 'pocket':
+      return { operation, pocket: params.pocket, feeds, output }
+    case 'facing':
+      return { operation, facing: params.facing, feeds, output }
+  }
+}
+
 export function buildProjectFile(name: string, slots: PresetSlots, appVersion: string, now = new Date()): string {
-  const out: Record<string, WizardParams | null> = {}
-  for (const id of PRESET_SLOT_IDS) out[id] = slots[id] ?? null
+  const out: Record<string, Partial<WizardParams> | null> = {}
+  for (const id of PRESET_SLOT_IDS) {
+    const preset = slots[id]
+    out[id] = preset ? presetForFile(preset) : null
+  }
   return JSON.stringify(
     {
       app: PROJECT_APP,

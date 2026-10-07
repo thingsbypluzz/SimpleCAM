@@ -36,6 +36,49 @@ describe('project file', () => {
     expect(file.slots['4'].pocket.shape).toBe('donut')
   })
 
+  it('writes only the section of each preset\'s own operation', () => {
+    const of = (operation: WizardParams['operation']): WizardParams => ({ ...DEFAULT_WIZARD_PARAMS, operation })
+    const file = JSON.parse(
+      buildProjectFile('x', { '1': of('holes'), '2': of('outline'), '3': of('surface'), '4': of('pocket'), '5': of('facing') }, '0.50.1', when),
+    )
+    expect(Object.keys(file.slots['1'])).toEqual(['operation', 'method', 'geometry', 'feeds', 'output'])
+    expect(Object.keys(file.slots['2'])).toEqual(['operation', 'outline', 'feeds', 'output'])
+    expect(Object.keys(file.slots['3'])).toEqual(['operation', 'surface', 'feeds', 'output'])
+    expect(Object.keys(file.slots['4'])).toEqual(['operation', 'pocket', 'feeds', 'output'])
+    expect(Object.keys(file.slots['5'])).toEqual(['operation', 'facing', 'feeds', 'output'])
+  })
+
+  it('brings back what the preset uses; sections of other operations come back as defaults', () => {
+    const preset: WizardParams = {
+      ...donut,
+      method: 'standard',
+      outline: { ...DEFAULT_WIZARD_PARAMS.outline, width: 123 },
+      feeds: { ...DEFAULT_WIZARD_PARAMS.feeds, feedrateXY: 1234 },
+      output: { ...DEFAULT_WIZARD_PARAMS.output, interpolation: 'arc' },
+    }
+    const parsed = parseProjectFile(buildProjectFile('x', { '3': preset }, '0.50.1', when))
+    if (!parsed.ok) throw new Error('expected a project')
+    const loaded = parsed.slots['3']!
+    expect(loaded.operation).toBe('pocket')
+    expect(loaded.pocket).toEqual(preset.pocket)
+    expect(loaded.feeds).toEqual(preset.feeds)
+    expect(loaded.output).toEqual(preset.output)
+    expect(loaded.outline).toEqual(DEFAULT_WIZARD_PARAMS.outline)
+    expect(loaded.method).toBe(DEFAULT_WIZARD_PARAMS.method)
+  })
+
+  it('keeps the Hole(s) method', () => {
+    const preset: WizardParams = { ...hole, method: 'standard' }
+    const parsed = parseProjectFile(buildProjectFile('x', { '1': preset }, '0.50.1', when))
+    expect(parsed.ok && parsed.slots['1']).toEqual(preset)
+  })
+
+  it('still loads a file that carries every section of every preset', () => {
+    const full: WizardParams = { ...donut, outline: { ...DEFAULT_WIZARD_PARAMS.outline, width: 123 } }
+    const file = JSON.stringify({ app: 'OnlyPaths', kind: 'project', format: 1, name: 'old', slots: { '2': full } })
+    expect(parseProjectFile(file)).toEqual({ ok: true, name: 'old', slots: { '2': full } })
+  })
+
   it('refuses a file that is not a project', () => {
     expect(parseProjectFile('G21\nG90')).toEqual({ ok: false, reason: 'notJson' })
     expect(parseProjectFile('[1, 2]')).toEqual({ ok: false, reason: 'notProject' })
