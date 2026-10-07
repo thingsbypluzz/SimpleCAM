@@ -204,7 +204,9 @@ function mergeGeometry(saved: unknown): GeometryParams {
 // version of the app that's missing newly-added fields still loads cleanly,
 // picking up defaults for whatever it doesn't have (or has in a shape this
 // version doesn't recognise).
-function mergeWithDefaults(saved: unknown): WizardParams {
+// Exported for project files (BL-112), which carry presets from outside
+// this browser and go through exactly the same checks.
+export function mergeWithDefaults(saved: unknown): WizardParams {
   const source = (typeof saved === 'object' && saved !== null ? saved : {}) as Record<string, unknown>
   return {
     operation: isOperationType(source.operation) ? source.operation : DEFAULT_WIZARD_PARAMS.operation,
@@ -241,6 +243,18 @@ export function deleteSlot(id: SlotId): void {
 // removes one at a time.
 export function clearAllSlots(): void {
   writeStorage({ version: SCHEMA_VERSION, slots: {} })
+}
+
+// BL-112: every preset slot at once, from a loaded project — a slot missing
+// from `slots` ends up empty. The auto-save slot "0" is left alone.
+export function replacePresetSlots(slots: Partial<Record<PresetSlotId, WizardParams>>): void {
+  const storage = readStorage()
+  for (const id of PRESET_SLOT_IDS) {
+    const params = slots[id]
+    if (params) storage.slots[id] = { version: SCHEMA_VERSION, params }
+    else delete storage.slots[id]
+  }
+  writeStorage(storage)
 }
 
 // All occupied preset slots (1-7), read once at startup for the header —

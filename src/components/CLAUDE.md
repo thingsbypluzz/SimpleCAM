@@ -47,7 +47,7 @@
 - **Reset:** "Reset All Settings to Defaults" (czerwony, tokeny
   `status-delete-*`, `window.confirm()`) czyści wszystkie klucze
   `simplecam.*`: Appearance, Tool Diameters, Machine, pamięć Feedrate
-  Calculator i wszystkie sloty presetów łącznie z `"0"`
+  Calculator, nazwę projektu i wszystkie sloty presetów łącznie z `"0"`
   (`clearAllSlots()`); nie rusza bieżących parametrów wizarda.
 - **About:** nazwa, wersja (`__APP_VERSION__` z `package.json` przez
   `define` w `vite.config.ts`), "Envisioned by ThingsByPluzz" z linkiem do
@@ -59,6 +59,22 @@
   live Preview. Bufory ponownie inicjowane z `machine`, gdy obiekt zostanie
   podmieniony z zewnątrz (np. Reset przy otwartym modalu) — „adjust state
   while rendering”, nie efekt.
+
+## Projekt (`ProjectNameModal.tsx`, Header w `App.tsx`)
+
+- Grupa na prawo od ramki presetów (poza nią), w kolejności: ramka z
+  nazwą projektu, **Load project** (`OpenFileIcon`) — klika ukryty
+  `<input type="file">` (wartość czyszczona po wyborze, żeby ten sam plik
+  dało się wczytać ponownie), **Save project** (`SaveFileIcon`;
+  nieaktywny bez presetów) — otwiera `ProjectNameModal`: pole nazwy z
+  podpowiedzianą nazwą bieżącego projektu, podgląd nazwy pliku, Enter
+  zapisuje, Escape zamyka (`useModalFocus`).
+- Błąd pliku — `window.alert()` z `PROJECT_ERROR_MESSAGE`; zastąpienie
+  zajętych slotów — `window.confirm()`.
+- Ramka z nazwą: tokeny `--edit`, `max-w-40` z obcięciem, pełna nazwa w
+  `title`; zmiany od ostatniego Save/Load — kropka + tekst `sr-only`
+  „unsaved changes” (stan nie tylko kolorem).
+- Otwarty modal pauzuje render 3D (`renderPaused`).
 
 ## Feedrate Calculator (`FeedCalculatorModal.tsx`)
 

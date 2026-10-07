@@ -130,8 +130,21 @@ być wierny.
   (narożniki wewnętrzne zaokrąglone promieniem freza; w 2D kropkowany
   kontur obok ciągłego obrysu nominalnego) — wyłącznik w Settings →
   Appearance.
-- **Header:** Preset Bar `[1]…[7]`, oko Overlay, ołówek edycji, dark/
-  light (dark domyślny niezależnie od systemu), Settings.
+- **Header:** Preset Bar `[1]…[7]` i oko Overlay (we wspólnej ramce), obok
+  — poza ramką — nazwa projektu, Load i Save projektu; dark/light (dark
+  domyślny niezależnie od systemu), Settings.
+- **Projekt** (`lib/projectFile.ts`, `simplecam.project`): siedem slotów
+  presetów jako jeden plik JSON (`onlypaths-<nazwa>-<data>.json`) — bez
+  ustawień maszyny, narzędzi i wyglądu. Save pyta o nazwę
+  (`ProjectNameModal`) i pobiera plik; Load zastępuje wszystkie sloty (z
+  potwierdzeniem, gdy któryś jest zajęty), zaznacza wczytane presety w
+  Overlay i rozbraja edycję; parametry w wizardzie zostają. Plik obcy albo
+  z nowszego formatu jest odrzucany w całości, presety ze znanego pliku
+  przechodzą przez te same strażniki pól co zapis w przeglądarce. Ramka w
+  kolorze edycji pokazuje nazwę projektu ("Untitled", dopóki żadnego nie
+  zapisano ani nie wczytano) i kropkę, gdy sloty różnią się od pliku;
+  stoi na lewo od przycisków Load i Save;
+  nazwa i odcisk slotów przeżywają odświeżenie.
 - **Auto-save i presety** (`simplecam.storage`): slot `"0"` zapisywany przy
   Generate i wczytywany przy starcie (wizard na Kroku 4 z bannerem
   "Restored from your last session"); sloty `1`–`7` z auto-opisem
@@ -154,13 +167,15 @@ być wierny.
   uzbraja go (radio — ołówek na innym slocie przenosi edycję, na tym samym
   rozbraja); każda poprawna zmiana zapisuje się od razu do slotu (tylko
   gdy `isWizardParamsValid`); napis "Auto-save Mode Enabled" (kolor błędu
-  przy niepoprawnych parametrach). Przycisk ołówka w Header świeci podczas
-  edycji i klik ją rozbraja (bez edycji nieaktywny). Stan tylko w
-  pamięci; edycja nie blokuje Generate.
+  przy niepoprawnych parametrach). Edycję kończy ołówek na edytowanym
+  slocie; osobny przycisk ołówka w Header jest ukryty
+  (`SHOW_EDIT_BUTTON` w `App.tsx`, próba przed decyzją o usunięciu —
+  `BL-115`). Stan tylko w pamięci; edycja nie blokuje Generate.
 - **Overlay + edycja naraz:** niezależne — edycja nie dokłada presetu do
   nakładki. Edytowany preset jest rysowany z żywych parametrów wizarda
-  jako żywy wzorzec (także gdy ma ptaszek), pozostałe presety nakładki
-  przygaszone; Generate i zakładka G-Code działają dla niego, baner
+  jako żywy wzorzec (także gdy ma ptaszek); jego krawędzie są w
+  podglądach w kolorze edycji, a ścieżki pozostałych presetów nakładki
+  znikają (ich obrysy zostają, przygaszone); Generate i zakładka G-Code działają dla niego, baner
   "Preview mode" znika. Przeniesienie edycji między pokazywanymi
   presetami i edycja pól nie ruszają kamery. Oba napisy przy Preset Bar w
   dwóch wierszach (Overlay nad edycją). Ramka wokół grupy presetów
@@ -218,7 +233,7 @@ src/
                        pocketMeta, facingMeta; palettes, materials, routers           → CLAUDE.md
   components/
     SettingsModal.tsx, FeedCalculatorModal.tsx, ErrorBoundary.tsx,
-    useModalFocus.ts, icons.tsx                                          → CLAUDE.md
+    ProjectNameModal.tsx, useModalFocus.ts, icons.tsx                    → CLAUDE.md
     wizard/            Step1Positioning, Step2Geometry(+Holes/Outline/Surface/Pocket/Facing),
                        Step3Feeds, Step4Output, pickery metod, PickHeader, MiniStat, ToolChipLoad,
                        TextToggle, NumberInput, useNumberField, Checkbox,
@@ -239,6 +254,7 @@ src/
     feedCalc.ts          model Feedrate Calculator
     stockModel.ts        model materiału dla obu podglądów
     storage.ts, *Storage.ts, presetLabel.ts, toolDiameterOptions.ts, overlayParams.ts
+    projectFile.ts       plik projektu (zestaw presetów) — budowanie, parsowanie, odcisk
     download.ts          plik do pobrania (jedyny efekt uboczny)
     fuzzParams.ts, gcodeTestUtils.ts, pocketAdaptiveSim.ts   tylko testy
     *.test.ts            Vitest (w tym gcodeInvariants.test.ts)

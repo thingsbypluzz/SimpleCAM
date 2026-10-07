@@ -118,11 +118,15 @@ Adaptive, kropkowane w kolorze `linking` palety). Każdy styl = osobne
   zapis position/target/up/near/far + `fitKey`; przy następnym
   montażu odtworzenie zamiast Front (inny `fitKey` → re-fit odległości).
   Tylko w sesji.
-- **Edycja presetu w Overlay** (`dimOverlay`): linie presetów nakładki
-  (ścieżka, obrys, wektor offsetu) dostają krycie
+- **Edycja presetu w Overlay** (`dimOverlay`): presety nakładki rysowane
+  bez ścieżek, ich pozostałe linie (obrys, wektor offsetu) dostają krycie
   `DIMMED_OVERLAY_OPACITY` (`dimLines()`; siatki — bloki Surface/Facing —
-  bez zmian), żywy wzorzec normalnie. `activeToolpathVisible = false`
-  ukrywa tylko ścieżkę żywego wzorca.
+  bez zmian), żywy wzorzec normalnie. Krawędzie edytowanego presetu:
+  osobny `stockModel([params])` i `stockEdgeMesh()` w kolorze
+  `theme.edit`, bez testu głębi i z wysokim `renderOrder` — widać je
+  także przez materiał. Surface i Facing nie mają modelu materiału, więc
+  nie mają wyróżnienia. `activeToolpathVisible = false` ukrywa tylko
+  ścieżkę żywego wzorca.
 - Presety widoku `cameraPresets.ts` (`VIEW_PRESETS`, `frameCamera()`;
   `direction` = pozycja kamery względem celu). `front` patrzy wzdłuż +Y z
   lekkim podniesieniem; `isometric` z ćwiartki III. Fit View = te same

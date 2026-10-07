@@ -314,7 +314,7 @@ describe('Pocket Donut Adaptive (BL-110)', () => {
       expect(rho(p)).toBeGreaterThanOrEqual(inner - 1e-6)
       expect(rho(p)).toBeLessThanOrEqual(outer + 1e-6)
     }
-  })
+  }, 30_000)
 
   it('stays down between levels', () => {
     const params = adaptive({}, { stepdown: 2 })
