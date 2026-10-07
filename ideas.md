@@ -832,6 +832,35 @@ Waga z review w nawiasie kwadratowym.
   4 przy slotach albo Settings); nazwa zestawu i nazwa pliku; relacja z
   `BL-101B` (eksport / import tabel kalkulatora) — wspólny mechanizm
   plików.
+- **`BL-113`** *(Otwarty)* 🟠 — **Settings: Help / Templates — gotowe
+  zestawy presetów jako samouczek.** Zgłoszone 2026-10-07. Po `BL-112`
+  (zapis i wczytywanie zestawów presetów): nowa pozycja w Settings Nav —
+  „Help” albo „Templates” — z kilkoma przygotowanymi zestawami presetów,
+  które pokazują, jak korzystać z narzędzia (np. podebranie pod śrubę,
+  krążek z otworami, kieszeń z wykończeniem). Do przegadania: nazwa i
+  zakres sekcji (same szablony czy też krótki opis kroków); lista
+  zestawów i ich opisy; zestawy wbudowane w aplikację (pliki w repo, w
+  formacie z `BL-112`); wczytanie szablonu nadpisuje sloty — potwierdzenie
+  i ewentualne wcześniejsze zapisanie bieżącego zestawu; zależność od
+  średnic narzędzi i ustawień maszyny użytkownika (szablon z frezem,
+  którego nie ma na liście); czy po wczytaniu włączyć Overlay, żeby od
+  razu było widać całość; utrzymanie szablonów przy zmianach formatu
+  presetów (test, że każdy szablon przechodzi walidację).
+- **`BL-114`** *(Otwarty)* 🟠 — **Overlay jako tryb domyślny.** Zgłoszone
+  2026-10-07. Po `BL-107` praca z kilkoma presetami naraz (ptaszki +
+  edycja jednego na żywo) wyraźnie poprawiła wygodę — pomysł, żeby
+  aplikacja startowała od razu z nakładką zamiast z pojedynczym żywym
+  wzorcem. Do przegadania: co dokładnie znaczy „domyślny” — przy starcie
+  zaznaczone wszystkie zapisane presety, czy zapamiętany ostatni zestaw
+  ptaszków (dziś wybór żyje tylko w pamięci sesji); nowy użytkownik bez
+  presetów (nie ma czego nakładać — zostaje żywy wzorzec); sama nakładka
+  ukrywa żywy wzorzec i blokuje Generate, dopóki żaden preset nie jest
+  edytowany — czy start ma też od razu uzbroić edycję któregoś presetu,
+  czy żywy wzorzec ma być widoczny razem z nakładką; relacja z auto-save
+  slotu `"0"` („Restored from your last session”) — czy przywrócona sesja
+  rysuje się obok presetów; wyłącznik w Settings dla osób pracujących na
+  pojedynczych operacjach; relacja z `BL-112` (wczytanie zestawu) i
+  `BL-113` (szablony — Overlay po wczytaniu).
 - **`BL-61`** *(Zrealizowany, 2026-09-27)* 🔴 **[Low, kosztowne w czasie]**
   — **Podglądy duplikują geometrię silnika** — jedna lista ruchów (jak
   Adaptive) dla G-code i podglądu 3D, po jednej operacji na raz. Etapy 1–2
