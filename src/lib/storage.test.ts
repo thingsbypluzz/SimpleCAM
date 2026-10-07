@@ -297,6 +297,15 @@ describe('field validation on load (BL-57)', () => {
     expect(loadSlot(AUTO_SAVE_SLOT)!.outline.lobeMode).toBe('add')
   })
 
+  it('loads the hole bottom; a snapshot saved before it is Open (BL-111)', () => {
+    storeAutoSave({ operation: 'holes', geometry: { holeBottom: 'closed' } })
+    expect(loadSlot(AUTO_SAVE_SLOT)!.geometry.holeBottom).toBe('closed')
+    storeAutoSave({ operation: 'holes', geometry: { holeBottom: 'bogus' } })
+    expect(loadSlot(AUTO_SAVE_SLOT)!.geometry.holeBottom).toBe('open')
+    storeAutoSave({ operation: 'holes', geometry: { holeDiameter: 6 } })
+    expect(loadSlot(AUTO_SAVE_SLOT)!.geometry.holeBottom).toBe('open')
+  })
+
   it('loads a Pocket Donut; older snapshots get the default island (BL-108)', () => {
     storeAutoSave({ operation: 'pocket', pocket: { shape: 'donut', diameter: 60, islandDiameter: 25 } })
     expect(loadSlot(AUTO_SAVE_SLOT)!.pocket).toMatchObject({ shape: 'donut', diameter: 60, islandDiameter: 25 })

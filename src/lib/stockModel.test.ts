@@ -120,6 +120,31 @@ describe('stockModel — stock sheet', () => {
     expect(area(model.floors[0].region)).toBeCloseTo(800 - circleArea(5))
   })
 
+  it('an Open hole is cut through; a Closed one keeps a floor at its depth (BL-111)', () => {
+    const closed = (p: WizardParams): WizardParams => ({ ...p, geometry: { ...p.geometry, holeBottom: 'closed' } })
+    expect(stockModel([hole(0, 0, 10, 5)], sheet)!.floors).toHaveLength(0)
+    const model = stockModel([closed(hole(0, 0, 10, 5))], sheet)!
+    expect(model.floors).toHaveLength(1)
+    expect(model.floors[0].z).toBeCloseTo(-5)
+    expect(area(model.floors[0].region)).toBeCloseTo(circleArea(5))
+    expect(area(model.top)).toBeCloseTo(SHEET_AREA - circleArea(5))
+  })
+
+  it('a Closed counterbore over a deeper Open hole shows its step (BL-111)', () => {
+    const counterbore: WizardParams = { ...hole(0, 0, 10, 5), geometry: { ...hole(0, 0, 10, 5).geometry, holeBottom: 'closed' } }
+    const model = stockModel([hole(0, 0, 5.3, 12), counterbore], sheet)!
+    // The step: the counterbore's floor with the through hole cut out of it.
+    expect(model.floors).toHaveLength(1)
+    expect(model.floors[0].z).toBeCloseTo(-5)
+    expect(area(model.floors[0].region)).toBeCloseTo(circleArea(5) - circleArea(2.65))
+    expect(model.walls.map((w) => [w.zTop, w.zBottom])).toEqual([
+      [-0, -5],
+      [-5, -12],
+    ])
+    expect(area(model.walls[0].region)).toBeCloseTo(circleArea(5))
+    expect(area(model.walls[1].region)).toBeCloseTo(circleArea(2.65))
+  })
+
   it('a deeper pocket inside a shallower one makes a step', () => {
     const model = stockModel([pocket(40, 20, 3), pocket(10, 10, 8)], sheet)!
     expect(model.floors.map((f) => f.z)).toEqual([-3, -8])

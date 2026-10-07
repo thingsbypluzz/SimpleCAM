@@ -6,6 +6,7 @@ const base: GeometryParams = {
   toolDiameter: 3.175,
   holeDiameter: 8,
   totalDepth: 4,
+  holeBottom: 'open',
   positioning: 'single',
   gridX: 50,
   gridY: 30,

@@ -6,6 +6,7 @@ import type {
   LobeMode,
   RasterDirection,
   ZTransitionMode,
+  HoleBottom,
 } from '../../types/wizard'
 import type { TextToggleOption } from './TextToggle'
 
@@ -46,6 +47,12 @@ export const FACING_ORIGIN_ALONG_OPTIONS: readonly TextToggleOption<FacingOrigin
 export const FACING_ORIGIN_ACROSS_OPTIONS: readonly TextToggleOption<FacingOriginAcross>[] = [
   { value: 'raw', label: 'Raw Edge', title: 'Origin on the edge as it is now — the finished edge ends up inside the material' },
   { value: 'finished', label: 'Finished', title: 'Origin on the edge the cut leaves — the raw edge sticks out past it' },
+]
+
+// Hole(s) (BL-111) — previews only.
+export const HOLE_BOTTOM_OPTIONS: readonly TextToggleOption<HoleBottom>[] = [
+  { value: 'open', label: 'Open', title: 'Drawn cut through the stock' },
+  { value: 'closed', label: 'Closed', title: 'Drawn with a floor at its Depth' },
 ]
 
 // Lobed Circle (BL-106).

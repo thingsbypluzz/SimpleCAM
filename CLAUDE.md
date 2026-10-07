@@ -121,7 +121,8 @@ być wierny.
 - **Materiał w podglądach** — jeden model (`lib/stockModel.ts`) dla
   żywego wzorca i dla wszystkich presetów w Overlay; 2D i 3D rysują tę samą
   geometrię. Pustki (otwór, Outline Inside, pas On-line) wycięte na wylot,
-  Pocket ma dno na swojej głębokości. Bazą jest arkusz materiału, a gdy
+  Pocket ma dno na swojej głębokości; otwór Hole(s) z przełącznikiem
+  Bottom = Closed też dostaje dno (tylko wygląd, G-code bez zmian). Bazą jest arkusz materiału, a gdy
   któryś preset to Outline Outside — suma wysp (część), z której wycinane
   są pustki pozostałych presetów. Surface i Facing poza modelem: rysują
   własny „pozostały materiał” (Facing — blok od gotowej krawędzi w głąb

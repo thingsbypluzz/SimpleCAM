@@ -17,6 +17,8 @@ import { Checkbox } from './Checkbox'
 import { ToolChipLoad } from './ToolChipLoad'
 import { FieldRow, inputClass } from './FieldRow'
 import { HintPopover } from './HintPopover'
+import { TextToggle } from './TextToggle'
+import { HOLE_BOTTOM_OPTIONS } from './toggleOptions'
 import { MethodPicker } from './MethodPicker'
 import { NumberInput } from './NumberInput'
 import { PickHeader } from './PickHeader'
@@ -119,6 +121,16 @@ export function Step2GeometryHoles({ params, onChange, machine, toolDiameters, f
       </FieldRow>
     </div>
   )
+  // BL-111: sits to the right of Hole Diameter in whichever row holds it.
+  const bottomCell = (
+    <div className="flex min-w-0 flex-1 flex-col gap-1">
+      <span className="flex items-center gap-1.5 text-sm font-medium text-value">
+        Bottom
+        <HintPopover text="How the previews draw the hole: Open is cut through the stock, Closed has a floor at its Depth — e.g. a counterbore for a screw head over a deeper, narrower hole (compare them in Overlay). Looks only: the G-code is the same either way." />
+      </span>
+      <TextToggle options={HOLE_BOTTOM_OPTIONS} value={geometry.holeBottom} onChange={(v) => updateGeometry({ holeBottom: v })} />
+    </div>
+  )
   const sizeError = sizeInvalid && <p className="text-sm text-status-error">Dimensions and depth must be greater than 0.</p>
 
   return (
@@ -154,7 +166,12 @@ export function Step2GeometryHoles({ params, onChange, machine, toolDiameters, f
             </div>
             {depthCell}
           </div>
-          <FieldRow label="Hole Diameter [mm]">{holeDiameterInput}</FieldRow>
+          <div className="flex items-end gap-4">
+            <div className="min-w-0 flex-1">
+              <FieldRow label="Hole Diameter [mm]">{holeDiameterInput}</FieldRow>
+            </div>
+            {bottomCell}
+          </div>
           {sizeError}
         </div>
       )}
@@ -194,7 +211,7 @@ export function Step2GeometryHoles({ params, onChange, machine, toolDiameters, f
               Hole count can't exceed {MAX_CIRCLE_HOLE_COUNT}.
             </p>
           )}
-          <div className="flex gap-4">
+          <div className="flex items-end gap-4">
             <div className="min-w-0 flex-1">
               <FieldRow label="Hole Diameter [mm]">{holeDiameterInput}</FieldRow>
             </div>
@@ -203,6 +220,7 @@ export function Step2GeometryHoles({ params, onChange, machine, toolDiameters, f
                 <NumberInput type="number" step="1" className={inputClass} {...circleStartAngleField} />
               </FieldRow>
             </div>
+            {bottomCell}
           </div>
           {sizeError}
         </div>
@@ -233,11 +251,12 @@ export function Step2GeometryHoles({ params, onChange, machine, toolDiameters, f
 
       {!isGrid && !isCircle && (
         <div className="flex flex-col gap-4">
-          <div className="flex gap-4">
+          <div className="flex items-end gap-4">
             <div className="min-w-0 flex-1">
               <FieldRow label="Hole Diameter [mm]">{holeDiameterInput}</FieldRow>
             </div>
             {depthCell}
+            {bottomCell}
           </div>
           {sizeError}
         </div>
