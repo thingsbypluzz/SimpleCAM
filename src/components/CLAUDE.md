@@ -82,7 +82,9 @@
   tylko do odczytu, najbliższa RPM wyróżniona (`nearestDialPosition()`).
   Model — `lib/CLAUDE.md`. Błędne wejścia (średnica, Flutes — także
   wpisana, jeszcze niezatwierdzona liczba — chip load) z `aria-invalid`,
-  jak w wizardzie.
+  jak w wizardzie. Pola Flutes i Chip Load zatwierdzają przy każdym
+  klawiszu (`useNumberField` z `commit: 'live'`), inaczej niż pola
+  wizarda.
 - **Apply selected** (`handleApplyFeedCalc()` w `App.tsx`): metoda i
   średnica zawsze (kontekst wyliczenia), szerokość/Linking Feed przez
   `OPERATION_META[op].withCalc()` (Pocket także Stock to Leave i Finish

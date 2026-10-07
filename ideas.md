@@ -503,18 +503,14 @@ Waga z review w nawiasie kwadratowym.
   Wdrożone: sekcja **Controller** zaraz pod Machine z G-Code Dialect
   (z opisem, co dialekt zmienia w programie) i Start/End G-Code; Spindle
   Speed i Spin-up Dwell zostały w Machine (właściwości wrzeciona).
-- **`BL-89`** *(Otwarty)* 🟠 — **Zatwierdzanie pól liczbowych przy utracie
-  fokusu (wydajność podglądu).** Zgłoszone 2026-10-01 przy `BL-83`. Dziś
-  `useNumberField` zatwierdza przy każdym klawiszu; podgląd jest odroczony
-  (`useDeferredValue`, `BL-63`), ale walidacja (`isWizardParamsValid()` i
-  walidatory Kroku 2) liczy się synchronicznie przy każdym renderze — przy
-  Lightened/Adaptive to odczuwalne przycięcie przy pisaniu. Propozycja:
-  zatwierdzanie na blur i Enter, strzałki (i przytrzymanie, `BL-26`) od
-  razu. Zyski: brak ciężkiego liczenia w trakcie pisania, koniec błędów ze
-  stanów pośrednich (np. awaria 3D przy wpisywaniu średnicy), błędy nie
-  migają. Do przegadania: „żywość” podglądu, Edit Mode live-save, pola
-  sparowane (% ↔ mm), Generate/Apply przy niezatwierdzonym polu,
-  alternatywa — debounce ciężkich obliczeń ~300 ms.
+- **`BL-89`** *(Zrealizowany, 2026-10-07)* 🟠 — **Odroczone zatwierdzanie
+  pól liczbowych (wydajność przy pisaniu).** Zgłoszone 2026-10-01 przy
+  `BL-83`: `useNumberField` zatwierdzał przy każdym klawiszu, a walidacja
+  liczy się synchronicznie — przy Lightened/Adaptive pisanie przycinało,
+  stany pośrednie wywoływały błędy. Wdrożone: pola Kroków 2 i 3
+  zatwierdzają przy wyjściu z pola, po Enter albo po ok. 0,5 s bez
+  pisania; strzałki i klawisze ↑/↓ od razu; Escape cofa niezatwierdzony
+  tekst; Feedrate Calculator zostaje żywy.
 - **`BL-90`** *(Zrealizowany, 2026-10-01)* 🟢 — **Krok 2: etykieta Tool Diameter łamie
   wiersz.** Zgłoszone 2026-10-01. W wierszu Tool Diameter + Flutes + fz
   (`ToolChipLoad.tsx`) etykieta „Tool Diameter [mm]” zawija się do dwóch

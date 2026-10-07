@@ -90,12 +90,19 @@ export function FeedCalculatorModal({ params, machine, settings, toolDiameters, 
   const material = MATERIALS[settings.material]
   const updateSettings = (patch: Partial<FeedCalcSettings>) => onSaveSettings({ ...settings, ...patch })
 
-  const flutesField = useNumberField(settings.flutes, (v) => {
-    if (isValidFluteCount(v)) updateSettings({ flutes: v })
-  })
+  // Both fields commit on every keystroke (not deferred like the wizard's
+  // own): the results below are cheap and should follow the typing.
+  const flutesField = useNumberField(
+    settings.flutes,
+    (v) => {
+      if (isValidFluteCount(v)) updateSettings({ flutes: v })
+    },
+    { commit: 'live' },
+  )
   const tableLoad = suggestedChipLoad(material, toolDiameter, machine.rigidity)
   const chipLoadField = useNumberField(Number(chipLoadText(chipLoadOverride ?? tableLoad)), setChipLoadOverride, {
     syncWhenBlurred: true,
+    commit: 'live',
   })
 
   // The params as they'd be with this method and tool — gives the
