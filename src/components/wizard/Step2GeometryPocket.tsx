@@ -30,7 +30,7 @@ import {
   optimalLoadPercentFromMm,
 } from '../../lib/pocketAdaptiveMath'
 import { effectivePocketZTransitionMode } from '../../lib/pocketZTransition'
-import { effectivePocketMethod, pocketStepoverMm, spiralRampEngagementDeg } from '../../lib/pocketGeometry'
+import { pocketStepoverMm, spiralRampEngagementDeg } from '../../lib/pocketGeometry'
 import { fmt } from '../../lib/format'
 import { resolveToolDiameterSelectOptions } from '../../lib/toolDiameterOptions'
 import type { ToolDiameterOption } from '../../types/toolDiameters'
@@ -106,7 +106,7 @@ export function Step2GeometryPocket({ params, onChange, machine, toolDiameters, 
   const isRect = pocket.shape !== 'circle' && pocket.shape !== 'circleLightened' && !isDonut
   const isLightened = isLightenedShape(pocket.shape)
   const cellsInvalid = !isPocketLightCellsValid(pocket)
-  const isAdaptive = effectivePocketMethod(pocket) === 'adaptive'
+  const isAdaptive = pocket.method === 'adaptive'
   const zMode = effectivePocketZTransitionMode(pocket)
   const loadValid = isPocketOptimalLoadValid(pocket)
   const thinning = chipThinningFactor(pocket.optimalLoadPercent)
@@ -436,7 +436,7 @@ export function Step2GeometryPocket({ params, onChange, machine, toolDiameters, 
           <div className="flex min-w-0 flex-1 flex-col gap-1">
             <span className="flex items-center gap-1.5 text-sm font-medium text-value">
               Z-Transition
-              {isDonut && (
+              {isDonut && !isAdaptive && (
                 <HintPopover text="Donut enters on its first lap, right next to the island: Plunge goes straight down at the lap's start, Helix ramps down along the lap itself at the Ramp Angle." />
               )}
               {isAdaptive && (
@@ -451,7 +451,7 @@ export function Step2GeometryPocket({ params, onChange, machine, toolDiameters, 
             />
           </div>
           <div className="min-w-0 flex-1">
-            {zMode === 'helix' && !isDonut && (
+            {zMode === 'helix' && !(isDonut && !isAdaptive) && (
               <FieldRow label="Helix R. [mm]">
                 <NumberInput
                   type="number"
@@ -492,7 +492,7 @@ export function Step2GeometryPocket({ params, onChange, machine, toolDiameters, 
           <p className="text-sm text-status-error">
             Helix radius must be greater than 0 and at most {fmt(round2(pocketMaxHelixRadius(pocket)))} mm — no more than
             the tool's radius (a wider helix leaves an uncut post in the center) and inside{' '}
-            {isLightened ? "the smallest cell's wall" : "the pocket's own wall"}.
+            {isLightened ? "the smallest cell's wall" : isDonut ? 'half the width the ring leaves the tool' : "the pocket's own wall"}.
           </p>
         )}
         {isPocketHelixRadiusSmall(pocket) && isPocketHelixRadiusValid(pocket) && (

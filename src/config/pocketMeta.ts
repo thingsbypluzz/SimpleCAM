@@ -40,7 +40,7 @@ export const POCKET_SHAPE_META: Record<PocketShape, PocketShapeMeta> = {
     value: 'donut',
     title: 'Donut',
     description:
-      'Ring-shaped pocket, centered at the origin: the area between the Diameter and an island left standing in the middle. Spiral only.',
+      'Ring-shaped pocket, centered at the origin: the area between the Diameter and an island left standing in the middle. Spiral or Adaptive.',
     Icon: PocketDonutIcon,
   },
   rectLightened: {

@@ -58,6 +58,10 @@ interface Family {
   span: number
   // Where the two walls meet when the family ends in a corner.
   corner: Point2D | null
+  // Cap on one step. Only a family that comes back onto its own start needs
+  // it (a Donut's wing): there a step of the whole span lands on the
+  // previous circle and would measure as no engagement at all.
+  maxStep?: number
 }
 
 export interface SectorBranch {
@@ -66,6 +70,9 @@ export interface SectorBranch {
   corner: Point2D | null
   children: SectorBranch[]
   complete: boolean
+  // A wing that runs the whole way around a Donut (BL-110): it ends on its
+  // own base circle, so the tool is already back where it started.
+  closed?: boolean
 }
 
 export interface SectorAdaptivePlan {
@@ -185,7 +192,7 @@ function walk(g: Geo, family: Family, toolRadius: number, theta: number): Sector
     }
     const from = u
     const prev = circles[circles.length - 1]
-    const reach = family.corner ? remaining - minRadius / 2 : remaining
+    const reach = Math.min(family.corner ? remaining - minRadius / 2 : remaining, family.maxStep ?? Infinity)
     if (family.corner && !(reach > EPS)) {
       complete = true
       reachedCorner = true
@@ -271,6 +278,44 @@ export function planSectorAdaptive(
   return { ...shared, center: toWorld(root.c), origin: cell.origin, bisector }
 }
 
+const donutPlanCache = new Map<string, SectorAdaptivePlan>()
+
+// Pocket Donut (BL-110): the ring between two concentric walls (tool-center
+// radii rIn < rOut around `origin`) is a wide sector with no sides — the
+// inscribed circle touches the island and the outer wall, and one wing
+// carries it all the way around the ring, in the direction of the cut,
+// until it meets its own start. Everything else (phase A around the
+// inscribed circle, the step rule, the moves) is the sector's. Null when
+// the ring leaves no room for the inscribed circle.
+export function planDonutAdaptive(
+  origin: Point2D,
+  opts: { rIn: number; rOut: number; toolRadius: number; theta: number; helixRadius: number; sign: 1 | -1 },
+): SectorAdaptivePlan | null {
+  const root: Circle = { c: { x: (opts.rIn + opts.rOut) / 2, y: 0 }, r: (opts.rOut - opts.rIn) / 2 }
+  if (!(root.r > 0) || !(opts.rIn > 0)) return null
+  const key = [opts.rIn, opts.rOut, opts.toolRadius, opts.theta, opts.helixRadius, opts.sign].map((v) => v.toFixed(9)).join('|')
+  let shared = donutPlanCache.get(key)
+  if (!shared) {
+    const g: Geo = { rIn: opts.rIn, rOut: opts.rOut, s: 0, phi: Math.PI }
+    const rings = phaseARadii(opts.toolRadius, opts.theta, opts.helixRadius, root.r)
+    const around = walk(g, { ...wing(g, opts.sign, 2 * Math.PI), maxStep: Math.PI / 2 }, opts.toolRadius, opts.theta)
+    around.closed = true
+    shared = {
+      center: { x: 0, y: 0 },
+      ringRadii: rings.radii,
+      ringsComplete: rings.complete,
+      geo: g,
+      origin: { x: 0, y: 0 },
+      bisector: 0,
+      root,
+      branches: [around],
+    }
+    if (donutPlanCache.size >= 16) donutPlanCache.clear()
+    donutPlanCache.set(key, shared)
+  }
+  return { ...shared, origin, center: { x: origin.x + root.c.x, y: origin.y + root.c.y } }
+}
+
 function branchComplete(b: SectorBranch): boolean {
   return b.complete && b.children.every(branchComplete)
 }
@@ -350,8 +395,10 @@ export function appendSectorAdaptiveLevel(ctx: LevelContext, plan: SectorAdaptiv
       for (const child of br.children) emit(child)
     }
     // Back to the base center: straight when that cannot cross the hub,
-    // otherwise retracing the branch's own centers.
-    if (involvesHub(br)) for (let k = circles.length - 1; k >= 0; k--) to('link', circles[k].c)
+    // otherwise retracing the branch's own centers. A closed wing (Donut)
+    // ends on its base circle — one short link to its center.
+    if (br.closed) to('link', circles[0].c)
+    else if (involvesHub(br)) for (let k = circles.length - 1; k >= 0; k--) to('link', circles[k].c)
     else to('link', circles[0].c)
   }
 

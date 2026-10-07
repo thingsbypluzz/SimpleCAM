@@ -20,7 +20,6 @@ import {
   outlineSummary,
 } from './outlineMeta'
 import { POCKET_METHOD_LIST, POCKET_METHOD_META } from './pocketMethodMeta'
-import { effectivePocketMethod } from '../lib/pocketGeometry'
 import { POCKET_SHAPE_META, pocketShapeIcon, pocketShapeLabel, pocketShapeLines, pocketShapeSlug, pocketSummary } from './pocketMeta'
 import { patternLabel, patternSlug, POSITIONING_META, positioningIcon, positioningLines, positioningSummary } from './positioningMeta'
 import { SURFACE_METHOD_LIST, SURFACE_METHOD_META } from './surfaceMethodMeta'
@@ -287,7 +286,7 @@ export const OPERATION_META: Record<OperationType, OperationMeta> = {
     pickLines: (p) => pocketShapeLines(p.pocket),
     pickSummary: (p) => pocketSummary(p.pocket),
     pick: (p) => POCKET_SHAPE_META[p.pocket.shape],
-    method: (p) => POCKET_METHOD_META[effectivePocketMethod(p.pocket)],
+    method: (p) => POCKET_METHOD_META[p.pocket.method],
     geometryStats: (p) => [
       sizeStat(
         pocketShapeIcon(p.pocket.shape),
@@ -299,18 +298,16 @@ export const OPERATION_META: Record<OperationType, OperationMeta> = {
       depthStat(p.pocket.totalDepth),
     ],
     geometryTitle: (p) =>
-      `Tool ⌀${p.pocket.toolDiameter}mm, ${POCKET_SHAPE_META[p.pocket.shape].title} ${roundSize(p.pocket)}mm, Depth ${p.pocket.totalDepth}mm${withOffset(p.pocket)} — Method: ${POCKET_METHOD_META[effectivePocketMethod(p.pocket)].title}`,
-    generate: (p, machine) => POCKET_METHOD_META[effectivePocketMethod(p.pocket)].generate(p, machine),
+      `Tool ⌀${p.pocket.toolDiameter}mm, ${POCKET_SHAPE_META[p.pocket.shape].title} ${roundSize(p.pocket)}mm, Depth ${p.pocket.totalDepth}mm${withOffset(p.pocket)} — Method: ${POCKET_METHOD_META[p.pocket.method].title}`,
+    generate: (p, machine) => POCKET_METHOD_META[p.pocket.method].generate(p, machine),
     filenameSlug: (p) => pocketShapeSlug(p.pocket),
-    presetLabel: (p) => `${pocketShapeLabel(p.pocket)} • ${POCKET_METHOD_META[effectivePocketMethod(p.pocket)].shortLabel}`,
+    presetLabel: (p) => `${pocketShapeLabel(p.pocket)} • ${POCKET_METHOD_META[p.pocket.method].shortLabel}`,
     toolDiameter: (p) => p.pocket.toolDiameter,
-    methodValue: (p) => effectivePocketMethod(p.pocket),
-    // A Donut is Spiral-only.
-    calcMethods: (p) => methodOptions(POCKET_METHOD_LIST.filter((m) => p.pocket.shape !== 'donut' || m.value === 'spiral')),
+    methodValue: (p) => p.pocket.method,
+    calcMethods: () => methodOptions(POCKET_METHOD_LIST),
     withCalc: (p, c) => {
       const method = c.method as PocketMethodType
-      // A Donut keeps its stored method (it is ignored there, see effectivePocketMethod()).
-      const pocket = { ...p.pocket, method: p.pocket.shape === 'donut' ? p.pocket.method : method, toolDiameter: c.toolDiameter }
+      const pocket = { ...p.pocket, method, toolDiameter: c.toolDiameter }
       if (method === 'adaptive') {
         if (c.widthPercent !== undefined) pocket.optimalLoadPercent = c.widthPercent
         if (c.linkingFeed !== undefined) pocket.linkingFeed = c.linkingFeed

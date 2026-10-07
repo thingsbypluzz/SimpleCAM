@@ -22,7 +22,7 @@ import {
   type LoopBounds,
 } from '../../lib/outlineLobedGeometry'
 import { facingBlockCorners, facingStripCorners, facingViewBounds, type FacingBounds } from '../../lib/facingGeometry'
-import { effectivePocketMethod, pocketCenter } from '../../lib/pocketGeometry'
+import { pocketCenter } from '../../lib/pocketGeometry'
 import { buildPocketToolpath } from '../../lib/pocket'
 import { movePoints, type MoveKind, type Toolpath } from '../../lib/toolpath'
 import { cutContours, pocketVoids, stockModel, type StockModel } from '../../lib/stockModel'
@@ -383,7 +383,7 @@ function resolvePattern(params: WizardParams): ResolvedPattern {
 
     const toolpath = buildPocketToolpath(params)
 
-    return { kind: 'pocket', params, center, shape: pocket.shape, method: effectivePocketMethod(pocket), nominal, toolpath }
+    return { kind: 'pocket', params, center, shape: pocket.shape, method: pocket.method, nominal, toolpath }
   }
   if (params.operation === 'facing') {
     return { kind: 'facing', params, bounds: facingViewBounds(params.facing), toolpath: buildFacingToolpath(params) }

@@ -53,8 +53,8 @@ Pięć operacji (`WizardParams.operation`):
 - **Pocket** — kieszeń Rectangle Cornered / Centered / Circle; metody
   Spiral i Adaptive (stałe zaangażowanie); opcjonalny przejazd
   wykończeniowy ścian (Stock to Leave, Finish Feed). **Donut** — pierścień
-  między średnicą a wyspą zostawioną w środku (tylko Spiral, od wyspy na
-  zewnątrz). Kieszenie odciążające
+  między średnicą a wyspą zostawioną w środku (Spiral od wyspy na
+  zewnątrz albo Adaptive dookoła pierścienia). Kieszenie odciążające
   **Rectangle Lightened** (X-grid N×M / Triangles N×M) i **Circle
   Lightened** (szprychy, piasta) — każda komórka osobna kieszeń, Spiral
   albo Adaptive.
