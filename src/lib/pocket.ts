@@ -4,7 +4,7 @@ import { assembleProgram } from './program'
 import { buildLevelDescents, helixPitchForRampAngle, levelEntryZ } from './surfaceZTransition'
 import { appendPocketZTransition, pocketEntryPoint } from './pocketZTransition'
 import { buildAdaptiveToolpath, type LevelContext } from './pocketAdaptive'
-import { appendSectorAdaptiveLevel, planSectorAdaptive } from './pocketSectorAdaptive'
+import { appendSectorAdaptiveLevel, planDonutAdaptive, planSectorAdaptive } from './pocketSectorAdaptive'
 import { appendCellFinish, appendPocketFinish, pocketFinishMoves } from './pocketFinish'
 import { cellInscribed, isLightenedShape, lightenedCells, type LightCell } from './pocketLightened'
 import { appendCellSpiral } from './pocketCellSpiral'
@@ -20,7 +20,6 @@ import {
   type RectRingDims,
 } from './pocketSpiral'
 import {
-  effectivePocketMethod,
   pocketCenter,
   pocketStockToLeave,
   pocketRoughCircleWallRadius,
@@ -105,11 +104,18 @@ const LEVEL_CLEAR: Record<Exclude<PocketMethodType, 'adaptive'>, (pocket: Wizard
 //
 // Both methods rough to the roughing wall; the optional finishing wall
 // pass (lib/pocketFinish.ts, BL-42) follows the whole roughing.
-export function buildPocketToolpath(params: WizardParams, method = effectivePocketMethod(params.pocket)): Toolpath {
+export function buildPocketToolpath(params: WizardParams, method = params.pocket.method): Toolpath {
   const { pocket, feeds } = params
   const center = pocketCenter(pocket)
 
-  // Donut: Spiral only, entered on its first lap instead of the center (the
+  // Donut Adaptive (BL-110): its own entry and level loop.
+  if (pocket.shape === 'donut' && method === 'adaptive') {
+    const adaptive = buildDonutAdaptiveToolpath(params)
+    const last = adaptive.moves.length > 0 ? adaptive.moves[adaptive.moves.length - 1].to : adaptive.start
+    return { start: adaptive.start, moves: [...adaptive.moves, ...pocketFinishMoves(last, params)] }
+  }
+
+  // Donut Spiral: entered on its first lap instead of the center (the
   // island stands there) — Plunge at the lap's start, Helix down the lap
   // itself.
   if (pocket.shape === 'donut') {
@@ -185,13 +191,52 @@ function appendSpiralLevels(
   })
 }
 
+// Donut Adaptive (BL-110): the helix goes down in the middle of the ring's
+// width, phase A grows it to the circle touching both walls, and that
+// circle is then walked all the way around the ring (planDonutAdaptive()).
+// Like every Adaptive: no retract between levels, the tool links back to
+// the helix start at the previous depth. Starts over the helix start at
+// Safe Z.
+function buildDonutAdaptiveToolpath(params: WizardParams): Toolpath {
+  const { pocket, feeds } = params
+  const origin = pocketCenter(pocket)
+  const toolRadius = pocket.toolDiameter / 2
+  const theta = engagementAngleFor(pocket.optimalLoadPercent)
+  const helixRadius = pocket.helixRadius
+  const sign: 1 | -1 = pocket.cutDirection === 'climb' ? 1 : -1
+  const direction: ArcDirection = sign > 0 ? 'ccw' : 'cw'
+  const { inner, outer } = pocketRoughDonutWalls(pocket)
+  const usable = toolRadius > 0 && helixRadius > 0 && theta > 0
+  const plan = usable ? planDonutAdaptive(origin, { rIn: inner, rOut: outer, toolRadius, theta, helixRadius, sign }) : null
+  const center = plan ? plan.center : { x: origin.x + (inner + outer) / 2, y: origin.y }
+  const entry = { x: center.x + helixRadius, y: center.y }
+  const b = new ToolpathBuilder({ x: entry.x, y: entry.y, z: feeds.safeZ }, true)
+  if (!plan) return b.build()
+  b.zTo('rapid', feeds.startZ)
+  const ctx: LevelContext = { b, cx: center.x, cy: center.y, toolRadius, theta, sign, direction }
+  const pitch = helixPitchForRampAngle(helixRadius, pocket.rampAngleDeg)
+  let fromZ = feeds.startZ
+  for (const { toZ } of buildLevelDescents(feeds.startZ, pocket.totalDepth, feeds.stepdown)) {
+    b.lineTo('link', entry.x, entry.y)
+    let z = fromZ
+    for (const turn of computeDepthPasses(fromZ - toZ, pitch)) {
+      z -= turn
+      b.arc('cut', center, direction, 2 * Math.PI, z)
+    }
+    b.arc('cut', center, direction, 2 * Math.PI, toZ)
+    appendSectorAdaptiveLevel(ctx, plan)
+    fromZ = toZ
+  }
+  return b.build()
+}
+
 // Lightened shapes (OP-6): every cell is a Spiral pocket of its own, cut to
 // full depth (all levels, then its finishing laps) before moving on —
 // Safe Z, rapid over the next cell's entry point, down to Start Z. Cells in
 // lightenedCells()' order (snake / CCW around the circle).
 function buildLightenedToolpath(params: WizardParams): Toolpath {
   const { pocket, feeds } = params
-  if (effectivePocketMethod(pocket) === 'adaptive') return buildLightenedAdaptiveToolpath(params)
+  if (pocket.method === 'adaptive') return buildLightenedAdaptiveToolpath(params)
   const cells = lightenedCells(pocket)
   const isHelix = pocket.zTransitionMode === 'helix'
   const roughWallDepth = pocket.toolDiameter / 2 + pocketStockToLeave(pocket)

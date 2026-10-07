@@ -15,6 +15,7 @@ import {
   randomOutline,
   randomPocket,
   randomPocketDonut,
+  randomPocketDonutAdaptive,
   randomPocketLightened,
   randomPocketLightenedAdaptive,
   randomFacing,
@@ -277,6 +278,7 @@ const SUITES: Suite[] = [
   { name: 'Pocket Spiral', samples: 40, build: (r) => randomPocket(r, 'spiral'), generate: generatePocketSpiral },
   { name: 'Pocket Adaptive', samples: 25, build: (r) => randomPocket(r, 'adaptive'), generate: generatePocketAdaptive },
   { name: 'Pocket Donut', samples: 40, build: randomPocketDonut, generate: generatePocketSpiral },
+  { name: 'Pocket Donut Adaptive', samples: 25, build: randomPocketDonutAdaptive, generate: generatePocketAdaptive },
   { name: 'Pocket Lightened', samples: 30, build: randomPocketLightened, generate: generatePocketSpiral },
   { name: 'Pocket Lightened Adaptive', samples: 10, build: randomPocketLightenedAdaptive, generate: generatePocketAdaptive },
 ]

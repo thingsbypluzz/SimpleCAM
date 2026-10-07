@@ -20,7 +20,6 @@ import {
   suggestedAdaptiveStepdown,
 } from '../../lib/validation'
 import { isFeedChipThinningCompensated } from '../../lib/pocketAdaptiveMath'
-import { effectivePocketMethod } from '../../lib/pocketGeometry'
 import { fmt } from '../../lib/format'
 import { CalculatorIcon } from '../icons'
 import { routerDialHint, ROUTERS } from '../../config/routers'
@@ -48,7 +47,7 @@ interface Step3FeedsProps {
 export function Step3Feeds({ params, onChange, machine, stepdownLabel, onOpenCalculator, onSaveMachine }: Step3FeedsProps) {
   const { feeds, pocket, facing } = params
   const isFacing = params.operation === 'facing'
-  const isPocketAdaptive = params.operation === 'pocket' && effectivePocketMethod(pocket) === 'adaptive'
+  const isPocketAdaptive = params.operation === 'pocket' && pocket.method === 'adaptive'
   const isPocketFinishing = params.operation === 'pocket' && pocket.finishingEnabled
 
   const updateFeeds = (patch: Partial<WizardParams['feeds']>) =>

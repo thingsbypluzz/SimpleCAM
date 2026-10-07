@@ -7,6 +7,23 @@ zgodne z [SemVer](https://semver.org/). Ten plik pozostaje głównym, czytelnym
 thingsbypluzz/SimpleCAM), ale to infrastruktura pod izolację pracy
 (branch/worktree per zadanie), nie zamiennik tego changeloga.
 
+## [0.48.0] — 2026-10-07
+
+### Dodano
+
+- **Pocket Donut: metoda Adaptive** (`BL-110`). Stałe zaangażowanie w
+  pierścieniu: helix wchodzi w środku szerokości pierścienia, pierścienie
+  fazy A rosną do okręgu stycznego do wyspy i ściany zewnętrznej, a potem
+  ten okrąg jest prowadzony dookoła całego pierścienia krokami dobranymi
+  tak, żeby zaangażowanie nie przekroczyło Optimal Load. Bez retraktu
+  między poziomami, przejazdy powrotne na Linking Feed.
+  - Direction (Climb / Conventional) działa jak w każdym Adaptive;
+    Finishing Pass obrabia ścianę zewnętrzną w tym kierunku, a wyspę w
+    przeciwnym, więc rodzaj cięcia jest ten sam po obu stronach.
+  - Helix Radius: najwyżej promień freza i najwyżej połowa szerokości,
+    jaką pierścień zostawia frezowi. Pierścień o szerokości freza nie ma
+    miejsca na Adaptive — zostaje dla niego Spiral.
+
 ## [0.47.0] — 2026-10-07
 
 ### Dodano

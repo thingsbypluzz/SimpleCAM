@@ -1,4 +1,4 @@
-import type { PocketMethodType, PocketParams, Point2D } from '../types/wizard'
+import type { PocketParams, Point2D } from '../types/wizard'
 import { engagementAngleFor } from './pocketAdaptiveMath'
 
 // Center of the pocket in program coordinates — mirrors rectCorners()'s
@@ -75,13 +75,6 @@ export function pocketRoughDonutWalls(
   const { inner, outer } = pocketDonutWalls(pocket)
   const stock = pocketStockToLeave(pocket)
   return { inner: inner + stock, outer: outer - stock }
-}
-
-// The method that actually runs: a Donut is Spiral-only, whatever is stored
-// (the stored value is kept untouched, only ignored — like zTransitionMode
-// under Adaptive).
-export function effectivePocketMethod(pocket: Pick<PocketParams, 'shape' | 'method'>): PocketMethodType {
-  return pocket.shape === 'donut' ? 'spiral' : pocket.method
 }
 
 // Single source-of-truth stepover-% -> mm conversion — same mechanism as

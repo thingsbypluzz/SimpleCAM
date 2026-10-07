@@ -11,9 +11,7 @@
   `OPERATION_LIST` — operacje w kolejności Kroku 1.
 - Metody: `methodMeta.ts` (Hole(s): Helix/Standard), `surfaceMethodMeta.ts`,
   `pocketMethodMeta.ts` (`POCKET_METHOD_LIST`) — płaskie rejestry z
-  `generate`; Pocket Donut jest tylko Spiral — `OPERATION_META.pocket`
-  czyta metodę przez `effectivePocketMethod()` (`lib/pocketGeometry.ts`),
-  a `calcMethods()` podaje kalkulatorowi samo Spiral; Outline przez `outlineMeta.ts` + `lib/outline.ts`
+  `generate`; Outline przez `outlineMeta.ts` + `lib/outline.ts`
   (metody ograniczone per kształt).
 - Wzorce/kształty: `positioningMeta.ts` (`POSITIONING_META`, ikony, linie
   i podsumowanie Kroku 1, `patternLabel()`, `patternSlug()` — rozpoznają

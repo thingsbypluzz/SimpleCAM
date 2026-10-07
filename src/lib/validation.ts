@@ -26,7 +26,6 @@ import { engagementAngleFor, MAX_OPTIMAL_LOAD_PERCENT, MIN_OPTIMAL_LOAD_PERCENT 
 import { exceedsPassLimit, MAX_PASSES } from './depthPasses'
 import { exceedsLineLimit, rasterExceedsLineLimit } from './surfaceRaster'
 import {
-  effectivePocketMethod,
   pocketCircleWallRadius,
   pocketDonutWalls,
   pocketRectWallHalfDims,
@@ -48,7 +47,7 @@ import {
   type LightCell,
 } from './pocketLightened'
 import { cellAdaptiveExceedsLimits, planCellAdaptive } from './pocketCellAdaptive'
-import { planSectorAdaptive, sectorAdaptiveExceedsLimits } from './pocketSectorAdaptive'
+import { planDonutAdaptive, planSectorAdaptive, sectorAdaptiveExceedsLimits } from './pocketSectorAdaptive'
 import { adaptiveExceedsLimits } from './pocketAdaptive'
 
 // Strict (BL-49): a tool exactly as wide as the hole leaves a zero-radius
@@ -160,9 +159,24 @@ export function isPocketToolpathWithinLimits(params: WizardParams): boolean {
   // Adaptive per Lightened cell (BL-83 triangles, BL-85 sectors): the
   // entry helix repeats in every cell (turns capped over all of them, like
   // Spiral), and every cell's rings and remnants must reach their walls.
-  const method = effectivePocketMethod(pocket)
+  const method = pocket.method
   // Donut: the Helix entry descends along the first lap; rings from the
   // island's wall out to the outer one.
+  if (pocket.shape === 'donut' && method === 'adaptive') {
+    if (
+      isPocketRampAngleValid(pocket) &&
+      pocket.helixRadius > 0 &&
+      entryHelixExceedsTurnLimit(params.feeds.startZ, pocket.totalDepth, params.feeds.stepdown, pocket.helixRadius, pocket.rampAngleDeg)
+    )
+      return false
+    const toolRadius = pocket.toolDiameter / 2
+    const theta = engagementAngleFor(pocket.optimalLoadPercent)
+    if (!(toolRadius > 0) || !(pocket.helixRadius > 0) || !(theta > 0)) return true
+    const { inner, outer } = pocketRoughDonutWalls(pocket)
+    return !sectorAdaptiveExceedsLimits(
+      planDonutAdaptive({ x: 0, y: 0 }, { rIn: inner, rOut: outer, toolRadius, theta, helixRadius: pocket.helixRadius, sign: 1 }),
+    )
+  }
   if (pocket.shape === 'donut') {
     const { inner, outer } = pocketRoughDonutWalls(pocket)
     if (
@@ -695,7 +709,7 @@ export function isPocketToolDiameterValid(pocket: PocketParams): boolean {
 // Adaptive derives its own pass spacing from Optimal Load — stepover isn't
 // used (or shown) there.
 export function isPocketStepoverValid(pocket: PocketParams): boolean {
-  if (effectivePocketMethod(pocket) === 'adaptive') return true
+  if (pocket.method === 'adaptive') return true
   return pocket.stepoverPercent >= 1 && pocket.stepoverPercent <= 100
 }
 
@@ -704,12 +718,12 @@ export const MIN_RAMP_LENGTH_FACTOR = 1
 export const MAX_RAMP_LENGTH_FACTOR = 10
 
 export function isPocketRampLengthValid(pocket: PocketParams): boolean {
-  if (effectivePocketMethod(pocket) !== 'spiral') return true
+  if (pocket.method !== 'spiral') return true
   return pocket.rampLengthFactor >= MIN_RAMP_LENGTH_FACTOR && pocket.rampLengthFactor <= MAX_RAMP_LENGTH_FACTOR
 }
 
 export function isPocketOptimalLoadValid(pocket: PocketParams): boolean {
-  if (effectivePocketMethod(pocket) !== 'adaptive') return true
+  if (pocket.method !== 'adaptive') return true
   return pocket.optimalLoadPercent >= MIN_OPTIMAL_LOAD_PERCENT && pocket.optimalLoadPercent <= MAX_OPTIMAL_LOAD_PERCENT
 }
 
@@ -754,7 +768,7 @@ export function isPocketFinishFeedValid(pocket: PocketParams): boolean {
 }
 
 export function isPocketLinkingFeedValid(pocket: PocketParams): boolean {
-  if (effectivePocketMethod(pocket) !== 'adaptive') return true
+  if (pocket.method !== 'adaptive') return true
   return pocket.linkingFeed > 0
 }
 
@@ -763,7 +777,7 @@ export function isPocketLinkingFeedValid(pocket: PocketParams): boolean {
 // below one tool diameter leaves Adaptive's main benefit — deep, light
 // passes — unused.
 export function isPocketHelixRadiusSmall(pocket: PocketParams): boolean {
-  return effectivePocketMethod(pocket) === 'adaptive' && pocket.helixRadius > 0 && pocket.helixRadius < pocket.toolDiameter * 0.25
+  return pocket.method === 'adaptive' && pocket.helixRadius > 0 && pocket.helixRadius < pocket.toolDiameter * 0.25
 }
 
 // What the Step 3 hint's Apply button sets Stepdown to — mid-range of the
@@ -773,7 +787,7 @@ export function suggestedAdaptiveStepdown(pocket: PocketParams): number {
 }
 
 export function isAdaptiveStepdownShallow(pocket: PocketParams, stepdown: number): boolean {
-  return effectivePocketMethod(pocket) === 'adaptive' && stepdown > 0 && stepdown < pocket.toolDiameter
+  return pocket.method === 'adaptive' && stepdown > 0 && stepdown < pocket.toolDiameter
 }
 
 // The roughing wall's nearest distance from the pocket's own center —
@@ -787,6 +801,11 @@ function pocketMinWallExtent(pocket: PocketParams): number {
     return reaches.length > 0 ? Math.min(...reaches) : 0
   }
   if (pocket.shape === 'circle') return pocketRoughCircleWallRadius(pocket)
+  // Donut Adaptive: the helix sits in the middle of the ring's width.
+  if (pocket.shape === 'donut') {
+    const { inner, outer } = pocketRoughDonutWalls(pocket)
+    return Math.max(0, (outer - inner) / 2)
+  }
   const { halfWidth, halfHeight } = pocketRoughRectWallHalfDims(pocket)
   return Math.min(halfWidth, halfHeight)
 }
@@ -804,8 +823,9 @@ export function pocketMaxHelixRadius(pocket: PocketParams): number {
 }
 
 export function isPocketHelixRadiusValid(pocket: PocketParams): boolean {
-  // Donut: the Helix entry runs on the first lap — no radius of its own.
-  if (pocket.shape === 'donut') return true
+  // Donut Spiral: the Helix entry runs on the first lap — no radius of its
+  // own. (Adaptive's helix sits mid-ring and is checked like any other.)
+  if (pocket.shape === 'donut' && pocket.method !== 'adaptive') return true
   if (effectivePocketZTransitionMode(pocket) !== 'helix') return true
   return pocket.helixRadius > 0 && pocket.helixRadius <= pocketMaxHelixRadius(pocket)
 }
@@ -1012,9 +1032,13 @@ export const OPERATION_RULES: Record<OperationType, OperationRules> = {
     rampPathLength: (p) =>
       effectivePocketZTransitionMode(p.pocket) !== 'helix'
         ? null
-        : 2 * Math.PI * (p.pocket.shape === 'donut' ? Math.max(0, pocketRoughDonutWalls(p.pocket).inner) : p.pocket.helixRadius),
+        : 2 *
+          Math.PI *
+          (p.pocket.shape === 'donut' && p.pocket.method !== 'adaptive'
+            ? Math.max(0, pocketRoughDonutWalls(p.pocket).inner)
+            : p.pocket.helixRadius),
     engagement: (p) =>
-      effectivePocketMethod(p.pocket) === 'adaptive'
+      p.pocket.method === 'adaptive'
         ? { kind: 'optimalLoad', percent: p.pocket.optimalLoadPercent }
         : { kind: 'stepover', percent: p.pocket.stepoverPercent },
   },

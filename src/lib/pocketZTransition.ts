@@ -2,7 +2,6 @@ import { computeDepthPasses } from './depthPasses'
 import { fullTurn, toolpathToGcode, ToolpathBuilder } from './toolpath'
 import { helixPitchForRampAngle } from './surfaceZTransition'
 import type { InterpolationMode, PocketParams, Point2D, ZTransitionMode } from '../types/wizard'
-import { effectivePocketMethod } from './pocketGeometry'
 
 export interface PocketZTransitionOptions {
   fromZ: number
@@ -21,8 +20,8 @@ export interface PocketZTransitionOptions {
 // Adaptive always enters by Helix (constant engagement can't grow out of a
 // plunge-sized bore) — the stored zTransitionMode is kept untouched, only
 // ignored, the same way output.interpolation is ignored while Tabs force G1.
-export function effectivePocketZTransitionMode(pocket: Pick<PocketParams, 'shape' | 'method' | 'zTransitionMode'>): ZTransitionMode {
-  return effectivePocketMethod(pocket) === 'adaptive' ? 'helix' : pocket.zTransitionMode
+export function effectivePocketZTransitionMode(pocket: Pick<PocketParams, 'method' | 'zTransitionMode'>): ZTransitionMode {
+  return pocket.method === 'adaptive' ? 'helix' : pocket.zTransitionMode
 }
 
 // Where the tool must be positioned (XY, before descending) for this

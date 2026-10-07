@@ -27,7 +27,7 @@ export type ZTransitionMode = 'plunge' | 'helix'
 // 'rectLightened'/'circleLightened' (OP-6): the area is split into cells
 // by ribs and each cell is pocketed on its own — see lib/pocketLightened.ts.
 // 'donut' (BL-108): a circle with an island left standing in its middle —
-// the ring between the two diameters is cleared. Spiral only.
+// the ring between the two diameters is cleared.
 export type PocketShape = 'rectCornered' | 'rectCentered' | 'circle' | 'donut' | 'rectLightened' | 'circleLightened'
 
 // Rectangle Lightened rib layout: 'xgrid' = N×M cells, each split by its

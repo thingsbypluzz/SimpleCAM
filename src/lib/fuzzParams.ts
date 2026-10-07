@@ -240,7 +240,7 @@ export function randomPocket(rng: Rng, method: 'spiral' | 'adaptive'): WizardPar
   }
 }
 
-// Pocket Donut (BL-108) — Spiral only. The island is drawn as a share of
+// Pocket Donut (BL-108) with Spiral. The island is drawn as a share of
 // the room the tool leaves, so most samples have a ring it fits in.
 export function randomPocketDonut(rng: Rng): WizardParams {
   const base = randomPocket(rng, 'spiral')
@@ -248,6 +248,18 @@ export function randomPocketDonut(rng: Rng): WizardParams {
   const room = diameter - 2 * base.pocket.toolDiameter
   const islandDiameter = Number(Math.max(0.5, room * rng.range(0.05, 1.05, 2)).toFixed(2))
   return { ...base, pocket: { ...base.pocket, shape: 'donut', diameter, islandDiameter } }
+}
+
+// Pocket Donut with Adaptive (BL-110): the helix as a share of its ceiling
+// (half the ring's width, at most the tool radius). Shallow, like the
+// Lightened Adaptive samples.
+export function randomPocketDonutAdaptive(rng: Rng): WizardParams {
+  const base = randomPocketDonut(rng)
+  const totalDepth = rng.range(0.5, 3, 1)
+  const pocket = { ...base.pocket, method: 'adaptive' as const, zTransitionMode: 'helix' as const, totalDepth }
+  base.feeds = { ...base.feeds, stepdown: rng.range(0.5, Math.max(0.6, totalDepth), 2) }
+  const helixRadius = Number((Math.max(0, pocketMaxHelixRadius(pocket)) * rng.range(0.3, 1, 2)).toFixed(3))
+  return { ...base, pocket: { ...pocket, helixRadius } }
 }
 
 // Lightened Pocket shapes (OP-6) — Spiral only. Sizes and counts kept so a

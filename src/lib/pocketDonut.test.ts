@@ -2,7 +2,11 @@ import { describe, expect, it } from 'vitest'
 import { DEFAULT_WIZARD_PARAMS, type WizardParams } from '../types/wizard'
 import { DEFAULT_MACHINE_SETTINGS } from '../types/machine'
 import { buildPocketToolpath, generatePocketAdaptive, generatePocketSpiral } from './pocket'
-import { effectivePocketMethod, pocketDonutWalls, pocketRoughDonutWalls } from './pocketGeometry'
+import { pocketDonutWalls, pocketRoughDonutWalls } from './pocketGeometry'
+import { simulateEngagement } from './pocketAdaptiveSim'
+import { engagementAngleFor } from './pocketAdaptiveMath'
+import { planDonutAdaptive, sectorAdaptiveExceedsLimits } from './pocketSectorAdaptive'
+import { arcRadiusMismatches } from './gcodeTestUtils'
 import { movePoints, type Move, type Point3D } from './toolpath'
 import { isPocketIslandValid, isPocketSizeValid, isPocketStockToLeaveValid, isPocketToolDiameterValid, isWizardParamsValid, OPERATION_RULES } from './validation'
 import { stockModel } from './stockModel'
@@ -50,12 +54,6 @@ describe('Pocket Donut geometry', () => {
     expect(rough.outer).toBeCloseTo(20.6125, 6)
   })
 
-  it('is Spiral whatever method is stored', () => {
-    expect(effectivePocketMethod(donut({ method: 'adaptive' }).pocket)).toBe('spiral')
-    expect(effectivePocketMethod({ shape: 'circle', method: 'adaptive' })).toBe('adaptive')
-    const adaptive = donut({ method: 'adaptive' })
-    expect(generatePocketAdaptive(adaptive, DEFAULT_MACHINE_SETTINGS)).toEqual(generatePocketSpiral(adaptive, DEFAULT_MACHINE_SETTINGS))
-  })
 })
 
 describe('Pocket Donut Spiral', () => {
@@ -220,7 +218,6 @@ describe('Pocket Donut validation', () => {
     const helix = donut({ zTransitionMode: 'helix' })
     expect(OPERATION_RULES.pocket.rampPathLength(helix)).toBeCloseTo(2 * Math.PI * 11.5875, 4)
     expect(OPERATION_RULES.pocket.rampPathLength(donut({ zTransitionMode: 'plunge' }))).toBeNull()
-    expect(OPERATION_RULES.pocket.engagement(donut({ method: 'adaptive' }))).toEqual({ kind: 'stepover', percent: 40 })
   })
 
   it('reports the outer tool-center wall as its footprint', () => {
@@ -259,6 +256,141 @@ describe('Pocket Donut stock and labels', () => {
 
   it('names itself in the preset label', () => {
     expect(presetLabel(donut())).toBe('Pocket Donut ⌀45/⌀20 • Spiral')
-    expect(presetLabel(donut({ method: 'adaptive' }))).toBe('Pocket Donut ⌀45/⌀20 • Spiral')
+    expect(presetLabel(donut({ method: 'adaptive' }))).toBe('Pocket Donut ⌀45/⌀20 • Adaptive')
+  })
+})
+
+// ⌀45 / island ⌀20 / 3.175 mm tool: the tool-center band is 11.5875…20.9125,
+// so the circle touching both walls has radius 4.6625 on the mid circle
+// 16.25.
+describe('Pocket Donut Adaptive (BL-110)', () => {
+  const adaptive = (patch: Partial<WizardParams['pocket']> = {}, feeds: Partial<WizardParams['feeds']> = {}) =>
+    donut({ method: 'adaptive', helixRadius: 1, optimalLoadPercent: 15, ...patch }, feeds)
+
+  it('plans one wing all the way around the ring', () => {
+    const plan = planDonutAdaptive({ x: 0, y: 0 }, { rIn: 11.5875, rOut: 20.9125, toolRadius: 1.5875, theta: engagementAngleFor(15), helixRadius: 1, sign: 1 })!
+    expect(plan.root.r).toBeCloseTo(4.6625, 6)
+    expect(plan.center.x).toBeCloseTo(16.25, 6)
+    expect(plan.branches).toHaveLength(1)
+    const wing = plan.branches[0]
+    expect(wing.complete).toBe(true)
+    expect(sectorAdaptiveExceedsLimits(plan)).toBe(false)
+    // Many small steps, every circle on the mid circle, the last one back on the first.
+    expect(wing.circles.length).toBeGreaterThan(20)
+    for (const c of wing.circles) expect(Math.hypot(c.c.x, c.c.y)).toBeCloseTo(16.25, 6)
+    const last = wing.circles[wing.circles.length - 1]
+    expect(last.c.x).toBeCloseTo(16.25, 6)
+    expect(last.c.y).toBeCloseTo(0, 6)
+    // Angles only ever advance, each step well under the cap.
+    let prev = 0
+    for (const c of wing.circles.slice(1, -1)) {
+      const a = (Math.atan2(c.c.y, c.c.x) + 2 * Math.PI) % (2 * Math.PI)
+      expect(a).toBeGreaterThan(prev)
+      expect(a - prev).toBeLessThan(Math.PI / 2)
+      prev = a
+    }
+  })
+
+  it('has no room without a ring wider than the tool', () => {
+    expect(planDonutAdaptive({ x: 0, y: 0 }, { rIn: 10, rOut: 10, toolRadius: 1.5, theta: 1, helixRadius: 0.5, sign: 1 })).toBeNull()
+  })
+
+  it('enters with a helix in the middle of the ring width', () => {
+    const params = adaptive()
+    const toolpath = buildPocketToolpath(params)
+    expect(toolpath.start.x).toBeCloseTo(16.25 + 1, 6)
+    expect(toolpath.start.y).toBeCloseTo(0, 6)
+    expect(toolpath.moves.some((m) => m.kind === 'plunge')).toBe(false)
+    const firstCut = toolpath.moves.find((m) => m.kind === 'cut')!
+    expect('center' in firstCut && firstCut.center.x).toBeCloseTo(16.25, 6)
+  })
+
+  it('differs from Spiral and keeps every cutting point between the walls', () => {
+    const params = adaptive()
+    expect(generatePocketAdaptive(params, DEFAULT_MACHINE_SETTINGS)).not.toEqual(generatePocketSpiral(params, DEFAULT_MACHINE_SETTINGS))
+    const { inner, outer } = pocketDonutWalls(params.pocket)
+    for (const { move, p } of samples(params)) {
+      if (move.kind === 'rapid') continue
+      expect(rho(p)).toBeGreaterThanOrEqual(inner - 1e-6)
+      expect(rho(p)).toBeLessThanOrEqual(outer + 1e-6)
+    }
+  })
+
+  it('stays down between levels', () => {
+    const params = adaptive({}, { stepdown: 2 })
+    const moves = buildPocketToolpath(params).moves
+    // One rapid down to Start Z, nothing else above the stock.
+    expect(moves.filter((m) => m.kind === 'rapid')).toHaveLength(1)
+    expect(Math.min(...moves.map((m) => m.to.z))).toBeCloseTo(-4, 6)
+  })
+
+  it('emits arcs whose ends sit on their own circles, in both directions', () => {
+    for (const cutDirection of ['climb', 'conventional'] as const) {
+      const params = adaptive({ cutDirection })
+      const arcParams = { ...params, output: { ...params.output, interpolation: 'arc' as const } }
+      expect(arcRadiusMismatches(generatePocketAdaptive(arcParams, DEFAULT_MACHINE_SETTINGS))).toEqual([])
+    }
+  })
+
+  it.each(['climb', 'conventional'] as const)('clears the whole ring within the walls (%s)', (cutDirection) => {
+    const params = adaptive({ cutDirection }, { stepdown: 4 })
+    const R = params.pocket.toolDiameter / 2
+    const { inner, outer } = pocketDonutWalls(params.pocket)
+    const run = buildPocketToolpath(params)
+    const helix = new Set<number>()
+    let cur: Point3D = run.start
+    run.moves.forEach((m, i) => {
+      if (m.type === 'arc' && Math.abs(m.center.x - 16.25) < 1e-9 && Math.abs(Math.hypot(cur.x - 16.25, cur.y) - 1) < 1e-6) helix.add(i)
+      cur = m.to
+    })
+    const r = simulateEngagement(run, {
+      toolRadius: R,
+      cell: 0.05,
+      minChip: 0.1,
+      trueArcs: true,
+      bounds: { minX: -24, maxX: 24, minY: -24, maxY: 24 },
+      isMaterial: (x, y) => Math.hypot(x, y) <= outer + R && Math.hypot(x, y) >= inner - R,
+      isInterior: (x, y) => Math.hypot(x, y) <= outer + R - 0.1 && Math.hypot(x, y) >= inner - R + 0.1,
+      toolCenterOvershoot: (x, y) => Math.max(Math.hypot(x, y) - outer, inner - Math.hypot(x, y)),
+      isUnmeasured: (i) => helix.has(i),
+    })
+    expect(r.uncutInteriorCells, JSON.stringify(r.uncutAt)).toBe(0)
+    expect(r.maxWallViolation).toBeLessThan(1e-6)
+    // Linking moves run through already-cleared area — only wall slivers.
+    expect(r.maxLinkEngagementDeg).toBeLessThan(15)
+  }, 60_000)
+
+  it('finishes the outer wall and the island the way the roughing cuts', () => {
+    const laps = (cutDirection: 'climb' | 'conventional') =>
+      buildPocketToolpath(adaptive({ cutDirection, finishingEnabled: true, stockToLeave: 0.3 }, { stepdown: 4 }))
+        .moves.filter((m) => m.kind === 'finish' && 'center' in m && Math.abs(m.sweep - 2 * Math.PI) < 1e-9)
+        .map((m) => ('direction' in m ? m.direction : null))
+    expect(laps('climb')).toEqual(['ccw', 'cw'])
+    expect(laps('conventional')).toEqual(['cw', 'ccw'])
+    // Conventional leads stay inside the ring too.
+    const params = adaptive({ cutDirection: 'conventional', finishingEnabled: true, stockToLeave: 0.3 })
+    const w = pocketDonutWalls(params.pocket)
+    for (const { move, p } of samples(params)) {
+      if (move.kind !== 'finish') continue
+      expect(rho(p)).toBeGreaterThanOrEqual(w.inner - 1e-6)
+      expect(rho(p)).toBeLessThanOrEqual(w.outer + 1e-6)
+    }
+  })
+
+  it('needs a helix that fits in half the ring width', () => {
+    expect(isWizardParamsValid(adaptive())).toBe(true)
+    // Half the band is 4.66 mm, but the tool radius (1.5875) is the lower ceiling.
+    expect(isWizardParamsValid(adaptive({ helixRadius: 1.6 }))).toBe(false)
+    // A ring barely wider than the tool: half the band is 0.5 mm.
+    const narrow = { diameter: 30, islandDiameter: 30 - 2 * 3.175 - 2 }
+    expect(isWizardParamsValid(adaptive({ ...narrow, helixRadius: 0.4 }))).toBe(true)
+    expect(isWizardParamsValid(adaptive({ ...narrow, helixRadius: 0.6 }))).toBe(false)
+    // A ring exactly as wide as the tool has no room for Adaptive at all.
+    expect(isWizardParamsValid(adaptive({ diameter: 30, islandDiameter: 30 - 2 * 3.175, helixRadius: 0.4 }))).toBe(false)
+  })
+
+  it('feeds the calculator its own helix as the ramp path and Optimal Load as the width', () => {
+    expect(OPERATION_RULES.pocket.rampPathLength(adaptive())).toBeCloseTo(2 * Math.PI * 1, 6)
+    expect(OPERATION_RULES.pocket.engagement(adaptive())).toEqual({ kind: 'optimalLoad', percent: 15 })
   })
 })
