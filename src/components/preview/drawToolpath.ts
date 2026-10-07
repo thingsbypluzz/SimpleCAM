@@ -46,6 +46,8 @@ interface Theme {
   linking: string
   text: string
   offset: string
+  // The edited preset's outline inside an overlay (BL-116).
+  edit: string
 }
 
 // Merges the palette-selectable accents (background/grid/toolpath/rapid/
@@ -72,6 +74,7 @@ function buildTheme(paletteId: PaletteId, isDark: boolean, themeId: ThemeId): Th
     linking: accents.linking,
     text: fixed.text,
     offset: fixed.offset,
+    edit: fixed.edit,
   }
 }
 
@@ -573,10 +576,19 @@ function onLineRectEdges(pattern: Extract<ResolvedPattern, { kind: 'outlineRect'
 // zoom step, while the model only changes with the presets, the sheet or
 // the cut-shape option — and a Lightened pocket's model takes long enough
 // to build to make panning stutter.
-let lastStock: { presets: readonly WizardParams[]; key: string; model: StockModel | null } | null = null
+// Two slots: everything drawn, and — BL-116 — the edited preset on its own
+// (its outline), so neither evicts the other on every frame.
+type StockCacheEntry = { presets: readonly WizardParams[]; key: string; model: StockModel | null }
+const stockCache: { all: StockCacheEntry | null; own: StockCacheEntry | null } = { all: null, own: null }
 
-function cachedStockModel(presets: readonly WizardParams[], sheet: StockSheet, cutShape: boolean): StockModel | null {
+function cachedStockModel(
+  presets: readonly WizardParams[],
+  sheet: StockSheet,
+  cutShape: boolean,
+  slot: keyof typeof stockCache = 'all',
+): StockModel | null {
   const key = `${sheet.centerX}|${sheet.centerY}|${sheet.size}|${cutShape}`
+  let lastStock = stockCache[slot]
   const same = lastStock && lastStock.key === key && lastStock.presets.length === presets.length && presets.every((p, i) => p === lastStock!.presets[i])
   if (!same) {
     const half = sheet.size / 2
@@ -586,6 +598,7 @@ function cachedStockModel(presets: readonly WizardParams[], sheet: StockSheet, c
       cutShape,
     )
     lastStock = { presets, key, model }
+    stockCache[slot] = lastStock
   }
   return lastStock!.model
 }
@@ -1265,7 +1278,9 @@ export function drawToolpath(
       theme,
       arrowSize,
       showStock,
-      showToolpath && (!isActive || showActiveToolpath),
+      // BL-116 (trial): overlaid presets' toolpaths are left out while one
+      // preset is edited — only its own path is shown.
+      showToolpath && (isActive ? showActiveToolpath : !dimOverlay),
       sheetBounds,
     )
   })
@@ -1291,6 +1306,38 @@ export function drawToolpath(
       }
     }
     ctx.setLineDash([])
+  }
+
+  // BL-116: while one preset is edited inside an overlay, its own outline —
+  // every wall of the stock model of that preset alone — in the Edit color,
+  // over everything else (the 3D Preview colors the same edges). Surface
+  // and Facing have no stock model, hence no outline.
+  if (showStock && dimOverlay && showActivePattern) {
+    const own = cachedStockModel([params], sheet, cutShape, 'own')
+    if (own) {
+      ctx.strokeStyle = theme.edit
+      ctx.lineWidth = 2
+      // Bands of one void stacked at different depths share their outline.
+      const drawn = new Set<string>()
+      for (const band of own.walls) {
+        for (const polygon of band.region) {
+          for (const ring of polygon) {
+            const id = `${ring.length}|${ring[0]?.[0]}|${ring[0]?.[1]}`
+            if (drawn.has(id)) continue
+            drawn.add(id)
+            ctx.beginPath()
+            ring.forEach(([wx, wy], i) => {
+              const [x, y] = toPx(wx, wy)
+              if (i === 0) ctx.moveTo(x, y)
+              else ctx.lineTo(x, y)
+            })
+            ctx.closePath()
+            ctx.stroke()
+          }
+        }
+      }
+      ctx.lineWidth = 1
+    }
   }
 
   // Origin marker

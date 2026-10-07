@@ -47,6 +47,9 @@
   akcentu. Sloppy Indigo — bursztyn,
   Shopfloor Amber — cyjan, Arcade — róż. Nie może zlewać się z kolorem
   błędu ani ostrzeżenia danego motywu.
+  Ten sam kolor ma swoją kopię dla podglądów: `FixedColors.edit` w
+  `palettes.ts` (krawędzie edytowanego presetu) — przy zmianie `--edit`
+  w `index.css` zmienić też tam.
 - Arcade są dark-only (light i `.dark` identyczne). Dwa akcenty: cyjan =
   struktura/nawigacja (`--accent-*`), róż = wybór/dane użytkownika
   (`--selected-border`/`--selected-fg`/`--stat-value`; w innych motywach

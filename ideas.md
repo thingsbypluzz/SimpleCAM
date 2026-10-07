@@ -816,22 +816,18 @@ Waga z review w nawiasie kwadratowym.
   (wiersz Offset Mode jest już zajęty przez Lobes przy Lobed Circle),
   sens przy Outside (część wycinana z arkusza — raczej bez przełącznika),
   On-line Closed: rowek z dnem i wyspa zostająca na pełnej wysokości.
-- **`BL-112`** *(Otwarty)* 🟠 — **Zapisywanie i wczytywanie zestawu
-  presetów (projekt).** Zgłoszone 2026-10-07. Sytuacja: obiekt zbudowany z
-  kilku presetów (np. 5 operacji oglądanych razem w Overlay); przejście do
-  innego obiektu oznacza nadpisanie slotów i utratę całości. Potrzebne:
-  zapis zawartości wszystkich slotów `1`–`7` jako jednej całości i
-  wczytanie jej z powrotem. Do przegadania: plik do pobrania i wczytania
-  (JSON, działa między przeglądarkami i komputerami) czy nazwane zestawy
-  w `localStorage` (szybkie przełączanie, ale tylko w tej przeglądarce) —
-  albo jedno i drugie; co wchodzi do zestawu (same sloty, czy też
-  ustawienia maszyny / średnice narzędzi, od których zależą presety);
-  wczytanie nadpisuje wszystkie sloty (z potwierdzeniem) czy pozwala
-  wybrać; walidacja i migracja pliku tym samym kodem co `storage.ts`
-  (strażniki pól, wartości domyślne dla brakujących); miejsce w UI (Krok
-  4 przy slotach albo Settings); nazwa zestawu i nazwa pliku; relacja z
-  `BL-101B` (eksport / import tabel kalkulatora) — wspólny mechanizm
-  plików.
+- **`BL-112`** *(Zrealizowany, 2026-10-07)* 🟠 — **Projekt: zapisywanie i
+  wczytywanie zestawu presetów.** Zgłoszone 2026-10-07: obiekt zbudowany z
+  kilku presetów przepadał przy przejściu do innego. Ustalenia z
+  `/grill-me`: plik JSON (bez nazwanych zestawów w przeglądarce); w pliku
+  tylko sloty `1`–`7`; frez spoza listy użytkownika wczytuje się jak
+  jest; wczytanie zastępuje wszystkie sloty po jednym potwierdzeniu i
+  włącza Overlay dla wszystkich wczytanych presetów; Save / Load w Header
+  przy Preset Bar, nazwa „Project”, pytanie o nazwę przy zapisie; plik
+  obcy albo z nowszego formatu odrzucany w całości, presety ze znanego
+  pliku naprawiane strażnikami pól; ramka z nazwą projektu w kolorze
+  edycji („Untitled” przed pierwszym zapisem), z kropką przy
+  niezapisanych zmianach, pamiętana po odświeżeniu.
 - **`BL-113`** *(Otwarty)* 🟠 — **Settings: Help / Templates — gotowe
   zestawy presetów jako samouczek.** Zgłoszone 2026-10-07. Po `BL-112`
   (zapis i wczytywanie zestawów presetów): nowa pozycja w Settings Nav —
@@ -861,6 +857,24 @@ Waga z review w nawiasie kwadratowym.
   rysuje się obok presetów; wyłącznik w Settings dla osób pracujących na
   pojedynczych operacjach; relacja z `BL-112` (wczytanie zestawu) i
   `BL-113` (szablony — Overlay po wczytaniu).
+- **`BL-115`** *(Otwarty)* 🟢 — **Decyzja: usunąć na stałe przycisk
+  ołówka z Header.** Zgłoszone 2026-10-07. Po `BL-107` edycję presetu
+  włącza i wyłącza ołówek na slocie; osobny przycisk w Header tylko ją
+  kończył. Od v0.50.0 jest **ukryty na próbę** (`SHOW_EDIT_BUTTON = false`
+  w `App.tsx`, kod zostawiony) — użytkownik chce popracować bez niego i
+  sprawdzić, czy czegoś brakuje. Do decyzji po próbie: usunąć na stałe
+  (przycisk, stała, ikona w tym miejscu, opisy w `CLAUDE.md`) albo
+  przywrócić. Do sprawdzenia przy usuwaniu: czy bez przycisku widać, że
+  trwa edycja (zostają napis „Auto-save Mode Enabled”, ramka i ołówek na
+  slocie) i jak zakończyć edycję z klawiatury.
+- **`BL-116`** *(Zrealizowany, 2026-10-08)* 🟢 — **Wyróżnienie
+  edytowanego presetu w podglądzie.** Zgłoszone 2026-10-07: przy edycji
+  presetu w Overlay trudno było wskazać, który element się zmienia. Po
+  próbie (POC) zostają oba zachowania: krawędzie edytowanego presetu w
+  kolorze edycji — w 3D ponad wszystkim, w 2D jako obwódka 2 px — oraz
+  ukrycie ścieżek pozostałych presetów nakładki na czas edycji (ich
+  obrysy zostają, przygaszone). Znane ograniczenie: Surface i Facing nie
+  mają modelu materiału, więc nie dostają kolorowych krawędzi.
 - **`BL-61`** *(Zrealizowany, 2026-09-27)* 🔴 **[Low, kosztowne w czasie]**
   — **Podglądy duplikują geometrię silnika** — jedna lista ruchów (jak
   Adaptive) dla G-code i podglądu 3D, po jednej operacji na raz. Etapy 1–2

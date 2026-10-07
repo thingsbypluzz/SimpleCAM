@@ -45,8 +45,12 @@
   `App.tsx`) — kamera + skala fitu zapisywane przy każdej zmianie,
   odtwarzane przy ponownym montażu dla tego samego `fitKey`; tylko w
   sesji. Bez gestów dotykowych (`BL-8`).
-- **Edycja presetu w Overlay** (`dimOverlay`): presety nakładki rysowane z
-  kryciem `DIMMED_OVERLAY_OPACITY` (`globalAlpha` na cały wzorzec), żywy
-  wzorzec — edytowany preset — normalnie i na wierzchu.
+- **Edycja presetu w Overlay** (`dimOverlay`): presety nakładki rysowane
+  bez ścieżek i z kryciem `DIMMED_OVERLAY_OPACITY` (`globalAlpha` na cały
+  wzorzec — obrys, wektor offsetu); żywy wzorzec — edytowany preset —
+  normalnie i na wierzchu, a jego obrys (ściany modelu materiału samego
+  tego presetu, `cachedStockModel(…, 'own')` — osobny slot cache) jest
+  obwiedziony kolorem `theme.edit`, linią 2 px. Surface i Facing nie mają
+  modelu materiału, więc nie mają obwódki.
   `activeToolpathVisible = false` ukrywa tylko jego ścieżkę (niepoprawne
   parametry); `toolpathVisible` to wyłącznie przełącznik Hide/Show.

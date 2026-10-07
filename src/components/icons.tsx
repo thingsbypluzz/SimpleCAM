@@ -273,6 +273,24 @@ export function EyeIcon({ className }: IconProps) {
   )
 }
 
+// BL-112: save the project to a file — an arrow down into a tray.
+export function SaveFileIcon({ className }: IconProps) {
+  return (
+    <svg {...base} className={className}>
+      <path d="M12 4v10M8 10.5l4 4 4-4M5 16.5V19h14v-2.5" />
+    </svg>
+  )
+}
+
+// BL-112: load a project from a file — an open folder.
+export function OpenFileIcon({ className }: IconProps) {
+  return (
+    <svg {...base} className={className}>
+      <path d="M3.5 18V6.5h5.5l2 2.5h7.5V11M3.5 18l2.6-7h15l-2.6 7H3.5Z" />
+    </svg>
+  )
+}
+
 // BL-25: Edit Mode toggle, next to EyeIcon — same outline construction
 // (classic pencil silhouette: angled shaft + tip).
 export function PencilIcon({ className }: IconProps) {

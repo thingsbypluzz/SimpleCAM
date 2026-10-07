@@ -27,7 +27,9 @@ import {
   EyeIcon,
   FeedIcon,
   SpindleIcon,
+  OpenFileIcon,
   PencilIcon,
+  SaveFileIcon,
   PlungeIcon,
   StartZIcon,
   StepdownIcon,
@@ -36,6 +38,10 @@ import {
 } from './components/icons'
 import { OPERATION_META } from './config/operationMeta'
 import { deriveOverlayParams, overlayFitKey, sameOverlayParams } from './lib/overlayParams'
+import { buildProjectFile, parseProjectFile, PROJECT_ERROR_MESSAGE, projectFilename, projectNameFromFilename, slotsFingerprint } from './lib/projectFile'
+import { loadProjectInfo, NO_PROJECT, saveProjectInfo, type ProjectInfo } from './lib/projectStorage'
+import { downloadTextFile } from './lib/download'
+import { ProjectNameModal } from './components/ProjectNameModal'
 import { presetLabel } from './lib/presetLabel'
 import {
   AUTO_SAVE_SLOT,
@@ -43,6 +49,7 @@ import {
   clearAllSlots,
   deleteSlot,
   loadPresetSlots,
+  replacePresetSlots,
   loadSlot,
   saveSlot,
   type PresetSlotId,
@@ -178,12 +185,21 @@ function useChromeTheme(themeId: ThemeId) {
   }, [themeId])
 }
 
+// BL-115: the Header's "stop editing" pencil button — hidden on trial. The
+// pencil badge on the edited preset slot ends editing just the same.
+const SHOW_EDIT_BUTTON: boolean = false
+
 function App() {
   const [initial] = useState(loadInitialState)
   const [activeStep, setActiveStep] = useState(initial.activeStep)
   const [params, setParams] = useState<WizardParams>(initial.params)
   const [showRestoredBanner, setShowRestoredBanner] = useState(initial.restored)
   const [presetSlots, setPresetSlots] = useState(loadPresetSlots)
+  // BL-112: the project the preset slots belong to — its name and the
+  // slots' fingerprint when it was last saved to or loaded from a file.
+  const [project, setProject] = useState<ProjectInfo>(loadProjectInfo)
+  const [isProjectNameOpen, setIsProjectNameOpen] = useState(false)
+  const projectFileInputRef = useRef<HTMLInputElement>(null)
   const [isDark, setIsDark] = useDarkMode()
   const [appearance, setAppearance] = useState(loadAppearanceSettings)
   useChromeTheme(appearance.theme)
@@ -229,6 +245,46 @@ function App() {
   }
 
   const goForward = () => setActiveStep((s) => Math.min(s + 1, TOTAL_STEPS))
+
+  const presetCount = PRESET_SLOT_IDS.filter((id) => presetSlots[id]).length
+  // The slots differ from the project's file. An untitled project has no
+  // file to differ from.
+  const projectFingerprint = useMemo(() => slotsFingerprint(presetSlots), [presetSlots])
+  const projectDirty = project.name !== null && project.fingerprint !== projectFingerprint
+
+  const updateProject = (next: ProjectInfo) => {
+    saveProjectInfo(next)
+    setProject(next)
+  }
+
+  // BL-112: downloads every preset slot as one file and makes it the
+  // current project.
+  const handleSaveProject = (name: string) => {
+    downloadTextFile(projectFilename(name), buildProjectFile(name, presetSlots, __APP_VERSION__))
+    updateProject({ name, fingerprint: projectFingerprint })
+    setIsProjectNameOpen(false)
+  }
+
+  // BL-112: a project file replaces all seven preset slots (after a
+  // confirmation when any is occupied) and is shown at once — every loaded
+  // preset in the overlay, nothing armed for editing. The wizard's own
+  // parameters are left as they are.
+  const handleLoadProjectFile = async (file: File) => {
+    const parsed = parseProjectFile(await file.text())
+    if (!parsed.ok) {
+      window.alert(PROJECT_ERROR_MESSAGE[parsed.reason])
+      return
+    }
+    const name = parsed.name || projectNameFromFilename(file.name) || 'Project'
+    if (presetCount > 0 && !window.confirm(`Replace all presets with the project "${name}"? The current presets will be lost unless you saved them.`)) {
+      return
+    }
+    replacePresetSlots(parsed.slots)
+    setPresetSlots(parsed.slots)
+    setEditingSlot(null)
+    setOverlaySlots(new Set(PRESET_SLOT_IDS.filter((id) => parsed.slots[id])))
+    updateProject({ name, fingerprint: slotsFingerprint(parsed.slots) })
+  }
 
   // Display-only method info (Icon/shortLabel/title/stepdown), resolved
   // per operation — NOT the same as the generate() dispatch below, since
@@ -372,6 +428,7 @@ function App() {
     setGeneratedGCode(null)
     setEditingSlot(null)
     setOverlaySlots(new Set())
+    updateProject(NO_PROJECT)
   }
 
   // Generate is also the auto-save trigger for the hidden slot 0 — see
@@ -485,9 +542,10 @@ function App() {
           <p className="text-[11px] text-muted">Envisioned by ThingsByPluzz</p>
         </div>
 
+        <div className="flex items-center justify-self-center gap-4">
         <div
           className={[
-            'relative flex items-center justify-self-center gap-2 rounded-lg border px-2 py-2 transition-colors',
+            'relative flex items-center gap-2 rounded-lg border px-2 py-2 transition-colors',
             overlayEnabled || editingSlot ? 'border-border' : 'border-transparent',
           ].join(' ')}
         >
@@ -616,26 +674,89 @@ function App() {
           >
             <EyeIcon className="h-5 w-5" />
           </button>
+          {/* The Header's own "stop editing" pencil is hidden for now (BL-115):
+              the pencil badge on the edited slot does the same job. Kept in
+              the code until the decision to remove it for good. */}
+          {SHOW_EDIT_BUTTON && (
+            <button
+              type="button"
+              onClick={() => setEditingSlot(null)}
+              disabled={!editingSlot}
+              aria-label="Stop editing the preset"
+              aria-pressed={editingSlot !== null}
+              title={
+                editingSlot
+                  ? `Editing preset [${editingSlot}] — click to stop auto-saving`
+                  : 'Not editing — use the pencil on a preset to edit it'
+              }
+              className={[
+                'flex h-11 w-11 items-center justify-center rounded-md border transition',
+                editingSlot
+                  ? 'border-2 border-edit bg-edit-bg text-edit-fg shadow-[var(--glow-edit)]'
+                  : 'border-border text-value opacity-50',
+              ].join(' ')}
+            >
+              <PencilIcon className="h-5 w-5" />
+            </button>
+          )}
+        </div>
+        {/* BL-112: the presets as one project file, outside the preset
+            group's frame — the project's name (with a dot while the slots
+            differ from the file), then Load and Save. */}
+        <div className="flex items-center gap-2">
+          <span
+            title={
+              project.name === null
+                ? 'No project saved or loaded yet'
+                : projectDirty
+                  ? `Project "${project.name}" — presets changed since it was saved`
+                  : `Project "${project.name}"`
+            }
+            className="flex h-7 max-w-40 items-center gap-1.5 rounded-md border border-edit px-2 text-xs font-semibold text-edit-fg shadow-[var(--glow-edit)]"
+          >
+            <span className="truncate">{project.name ?? 'Untitled'}</span>
+            {projectDirty && (
+              <span className="flex shrink-0 items-center gap-1" role="status">
+                <span aria-hidden="true" className="h-1.5 w-1.5 rounded-full bg-edit" />
+                <span className="sr-only">unsaved changes</span>
+              </span>
+            )}
+          </span>
           <button
             type="button"
-            onClick={() => setEditingSlot(null)}
-            disabled={!editingSlot}
-            aria-label="Stop editing the preset"
-            aria-pressed={editingSlot !== null}
-            title={
-              editingSlot
-                ? `Editing preset [${editingSlot}] — click to stop auto-saving`
-                : 'Not editing — use the pencil on a preset to edit it'
-            }
+            onClick={() => projectFileInputRef.current?.click()}
+            aria-label="Load project from a file"
+            title="Load project — replaces all presets with the ones in a project file"
+            className="flex h-11 w-11 items-center justify-center rounded-md border border-border text-value transition hover:bg-border/40"
+          >
+            <OpenFileIcon className="h-5 w-5" />
+          </button>
+          <input
+            ref={projectFileInputRef}
+            type="file"
+            accept=".json,application/json"
+            className="hidden"
+            onChange={(e) => {
+              const file = e.target.files?.[0]
+              // Cleared so picking the same file again fires onChange again.
+              e.target.value = ''
+              if (file) void handleLoadProjectFile(file)
+            }}
+          />
+          <button
+            type="button"
+            onClick={() => setIsProjectNameOpen(true)}
+            disabled={presetCount === 0}
+            aria-label="Save project to a file"
+            title={presetCount === 0 ? 'Save project — no presets to save yet' : 'Save project — all presets to one file'}
             className={[
-              'flex h-11 w-11 items-center justify-center rounded-md border transition',
-              editingSlot
-                ? 'border-2 border-edit bg-edit-bg text-edit-fg shadow-[var(--glow-edit)]'
-                : 'border-border text-value opacity-50',
+              'flex h-11 w-11 items-center justify-center rounded-md border border-border text-value transition',
+              presetCount === 0 ? 'opacity-50' : 'hover:bg-border/40',
             ].join(' ')}
           >
-            <PencilIcon className="h-5 w-5" />
+            <SaveFileIcon className="h-5 w-5" />
           </button>
+        </div>
         </div>
 
         <div className="flex items-center justify-self-end gap-2">
@@ -959,7 +1080,7 @@ function App() {
                   stockEdgesEnabled={appearance.stockEdges3DEnabled}
                   cutShapeEnabled={appearance.cutShapeEnabled}
                   onToggleStockSolid={() => setStockSolid((v) => !v)}
-                  renderPaused={isSettingsOpen || isFeedCalcOpen}
+                  renderPaused={isSettingsOpen || isFeedCalcOpen || isProjectNameOpen}
                   onToggleStockVisible={() => setStockVisible((v) => !v)}
                   onToggleToolpathVisible={() => setToolpathVisible((v) => !v)}
                   onToggleGridLabels={() =>
@@ -1001,6 +1122,15 @@ function App() {
           onSaveSettings={handleSaveFeedCalc}
           onApply={handleApplyFeedCalc}
           onClose={() => setIsFeedCalcOpen(false)}
+        />
+      )}
+
+      {isProjectNameOpen && (
+        <ProjectNameModal
+          initialName={project.name ?? ''}
+          presetCount={presetCount}
+          onSave={handleSaveProject}
+          onClose={() => setIsProjectNameOpen(false)}
         />
       )}
 

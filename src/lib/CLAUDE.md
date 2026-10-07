@@ -524,13 +524,31 @@ symulacji materiału.
 
 ## localStorage (`storage.ts`, `*Storage.ts`)
 
-- `simplecam.storage`: `{ version, slots: { "0"…"5" } }`. Slot `"0"` =
+- `simplecam.storage`: `{ version, slots: { "0"…"7" } }`. Slot `"0"` =
   auto-save przy **Generate**, wczytywany przy starcie (wizard otwiera się
-  na Kroku 4 z bannerem "Restored from your last session"); `"1"`–`"5"` =
+  na Kroku 4 z bannerem "Restored from your last session"); `"1"`–`"7"` =
   presety. `mergeSection()` — merge per pole z `DEFAULT_WIZARD_PARAMS`:
   typ jak domyślny, enum ze znanych wartości, nieznane klucze odrzucane;
   stare zapisy bez `customPointsText` dostają tekst z punktów.
-  `clearAllSlots()` czyści też slot `"0"`.
+  `clearAllSlots()` czyści też slot `"0"`. `replacePresetSlots()` —
+  wszystkie sloty `1`–`7` naraz z wczytanego projektu (brak w zestawie =
+  pusty slot), slot `"0"` bez zmian.
+- **Plik projektu** (`projectFile.ts`, czyste funkcje):
+  `buildProjectFile()` — JSON `{ app: "OnlyPaths", kind: "project",
+  format, name, savedAt, appVersion, slots: { "1"…"7": params | null } }`;
+  `parseProjectFile()` — odrzuca w całości plik, który nie jest JSON-em
+  (`notJson`), nie jest projektem OnlyPaths (`notProject`) albo ma
+  `format` wyższy niż `PROJECT_FORMAT` (`newerFormat`); presety ze
+  znanego pliku przechodzą przez `mergeWithDefaults()` — brakujące i
+  błędne pola dostają wartości domyślne, nieznane klucze i sloty są
+  odrzucane. `PROJECT_FORMAT` podbijać tylko, gdy starsza wersja
+  odczytałaby nowy plik błędnie — samo nowe pole presetu tego nie wymaga.
+  `projectFilename()` (slug nazwy + data), `projectNameFromFilename()`
+  (dla pliku bez nazwy w środku), `sanitizeProjectName()` (do 60 znaków),
+  `slotsFingerprint()` — krótki odcisk zawartości slotów do wykrywania
+  zmian od ostatniego Save/Load.
+- `simplecam.project` (`projectStorage.ts`): `{ name, fingerprint }`
+  bieżącego projektu; brak klucza = "Untitled".
 - Osobne klucze: `simplecam.machine` (`machineStorage.ts`, każde pole
   sprawdzane), `simplecam.appearance` (`appearanceStorage.ts`),
   `simplecam.toolDiameters` (`toolDiameterStorage.ts`, całość z fallbackiem),

@@ -7,6 +7,42 @@ zgodne z [SemVer](https://semver.org/). Ten plik pozostaje głównym, czytelnym
 thingsbypluzz/SimpleCAM), ale to infrastruktura pod izolację pracy
 (branch/worktree per zadanie), nie zamiennik tego changeloga.
 
+## [0.50.0] — 2026-10-07
+
+### Dodano
+
+- **Projekt: zapis i wczytywanie wszystkich presetów naraz** (`BL-112`).
+  Nowa grupa w Header, na prawo od ramki presetów — nazwa projektu, Load
+  i Save:
+  - **Save project** pyta o nazwę i pobiera plik
+    `onlypaths-<nazwa>-<data>.json` z zawartością siedmiu slotów. Ustawień
+    maszyny, listy narzędzi i wyglądu w pliku nie ma.
+  - **Load project** wczytuje taki plik: zastępuje wszystkie sloty (z
+    potwierdzeniem, gdy któryś jest zajęty), zaznacza wczytane presety w
+    Overlay, żeby od razu było widać cały obiekt, i kończy edycję presetu.
+    Parametry w wizardzie zostają.
+  - Plik, który nie jest projektem OnlyPaths albo pochodzi z nowszej
+    wersji formatu, jest odrzucany w całości z komunikatem. Presety ze
+    znanego pliku przechodzą te same kontrole co presety zapisane w
+    przeglądarce — brakujące albo błędne pola dostają wartości domyślne.
+  - Na lewo od przycisków ramka z nazwą projektu („Untitled”, dopóki żadnego
+    nie zapisano ani nie wczytano); kropka przy nazwie oznacza, że presety
+    zmieniły się od ostatniego zapisu do pliku. Nazwa zostaje po
+    odświeżeniu strony; Reset w Settings ją czyści.
+
+- **Wyróżnienie edytowanego presetu w podglądach** (`BL-116`). Przy
+  edycji presetu z włączonym Overlay jego krawędzie są w kolorze edycji —
+  w 3D widoczne także przez materiał, w 2D jako grubsza obwódka — a
+  ścieżki pozostałych presetów znikają (zamiast dotychczasowego
+  przygaszenia); ich obrysy zostają. Surface i Facing nie mają tej
+  obwódki.
+
+### Zmieniono
+
+- Przycisk ołówka w Header (kończenie edycji presetu) jest na próbę
+  ukryty — edycję kończy ołówek na edytowanym slocie. Decyzja o usunięciu
+  na stałe: `BL-115`.
+
 ## [0.49.0] — 2026-10-07
 
 ### Dodano

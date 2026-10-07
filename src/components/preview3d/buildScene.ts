@@ -133,6 +133,8 @@ interface Theme {
   origin: number
   hole: number
   stockEdge: number
+  // The edited preset's edges inside an overlay (BL-116).
+  edit: number
   axisX: number
   axisY: number
   offset: number
@@ -166,6 +168,7 @@ function buildTheme(paletteId: PaletteId, isDark: boolean, themeId: ThemeId): Th
     origin: hexToThreeColor(fixed.origin),
     hole: hexToThreeColor(accents.hole),
     stockEdge: hexToThreeColor(accents.stockEdge),
+    edit: hexToThreeColor(fixed.edit),
     axisX: hexToThreeColor(fixed.axisX),
     axisY: hexToThreeColor(fixed.axisY),
     offset: hexToThreeColor(fixed.offset),
@@ -983,7 +986,7 @@ const EDGE_CORNER_DEG = 20
 // horizontal face (top, pocket floors, underside) and a vertical line at
 // every sharp corner of a wall. The sheet's own outer edge is not one —
 // the sheet has no walls there.
-function stockEdgeMesh(model: StockModel, theme: Theme): THREE.LineSegments {
+function stockEdgeMesh(model: StockModel, theme: Theme, color = theme.stockEdge): THREE.LineSegments {
   const positions: number[] = []
   const segment = (ax: number, ay: number, az: number, bx: number, by: number, bz: number) => {
     const a = toThree(ax, ay, az)
@@ -1026,7 +1029,9 @@ function stockEdgeMesh(model: StockModel, theme: Theme): THREE.LineSegments {
       }
     }
   }
-  return edgeLines(positions, theme)
+  const lines = edgeLines(positions, theme)
+  ;(lines.material as THREE.LineBasicMaterial).color.set(color)
+  return lines
 }
 
 function buildStockModelObjects(model: StockModel, theme: Theme, solid: boolean, edges: boolean): THREE.Object3D[] {
@@ -1178,6 +1183,23 @@ export function buildToolpathScene(
       cutShape,
     )
     if (model) objects.push(...buildStockModelObjects(model, theme, solidStock, stockEdges))
+    // BL-116 (trial): while one preset is edited inside an overlay, its own
+    // edges — the stock model of that preset alone — are drawn over
+    // everything in the Edit color, so it can be told from the rest.
+    // Surface and Facing have no stock model, hence no highlight.
+    if (dimOverlay && showActivePattern) {
+      const own = stockModel(
+        [params],
+        { minX: gridCenterX - half, minY: -gridCenterZ - half, maxX: gridCenterX + half, maxY: -gridCenterZ + half },
+        cutShape,
+      )
+      if (own) {
+        const highlight = stockEdgeMesh(own, theme, theme.edit)
+        ;(highlight.material as THREE.LineBasicMaterial).depthTest = false
+        highlight.renderOrder = 10
+        objects.push(highlight)
+      }
+    }
   }
 
   // Shared by origin/"X"/"Y" and, further below, every grid tick — one
@@ -1331,7 +1353,9 @@ export function buildToolpathScene(
       span,
       arrowSize,
       showStock,
-      showToolpath && (!isActive || showActiveToolpath),
+      // BL-116 (trial): the overlaid presets' toolpaths are left out
+      // while one preset is edited — only its own path is shown.
+      showToolpath && (isActive ? showActiveToolpath : !dimOverlay),
       solidStock,
       stockEdges,
       sheetBounds,

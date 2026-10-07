@@ -45,6 +45,9 @@ export interface FixedColors {
   holeFill: string
   // A pocket's floor in 2D: stock at half the tint of the uncut face.
   pocketFloorFill: string
+  // The preset being edited inside an overlay (BL-116): the color its
+  // edges are outlined with — the chrome's own Edit color (--edit).
+  edit: string
 }
 
 const FIXED_COLORS: Record<ThemeId, { light: FixedColors; dark: FixedColors }> = {
@@ -58,6 +61,7 @@ const FIXED_COLORS: Record<ThemeId, { light: FixedColors; dark: FixedColors }> =
       text: '#64748b',
       holeFill: 'rgba(79, 70, 229, 0.3)',
       pocketFloorFill: 'rgba(79, 70, 229, 0.15)',
+      edit: '#d97706',
     },
     dark: {
       background: '#0f172a',
@@ -68,6 +72,7 @@ const FIXED_COLORS: Record<ThemeId, { light: FixedColors; dark: FixedColors }> =
       text: '#94a3b8',
       holeFill: 'rgba(129, 140, 248, 0.3)',
       pocketFloorFill: 'rgba(129, 140, 248, 0.15)',
+      edit: '#fbbf24',
     },
   },
   // Values from design_shopfloor_amber.md §2.3 — the toolpath is amber in
@@ -86,6 +91,7 @@ const FIXED_COLORS: Record<ThemeId, { light: FixedColors; dark: FixedColors }> =
       text: '#78716c',
       holeFill: 'rgba(180, 83, 9, .15)',
       pocketFloorFill: 'rgba(180, 83, 9, .075)',
+      edit: '#0e7490',
     },
     dark: {
       background: '#0a0a0b',
@@ -96,6 +102,7 @@ const FIXED_COLORS: Record<ThemeId, { light: FixedColors; dark: FixedColors }> =
       text: '#a29a8c',
       holeFill: 'rgba(245, 158, 11, .18)',
       pocketFloorFill: 'rgba(245, 158, 11, .09)',
+      edit: '#22d3ee',
     },
   },
   // Arcade Studio — dark-only by spec (design-arcade-restrained.md /
@@ -114,6 +121,7 @@ const FIXED_COLORS: Record<ThemeId, { light: FixedColors; dark: FixedColors }> =
       text: '#849495',
       holeFill: 'rgba(0, 240, 255, .07)',
       pocketFloorFill: 'rgba(0, 240, 255, .035)',
+      edit: '#ff2a85',
     },
     dark: {
       background: '#0b0c10',
@@ -124,6 +132,7 @@ const FIXED_COLORS: Record<ThemeId, { light: FixedColors; dark: FixedColors }> =
       text: '#849495',
       holeFill: 'rgba(0, 240, 255, .07)',
       pocketFloorFill: 'rgba(0, 240, 255, .035)',
+      edit: '#ff2a85',
     },
   },
   'arcade-full-neon': {
@@ -136,6 +145,7 @@ const FIXED_COLORS: Record<ThemeId, { light: FixedColors; dark: FixedColors }> =
       text: '#849495',
       holeFill: 'rgba(0, 240, 255, .09)',
       pocketFloorFill: 'rgba(0, 240, 255, .045)',
+      edit: '#ff2a85',
     },
     dark: {
       background: '#0b0c10',
@@ -146,6 +156,7 @@ const FIXED_COLORS: Record<ThemeId, { light: FixedColors; dark: FixedColors }> =
       text: '#849495',
       holeFill: 'rgba(0, 240, 255, .09)',
       pocketFloorFill: 'rgba(0, 240, 255, .045)',
+      edit: '#ff2a85',
     },
   },
 }
