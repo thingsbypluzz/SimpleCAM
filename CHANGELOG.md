@@ -7,6 +7,17 @@ zgodne z [SemVer](https://semver.org/). Ten plik pozostaje głównym, czytelnym
 thingsbypluzz/SimpleCAM), ale to infrastruktura pod izolację pracy
 (branch/worktree per zadanie), nie zamiennik tego changeloga.
 
+## [0.50.1] — 2026-10-08
+
+### Zmieniono
+
+- **Plik projektu jest krótszy i czytelniejszy.** Każdy preset zapisuje
+  się w nim tylko z ustawieniami własnej operacji, posuwami i opcjami
+  wyjścia — bez sekcji pozostałych operacji, które do tej pory trafiały
+  tam w komplecie. Po wczytaniu te nieużywane sekcje mają wartości
+  domyślne (widać to tylko po przełączeniu wczytanego presetu na inną
+  operację). Pliki zapisane wcześniej wczytują się jak dotąd.
+
 ## [0.50.0] — 2026-10-07
 
 ### Dodano
