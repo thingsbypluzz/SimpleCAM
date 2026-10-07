@@ -782,6 +782,26 @@ Waga z review w nawiasie kwadratowym.
   przegadania: jedno skrzydło dookoła czy dwa po 180°, wąski pierścień
   (okrąg wpisany mniejszy niż helix), kierunek Climb/Conventional na obu
   ścianach, limity kroków.
+- **`BL-111`** *(Otwarty)* 🟠 — **Model materiału: dno płytszego otworu
+  (podebranie pod śrubę).** Zgłoszone 2026-10-07. Dwa otwory o wspólnym
+  środku w Overlay — np. ⌀5,3 na wylot pod gwint i ⌀10 na 5 mm pod łeb
+  śruby — rysują się jak dwa otwory na wylot: większy, płytszy nie ma dna,
+  więc nie widać stopnia. Przyczyna: w `stockModel.ts` otwory Hole(s) i
+  Outline Inside są pustkami bez dna (`floor: false`) niezależnie od
+  głębokości; dno ma tylko Pocket. Oczekiwane: płytszy otwór ma dno na
+  swojej głębokości, wycięte przez głębszy. Do przegadania: wizard nie
+  zna grubości materiału — co uznać za „na wylot” (najgłębsze cięcie
+  wśród pokazywanych presetów? każda pustka płytsza od niego dostaje
+  dno); pojedynczy preset (dziś zawsze na wylot); to samo dla Outline
+  Inside i pasa On-line; zgodność 2D (odcień dna jak w Pocket) i 3D.
+  **Pomysł użytkownika (2026-10-07):** przełącznik **Closed / Open** przy
+  otworze — użytkownik sam mówi, czy otwór ma dno (Closed, nieprzelotowy),
+  czy jest na wylot (Open). Rozwiązuje brak grubości materiału bez
+  zgadywania i działa też dla pojedynczego presetu. Do ustalenia: gdzie
+  przełącznik (Krok 2 przy Depth), wartość domyślna (Open = dzisiejsze
+  zachowanie, stare presety bez zmian), czy także Outline Inside, czy
+  wpływa tylko na podgląd (G-code bez zmian) i jak ma się do reguły
+  „najgłębsze cięcie” — zamiast niej czy jako jej nadpisanie.
 - **`BL-61`** *(Zrealizowany, 2026-09-27)* 🔴 **[Low, kosztowne w czasie]**
   — **Podglądy duplikują geometrię silnika** — jedna lista ruchów (jak
   Adaptive) dla G-code i podglądu 3D, po jednej operacji na raz. Etapy 1–2
