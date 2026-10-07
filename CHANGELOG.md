@@ -7,6 +7,19 @@ zgodne z [SemVer](https://semver.org/). Ten plik pozostaje głównym, czytelnym
 thingsbypluzz/SimpleCAM), ale to infrastruktura pod izolację pracy
 (branch/worktree per zadanie), nie zamiennik tego changeloga.
 
+## [0.49.0] — 2026-10-07
+
+### Dodano
+
+- **Hole(s): przełącznik Bottom — Open / Closed** (`BL-111`). W Kroku 2,
+  na prawo od Hole Diameter. Closed rysuje otwór z dnem na jego
+  głębokości zamiast na wylot — w Overlay widać wtedy stopień, np.
+  podebranie ⌀10 pod łeb śruby nad głębszym otworem ⌀5,3. Zmienia tylko
+  wygląd w podglądach 2D i 3D; G-code jest taki sam. Domyślnie Open, więc
+  zapisane presety wyglądają jak dotąd.
+- **Settings → About: link do Instagrama** (`BL-104`) — „@thingsbypluzz on
+  Instagram” przy „Envisioned by ThingsByPluzz”, otwierany w nowej karcie.
+
 ## [0.48.0] — 2026-10-07
 
 ### Dodano

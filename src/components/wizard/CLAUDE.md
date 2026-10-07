@@ -17,7 +17,10 @@
   prawej krawędzi). Hole(s): pola wzorca z rozmiarem otworu (Grid: Width +
   Height + Depth, potem Hole Diameter; N-Holes: Hole Count + Diameter +
   Depth, potem Hole Diameter + Start Angle; Custom List: lista, potem Hole
-  Diameter + Depth; Single: sama ta para) →
+  Diameter + Depth; Single: sama ta para; na prawo od Hole Diameter, w
+  tym samym wierszu, przełącznik **Bottom: Open | Closed** —
+  `geometry.holeBottom`, tylko wygląd otworu w podglądach, podpowiedź
+  mówi, że G-code się nie zmienia) →
   Tool Diameter → Method → Ramp + Pitch (tylko Helix) → Tabs → Offset.
   Outline: wymiary + Depth → (Lobed Circle: grupa Lobes — Count + Pitch
   Diameter, potem Lobe Diameter + Start) → Offset Mode (Lobed Circle: na

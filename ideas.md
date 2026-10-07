@@ -684,12 +684,29 @@ Waga z review w nawiasie kwadratowym.
   pola z błędem (jak go pokazać); oznaczenie w UI, że coś jest ukryte;
   miejsce przełącznika w Header obok dark/light i Settings oraz Artifact
   Interface Anatomy.
-- **`BL-104`** *(Otwarty)* 🟢 — **Settings → About: link do kanału na
-  Instagramie.** Zgłoszone 2026-10-06. Przy „Envisioned by ThingsByPluzz”
-  dodać link do kanału na Instagramie (adres do podania przy
-  implementacji). Do sprawdzenia: otwieranie w nowej karcie
-  (`rel="noopener noreferrer"`), czy sekcja Privacy wymaga wzmianki (sam
-  link nie wysyła nic, dopóki nie zostanie kliknięty).
+  **Propozycja użytkownika, co schować w Simple (2026-10-07) — punkt
+  wyjścia do `/grill-me`:**
+  - *Wspólne dla Hole(s), Outline, Surface, Pocket.* Krok 2: Flutes i fz.
+    Krok 3: Spindle, ustawienia routera (pokrętło), przycisk Feedrate
+    Calculator.
+  - *Hole(s).* Wzorce: pokaż wszystkie (w notatce wymienione Single Hole,
+    Rectangular Grid, N-Holes — do potwierdzenia, czy Grid Centered i
+    Custom List też zostają). Krok 2: dodatkowo Pitch.
+  - *Outline.* Kształty: zostają prostokąty i Circle, Lobed Circle
+    schowany. Krok 2: dodatkowo Pitch.
+  - *Surface.* Krok 2: dodatkowo Stepover; przy Helix schować Helix
+    Radius i przyjąć wartość domyślną zależną od średnicy freza.
+  - *Pocket.* Kształty: schowane Donut, Rectangle Lightened, Circle
+    Lightened. Krok 2: schowana metoda Adaptive, Stepover, Ramp Length
+    (przyjąć domyślną), Helix Radius (jak w Surface — domyślna od freza),
+    Finishing Pass.
+  - *Nie wymienione:* Facing, Tabs, Offset, Ramp Angle, Start Z, Linking
+    Feed, Overlay/edycja presetów, Settings.
+- **`BL-104`** *(Zrealizowany, 2026-10-07)* 🟢 — **Settings → About: link
+  do kanału na Instagramie.** Przy „Envisioned by ThingsByPluzz” link
+  „@thingsbypluzz on Instagram” (`https://www.instagram.com/thingsbypluzz/`),
+  otwierany w nowej karcie z `rel="noopener noreferrer"`. Sekcja Privacy
+  bez zmian — zwykły link niczego nie wysyła przed kliknięciem.
 - **`BL-105`** *(Zrealizowany, 2026-10-06)* 🟢 — **Overlay: napis przy
   Preset Bar.** Po włączeniu oka Overlay na lewo od presetów pojawia się
   napis jak w Edit Mode: „Overlay Mode — select preset(s)”, a po
@@ -782,26 +799,39 @@ Waga z review w nawiasie kwadratowym.
   szerokości pasa, pierścień szerokości freza zostaje dla Spiral;
   Finishing Pass wg Direction (wyspa zawsze przeciwnie do ściany
   zewnętrznej).
-- **`BL-111`** *(Otwarty)* 🟠 — **Model materiału: dno płytszego otworu
-  (podebranie pod śrubę).** Zgłoszone 2026-10-07. Dwa otwory o wspólnym
-  środku w Overlay — np. ⌀5,3 na wylot pod gwint i ⌀10 na 5 mm pod łeb
-  śruby — rysują się jak dwa otwory na wylot: większy, płytszy nie ma dna,
-  więc nie widać stopnia. Przyczyna: w `stockModel.ts` otwory Hole(s) i
-  Outline Inside są pustkami bez dna (`floor: false`) niezależnie od
-  głębokości; dno ma tylko Pocket. Oczekiwane: płytszy otwór ma dno na
-  swojej głębokości, wycięte przez głębszy. Do przegadania: wizard nie
-  zna grubości materiału — co uznać za „na wylot” (najgłębsze cięcie
-  wśród pokazywanych presetów? każda pustka płytsza od niego dostaje
-  dno); pojedynczy preset (dziś zawsze na wylot); to samo dla Outline
-  Inside i pasa On-line; zgodność 2D (odcień dna jak w Pocket) i 3D.
-  **Pomysł użytkownika (2026-10-07):** przełącznik **Closed / Open** przy
-  otworze — użytkownik sam mówi, czy otwór ma dno (Closed, nieprzelotowy),
-  czy jest na wylot (Open). Rozwiązuje brak grubości materiału bez
-  zgadywania i działa też dla pojedynczego presetu. Do ustalenia: gdzie
-  przełącznik (Krok 2 przy Depth), wartość domyślna (Open = dzisiejsze
-  zachowanie, stare presety bez zmian), czy także Outline Inside, czy
-  wpływa tylko na podgląd (G-code bez zmian) i jak ma się do reguły
-  „najgłębsze cięcie” — zamiast niej czy jako jej nadpisanie.
+- **`BL-111`** *(Zrealizowany, 2026-10-07)* 🟠 — **Hole(s): przełącznik
+  Bottom Open / Closed (dno otworu w podglądzie).** Zgłoszone 2026-10-07:
+  dwa otwory o wspólnym środku w Overlay — np. ⌀5,3 na wylot pod gwint i
+  ⌀10 na 5 mm pod łeb śruby — rysowały się jak dwa otwory na wylot, bez
+  stopnia. Wdrożone wg pomysłu użytkownika: przełącznik w Kroku 2, na
+  prawo od Hole Diameter; Closed daje otworowi dno na jego głębokości
+  (wycinane przez głębsze otwory), Open — jak dotąd, na wylot (domyślne,
+  stare presety bez zmian). Tylko wygląd w podglądach, G-code bez zmian;
+  bez automatycznej reguły „najgłębsze cięcie jest na wylot”.
+- **`BL-111B`** *(Otwarty)* 🟠 — **Dno dla Outline Inside i pasa
+  On-line.** Zgłoszone 2026-10-07 przy `BL-111`. To samo co w Hole(s):
+  Outline Inside i pas On-line są w modelu materiału zawsze na wylot;
+  przełącznik Open / Closed pozwoliłby pokazać rowek albo wybranie
+  nieprzelotowe. Do przegadania: miejsce przełącznika w Kroku 2 Outline
+  (wiersz Offset Mode jest już zajęty przez Lobes przy Lobed Circle),
+  sens przy Outside (część wycinana z arkusza — raczej bez przełącznika),
+  On-line Closed: rowek z dnem i wyspa zostająca na pełnej wysokości.
+- **`BL-112`** *(Otwarty)* 🟠 — **Zapisywanie i wczytywanie zestawu
+  presetów (projekt).** Zgłoszone 2026-10-07. Sytuacja: obiekt zbudowany z
+  kilku presetów (np. 5 operacji oglądanych razem w Overlay); przejście do
+  innego obiektu oznacza nadpisanie slotów i utratę całości. Potrzebne:
+  zapis zawartości wszystkich slotów `1`–`7` jako jednej całości i
+  wczytanie jej z powrotem. Do przegadania: plik do pobrania i wczytania
+  (JSON, działa między przeglądarkami i komputerami) czy nazwane zestawy
+  w `localStorage` (szybkie przełączanie, ale tylko w tej przeglądarce) —
+  albo jedno i drugie; co wchodzi do zestawu (same sloty, czy też
+  ustawienia maszyny / średnice narzędzi, od których zależą presety);
+  wczytanie nadpisuje wszystkie sloty (z potwierdzeniem) czy pozwala
+  wybrać; walidacja i migracja pliku tym samym kodem co `storage.ts`
+  (strażniki pól, wartości domyślne dla brakujących); miejsce w UI (Krok
+  4 przy slotach albo Settings); nazwa zestawu i nazwa pliku; relacja z
+  `BL-101B` (eksport / import tabel kalkulatora) — wspólny mechanizm
+  plików.
 - **`BL-61`** *(Zrealizowany, 2026-09-27)* 🔴 **[Low, kosztowne w czasie]**
   — **Podglądy duplikują geometrię silnika** — jedna lista ruchów (jak
   Adaptive) dla G-code i podglądu 3D, po jednej operacji na raz. Etapy 1–2

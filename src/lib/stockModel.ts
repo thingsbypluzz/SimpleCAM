@@ -303,7 +303,13 @@ function stockFeatures(params: WizardParams, grid: number, cutShape: boolean): S
     islands: [],
     voids:
       radius > 0
-        ? resolvePoints(geometry).map((p) => ({ region: [ring({ circle: p, radius })], depth: geometry.totalDepth, floor: false }))
+        ? resolvePoints(geometry).map((p) => ({
+            region: [ring({ circle: p, radius })],
+            depth: geometry.totalDepth,
+            // BL-111: a Closed hole keeps a floor at its depth (a counterbore
+            // over a deeper, narrower hole shows its step).
+            floor: geometry.holeBottom === 'closed',
+          }))
         : [],
     part: false,
   }

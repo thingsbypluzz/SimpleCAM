@@ -2,6 +2,7 @@ import {
   DEFAULT_WIZARD_PARAMS,
   type CutDirection,
   type GeometryParams,
+  type HoleBottom,
   type InterpolationMode,
   type LobeMode,
   type MethodType,
@@ -142,6 +143,7 @@ function mergeSection<T extends object>(
 
 const GEOMETRY_GUARDS: Partial<Record<keyof GeometryParams, FieldGuard>> = {
   positioning: oneOf<PositioningMode>(['single', 'grid', 'gridCentered', 'circle', 'custom']),
+  holeBottom: oneOf<HoleBottom>(['open', 'closed']),
   customPoints: isPointList,
 }
 

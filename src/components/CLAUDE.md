@@ -50,7 +50,9 @@
   Calculator i wszystkie sloty presetów łącznie z `"0"`
   (`clearAllSlots()`); nie rusza bieżących parametrów wizarda.
 - **About:** nazwa, wersja (`__APP_VERSION__` z `package.json` przez
-  `define` w `vite.config.ts`), "Envisioned by ThingsByPluzz".
+  `define` w `vite.config.ts`), "Envisioned by ThingsByPluzz" z linkiem do
+  Instagrama (`@thingsbypluzz`, nowa karta, `rel="noopener noreferrer"`;
+  zwykły link — nic nie jest pobierane z Instagrama przed kliknięciem).
 - Pola liczbowe przez `NumberInput`, ale własny wzorzec commitu (bufor
   tekstu + `onBlur`, klik strzałki commituje od razu —
   `commitField()`/`handleAdjust()`), bo to zapis do `localStorage`, nie

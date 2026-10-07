@@ -968,7 +968,19 @@ export function SettingsModal({
                 Helps you CAM. Every time! Client-side, no backend, no accounts.
               </p>
 
-              <p className="text-sm text-muted">Envisioned by ThingsByPluzz</p>
+              {/* BL-104: a plain link — nothing is requested from Instagram
+                  until it is clicked, so Privacy's "no tracking" still holds. */}
+              <p className="text-sm text-muted">
+                Envisioned by ThingsByPluzz —{' '}
+                <a
+                  href="https://www.instagram.com/thingsbypluzz/"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="font-medium text-accent-fg underline underline-offset-2 hover:text-accent"
+                >
+                  @thingsbypluzz on Instagram
+                </a>
+              </p>
             </>
           )}
         </div>

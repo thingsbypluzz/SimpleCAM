@@ -575,7 +575,9 @@ booli 2D na przekrojach (`polygon-clipping`, okręgi po 72 odcinki).
 
 - **Cechy presetu** (`stockFeatures()` — jedyne miejsce, w którym materiał
   rozgałęzia się po operacji; wyjątek „rysowanie w podglądach” od zasady
-  rejestrów): Hole(s) i Outline Inside — pustki na wylot; Outline Outside —
+  rejestrów): Hole(s) i Outline Inside — pustki na wylot (Hole(s) z
+  `holeBottom: 'closed'` — z dnem na swojej głębokości, np. podebranie
+  nad głębszym otworem); Outline Outside —
   wyspa (część); Outline On-line — wyspa wewnętrzna + pas szerokości freza
   jako pustka na wylot; Pocket — pustki `pocketVoids()` **z dnem** na
   `-totalDepth`; Surface i Facing — poza modelem (same takie presety →

@@ -4,6 +4,10 @@ export type PositioningMode = 'single' | 'grid' | 'gridCentered' | 'circle' | 'c
 
 export type InterpolationMode = 'arc' | 'linear'
 
+// Hole(s) (BL-111): whether the previews draw the hole cut through the
+// stock or with a floor at its depth. Looks only — the G-code is the same.
+export type HoleBottom = 'open' | 'closed'
+
 export type OperationType = 'holes' | 'outline' | 'surface' | 'pocket' | 'facing'
 
 // 'lobedCircle' (OP-8): a main circle with N lobe circles on a pitch circle
@@ -56,6 +60,7 @@ export interface GeometryParams {
   toolDiameter: number
   holeDiameter: number
   totalDepth: number
+  holeBottom: HoleBottom // previews only
   positioning: PositioningMode
   gridX: number
   gridY: number
@@ -225,6 +230,7 @@ export const DEFAULT_WIZARD_PARAMS: WizardParams = {
     toolDiameter: 3.175,
     holeDiameter: 8,
     totalDepth: 4,
+    holeBottom: 'open',
     positioning: 'single',
     gridX: 50,
     gridY: 50,
