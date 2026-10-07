@@ -7,6 +7,25 @@ zgodne z [SemVer](https://semver.org/). Ten plik pozostaje głównym, czytelnym
 thingsbypluzz/SimpleCAM), ale to infrastruktura pod izolację pracy
 (branch/worktree per zadanie), nie zamiennik tego changeloga.
 
+## [0.46.0] — 2026-10-07
+
+### Zmieniono
+
+- **Pola liczbowe zatwierdzają wartość, gdy skończysz pisać** (`BL-89`).
+  W Krokach 2 i 3 wpisywana liczba trafia do parametrów przy wyjściu z
+  pola, po Enter albo po ok. 0,5 s bez pisania — zamiast przy każdym
+  klawiszu. Stany pośrednie („1”, „12” w drodze do „125”) nie uruchamiają
+  już walidacji, podglądu ani auto-zapisu edytowanego presetu: pisanie nie
+  przycina przy ciężkich kształtach (Lightened, Adaptive), a błędy nie
+  migają.
+  - Strzałki przy polu (także przytrzymane) i klawisze ↑/↓ działają od
+    razu, jak dotąd.
+  - Escape cofa to, co wpisane i jeszcze niezatwierdzone.
+  - Wyczyszczone pole niczego nie zmienia — po wyjściu wraca poprzednia
+    wartość (wcześniej zapisywało się 0).
+  - Feedrate Calculator bez zmian: Flutes i Chip Load reagują przy każdym
+    klawiszu.
+
 ## [0.45.0] — 2026-10-07
 
 ### Dodano

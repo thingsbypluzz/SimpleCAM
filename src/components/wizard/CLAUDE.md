@@ -89,13 +89,23 @@
   `TextToggle.tsx` (opcje w `toggleOptions.ts`) — każdy przycisk z
   `aria-pressed`; stan nigdy tylko kolorem.
 - **Pola liczbowe** (`useNumberField.ts` + `NumberInput.tsx`): wyświetlany
-  tekst oddzielony od zatwierdzonej wartości (pole da się wyczyścić), commit
-  przy każdym klawiszu dającym skończoną liczbę, `onBlur` resynchronizuje
-  tekst. `{ syncWhenBlurred: true }` — para pól tej samej wielkości (Optimal
-  Load % ↔ mm, Facing Stepover mm ↔ %). `onAdjust(delta)` dla przycisków góra/dół (przytrzymanie
-  powtarza krok: pierwszy od razu, po 400 ms co 75 ms, do puszczenia albo
-  zjechania z przycisku — `useHoldRepeat()` w `NumberInput.tsx`, zawsze
-  najnowszy `onAdjust` przez ref),
+  tekst oddzielony od zatwierdzonej wartości (pole da się wyczyścić).
+  Wpisywana liczba jest zatwierdzana (`onCommit`) przy wyjściu z pola, po
+  Enter albo po `COMMIT_IDLE_MS` (0,5 s) bez klawisza — stany pośrednie nie
+  trafiają do walidacji, podglądów ani auto-zapisu edytowanego presetu;
+  błędy pola pojawiają się więc dopiero po zatwierdzeniu. Puste pole
+  niczego nie zatwierdza. Przyciski góra/dół i klawisze ↑/↓ zatwierdzają od
+  razu; Escape cofa niezatwierdzony tekst. `onBlur` resynchronizuje tekst
+  z wartością po zatwierdzeniu. Odmontowanie pola **porzuca** oczekującą
+  wartość (wczytanie presetu remontuje kroki — spóźniony zapis nadpisałby
+  świeży preset); timer woła zawsze najnowszy `onCommit` (ref). Opcja
+  `{ commit: 'live' }` — zatwierdzanie przy każdym klawiszu (Feedrate
+  Calculator). `{ syncWhenBlurred: true }` — para pól tej samej wielkości
+  (Optimal Load % ↔ mm, Facing Stepover mm ↔ %). `onAdjust(delta)` dla
+  przycisków góra/dół (przytrzymanie powtarza krok: pierwszy od razu, po
+  400 ms co 75 ms, do puszczenia albo zjechania z przycisku —
+  `useHoldRepeat()` w `NumberInput.tsx`, zawsze najnowszy `onAdjust` przez
+  ref),
   `roundToStepPrecision()` (1/100 mm). Tekst nie śledzi wartości z
   zewnątrz — wczytanie presetu podbija `paramsLoadGeneration` (`key` Kroków
   2/3) w `App.tsx`. `NumberInput` chowa natywny spinner, dwa przyciski obok
