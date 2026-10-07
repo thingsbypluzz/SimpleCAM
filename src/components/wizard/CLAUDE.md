@@ -29,7 +29,10 @@
   Width + Height + Depth → Tool Diameter → Method + Raster
   Direction → Stepover → Z-Transition + Helix Radius + Ramp Angle (jeden
   wiersz) → Offset.
-  Pocket: wymiary + Depth → (Lightened: `LightenedFields.tsx` —
+  Pocket: wymiary + Depth (Donut: Diameter + Island ⌀ + Depth; bez pola
+  Helix Radius — Helix schodzi po pierwszym okrążeniu; w `PocketMethodPicker`
+  Adaptive nieaktywne, Spiral zaznaczony niezależnie od zapisanej metody) →
+  (Lightened: `LightenedFields.tsx` —
   Rectangle: Layout w osobnym wierszu, potem N + M + Rib Width; Circle:
   Spokes + Hub + Rib Width, potem Start w pierwszej z trzech kolumn; błąd „za mała
   komórka” oznacza też Tool Diameter) → Tool Diameter → Method (+ Direction) →

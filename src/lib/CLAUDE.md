@@ -204,7 +204,7 @@ zaczyna od `zTo('rapid', startZ)`; końcowy retrakt robi `assembleProgram()`.
 
 - Kształty Rectangle Cornered/Centered, Circle oraz **Rectangle
   Lightened** / **Circle Lightened** (niżej); metody **Spiral** i
-  **Adaptive** (każda dla każdego kształtu), opcjonalny przejazd
+  **Adaptive** (każda dla każdego kształtu poza Donut — niżej), opcjonalny przejazd
   wykończeniowy ścian (niżej), bez mostków. Zapisane dawne `'raster'` nie
   przechodzi strażnika enuma i wczytuje się jako Spiral.
 - Czyszczenie zawsze od środka na zewnątrz, CCW (climb). Ściana
@@ -221,6 +221,40 @@ zaczyna od `zTo('rapid', startZ)`; końcowy retrakt robi `assembleProgram()`.
   obrotem czyszczącym na `toZ`. Helix Radius ≤ promień freza i ≤ ściana
   roughingu (`pocketMaxHelixRadius()`) — większy zostawiłby słupek w środku.
 - **Poziomy Z** jak Surface (`buildLevelDescents()`/`levelEntryZ()`).
+
+### Donut (`pocket.ts`, `pocketGeometry.ts`)
+
+- Okrąg `diameter` z wyspą `islandDiameter` zostawioną w środku — wybierany
+  jest pierścień. Ściany toru środka freza: `pocketDonutWalls()` (wyspa +
+  promień freza, okrąg − promień freza); roughing do pasa
+  `pocketRoughDonutWalls()` (obie ściany − `pocketStockToLeave()`).
+- **Tylko Spiral**: `effectivePocketMethod()` zwraca `'spiral'` dla Donut
+  niezależnie od zapisanej metody (zapis zostaje, jak `zTransitionMode`
+  przy Adaptive). Każdy odczyt metody Pocket idzie przez tę funkcję —
+  silnik, finishing, walidacja, `OPERATION_META.pocket`, Kroki 2 i 3.
+- **Od wyspy na zewnątrz** (`spiralDonutLevel()`): pierwsze okrążenie na
+  wewnętrznej ścianie pasa (pełny rowek), potem pierścienie Circle
+  (`pocketCircleRingRadii()` + `appendCircleRing()`) do ściany zewnętrznej,
+  CCW. Pierścień o szerokości freza = samo pierwsze okrążenie.
+- **Wejście** w punkcie `(cx + inner, cy)` zamiast w środku
+  (`appendSpiralLevels()` z `entryOverride`): Plunge — pionowo, potem
+  płaskie okrążenie; Helix — `appendPocketZTransition()` z promieniem
+  pierwszego okrążenia, czyli zejście po nim pod Ramp Angle + płaski
+  obrót. `helixRadius` nie jest używany.
+- **Finishing** (`appendDonutFinish()` w `pocketFinish.ts`): na poziom dwa
+  okrążenia — ściana zewnętrzna CCW, wyspa CW (climb po obu stronach), oba
+  od kąta 0°. Dojazd/odjazd ćwierćłukiem stycznym (zawsze CCW; przy wyspie
+  wygina się od niej) o promieniu jak najbliżej promienia freza, z końcami
+  w pasie roughingu; gdy żaden się nie mieści — prosto przez naddatek.
+  Między ścianami przejazd przez wybrany pas, bez retraktu.
+- Walidacja: `isPocketIslandValid()` (`0 < island < diameter`),
+  `isPocketToolDiameterValid()` (frez mieści się między ścianami),
+  `isPocketStockToLeaveValid()` (pas roughingu ≥ jedno okrążenie); Helix
+  Radius nie jest sprawdzany; limity: pierścienie i obroty zejścia.
+  `rampPathLength` = obwód pierwszego okrążenia, footprint = ściana
+  zewnętrzna.
+- Model materiału: pustka z dnem = okrąg zewnętrzny z dziurą na wyspę
+  (`stockFeatures()`), kształt po frezie = nominał.
 
 ### Spiral (`pocketSpiral.ts`)
 

@@ -26,7 +26,9 @@ export type ZTransitionMode = 'plunge' | 'helix'
 
 // 'rectLightened'/'circleLightened' (OP-6): the area is split into cells
 // by ribs and each cell is pocketed on its own — see lib/pocketLightened.ts.
-export type PocketShape = 'rectCornered' | 'rectCentered' | 'circle' | 'rectLightened' | 'circleLightened'
+// 'donut' (BL-108): a circle with an island left standing in its middle —
+// the ring between the two diameters is cleared. Spiral only.
+export type PocketShape = 'rectCornered' | 'rectCentered' | 'circle' | 'donut' | 'rectLightened' | 'circleLightened'
 
 // Rectangle Lightened rib layout: 'xgrid' = N×M cells, each split by its
 // diagonals; 'triangles' = M rows of N zigzag diagonals (M = 1: Warren).
@@ -125,6 +127,7 @@ export interface PocketParams {
   width: number
   height: number
   diameter: number
+  islandDiameter: number // mm, Donut only — the island left in the middle
   offsetX: number
   offsetY: number
   stepoverPercent: number // 1-100, single source of truth — mm value is derived
@@ -285,6 +288,7 @@ export const DEFAULT_WIZARD_PARAMS: WizardParams = {
     width: 50,
     height: 30,
     diameter: 45,
+    islandDiameter: 20,
     offsetX: 0,
     offsetY: 0,
     stepoverPercent: 40,

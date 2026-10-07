@@ -1,4 +1,4 @@
-import type { PocketParams, Point2D } from '../types/wizard'
+import type { PocketMethodType, PocketParams, Point2D } from '../types/wizard'
 import { engagementAngleFor } from './pocketAdaptiveMath'
 
 // Center of the pocket in program coordinates — mirrors rectCorners()'s
@@ -55,6 +55,33 @@ export function pocketRoughRectWallHalfDims(
 
 export function pocketRoughCircleWallRadius(pocket: Pick<PocketParams, 'diameter' | RoughWallFields>): number {
   return pocketCircleWallRadius(pocket) - pocketStockToLeave(pocket)
+}
+
+// Donut (BL-108): the two tool-center walls of the ring — the island grown
+// by the tool radius and the outer circle inset by it. The tool fits when
+// outer ≥ inner.
+export function pocketDonutWalls(
+  pocket: Pick<PocketParams, 'diameter' | 'islandDiameter' | 'toolDiameter'>,
+): { inner: number; outer: number } {
+  const r = pocket.toolDiameter / 2
+  return { inner: pocket.islandDiameter / 2 + r, outer: pocket.diameter / 2 - r }
+}
+
+// The band the Donut's roughing clears: both walls moved in by
+// pocketStockToLeave().
+export function pocketRoughDonutWalls(
+  pocket: Pick<PocketParams, 'diameter' | 'islandDiameter' | RoughWallFields>,
+): { inner: number; outer: number } {
+  const { inner, outer } = pocketDonutWalls(pocket)
+  const stock = pocketStockToLeave(pocket)
+  return { inner: inner + stock, outer: outer - stock }
+}
+
+// The method that actually runs: a Donut is Spiral-only, whatever is stored
+// (the stored value is kept untouched, only ignored — like zTransitionMode
+// under Adaptive).
+export function effectivePocketMethod(pocket: Pick<PocketParams, 'shape' | 'method'>): PocketMethodType {
+  return pocket.shape === 'donut' ? 'spiral' : pocket.method
 }
 
 // Single source-of-truth stepover-% -> mm conversion — same mechanism as

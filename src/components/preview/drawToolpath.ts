@@ -22,7 +22,7 @@ import {
   type LoopBounds,
 } from '../../lib/outlineLobedGeometry'
 import { facingBlockCorners, facingStripCorners, facingViewBounds, type FacingBounds } from '../../lib/facingGeometry'
-import { pocketCenter } from '../../lib/pocketGeometry'
+import { effectivePocketMethod, pocketCenter } from '../../lib/pocketGeometry'
 import { buildPocketToolpath } from '../../lib/pocket'
 import { movePoints, type MoveKind, type Toolpath } from '../../lib/toolpath'
 import { cutContours, pocketVoids, stockModel, type StockModel } from '../../lib/stockModel'
@@ -376,14 +376,14 @@ function resolvePattern(params: WizardParams): ResolvedPattern {
   if (params.operation === 'pocket') {
     const { pocket } = params
     const center = pocketCenter(pocket)
-    const isCircle = pocket.shape === 'circle' || pocket.shape === 'circleLightened'
+    const isCircle = pocket.shape === 'circle' || pocket.shape === 'circleLightened' || pocket.shape === 'donut'
     const nominal: Extract<ResolvedPattern, { kind: 'pocket' }>['nominal'] = isCircle
       ? { shape: 'circle', radius: pocket.diameter / 2 }
       : { shape: 'rect', halfWidth: pocket.width / 2, halfHeight: pocket.height / 2 }
 
     const toolpath = buildPocketToolpath(params)
 
-    return { kind: 'pocket', params, center, shape: pocket.shape, method: pocket.method, nominal, toolpath }
+    return { kind: 'pocket', params, center, shape: pocket.shape, method: effectivePocketMethod(pocket), nominal, toolpath }
   }
   if (params.operation === 'facing') {
     return { kind: 'facing', params, bounds: facingViewBounds(params.facing), toolpath: buildFacingToolpath(params) }
@@ -1023,6 +1023,12 @@ function drawPocketGeometry(
       ctx.beginPath()
       ctx.arc(cx, cy, nominal.radius * scale, 0, Math.PI * 2)
       ctx.stroke()
+      // Donut (BL-108): the island left standing in the middle.
+      if (params.pocket.shape === 'donut' && params.pocket.islandDiameter > 0) {
+        ctx.beginPath()
+        ctx.arc(cx, cy, (params.pocket.islandDiameter / 2) * scale, 0, Math.PI * 2)
+        ctx.stroke()
+      }
     } else {
       const corners: Point2D[] = [
         { x: center.x - nominal.halfWidth, y: center.y - nominal.halfHeight },

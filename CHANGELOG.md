@@ -7,6 +7,26 @@ zgodne z [SemVer](https://semver.org/). Ten plik pozostaje głównym, czytelnym
 thingsbypluzz/SimpleCAM), ale to infrastruktura pod izolację pracy
 (branch/worktree per zadanie), nie zamiennik tego changeloga.
 
+## [0.47.0] — 2026-10-07
+
+### Dodano
+
+- **Pocket: kształt Donut** (`BL-108`) — kieszeń pierścieniowa: okrąg z
+  wyspą zostawioną w środku. Pola Diameter i Island ⌀; wybierany jest
+  pierścień między nimi, wyspa zostaje na pełnej wysokości.
+  - Metoda Spiral, od wyspy na zewnątrz: pierwsze okrążenie tuż przy
+    wyspie (pełny rowek), potem pierścienie co Stepover do ściany
+    zewnętrznej. Adaptive jest dla Donut nieaktywne (`BL-110`); zapisana
+    metoda wraca po zmianie kształtu.
+  - Wejście: Plunge w punkcie pierwszego okrążenia albo Helix — zejście po
+    tym okrążeniu pod Ramp Angle, zakończone płaskim obrotem. Pola Helix
+    Radius nie ma.
+  - Finishing Pass obrabia obie ściany: zewnętrzną CCW i wyspę CW
+    (współbieżnie po obu stronach), z dojazdem po łuku stycznym.
+  - Walidacja: wyspa mniejsza od średnicy, frez mieszczący się w
+    pierścieniu, naddatek zostawiający miejsce na choć jedno okrążenie.
+  - Podglądy 2D/3D i Overlay pokazują pierścień z dnem i stojącą wyspę.
+
 ## [0.46.0] — 2026-10-07
 
 ### Zmieniono
