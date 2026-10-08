@@ -38,10 +38,19 @@ import {
 } from './components/icons'
 import { OPERATION_META } from './config/operationMeta'
 import { deriveOverlayParams, overlayFitKey, sameOverlayParams } from './lib/overlayParams'
-import { buildProjectFile, parseProjectFile, PROJECT_ERROR_MESSAGE, projectFilename, projectNameFromFilename, slotsFingerprint } from './lib/projectFile'
+import {
+  buildProjectFile,
+  parseProjectFile,
+  PROJECT_ERROR_MESSAGE,
+  projectFilename,
+  projectNameFromFilename,
+  slotsFingerprint,
+  type PresetSlots,
+} from './lib/projectFile'
 import { loadProjectInfo, NO_PROJECT, saveProjectInfo, type ProjectInfo } from './lib/projectStorage'
 import { downloadTextFile } from './lib/download'
 import { ProjectNameModal } from './components/ProjectNameModal'
+import { templateSlots, type ProjectTemplate } from './templates'
 import { presetLabel } from './lib/presetLabel'
 import {
   AUTO_SAVE_SLOT,
@@ -275,15 +284,32 @@ function App() {
       window.alert(PROJECT_ERROR_MESSAGE[parsed.reason])
       return
     }
-    const name = parsed.name || projectNameFromFilename(file.name) || 'Project'
+    applyProject(parsed.name || projectNameFromFilename(file.name) || 'Project', parsed.slots)
+  }
+
+  // Makes `slots` the current project, for a loaded file and a template
+  // alike. False when the user keeps the presets they have.
+  const applyProject = (name: string, slots: PresetSlots): boolean => {
     if (presetCount > 0 && !window.confirm(`Replace all presets with the project "${name}"? The current presets will be lost unless you saved them.`)) {
+      return false
+    }
+    replacePresetSlots(slots)
+    setPresetSlots(slots)
+    setEditingSlot(null)
+    setOverlaySlots(new Set(PRESET_SLOT_IDS.filter((id) => slots[id])))
+    updateProject({ name, fingerprint: slotsFingerprint(slots) })
+    return true
+  }
+
+  // BL-113: a built-in template loads exactly like a project file; Settings
+  // closes so the object is in view at once.
+  const handleLoadTemplate = (template: ProjectTemplate) => {
+    const slots = templateSlots(template)
+    if (!slots) {
+      window.alert(PROJECT_ERROR_MESSAGE.notProject)
       return
     }
-    replacePresetSlots(parsed.slots)
-    setPresetSlots(parsed.slots)
-    setEditingSlot(null)
-    setOverlaySlots(new Set(PRESET_SLOT_IDS.filter((id) => parsed.slots[id])))
-    updateProject({ name, fingerprint: slotsFingerprint(parsed.slots) })
+    if (applyProject(template.title, slots)) setIsSettingsOpen(false)
   }
 
   // Display-only method info (Icon/shortLabel/title/stepdown), resolved
@@ -1143,6 +1169,7 @@ function App() {
           toolDiameters={toolDiameters}
           onSaveToolDiameters={handleSaveToolDiameters}
           onResetAll={handleResetAllSettings}
+          onLoadTemplate={handleLoadTemplate}
           onClose={() => setIsSettingsOpen(false)}
         />
       )}

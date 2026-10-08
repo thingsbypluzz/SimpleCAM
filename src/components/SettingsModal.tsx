@@ -14,6 +14,9 @@ import { NumberInput } from './wizard/NumberInput'
 import { TextToggle } from './wizard/TextToggle'
 import { roundToStepPrecision } from './wizard/useNumberField'
 import { useModalFocus } from './useModalFocus'
+import { PROJECT_TEMPLATES, templateSlots, type ProjectTemplate } from '../templates'
+import { presetLabel } from '../lib/presetLabel'
+import { PRESET_SLOT_IDS } from '../lib/storage'
 
 interface SettingsModalProps {
   machine: MachineSettings
@@ -23,6 +26,9 @@ interface SettingsModalProps {
   toolDiameters: ToolDiameterOption[]
   onSaveToolDiameters: (options: ToolDiameterOption[]) => void
   onResetAll: () => void
+  // BL-113: replaces the preset slots with a built-in template (App asks
+  // before overwriting occupied ones and closes the modal).
+  onLoadTemplate: (template: ProjectTemplate) => void
   onClose: () => void
 }
 
@@ -35,7 +41,17 @@ type LimitField = 'spindleMinRpm' | 'spindleMaxRpm' | 'maxFeed'
 // the field list and per-field step/label differ.
 type NumericField = TravelField | TabDefaultField | SpindleField | LimitField
 type CodeField = 'headerText' | 'footerText'
-type SectionId = 'machine' | 'controller' | 'tabs' | 'toolDiameters' | 'feedTables' | 'appearance' | 'privacy' | 'reset' | 'about'
+type SectionId =
+  | 'machine'
+  | 'controller'
+  | 'tabs'
+  | 'toolDiameters'
+  | 'feedTables'
+  | 'templates'
+  | 'appearance'
+  | 'privacy'
+  | 'reset'
+  | 'about'
 
 const SECTIONS: { id: SectionId; label: string }[] = [
   { id: 'machine', label: 'Machine' },
@@ -43,6 +59,7 @@ const SECTIONS: { id: SectionId; label: string }[] = [
   { id: 'tabs', label: 'Tabs' },
   { id: 'toolDiameters', label: 'Tool Diameters' },
   { id: 'feedTables', label: 'Feed Tables' },
+  { id: 'templates', label: 'Templates' },
   { id: 'appearance', label: 'Appearance' },
   { id: 'privacy', label: 'Privacy' },
   { id: 'reset', label: 'Reset' },
@@ -124,6 +141,7 @@ export function SettingsModal({
   toolDiameters,
   onSaveToolDiameters,
   onResetAll,
+  onLoadTemplate,
   onClose,
 }: SettingsModalProps) {
   const [activeSection, setActiveSection] = useState<SectionId>('machine')
@@ -674,6 +692,52 @@ export function SettingsModal({
                 >
                   Reset to Default
                 </button>
+              </div>
+            </>
+          )}
+
+          {activeSection === 'templates' && (
+            <>
+              <h2 className="text-sm font-semibold text-fg">Templates</h2>
+              <p className="text-sm text-muted">
+                Ready-made projects to explore what OnlyPaths can do. Loading one replaces all your presets and shows
+                them together in the preview — use the pencil on a preset to change it and watch the result.
+              </p>
+              <p className="text-sm text-muted">
+                They are examples to look at and rework, not programs to run as they are: feeds, depths and spindle
+                options suit their author's machine and material. Check every preset before cutting.
+              </p>
+              <div className="flex flex-col gap-3">
+                {PROJECT_TEMPLATES.map((template) => {
+                  const slots = templateSlots(template)
+                  return (
+                    <div key={template.id} className="flex flex-col gap-3 rounded-md border border-border p-4">
+                      <div className="flex items-start justify-between gap-4">
+                        <div className="flex min-w-0 flex-col gap-1">
+                          <span className="text-sm font-medium text-value">{template.title}</span>
+                          <p className="text-sm text-muted">{template.description}</p>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => onLoadTemplate(template)}
+                          disabled={!slots}
+                          className="shrink-0 rounded-md bg-accent px-3 py-1.5 text-sm font-semibold text-btn-fg shadow-[var(--glow-btn)] transition disabled:cursor-not-allowed disabled:opacity-50"
+                        >
+                          Load
+                        </button>
+                      </div>
+                      {slots && (
+                        <ol className="flex flex-col gap-1 text-xs text-muted">
+                          {PRESET_SLOT_IDS.filter((id) => slots[id]).map((id) => (
+                            <li key={id}>
+                              <span className="font-semibold text-value">[{id}]</span> {presetLabel(slots[id]!)}
+                            </li>
+                          ))}
+                        </ol>
+                      )}
+                    </div>
+                  )
+                })}
               </div>
             </>
           )}

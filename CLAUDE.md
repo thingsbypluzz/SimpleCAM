@@ -182,7 +182,10 @@ być wierny.
   dwóch wierszach (Overlay nad edycją). Ramka wokół grupy presetów
   widoczna, gdy cokolwiek jest w Overlay albo w edycji.
 - **Settings Modal:** Machine, Controller, Tabs, Tool Diameters, Feed
-  Tables, Appearance, Privacy, Reset, About (szczegóły: `src/components/CLAUDE.md`).
+  Tables, Templates, Appearance, Privacy, Reset, About (szczegóły:
+  `src/components/CLAUDE.md`). **Templates** — wbudowane przykładowe
+  projekty (`src/templates/`), wczytywane jak plik projektu; przykłady do
+  obejrzenia i przerobienia, nie gotowe programy.
 - **Feedrate Calculator:** ikona przy Feedrate XY w Kroku 3; z materiału,
   freza i limitów maszyny liczy RPM, posuwy, Stepdown i szerokość, „Apply
   selected” zapisuje zaznaczone (UI: `src/components/CLAUDE.md`, model:
@@ -259,6 +262,7 @@ src/
     download.ts          plik do pobrania (jedyny efekt uboczny)
     fuzzParams.ts, gcodeTestUtils.ts, pocketAdaptiveSim.ts   tylko testy
     *.test.ts            Vitest (w tym gcodeInvariants.test.ts)
+  templates/           wbudowane projekty-szablony (pliki JSON + rejestr index.ts)
 scripts/               deploy.mjs, certs/                                 → CLAUDE.md
 public/                .htaccess, robots.txt, favicon.svg
 ```

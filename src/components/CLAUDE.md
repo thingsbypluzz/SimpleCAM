@@ -6,8 +6,8 @@
   (`renderPaused`). Fokus/Escape/pułapka Tab — `useModalFocus.ts` (wspólne
   z kalkulatorem).
 - Settings Nav w kolejności: **Machine**, **Controller**, **Tabs**,
-  **Tool Diameters**, **Feed Tables**, **Appearance**, **Privacy**,
-  **Reset**, **About**
+  **Tool Diameters**, **Feed Tables**, **Templates**, **Appearance**,
+  **Privacy**, **Reset**, **About**
   (zawsze ostatnia); aktywna pozycja z `aria-current`.
 - **Machine** — tylko fizyka maszyny: X/Y/Z travel (zapis `onBlur`, tylko
   `> 0`), Spindle Speed + Min/Max RPM w jednym wierszu (Min < Max, Min może
@@ -30,6 +30,20 @@
   Preview Color Palette, Cut Shape (checkbox — materiał w podglądach w kształcie
   po frezie, `cutShapeEnabled`), Stock Edges 3D (checkbox — obrys krawędzi materiału),
   Grid Labels 3D (checkbox + rozmiar).
+- **Templates:** gotowe projekty wbudowane w aplikację
+  (`PROJECT_TEMPLATES` w `src/templates/index.ts`). Każdy to zwykły plik
+  projektu obok tego modułu, importowany jako tekst (`?raw`) i czytany tym
+  samym parserem co plik wczytany z dysku (`templateSlots()`). Karta
+  szablonu: nazwa, opis, lista presetów (`presetLabel()`) i **Load** →
+  `onLoadTemplate` → `handleLoadTemplate()` w `App.tsx`: to samo co Load
+  project (`applyProject()` — potwierdzenie przy zajętych slotach, Overlay
+  dla wczytanych presetów, nazwa szablonu jako nazwa projektu), po czym
+  Settings się zamyka. Tekst sekcji mówi wprost, że to przykłady do
+  obejrzenia i przerobienia, nie programy na maszynę. Nowy szablon:
+  zapisać projekt w aplikacji, wrzucić plik do `src/templates/`, dopisać
+  wpis do `PROJECT_TEMPLATES` (`title` = nazwa projektu w pliku);
+  `templates.test.ts` pilnuje, że każdy szablon się wczytuje, jego presety
+  przechodzą walidację i generują G-code.
 - **Feed Tables:** tabele Feedrate Calculator tylko do odczytu
   (`FeedTables.tsx`): `MaterialTable` (ten sam komponent co sekcja
   „Material table” w kalkulatorze — tam surowa tabela z wyróżnionym
