@@ -54,3 +54,12 @@
   modelu materiału, więc nie mają obwódki.
   `activeToolpathVisible = false` ukrywa tylko jego ścieżkę (niepoprawne
   parametry); `toolpathVisible` to wyłącznie przełącznik Hide/Show.
+
+- **Text:** kreski napisu z `layoutText()` rysowane kolorem obrysu o
+  szerokości rowka (`textGrooveWidth()` × skala, co najmniej 1 px,
+  zaokrąglone końce; kropka = kółko) + ścieżka z listy ruchów. Prop
+  `fontEpoch` (liczba załadowanych fontów z `App.tsx`) wymusza
+  przerysowanie i re-fit, gdy font dojdzie — parametry się wtedy nie
+  zmieniają. On Circle: gdy Text jest żywym wzorcem (`isActive` —
+  edytowanym w wizardzie), okrąg bazowy jest rysowany kropkowaną,
+  przygaszoną linią jako prowadnica; presety nakładki go nie mają.

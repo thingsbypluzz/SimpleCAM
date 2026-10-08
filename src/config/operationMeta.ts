@@ -2,11 +2,13 @@ import type { ComponentType } from 'react'
 import { BitIcon, DepthIcon, DiameterIcon, OffsetIcon, TabBridgeIcon } from '../components/icons'
 import { fmt } from '../lib/format'
 import { generateFacing } from '../lib/facing'
+import { generateText } from '../lib/text'
 import { generateOutline } from '../lib/outline'
 import type { MachineSettings } from '../types/machine'
 import type { MethodType, OperationType, OutlineMethod, PocketMethodType, SurfaceMethodType, WizardParams } from '../types/wizard'
 import { FACING_METHOD, FACING_SIDE_META, facingLabel, facingLines, facingSideIcon, facingSlug, facingSummary } from './facingMeta'
 import { METHOD_LIST, METHOD_META } from './methodMeta'
+import { TEXT_LAYOUT_META, TEXT_METHOD, textBitLabel, textLabel, textLayoutIcon, textLayoutLines, textSlug, textSummary } from './textMeta'
 import {
   activeOutlineMethodMeta,
   offsetModeLabel,
@@ -75,9 +77,9 @@ export interface CalcPatch {
 // OPERATION_RULES.
 export interface OperationMeta {
   label: string
-  // What Step 1 picks for this operation: a hole pattern, a shape or (Facing)
-  // a side of the part.
-  pickKind: 'Pattern' | 'Shape' | 'Side'
+  // What Step 1 picks for this operation: a hole pattern, a shape, (Facing)
+  // a side of the part or (Text) a layout.
+  pickKind: 'Pattern' | 'Shape' | 'Side' | 'Layout'
   pickIcon: (params: WizardParams) => IconComponent
   pickLines: (params: WizardParams) => string[]
   pickSummary: (params: WizardParams) => string
@@ -104,6 +106,9 @@ export interface OperationMeta {
   // geometry limits it below the calculator's suggestion (Facing: there is
   // only Material to Remove to cut).
   maxCalcWidthPercent?: (params: WizardParams) => number
+  // false: the Feedrate Calculator is not offered (Text — its model is for
+  // a cylindrical tool cutting sideways, not a V-bit's tip).
+  feedCalculator?: false
 }
 
 const methodOptions = (list: { value: string; title: string }[]): CalcMethodOption[] =>
@@ -168,7 +173,7 @@ const roundSize = (shape: {
       : `${shape.width}×${shape.height}`
 
 // The operations in Step 1's order.
-export const OPERATION_LIST: OperationType[] = ['holes', 'outline', 'surface', 'pocket', 'facing']
+export const OPERATION_LIST: OperationType[] = ['holes', 'outline', 'surface', 'pocket', 'facing', 'text']
 
 export const OPERATION_META: Record<OperationType, OperationMeta> = {
   holes: {
@@ -358,5 +363,30 @@ export const OPERATION_META: Record<OperationType, OperationMeta> = {
           c.widthPercent !== undefined ? Math.round(c.toolDiameter * c.widthPercent * 100) / 10000 : p.facing.stepover,
       },
     }),
+  },
+  text: {
+    label: 'Text',
+    pickKind: 'Layout',
+    pickIcon: (p) => textLayoutIcon(p.text.layout),
+    pickLines: (p) => textLayoutLines(p.text),
+    pickSummary: (p) => textSummary(p.text),
+    pick: (p) => TEXT_LAYOUT_META[p.text.layout],
+    method: () => TEXT_METHOD,
+    geometryStats: (p) => [
+      sizeStat(textLayoutIcon(p.text.layout), `${p.text.height}`, `Letter height: ${p.text.height}mm`),
+      ...offsetStat(p.text),
+      { Icon: BitIcon, label: 'BIT', value: textBitLabel(p.text), title: `Bit: ${textBitLabel(p.text)}` },
+      depthStat(p.text.totalDepth),
+    ],
+    geometryTitle: (p) =>
+      `${textLabel(p.text)}, ${p.text.height}mm high, Bit ${textBitLabel(p.text)}, Depth ${p.text.totalDepth}mm${withOffset(p.text)} — Method: ${TEXT_METHOD.title}`,
+    generate: generateText,
+    filenameSlug: (p) => textSlug(p.text),
+    presetLabel: (p) => textLabel(p.text),
+    toolDiameter: (p) => p.text.toolDiameter,
+    methodValue: () => TEXT_METHOD.value,
+    calcMethods: () => [{ value: TEXT_METHOD.value, label: TEXT_METHOD.title }],
+    withCalc: () => ({}),
+    feedCalculator: false,
   },
 }

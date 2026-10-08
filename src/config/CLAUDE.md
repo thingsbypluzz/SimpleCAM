@@ -21,7 +21,15 @@
   `pocketMeta.ts` (`*_SHAPE_META` z `title`/`description` —
   używane też przez `PickHeader`), `facingMeta.ts` (`FACING_SIDE_META` —
   cztery boki; `FACING_METHOD` — jedyna metoda Facing, „Side Milling”,
-  bez pickera).
+  bez pickera), `textMeta.ts` (`TEXT_LAYOUT_META` — Straight / On Circle;
+  `TEXT_METHOD` — jedyna metoda Text, „Engrave”; etykiety i skrót napisu).
+- `textFonts.ts` — `TEXT_FONTS`: fonty operacji Text (id, tytuł, autorzy,
+  licencja, plik licencji w `public/licenses/`, źródło, `load()` z
+  dynamicznym importem `?raw`) i `ensureTextFont()` (pobranie + rejestracja
+  raz, nieudane pobranie da się powtórzyć). Nowy font: oryginalny plik SVG
+  do `src/fonts/`, tekst licencji do `public/licenses/`, wpis tutaj i w
+  `lib/textTestUtils.ts`; About pokaże go sam. `OPERATION_META[op]
+  .feedCalculator === false` chowa przycisk kalkulatora (Text).
 - `materials.ts` (tabela Feedrate Calculator: Vc, fz 3/6/8+ mm,
   współczynnik Plunge, Stepdown per zaangażowanie, szerokości, Stock to
   Leave, Ramp Angle, nota),

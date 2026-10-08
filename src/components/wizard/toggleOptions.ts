@@ -7,6 +7,10 @@ import type {
   RasterDirection,
   ZTransitionMode,
   HoleBottom,
+  TextAlign,
+  TextCircleSide,
+  TextOriginX,
+  TextOriginY,
 } from '../../types/wizard'
 import type { TextToggleOption } from './TextToggle'
 
@@ -47,6 +51,39 @@ export const FACING_ORIGIN_ALONG_OPTIONS: readonly TextToggleOption<FacingOrigin
 export const FACING_ORIGIN_ACROSS_OPTIONS: readonly TextToggleOption<FacingOriginAcross>[] = [
   { value: 'raw', label: 'Raw Edge', title: 'Origin on the edge as it is now — the finished edge ends up inside the material' },
   { value: 'finished', label: 'Finished', title: 'Origin on the edge the cut leaves — the raw edge sticks out past it' },
+]
+
+// Text (OP-4).
+export const TEXT_ALIGN_OPTIONS: readonly TextToggleOption<TextAlign>[] = [
+  { value: 'left', label: 'Left' },
+  { value: 'center', label: 'Center' },
+  { value: 'right', label: 'Right' },
+]
+
+export const TEXT_ORIGIN_X_OPTIONS: readonly TextToggleOption<TextOriginX>[] = [
+  { value: 'left', label: 'Left', title: 'The origin is at the left end of the text' },
+  { value: 'center', label: 'Center', title: 'The origin is in the middle of the text' },
+  { value: 'right', label: 'Right', title: 'The origin is at the right end of the text' },
+]
+
+export const TEXT_ORIGIN_Y_OPTIONS: readonly TextToggleOption<TextOriginY>[] = [
+  { value: 'baseline', label: 'Baseline', title: 'The origin is on the line the first row of letters stands on' },
+  { value: 'middle', label: 'Middle', title: "The origin is halfway up the text's height" },
+]
+
+export const TEXT_CIRCLE_SIDE_OPTIONS: readonly TextToggleOption<TextCircleSide>[] = [
+  { value: 'outside', label: 'Heads Out', title: 'Letters stand on the circle with their heads away from its center — read clockwise, e.g. along the top' },
+  { value: 'inside', label: 'Heads In', title: 'Letters stand with their heads toward the center — read counter-clockwise, e.g. along the bottom' },
+]
+
+// The three common V-bit angles. The value is stored as a number
+// (text.vbitAngleDeg); a stored angle that is none of them shows no
+// option selected.
+export type VbitAngleOption = '30' | '60' | '90'
+export const VBIT_ANGLE_OPTIONS: readonly TextToggleOption<VbitAngleOption>[] = [
+  { value: '30', label: '30°' },
+  { value: '60', label: '60°' },
+  { value: '90', label: '90°' },
 ]
 
 // Hole(s) (BL-111) — previews only.

@@ -306,6 +306,18 @@ describe('field validation on load (BL-57)', () => {
     expect(loadSlot(AUTO_SAVE_SLOT)!.geometry.holeBottom).toBe('open')
   })
 
+  it('loads a Text preset; an unknown font or layout falls back to the default (OP-4)', () => {
+    storeAutoSave({ operation: 'text', text: { text: 'Łódź', layout: 'circle', height: 12, mirror: true, bit: 'endmill' } })
+    const loaded = loadSlot(AUTO_SAVE_SLOT)!
+    expect(loaded.operation).toBe('text')
+    expect(loaded.text).toMatchObject({ text: 'Łódź', layout: 'circle', height: 12, mirror: true, bit: 'endmill', fontId: 'relief' })
+    storeAutoSave({ operation: 'text', text: { fontId: 'gone', layout: 'spiral', align: 7 } })
+    expect(loadSlot(AUTO_SAVE_SLOT)!.text).toMatchObject({ fontId: 'relief', layout: 'straight', align: 'left' })
+    // A snapshot saved before Text existed gets the whole default section.
+    storeAutoSave({ operation: 'holes' })
+    expect(loadSlot(AUTO_SAVE_SLOT)!.text).toEqual(DEFAULT_WIZARD_PARAMS.text)
+  })
+
   it('loads a Pocket Donut; older snapshots get the default island (BL-108)', () => {
     storeAutoSave({ operation: 'pocket', pocket: { shape: 'donut', diameter: 60, islandDiameter: 25 } })
     expect(loadSlot(AUTO_SAVE_SLOT)!.pocket).toMatchObject({ shape: 'donut', diameter: 60, islandDiameter: 25 })

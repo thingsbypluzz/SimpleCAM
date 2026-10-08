@@ -39,13 +39,14 @@ describe('project file', () => {
   it('writes only the section of each preset\'s own operation', () => {
     const of = (operation: WizardParams['operation']): WizardParams => ({ ...DEFAULT_WIZARD_PARAMS, operation })
     const file = JSON.parse(
-      buildProjectFile('x', { '1': of('holes'), '2': of('outline'), '3': of('surface'), '4': of('pocket'), '5': of('facing') }, '0.50.1', when),
+      buildProjectFile('x', { '1': of('holes'), '2': of('outline'), '3': of('surface'), '4': of('pocket'), '5': of('facing'), '6': of('text') }, '0.50.1', when),
     )
     expect(Object.keys(file.slots['1'])).toEqual(['operation', 'method', 'geometry', 'feeds', 'output'])
     expect(Object.keys(file.slots['2'])).toEqual(['operation', 'outline', 'feeds', 'output'])
     expect(Object.keys(file.slots['3'])).toEqual(['operation', 'surface', 'feeds', 'output'])
     expect(Object.keys(file.slots['4'])).toEqual(['operation', 'pocket', 'feeds', 'output'])
     expect(Object.keys(file.slots['5'])).toEqual(['operation', 'facing', 'feeds', 'output'])
+    expect(Object.keys(file.slots['6'])).toEqual(['operation', 'text', 'feeds', 'output'])
   })
 
   it('brings back what the preset uses; sections of other operations come back as defaults', () => {

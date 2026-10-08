@@ -7,6 +7,38 @@ zgodne z [SemVer](https://semver.org/). Ten plik pozostaje głównym, czytelnym
 thingsbypluzz/SimpleCAM), ale to infrastruktura pod izolację pracy
 (branch/worktree per zadanie), nie zamiennik tego changeloga.
 
+## [0.52.0] — 2026-10-09
+
+### Dodano
+
+- **Nowa operacja: Text** (`OP-4`) — grawerowanie napisów fontem
+  jednoliniowym. Frez jedzie po osi liter, więc napis jest czytelny już
+  przy kilku milimetrach wysokości.
+  - Układ **Straight**: kilka linii (Enter), odstęp linii, wyrównanie do
+    lewej / środka / prawej, wybór origin i kąt obrotu całego napisu.
+  - Układ **On Circle**: jedna linia po okręgu o zadanej średnicy,
+    obracana wokół niego polem Rotate (kąt, na którym leży środek
+    napisu), litery głowami na zewnątrz albo do środka. Podczas edycji
+    podglądy pokazują okrąg bazowy kropkowaną linią.
+  - **Mirror** w obu układach — do grawerowania od spodu przezroczystego
+    materiału.
+  - Rozmiar podaje wysokość wielkiej litery w mm; obok odczyt szerokości
+    napisu. Letter Spacing dokłada odstęp między literami.
+  - Narzędzie: **Generic V-Bit** (kąt 30° / 60° / 90° służy tylko do
+    pokazania szerokości rowka) albo frez walcowy z listy. Ścieżka jest w obu przypadkach ta
+    sama.
+  - Między kreskami frez podnosi się na Safe Z; przy głębokości większej
+    niż Stepdown każda kreska jest pogłębiana tam i z powrotem, bez
+    podnoszenia. Zawsze G1.
+  - Podglądy pokazują napis na powierzchni materiału — w 2D kreskami o
+    szerokości rowka.
+  - Znak, którego font nie ma, blokuje Generate i jest wymieniony w
+    komunikacie.
+  - Feedrate Calculator nie jest dostępny dla Text.
+- **Font Relief SingleLine** (SIL OFL 1.1) z kompletem polskich znaków.
+  Pobiera się dopiero przy pierwszym użyciu operacji Text. Autorzy,
+  licencja i źródło fontu są w Settings → About.
+
 ## [0.51.0] — 2026-10-08
 
 ### Dodano

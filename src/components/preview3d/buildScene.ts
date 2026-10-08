@@ -14,6 +14,8 @@ import {
 import { surfaceNominalBounds, surfaceToolBounds, type SurfaceBounds } from '../../lib/surfaceGeometry'
 import { buildSurfaceToolpath } from '../../lib/surface'
 import { buildFacingToolpath } from '../../lib/facing'
+import { buildTextToolpath } from '../../lib/text'
+import { layoutText } from '../../lib/textLayout'
 import { buildLobedToolpath } from '../../lib/outlineLobed'
 import { lobedUnionLoop, loopBounds, translateLoop, type LoopBounds } from '../../lib/outlineLobedGeometry'
 import { facingBlockCorners, facingStripCorners, facingViewBounds, type FacingBounds } from '../../lib/facingGeometry'
@@ -310,6 +312,13 @@ type ResolvedPattern =
       viewBounds: FacingBounds
     }
   | {
+      kind: 'text'
+      params: WizardParams
+      // Extent of the strokes (the origin point while there are none).
+      viewBounds: FacingBounds
+      strokes: Point2D[][]
+    }
+  | {
       kind: 'pocket'
       params: WizardParams
       center: Point2D
@@ -335,6 +344,12 @@ function resolvePattern(params: WizardParams): ResolvedPattern {
   }
   if (params.operation === 'facing') {
     return { kind: 'facing', params, viewBounds: facingViewBounds(params.facing) }
+  }
+  if (params.operation === 'text') {
+    const { text } = params
+    const layout = layoutText(text)
+    const viewBounds = layout.bounds ?? { minX: text.offsetX, minY: text.offsetY, maxX: text.offsetX, maxY: text.offsetY }
+    return { kind: 'text', params, viewBounds, strokes: layout.strokes }
   }
   if (params.operation === 'surface') {
     const { surface } = params
@@ -432,6 +447,13 @@ function expandBoundsForPattern(bounds: THREE.Box3, pattern: ResolvedPattern) {
     const { facing, feeds } = pattern.params
     const { minX, maxX, minY, maxY } = pattern.viewBounds
     bounds.expandByPoint(toThree(minX, minY, -facing.totalDepth))
+    bounds.expandByPoint(toThree(maxX, maxY, feeds.safeZ))
+    return
+  }
+  if (pattern.kind === 'text') {
+    const { text, feeds } = pattern.params
+    const { minX, maxX, minY, maxY } = pattern.viewBounds
+    bounds.expandByPoint(toThree(minX, minY, -text.totalDepth))
     bounds.expandByPoint(toThree(maxX, maxY, feeds.safeZ))
     return
   }
@@ -848,6 +870,55 @@ function buildFacingPatternObjects(
   return objects
 }
 
+// Text (OP-4): the written lines on the stock's surface (one LineSegments
+// for all of them — a text is hundreds of short strokes) and the engine's
+// toolpath. Text is not part of the stock model; a WebGL line has no
+// width, so the groove's real width is shown in the 2D Preview only.
+function buildTextPatternObjects(
+  pattern: Extract<ResolvedPattern, { kind: 'text' }>,
+  theme: Theme,
+  span: number,
+  arrowSize: number,
+  showStock: boolean,
+  showToolpath: boolean,
+  isActive: boolean,
+): THREE.Object3D[] {
+  const { params, strokes } = pattern
+  const { text, feeds } = params
+  const objects: THREE.Object3D[] = []
+  objects.push(...buildOffsetVectorObjects(text.offsetX, text.offsetY, theme, arrowSize))
+  // On Circle, while it is the pattern being edited: the circle the letters
+  // stand on, dotted and faint — a guide, not something that gets cut.
+  if (isActive && text.layout === 'circle' && text.circleDiameter > 0) {
+    const r = text.circleDiameter / 2
+    const points = Array.from({ length: 145 }, (_, i) => {
+      const a = (2 * Math.PI * i) / 144
+      return toThree(text.offsetX + r * Math.cos(a), text.offsetY + r * Math.sin(a), SOLID_CAP_Z_LIFT * 3)
+    })
+    const guide = new THREE.Line(
+      new THREE.BufferGeometry().setFromPoints(points),
+      new THREE.LineDashedMaterial({ color: theme.stockEdge, dashSize: span * 0.004, gapSize: span * 0.012, transparent: true, opacity: 0.55 }),
+    )
+    guide.computeLineDistances()
+    objects.push(guide)
+  }
+  if (showStock && strokes.length > 0) {
+    const positions: number[] = []
+    for (const stroke of strokes) {
+      for (let i = 1; i < stroke.length; i++) {
+        const a = toThree(stroke[i - 1].x, stroke[i - 1].y, SOLID_CAP_Z_LIFT * 3)
+        const b = toThree(stroke[i].x, stroke[i].y, SOLID_CAP_Z_LIFT * 3)
+        positions.push(a.x, a.y, a.z, b.x, b.y, b.z)
+      }
+    }
+    const geometry = new THREE.BufferGeometry()
+    geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3))
+    objects.push(new THREE.LineSegments(geometry, new THREE.LineBasicMaterial({ color: theme.stockEdge })))
+  }
+  if (showToolpath) objects.push(...toolpathLines3D(buildTextToolpath(params), theme, span, feeds.safeZ))
+  return objects
+}
+
 function buildPocketPatternObjects(
   pattern: Extract<ResolvedPattern, { kind: 'pocket' }>,
   theme: Theme,
@@ -880,6 +951,9 @@ function buildPatternObjects(
   solidStock: boolean,
   stockEdges: boolean,
   sheet: FacingBounds,
+  // The live pattern — the one being edited — may draw guides the overlaid
+  // presets don't (Text On Circle: its circle).
+  isActive: boolean,
 ): THREE.Object3D[] {
   switch (pattern.kind) {
     case 'holes':
@@ -896,6 +970,8 @@ function buildPatternObjects(
       return buildPocketPatternObjects(pattern, theme, span, arrowSize, showToolpath)
     case 'facing':
       return buildFacingPatternObjects(pattern, theme, span, arrowSize, showStock, showToolpath, solidStock, stockEdges, sheet)
+    case 'text':
+      return buildTextPatternObjects(pattern, theme, span, arrowSize, showStock, showToolpath, isActive)
   }
 }
 
@@ -1359,6 +1435,7 @@ export function buildToolpathScene(
       solidStock,
       stockEdges,
       sheetBounds,
+      isActive,
     )
     if (dimOverlay && !isActive) patternObjects.forEach(dimLines)
     objects.push(...patternObjects)

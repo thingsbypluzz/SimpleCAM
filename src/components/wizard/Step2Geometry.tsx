@@ -6,6 +6,7 @@ import { Step2GeometryOutline } from './Step2GeometryOutline'
 import { Step2GeometrySurface } from './Step2GeometrySurface'
 import { Step2GeometryPocket } from './Step2GeometryPocket'
 import { Step2GeometryFacing } from './Step2GeometryFacing'
+import { Step2GeometryText } from './Step2GeometryText'
 
 interface Step2GeometryProps {
   params: WizardParams
@@ -32,5 +33,8 @@ export function Step2Geometry(props: Step2GeometryProps) {
   if (props.params.operation === 'surface') return <Step2GeometrySurface {...props} />
   if (props.params.operation === 'pocket') return <Step2GeometryPocket {...props} />
   if (props.params.operation === 'facing') return <Step2GeometryFacing {...props} />
+  if (props.params.operation === 'text') {
+    return <Step2GeometryText params={props.params} onChange={props.onChange} machine={props.machine} toolDiameters={props.toolDiameters} />
+  }
   return <Step2GeometryHoles {...props} />
 }

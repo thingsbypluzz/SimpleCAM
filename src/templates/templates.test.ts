@@ -31,7 +31,7 @@ describe('project templates', () => {
 
   it.each(PROJECT_TEMPLATES.map((t) => [t.title, t] as const))('%s is stored in the slim file shape', (_title, template) => {
     const file = JSON.parse(template.file) as { slots: Record<string, Record<string, unknown> | null> }
-    const sections = ['geometry', 'outline', 'surface', 'pocket', 'facing']
+    const sections = ['geometry', 'outline', 'surface', 'pocket', 'facing', 'text']
     for (const preset of Object.values(file.slots)) {
       if (preset) expect(sections.filter((s) => s in preset)).toHaveLength(1)
     }

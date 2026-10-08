@@ -7,6 +7,8 @@ import { sideRangesFor, type SideTabRange } from '../../lib/outlineRectangleTabs
 import { surfaceNominalBounds, surfaceStepoverMm, surfaceToolBounds, type SurfaceBounds } from '../../lib/surfaceGeometry'
 import { computeRasterLines, zigzagWaypoints, type RasterLine } from '../../lib/surfaceRaster'
 import { buildFacingToolpath } from '../../lib/facing'
+import { buildTextToolpath } from '../../lib/text'
+import { layoutText, textGrooveWidth } from '../../lib/textLayout'
 import { circlePassStartAngle } from '../../lib/helix'
 import { lobedOutlineOptions, type LoopTabRange } from '../../lib/outlineLobed'
 import {
@@ -321,6 +323,16 @@ type ResolvedPattern =
       toolpath: Toolpath
     }
   | {
+      kind: 'text'
+      params: WizardParams
+      // Extent of the strokes (the origin point while there are none).
+      bounds: FacingBounds
+      strokes: Point2D[][]
+      // Width of the engraved line at the surface [mm].
+      grooveWidth: number
+      toolpath: Toolpath
+    }
+  | {
       kind: 'pocket'
       params: WizardParams
       center: Point2D
@@ -390,6 +402,20 @@ function resolvePattern(params: WizardParams): ResolvedPattern {
   }
   if (params.operation === 'facing') {
     return { kind: 'facing', params, bounds: facingViewBounds(params.facing), toolpath: buildFacingToolpath(params) }
+  }
+  if (params.operation === 'text') {
+    const { text } = params
+    const layout = layoutText(text)
+    const half = textGrooveWidth(text) / 2
+    const b = layout.bounds ?? { minX: text.offsetX, minY: text.offsetY, maxX: text.offsetX, maxY: text.offsetY }
+    return {
+      kind: 'text',
+      params,
+      bounds: { minX: b.minX - half, minY: b.minY - half, maxX: b.maxX + half, maxY: b.maxY + half },
+      strokes: layout.strokes,
+      grooveWidth: half * 2,
+      toolpath: buildTextToolpath(params),
+    }
   }
   if (params.operation === 'surface') {
     const { surface } = params
@@ -998,6 +1024,66 @@ function drawFacingGeometry(
   drawOffsetVector(ctx, toPx, facing.offsetX, facing.offsetY, theme, arrowSize)
 }
 
+// Text (OP-4): the engraved lines at their real width (the groove a V-bit
+// or an end mill leaves at the surface, never thinner than a pixel) and
+// the toolpath along their middle. Text is not part of the stock model.
+function drawTextGeometry(
+  ctx: CanvasRenderingContext2D,
+  toPx: (x: number, y: number) => [number, number],
+  scale: number,
+  pattern: Extract<ResolvedPattern, { kind: 'text' }>,
+  theme: Theme,
+  arrowSize: number,
+  showStock: boolean,
+  showToolpath: boolean,
+  isActive: boolean,
+) {
+  const { strokes, grooveWidth, toolpath, params } = pattern
+  // On Circle, while it is the pattern being edited: the circle the letters
+  // stand on, dotted and faint — a guide, not something that gets cut.
+  if (isActive && params.text.layout === 'circle' && params.text.circleDiameter > 0) {
+    const [cx, cy] = toPx(params.text.offsetX, params.text.offsetY)
+    const alpha = ctx.globalAlpha
+    ctx.globalAlpha = alpha * 0.55
+    ctx.strokeStyle = theme.holeStroke
+    ctx.lineWidth = 1
+    ctx.setLineDash(LINK_DASH)
+    ctx.beginPath()
+    ctx.arc(cx, cy, (params.text.circleDiameter / 2) * scale, 0, Math.PI * 2)
+    ctx.stroke()
+    ctx.setLineDash([])
+    ctx.globalAlpha = alpha
+  }
+  if (showStock) {
+    ctx.strokeStyle = theme.holeStroke
+    ctx.fillStyle = theme.holeStroke
+    ctx.lineWidth = Math.max(1, grooveWidth * scale)
+    ctx.lineCap = 'round'
+    ctx.lineJoin = 'round'
+    for (const stroke of strokes) {
+      const [sx, sy] = toPx(stroke[0].x, stroke[0].y)
+      if (stroke.length === 1) {
+        ctx.beginPath()
+        ctx.arc(sx, sy, ctx.lineWidth / 2, 0, Math.PI * 2)
+        ctx.fill()
+        continue
+      }
+      ctx.beginPath()
+      ctx.moveTo(sx, sy)
+      for (const p of stroke.slice(1)) {
+        const [x, y] = toPx(p.x, p.y)
+        ctx.lineTo(x, y)
+      }
+      ctx.stroke()
+    }
+    ctx.lineCap = 'butt'
+    ctx.lineJoin = 'miter'
+    ctx.lineWidth = 1
+  }
+  if (showToolpath) drawToolpathMoves(ctx, toPx, toolpath, theme)
+  drawOffsetVector(ctx, toPx, params.text.offsetX, params.text.offsetY, theme, arrowSize)
+}
+
 // Pocket: nominal boundary (stroke — its floor is filled by the stock
 // model, drawToolpath()) + toolpath — the engine's own move list for every method (BL-61), so the
 // Helix entry, ring-to-ring ramps, laps and raster chain are exactly what
@@ -1091,6 +1177,9 @@ function drawPatternGeometry(
   showStock: boolean,
   showToolpath: boolean,
   sheet: FacingBounds,
+  // The live pattern — the one the wizard is editing — may draw guides the
+  // overlaid presets don't (Text On Circle: its circle).
+  isActive: boolean,
 ) {
   switch (pattern.kind) {
     case 'holes':
@@ -1113,6 +1202,9 @@ function drawPatternGeometry(
       break
     case 'facing':
       drawFacingGeometry(ctx, toPx, pattern, theme, arrowSize, showStock, showToolpath, sheet)
+      break
+    case 'text':
+      drawTextGeometry(ctx, toPx, scale, pattern, theme, arrowSize, showStock, showToolpath, isActive)
       break
   }
 }
@@ -1282,6 +1374,7 @@ export function drawToolpath(
       // preset is edited — only its own path is shown.
       showToolpath && (isActive ? showActiveToolpath : !dimOverlay),
       sheetBounds,
+      isActive,
     )
   })
   ctx.globalAlpha = 1

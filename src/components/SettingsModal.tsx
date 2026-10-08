@@ -17,6 +17,7 @@ import { useModalFocus } from './useModalFocus'
 import { PROJECT_TEMPLATES, templateSlots, type ProjectTemplate } from '../templates'
 import { presetLabel } from '../lib/presetLabel'
 import { PRESET_SLOT_IDS } from '../lib/storage'
+import { TEXT_FONTS } from '../config/textFonts'
 
 interface SettingsModalProps {
   machine: MachineSettings
@@ -1045,6 +1046,38 @@ export function SettingsModal({
                   @thingsbypluzz on Instagram
                 </a>
               </p>
+
+              {/* OP-4: the fonts of the Text operation are other people's
+                  work under open licenses that ask for exactly this — their
+                  authors, license and source named. */}
+              <div className="flex flex-col gap-2 border-t border-border pt-4">
+                <span className="text-sm font-medium text-value">Fonts</span>
+                <p className="text-sm text-muted">The Text operation uses these single-line fonts:</p>
+                <ul className="flex flex-col gap-2">
+                  {TEXT_FONTS.map((font) => (
+                    <li key={font.id} className="text-sm text-muted">
+                      <span className="font-medium text-value">{font.title}</span> — © {font.credit}.{' '}
+                      <a
+                        href={font.licenseUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="font-medium text-accent-fg underline underline-offset-2 hover:text-accent"
+                      >
+                        {font.license}
+                      </a>
+                      {' · '}
+                      <a
+                        href={font.source}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="font-medium text-accent-fg underline underline-offset-2 hover:text-accent"
+                      >
+                        Source
+                      </a>
+                    </li>
+                  ))}
+                </ul>
+              </div>
             </>
           )}
         </div>

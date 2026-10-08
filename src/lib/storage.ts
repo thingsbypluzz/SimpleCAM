@@ -25,10 +25,18 @@ import {
   type SurfaceMethodType,
   type SurfaceParams,
   type SurfaceShape,
+  type TextAlign,
+  type TextBit,
+  type TextCircleSide,
+  type TextLayout,
+  type TextOriginX,
+  type TextOriginY,
+  type TextParams,
   type WizardParams,
   type ZTransitionMode,
 } from '../types/wizard'
 import { formatCustomPoints } from './customPoints'
+import { TEXT_FONTS } from '../config/textFonts'
 
 // `operation` and `method` are the two top-level scalar fields
 // mergeWithDefaults() below can't fix with a plain `??` fallback: a preset
@@ -43,7 +51,14 @@ import { formatCustomPoints } from './customPoints'
 // the same way appearanceStorage.ts already guards PaletteId/ThemeId closes
 // the whole class of bug, not just this one instance.
 function isOperationType(value: unknown): value is OperationType {
-  return value === 'holes' || value === 'outline' || value === 'surface' || value === 'pocket' || value === 'facing'
+  return (
+    value === 'holes' ||
+    value === 'outline' ||
+    value === 'surface' ||
+    value === 'pocket' ||
+    value === 'facing' ||
+    value === 'text'
+  )
 }
 
 function isMethodType(value: unknown): value is MethodType {
@@ -184,6 +199,17 @@ const FACING_GUARDS: Partial<Record<keyof FacingParams, FieldGuard>> = {
   cutDirection: oneOf<CutDirection>(['conventional', 'climb']),
 }
 
+// An unknown font id (a font since removed) falls back to the default one.
+const TEXT_GUARDS: Partial<Record<keyof TextParams, FieldGuard>> = {
+  layout: oneOf<TextLayout>(['straight', 'circle']),
+  fontId: (value) => typeof value === 'string' && TEXT_FONTS.some((f) => f.id === value),
+  align: oneOf<TextAlign>(['left', 'center', 'right']),
+  originX: oneOf<TextOriginX>(['left', 'center', 'right']),
+  originY: oneOf<TextOriginY>(['baseline', 'middle']),
+  circleSide: oneOf<TextCircleSide>(['outside', 'inside']),
+  bit: oneOf<TextBit>(['vbit', 'endmill']),
+}
+
 const OUTPUT_GUARDS: Partial<Record<keyof OutputOptions, FieldGuard>> = {
   interpolation: oneOf<InterpolationMode>(['arc', 'linear']),
 }
@@ -216,6 +242,7 @@ export function mergeWithDefaults(saved: unknown): WizardParams {
     surface: mergeSection(DEFAULT_WIZARD_PARAMS.surface, source.surface, SURFACE_GUARDS),
     pocket: mergeSection(DEFAULT_WIZARD_PARAMS.pocket, source.pocket, POCKET_GUARDS),
     facing: mergeSection(DEFAULT_WIZARD_PARAMS.facing, source.facing, FACING_GUARDS),
+    text: mergeSection(DEFAULT_WIZARD_PARAMS.text, source.text, TEXT_GUARDS),
     feeds: mergeSection(DEFAULT_WIZARD_PARAMS.feeds, source.feeds),
     output: mergeSection(DEFAULT_WIZARD_PARAMS.output, source.output, OUTPUT_GUARDS),
   }

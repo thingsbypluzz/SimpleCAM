@@ -478,6 +478,52 @@ symulacji materiału.
   krawędzią), `facingBlockCorners()` (blok od gotowej krawędzi do brzegu
   arkusza), `facingStripCorners()` (zbierany pas).
 
+## Text (`text.ts`, `textLayout.ts`, `textFont.ts`)
+
+- **Fonty jednoliniowe** — glif to zestaw otwartych ścieżek (oś litery),
+  nie obrys. Pliki to oryginalne fonty SVG 1.1 w `src/fonts/`;
+  `parseSvgFont()` czyta je własnym parserem (wyrażenia regularne, bez
+  DOM i bez biblioteki — działa tak samo w przeglądarce i w testach):
+  glify jednoznakowe (`unicode`, `horiz-adv-x`, `d`), kerning `hkern` po
+  nazwach glifów albo znakach, `cap-height` (brak → wysokość „H”).
+  `parsePathData()` — M L H V C S Q T Z w obu wariantach → bezwzględne
+  odcinki i krzywe sześcienne (kwadratowe podnoszone do sześciennych).
+- **Rejestr załadowanych fontów** (`registerFont()` / `getLoadedFont()`):
+  silnik, walidacja i podglądy są synchroniczne i czytają stąd; plik
+  fontu pobiera `ensureTextFont()` (`config/textFonts.ts`, osobny chunk,
+  `?raw`) przy pierwszym użyciu. Dopóki fontu nie ma, `layoutText()`
+  zwraca `fontReady: false`, ścieżka jest pusta, a walidacja odrzuca
+  parametry (Generate czeka). Testy rejestrują font przez
+  `loadTestFont()` (`textTestUtils.ts`).
+- **Układ** (`layoutText()`, jedno źródło dla silnika, walidacji i obu
+  podglądów; cache per obiekt parametrów i font): skala = Height /
+  cap-height; znaki z kerningiem i Letter Spacing (% Height, tylko między
+  literami); krzywe próbkowane z dokładnością 0,01 mm (`flattenCubic()`).
+  - *Straight:* linie z Enterem, w dół co Line Spacing × Height,
+    wyrównane do najszerszej; origin X lewy / środek / prawy, Y linia
+    bazowa pierwszej linii / środek bloku; Mirror = odbicie względem osi
+    pionowej przez origin; potem obrót o Angle wokół origin i Offset.
+  - *On Circle:* jedna linia (Enter = spacja); glif stawiany sztywno w
+    środku swojej szerokości na okręgu ⌀ Diameter, napis wyśrodkowany na
+    Center; Heads Out — głowy od środka, czytane zgodnie z ruchem
+    wskazówek; Heads In — głowy do środka, czytane przeciwnie; Mirror
+    odwraca kierunek biegu (odbicie względem osi przez środek napisu).
+    Offset = środek okręgu.
+  - Wynik: kreski (łamane), brakujące znaki (każdy raz), bounds, szerokość
+    i wysokość bloku. `textGrooveWidth()` — szerokość rowka: V-bit
+    `2·depth·tan(kąt/2)`, frez walcowy = średnica (tylko podglądy).
+- **Silnik** (`buildTextToolpath()`): kreska po kresce — rapid nad
+  początek na Safe Z, Start Z, plunge, cięcie wzdłuż kreski; przy
+  głębokości > Stepdown kolejne poziomy tam i z powrotem po tej samej
+  kresce, bez podnoszenia; potem Safe Z i następna kreska (nigdy G0
+  poniżej Safe Z). Kropka (kreska bez długości) = sam plunge. Zawsze G1.
+- **Walidacja:** `isTextContentValid()` (font gotowy, ≤ `MAX_TEXT_LENGTH`
+  znaków, brak brakujących znaków, jest co grawerować),
+  `isTextSizeValid()`, `isTextSpacingValid()`, `isTextBitValid()` (kąt
+  V-bita 10–150° albo średnica freza), `isTextWithinLimits()` (liczba
+  przejść i punktów); footprint = bounds kresek.
+  `textMissingCharacters()` — do komunikatu w Kroku 2.
+
 ## Walidacja (`validation.ts`)
 
 - `OPERATION_RULES` — rejestr per operacja (walidacja Generate, głębokość,
