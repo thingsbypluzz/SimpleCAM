@@ -273,6 +273,36 @@ export function EyeIcon({ className }: IconProps) {
   )
 }
 
+// Text (OP-4), Straight: a baseline with a capital A standing on it.
+export function TextStraightIcon({ className }: IconProps) {
+  return (
+    <svg {...base} className={className}>
+      <path d="M4 19h16" strokeWidth={1} />
+      <path d="M7.5 16L12 5l4.5 11M9.3 12h5.4" />
+    </svg>
+  )
+}
+
+// Text (OP-4), On Circle: letters (short strokes) standing around a circle.
+export function TextCircleIcon({ className }: IconProps) {
+  return (
+    <svg {...base} className={className}>
+      <circle cx="12" cy="12" r="5" strokeWidth={1} strokeDasharray="1.6 1.4" />
+      <path d="M12 4.5V2.5M17.3 6.7l1.4-1.4M19.5 12h2M6.7 6.7L5.3 5.3M4.5 12h-2" />
+    </svg>
+  )
+}
+
+// Text's one method: a V-shaped tool tip over the groove it leaves.
+export function EngraveIcon({ className }: IconProps) {
+  return (
+    <svg {...base} className={className}>
+      <path d="M9 3v8l3 5 3-5V3" />
+      <path d="M4 19c3 0 3-2 5-2s2 2 3 2 1-2 3-2 2 2 5 2" strokeWidth={1} />
+    </svg>
+  )
+}
+
 // BL-112: save the project to a file — an arrow down into a tray.
 export function SaveFileIcon({ className }: IconProps) {
   return (

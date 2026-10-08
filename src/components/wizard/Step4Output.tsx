@@ -103,6 +103,8 @@ export function Step4Output({
               ? 'G2/G3 disabled — Rectangle outlines are always straight-edge (G1).'
               : forcedLinearBy === 'facing'
                 ? 'G2/G3 disabled — Facing is straight lines only (G1).'
+                : forcedLinearBy === 'text'
+                  ? 'G2/G3 disabled — Text is written as short straight lines (G1).'
                 : 'G2/G3 disabled — Tabs (Step 2) require G1 interpolation.'}
           </p>
         )}

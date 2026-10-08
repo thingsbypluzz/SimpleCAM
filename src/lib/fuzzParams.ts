@@ -198,6 +198,40 @@ export function randomFacing(rng: Rng): WizardParams {
   }
 }
 
+// Text (OP-4). The font has to be registered by the test (loadTestFont()).
+const TEXT_SAMPLES = ['OnlyPaths', 'Zażółć gęślą jaźń', 'NEMA23 M5×16', 'Ab\ncd ef\nG', 'i.j;:!', '   x  ', '0123456789']
+
+export function randomText(rng: Rng): WizardParams {
+  const totalDepth = rng.range(0.1, 2, 2)
+  return {
+    ...DEFAULT_WIZARD_PARAMS,
+    ...randomCommon(rng, totalDepth),
+    operation: 'text',
+    text: {
+      ...DEFAULT_WIZARD_PARAMS.text,
+      layout: rng.pick(['straight', 'circle'] as const),
+      text: rng.pick(TEXT_SAMPLES),
+      height: rng.range(2, 40, 1),
+      letterSpacingPercent: rng.int(-10, 60),
+      lineSpacing: rng.range(1, 3, 1),
+      align: rng.pick(['left', 'center', 'right'] as const),
+      originX: rng.pick(['left', 'center', 'right'] as const),
+      originY: rng.pick(['baseline', 'middle'] as const),
+      angleDeg: rng.int(-180, 180),
+      mirror: rng.pick([false, true]),
+      circleDiameter: rng.range(20, 150, 1),
+      circleAngleDeg: rng.int(0, 359),
+      circleSide: rng.pick(['outside', 'inside'] as const),
+      bit: rng.pick(['vbit', 'endmill'] as const),
+      vbitAngleDeg: rng.pick([30, 60, 90]),
+      toolDiameter: rng.pick(TOOLS),
+      totalDepth,
+      offsetX: rng.range(-20, 20, 1),
+      offsetY: rng.range(-20, 20, 1),
+    },
+  }
+}
+
 export function randomPocket(rng: Rng, method: 'spiral' | 'adaptive'): WizardParams {
   const totalDepth = rng.range(0.5, 12, 1)
   const shape = rng.pick(['rectCornered', 'rectCentered', 'circle'] as const)

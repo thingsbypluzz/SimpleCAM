@@ -20,6 +20,9 @@ interface ToolpathCanvasProps {
   // overlayParams, whose contents also change when only the edited preset
   // moves between the overlay and the live pattern.
   fitKey: string
+  // Text fonts loaded so far (App.tsx) — a redraw trigger: a text can only
+  // be drawn once its font has arrived, and params don't change when it does.
+  fontEpoch: number
   stockVisible: boolean
   toolpathVisible: boolean
   // Stock as the tool leaves it — appearance.cutShapeEnabled.
@@ -56,6 +59,7 @@ export function ToolpathCanvas({
   dimOverlay,
   activeToolpathVisible,
   fitKey,
+  fontEpoch,
   stockVisible,
   toolpathVisible,
   cutShapeEnabled,
@@ -98,7 +102,9 @@ export function ToolpathCanvas({
     const next = computeFitCamera(bounds, container.clientWidth, container.clientHeight)
     fitScaleRef.current = next.scale
     setCamera(next)
-  }, [params, overlayParams, showActivePattern])
+    // fontEpoch: the bounds of a text exist only once its font has loaded.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [params, overlayParams, showActivePattern, fontEpoch])
 
   // Render effect — draws whenever params/theme/camera change, and on
   // resize (ResizeObserver). Does NOT touch `camera` itself: once a camera
@@ -158,6 +164,7 @@ export function ToolpathCanvas({
     cutShapeEnabled,
     dimOverlay,
     activeToolpathVisible,
+    fontEpoch,
   ])
 
   // One-time initial fit, once the container has a real size — mirrors

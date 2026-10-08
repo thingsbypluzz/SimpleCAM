@@ -220,7 +220,7 @@ interface StockFeatures {
 // "remaining material" block. `cutShape` (BL-86) swaps the nominal contours for the
 // ones the tool actually leaves.
 function stockFeatures(params: WizardParams, grid: number, cutShape: boolean): StockFeatures | null {
-  if (params.operation === 'surface' || params.operation === 'facing') return null
+  if (params.operation === 'surface' || params.operation === 'facing' || params.operation === 'text') return null
   const ring = (v: SheetVoid) => outlineRing(v, grid)
   if (params.operation === 'pocket') {
     const depth = params.pocket.totalDepth

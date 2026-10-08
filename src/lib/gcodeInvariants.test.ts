@@ -14,6 +14,7 @@ import {
   randomMachine,
   randomOutline,
   randomPocket,
+  randomText,
   randomPocketDonut,
   randomPocketDonutAdaptive,
   randomPocketLightened,
@@ -41,6 +42,9 @@ import {
 import { endOfProgramCode } from './program'
 import { generateStandardHole } from './standardHole'
 import { generateFacing } from './facing'
+import { generateText } from './text'
+import { layoutText } from './textLayout'
+import { loadTestFont } from './textTestUtils'
 import { distanceToLoop, lobedNominalLoop, translateLoop } from './outlineLobedGeometry'
 import { facingAxes, facingClearV, facingFinalV, facingPoint, facingTravel } from './facingGeometry'
 import { generateSurfaceUnidirectional, generateSurfaceZigzag } from './surface'
@@ -168,6 +172,12 @@ function containmentProblems(params: WizardParams, below: TracedPoint[]): string
     const r = outline.toolDiameter / 2
     return outside('closer to the Lobed Circle outline than the tool radius', (p) => distanceToLoop(nominal, p) >= r - LOBED_TOLERANCE)
   }
+  if (params.operation === 'text') {
+    // The tool never leaves the extent of the written strokes.
+    const b = layoutText(params.text).bounds
+    if (!b) return []
+    return outside('outside the text', (p) => p.x >= b.minX - 1e-3 && p.x <= b.maxX + 1e-3 && p.y >= b.minY - 1e-3 && p.y <= b.maxY + 1e-3)
+  }
   if (params.operation === 'facing') {
     // In the side's own frame: never deeper into the part than the last
     // pass, never further out than the return line, never past the ends
@@ -259,6 +269,9 @@ function pocketFinishProblems(params: WizardParams): string[] {
   return []
 }
 
+// Text reads its font from the registry the app fills on demand.
+loadTestFont('relief')
+
 // ---------- suites ----------
 
 interface Suite {
@@ -275,6 +288,7 @@ const SUITES: Suite[] = [
   { name: 'Surface Zigzag', samples: 40, build: (r) => randomSurface(r, 'zigzag'), generate: generateSurfaceZigzag },
   { name: 'Surface Unidirectional', samples: 40, build: (r) => randomSurface(r, 'unidirectional'), generate: generateSurfaceUnidirectional },
   { name: 'Facing', samples: 60, build: randomFacing, generate: generateFacing },
+  { name: 'Text', samples: 60, build: randomText, generate: generateText },
   { name: 'Pocket Spiral', samples: 40, build: (r) => randomPocket(r, 'spiral'), generate: generatePocketSpiral },
   { name: 'Pocket Adaptive', samples: 25, build: (r) => randomPocket(r, 'adaptive'), generate: generatePocketAdaptive },
   { name: 'Pocket Donut', samples: 40, build: randomPocketDonut, generate: generatePocketSpiral },

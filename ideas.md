@@ -831,17 +831,37 @@ Waga z review w nawiasie kwadratowym.
   (2026-10-08): preset w pliku niesie tylko sekcję własnej operacji,
   posuwy i opcje wyjścia; sekcje innych operacji po wczytaniu mają
   wartości domyślne.
-- **`BL-113`** *(Zrealizowany, 2026-10-08)* 🟠 — **Settings → Templates:
-  gotowe projekty jako samouczek.** Po `BL-112`. Nowa sekcja Settings z
-  wbudowanymi projektami, które pokazują, jak korzystać z narzędzia.
-  Ustalone: nazwa „Templates”, same szablony (bez przewodnika); wczytanie
-  działa jak Load project (zastępuje sloty po potwierdzeniu, włącza
-  Overlay, nazwa szablonu staje się nazwą projektu) i zamyka Settings;
-  szablony to zwykłe pliki projektu w `src/templates/`; mają oswoić z
-  możliwościami i obsługą, nie być gotowym programem na maszynę — sekcja
-  mówi to wprost. Pierwszy szablon od użytkownika: „NEMA23 Mount” (płytka
-  mocująca silnik, pięć presetów). Test pilnuje, że każdy szablon się
-  wczytuje i jego presety przechodzą walidację.
+- **`BL-113`** *(W trakcie — sekcja działa od v0.51.0, lista szablonów
+  rośnie)* 🟠 — **Settings → Templates: gotowe projekty jako samouczek.**
+  Po `BL-112`. Sekcja Settings z wbudowanymi projektami, które pokazują,
+  jak korzystać z narzędzia. Ustalone: nazwa „Templates”, same szablony
+  (bez przewodnika); wczytanie działa jak Load project (zastępuje sloty po
+  potwierdzeniu, włącza Overlay, nazwa szablonu staje się nazwą projektu)
+  i zamyka Settings; szablony mają oswoić z możliwościami i obsługą, nie
+  być gotowym programem na maszynę — sekcja mówi to wprost.
+  **Szablony w aplikacji:** „NEMA23 Mount” (płytka mocująca silnik, pięć
+  presetów).
+  **Jak dodać nowy szablon:**
+  1. Zbudować obiekt w aplikacji z presetów w slotach `1`–`7` i obejrzeć
+     go w Overlay. Każdy preset musi być poprawny (bez czerwonych pól).
+  2. **Save project** w Header, z nazwą taką, jaka ma być nazwa szablonu.
+     Zapisywać w aktualnej wersji aplikacji — plik ma wtedy odchudzony
+     kształt (każdy preset tylko z sekcją własnej operacji).
+  3. Wrzucić pobrany plik do `src/templates/` pod krótką nazwą
+     (`nazwa-szablonu.json`, bez daty i przedrostka `onlypaths-`).
+  4. W `src/templates/index.ts`: dodać `import … from './nazwa.json?raw'`
+     i wpis w `PROJECT_TEMPLATES` — `id` (jak nazwa pliku), `title`
+     (**identyczny** z polem `name` w pliku), `description` (jedno–dwa
+     zdania po angielsku: co to za obiekt i z jakich presetów się składa),
+     `file`. Kolejność wpisów = kolejność w Settings.
+  5. `npm run test` — `src/templates/templates.test.ts` sprawdza każdy
+     szablon: czy się wczytuje, czy `title` zgadza się z nazwą w pliku,
+     czy presety przechodzą walidację i generują G-code, czy plik ma
+     odchudzony kształt.
+  6. Wpis w `CHANGELOG.md` (nowy szablon = zmiana widoczna dla
+     użytkownika) i dopisanie szablonu do listy wyżej.
+  Zmiana istniejącego szablonu: wczytać go w aplikacji, poprawić, zapisać
+  i podmienić plik (kroki 2–3, 5).
 - **`BL-114`** *(Otwarty)* 🟠 — **Overlay jako tryb domyślny.** Zgłoszone
   2026-10-07. Po `BL-107` praca z kilkoma presetami naraz (ptaszki +
   edycja jednego na żywo) wyraźnie poprawiła wygodę — pomysł, żeby
@@ -914,6 +934,66 @@ Pocket, 2026-09-21, i dla Adaptive, 2026-09-25; historia implementacji w
   glifów czcionki (najpewniej z plików fontowych, np. przez jakąś
   bibliotekę do path-data) — geometria wejściowa nieporównywalna z
   dzisiejszymi kształtami parametrycznymi (Rectangle/Circle).
+  **Stan (v0.52.0): etap 1 wdrożony** — operacja Text z fontem Relief
+  SingleLine, oba układy (Straight, On Circle), Mirror, Generic V-Bit /
+  frez walcowy, podglądy, doczytywanie fontu, odnośniki w About. **Zostaje
+  etap 2:** dwa dodatkowe kroje (szeryfowy i pisanka z EMS / Hershey) z
+  dorobionymi polskimi literami.
+  **Ustalenia z `/grill-me` (2026-10-09) — zakres pierwszej wersji:
+  grawerowanie napisów fontami jednoliniowymi, operacja „Text”.**
+  - *Fonty (research na plikach źródłowych).* Wszystkie w formacie SVG
+    font, więc bez biblioteki fontowej — własny, prosty parser.
+    **Relief SingleLine** (isdaT-type, SIL OFL 1.1,
+    `github.com/isdat-type/Relief-SingleLine`): 423 znaki, komplet
+    polskich liter i cały blok Latin Extended-A, wyłącznie otwarte
+    ścieżki (krzywe Béziera → zamiana na odcinki). Rodziny **EMS** (29
+    krojów, SIL OFL) i **Hershey** (11 krojów, praca dr. A. V. Hersheya,
+    do dowolnego użytku z podaniem autora) z `gitlab.com/oskay/svg-fonts`:
+    po 216 znaków, z polskich tylko ć i ó. Start: Relief jako domyślny +
+    jeden krój szeryfowy i jedna pisanka z EMS/Hershey, w których 14
+    brakujących polskich liter (ą ę ł ń ś ź ż, małe i wielkie) dorabia
+    się ręcznie — do oceny na oko przez użytkownika; krój, w którym
+    wyjdą słabo, wypada.
+  - *Licencje.* OFL wymaga dołączenia informacji o autorach i licencji;
+    wersja przeliczona na dane aplikacji to „Modified Version” (bez
+    używania zastrzeżonych nazw, jeśli font je deklaruje). **Wymaganie
+    użytkownika:** odnośniki do źródeł i licencji użytych fontów w
+    Settings → About.
+  - *Układ.* Krok 1: **Straight** albo **On Circle** (w miejscu wzorca /
+    kształtu). Metoda jedna, jak w Facing. **Mirror** — przełącznik w
+    Kroku 2, w obu układach. On Circle: litery głowami na zewnątrz albo
+    do środka; średnica okręgu bazowego i kąt środka napisu; jedna linia.
+  - *Tekst i rozmiar.* Pole tekstowe z Enterem — kilka linii w układzie
+    Straight (Line Spacing, wyrównanie lewo / środek / prawo). Rozmiar =
+    wysokość wielkiej litery w mm, obok odczyt szerokości napisu; Letter
+    Spacing w %. Origin: poziomo lewy / środek / prawy, pionowo linia
+    bazowa / środek wysokości; kąt obrotu wokół origin; Offset X/Y.
+  - *Narzędzie.* Lista narzędzi w Text: pierwsza pozycja **Generic
+    V-Bit** (stała, tylko dla Text), pod nią frezy walcowe z dzisiejszej
+    listy; pozostałe operacje V-bita nie widzą. Po wybraniu V-bita w
+    Kroku 2 pole **Angle [°]** (domyślnie 60) — wyłącznie do szerokości
+    rowka w podglądzie i odczycie; G-code od niego nie zależy. Settings
+    bez zmian.
+  - *Feedrate Calculator* oraz wiersz Flutes / fz — ukryte dla Text;
+    sensowne domyślne posuwy graweru w nowym presecie.
+  - *Ruch w Z.* Głębokość graweru + Stepdown z Kroku 3. Między kreskami
+    retrakt na Safe Z (zasada G0 tylko na Safe Z bez wyjątków). Przy
+    głębokości > Stepdown: kreska po kresce na pełną głębokość (tam i z
+    powrotem po kresce), potem następna. Zawsze G1 (jak Facing).
+  - *Podglądy.* Kreski o szerokości rowka na powierzchni materiału, w 2D
+    i 3D; Text poza modelem materiału (jak Surface i Facing).
+  - *Walidacja.* Znak, którego font nie ma, blokuje Generate; komunikat
+    wymienia brakujące znaki, podgląd rysuje resztę. Pusty tekst —
+    niepoprawny.
+  - *Ładowanie.* Fonty przeliczone na zwartą postać przy budowaniu i
+    doczytywane przy pierwszym użyciu Text / presetu z napisem.
+  - *Otwarte przy implementacji:* silniki są czystymi funkcjami
+    synchronicznymi, a fonty mają się doczytywać — potrzebny rejestr
+    załadowanych fontów i stan „ładowanie” w UI (podgląd, Generate,
+    Overlay, szablony); dokładność zamiany krzywych na odcinki; wybór
+    konkretnych dwóch krojów dodatkowych; ikony; domyślne wartości.
+  - *Poza zakresem pierwszej wersji:* tracing obrysu zwykłych fontów
+    (TTF/OTF), własny font użytkownika, V-bity z parametrami w Settings.
 - **`OP-5` — Adaptive Clearing dla Pocket.** Alternatywna strategia
   roughingu z utrzymaniem stałego zaangażowania narzędzia
   (trochoidalne/adaptacyjne czyszczenie) — lepsza żywotność narzędzia

@@ -20,6 +20,8 @@ interface Scene3DProps {
   dimOverlay: boolean
   activeToolpathVisible: boolean
   fitKey: string
+  // Text fonts loaded so far — rebuilds the scene when a font arrives.
+  fontEpoch: number
   gridLabelsEnabled: boolean
   gridLabelSize: Grid3DLabelSize
   stockVisible: boolean
@@ -81,6 +83,7 @@ export function Scene3D({
   dimOverlay,
   activeToolpathVisible,
   fitKey,
+  fontEpoch,
   gridLabelsEnabled,
   gridLabelSize,
   stockVisible,
@@ -335,6 +338,7 @@ export function Scene3D({
     dimOverlay,
     activeToolpathVisible,
     fitKey,
+    fontEpoch,
     viewMemory,
   ])
 

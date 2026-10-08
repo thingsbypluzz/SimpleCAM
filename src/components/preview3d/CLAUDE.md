@@ -138,3 +138,9 @@ Adaptive, kropkowane w kolorze `linking` palety). Każdy styl = osobne
 - Przyciski w podglądzie: Hide/Show Stock, Solid/Transparent Stock (stan
   sesyjny, tylko 3D), Hide/Show Toolpath (stan sesyjny, wspólny z 2D, jak
   Hide/Show Stock), Hide/Show Grid Labels, presety widoku, Fit View.
+
+- **Text:** kreski napisu jako jedno `LineSegments` tuż nad powierzchnią
+  materiału (linia WebGL nie ma szerokości — szerokość rowka pokazuje
+  tylko 2D) + ścieżka przez `toolpathLines3D()`. Prop `fontEpoch`
+  przebudowuje scenę, gdy font się załaduje. On Circle: dla żywego wzorca
+  (`isActive`) okrąg bazowy jako kropkowana, przygaszona linia-prowadnica.

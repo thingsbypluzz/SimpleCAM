@@ -9,8 +9,10 @@ import { OPERATION_RULES } from './validation'
 // Pocket have no tabs (BL-51: they used to read Hole(s)' tab
 // flag, locking the toggle on "G1" while the file still had arcs). Pure so
 // the invariant test can check the engines agree with what the UI shows.
-export function forcedLinearReason(params: WizardParams): 'rectOutline' | 'facing' | 'tabs' | null {
+export function forcedLinearReason(params: WizardParams): 'rectOutline' | 'facing' | 'text' | 'tabs' | null {
   if (params.operation === 'outline' && (params.outline.shape === 'rectCornered' || params.outline.shape === 'rectCentered')) return 'rectOutline'
   if (params.operation === 'facing') return 'facing'
+  // Text (OP-4): letters are sampled curves — straight moves only.
+  if (params.operation === 'text') return 'text'
   return OPERATION_RULES[params.operation].tabs(params)?.tabsEnabled ? 'tabs' : null
 }

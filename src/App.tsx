@@ -51,6 +51,8 @@ import { loadProjectInfo, NO_PROJECT, saveProjectInfo, type ProjectInfo } from '
 import { downloadTextFile } from './lib/download'
 import { ProjectNameModal } from './components/ProjectNameModal'
 import { templateSlots, type ProjectTemplate } from './templates'
+import { ensureTextFont } from './config/textFonts'
+import { getLoadedFont } from './lib/textFont'
 import { presetLabel } from './lib/presetLabel'
 import {
   AUTO_SAVE_SLOT,
@@ -355,9 +357,34 @@ function App() {
     overlayParamsRef.current = next
     return next
   }, [overlaySlots, presetSlots, editingSlot])
+  // Text (OP-4): its fonts are fetched on first use. `fontEpoch` counts the
+  // fonts that have arrived since start-up — the engine and the previews
+  // read fonts synchronously from a registry, so this is what tells React
+  // (validation here, both previews below) that a text can now be laid out.
+  const [fontEpoch, setFontEpoch] = useState(0)
+  const neededFonts = [
+    ...new Set([params, ...PRESET_SLOT_IDS.map((id) => presetSlots[id])].flatMap((p) => (p?.operation === 'text' ? [p.text.fontId] : []))),
+  ]
+    .sort()
+    .join('|')
+  useEffect(() => {
+    let alive = true
+    for (const id of neededFonts.split('|')) {
+      if (!id || getLoadedFont(id)) continue
+      ensureTextFont(id)
+        .then(() => alive && setFontEpoch((n) => n + 1))
+        .catch((err) => console.warn(`OnlyPaths: could not load the font "${id}"`, err))
+    }
+    return () => {
+      alive = false
+    }
+  }, [neededFonts])
+
+  // A font arriving changes what is on screen (a text appears), so it
+  // re-fits the view like a change of the overlay does.
   const previewFitKey = useMemo(
-    () => overlayFitKey(overlaySlots, presetSlots, editingSlot),
-    [overlaySlots, presetSlots, editingSlot],
+    () => `${overlayFitKey(overlaySlots, presetSlots, editingSlot)}#${fontEpoch}`,
+    [overlaySlots, presetSlots, editingSlot, fontEpoch],
   )
   // Plain Overlay (nothing armed for editing) hides the live pattern and
   // blocks Generate; with a preset armed, the live pattern IS that preset.
@@ -1071,6 +1098,7 @@ function App() {
                 dimOverlay={editingInOverlay}
                 activeToolpathVisible={!previewToolpathBlocked}
                 fitKey={previewFitKey}
+                fontEpoch={fontEpoch}
                 stockVisible={stockVisible}
                 toolpathVisible={toolpathVisible}
                 cutShapeEnabled={appearance.cutShapeEnabled}
@@ -1098,6 +1126,7 @@ function App() {
                   dimOverlay={editingInOverlay}
                   activeToolpathVisible={!previewToolpathBlocked}
                   fitKey={previewFitKey}
+                  fontEpoch={fontEpoch}
                   gridLabelsEnabled={appearance.grid3DLabelsEnabled}
                   gridLabelSize={appearance.grid3DLabelSize}
                   stockVisible={stockVisible}

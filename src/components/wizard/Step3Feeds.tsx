@@ -22,6 +22,7 @@ import {
 import { isFeedChipThinningCompensated } from '../../lib/pocketAdaptiveMath'
 import { fmt } from '../../lib/format'
 import { CalculatorIcon } from '../icons'
+import { OPERATION_META } from '../../config/operationMeta'
 import { routerDialHint, ROUTERS } from '../../config/routers'
 import { RouterDial } from './RouterDial'
 import { FieldRow, inputClass } from './FieldRow'
@@ -121,15 +122,17 @@ export function Step3Feeds({ params, onChange, machine, stepdownLabel, onOpenCal
           <div className="min-w-0 flex-1">
             <NumberInput type="number" step="1" className={inputClass} aria-invalid={!isFeedrateXYValid(feeds)} {...feedrateXYField} />
           </div>
-          <button
-            type="button"
-            onClick={onOpenCalculator}
-            aria-label="Feedrate Calculator"
-            title="Feedrate Calculator"
-            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md border border-border text-value hover:bg-border/40"
-          >
-            <CalculatorIcon className="h-4 w-4" />
-          </button>
+          {OPERATION_META[params.operation].feedCalculator !== false && (
+            <button
+              type="button"
+              onClick={onOpenCalculator}
+              aria-label="Feedrate Calculator"
+              title="Feedrate Calculator"
+              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md border border-border text-value hover:bg-border/40"
+            >
+              <CalculatorIcon className="h-4 w-4" />
+            </button>
+          )}
         </div>
       </FieldRow>
       {!isFeedrateXYValid(feeds) && <p className="text-sm text-status-error">Feedrate XY must be greater than 0.</p>}

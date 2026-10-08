@@ -8,7 +8,7 @@ export type InterpolationMode = 'arc' | 'linear'
 // stock or with a floor at its depth. Looks only — the G-code is the same.
 export type HoleBottom = 'open' | 'closed'
 
-export type OperationType = 'holes' | 'outline' | 'surface' | 'pocket' | 'facing'
+export type OperationType = 'holes' | 'outline' | 'surface' | 'pocket' | 'facing' | 'text'
 
 // 'lobedCircle' (OP-8): a main circle with N lobe circles on a pitch circle
 // merged into one outline — see lib/outlineLobedGeometry.ts.
@@ -196,6 +196,44 @@ export interface FacingParams {
   linkingFeed: number // mm/min — G1 return move beside the material
 }
 
+// Text (OP-4): engraving a line of writing with a single-line font — the
+// tool follows the letters' own strokes.
+export type TextLayout = 'straight' | 'circle'
+export type TextAlign = 'left' | 'center' | 'right'
+// Where the origin sits on a straight text block.
+export type TextOriginX = 'left' | 'center' | 'right'
+export type TextOriginY = 'baseline' | 'middle'
+// On Circle: letters standing on the circle with their heads away from its
+// center (read clockwise, e.g. along the top) or toward it (read
+// counter-clockwise, e.g. along the bottom).
+export type TextCircleSide = 'outside' | 'inside'
+// The engraving tool. The toolpath is the same for both — the bit only
+// sets how wide the groove is drawn.
+export type TextBit = 'vbit' | 'endmill'
+
+export interface TextParams {
+  layout: TextLayout
+  text: string // lines separated by "\n" (Straight); On Circle reads it as one line
+  fontId: string // key of config/textFonts.ts
+  height: number // mm, height of a capital letter
+  letterSpacingPercent: number // extra space between letters, % of Height
+  lineSpacing: number // distance between baselines, × Height (Straight)
+  align: TextAlign // lines against each other (Straight)
+  originX: TextOriginX
+  originY: TextOriginY
+  angleDeg: number // Straight: the whole block turned about the origin, CCW
+  mirror: boolean
+  circleDiameter: number // mm, the circle the baseline runs on
+  circleAngleDeg: number // where the middle of the text sits, 0 = +X, CCW
+  circleSide: TextCircleSide
+  bit: TextBit
+  vbitAngleDeg: number // V-bit's included angle — groove width in the previews only
+  toolDiameter: number // End mill
+  totalDepth: number // engraving depth
+  offsetX: number
+  offsetY: number
+}
+
 export interface FeedsParams {
   stepdown: number
   feedrateXY: number
@@ -219,6 +257,7 @@ export interface WizardParams {
   surface: SurfaceParams
   pocket: PocketParams
   facing: FacingParams
+  text: TextParams
   feeds: FeedsParams
   output: OutputOptions
 }
@@ -332,6 +371,28 @@ export const DEFAULT_WIZARD_PARAMS: WizardParams = {
     lead: 1,
     clearance: 2,
     linkingFeed: 800,
+  },
+  text: {
+    layout: 'straight',
+    text: 'OnlyPaths',
+    fontId: 'relief',
+    height: 10,
+    letterSpacingPercent: 0,
+    lineSpacing: 1.6,
+    align: 'left',
+    originX: 'left',
+    originY: 'baseline',
+    angleDeg: 0,
+    mirror: false,
+    circleDiameter: 60,
+    circleAngleDeg: 90,
+    circleSide: 'outside',
+    bit: 'vbit',
+    vbitAngleDeg: 60,
+    toolDiameter: 3.175,
+    totalDepth: 0.3,
+    offsetX: 0,
+    offsetY: 0,
   },
   feeds: {
     stepdown: 1,

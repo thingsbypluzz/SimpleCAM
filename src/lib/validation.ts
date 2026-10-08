@@ -1,5 +1,16 @@
 import type { MachineSettings } from '../types/machine'
-import type { FacingParams, FeedsParams, GeometryParams, OperationType, OutlineParams, PocketParams, SurfaceParams, WizardParams } from '../types/wizard'
+import type {
+  FacingParams,
+  FeedsParams,
+  GeometryParams,
+  OperationType,
+  OutlineParams,
+  PocketParams,
+  SurfaceParams,
+  TextParams,
+  WizardParams,
+} from '../types/wizard'
+import { layoutText } from './textLayout'
 import type { ToolDiameterOption } from '../types/toolDiameters'
 import type { Engagement } from './feedCalc'
 import { MAX_CIRCLE_HOLE_COUNT, resolvePoints } from './positioning'
@@ -948,6 +959,59 @@ interface OperationRules {
   engagement: (params: WizardParams) => Engagement
 }
 
+// Text (OP-4) validators. `fontReady` is false while the font file is
+// still being fetched: nothing can be laid out, so Generate waits.
+export const MAX_TEXT_LENGTH = 400
+export const MIN_VBIT_ANGLE_DEG = 10
+export const MAX_VBIT_ANGLE_DEG = 150
+export const MIN_LETTER_SPACING_PERCENT = -30
+export const MAX_LETTER_SPACING_PERCENT = 300
+// Every stroke point becomes a G1 line per depth pass.
+const MAX_TEXT_POINTS = 200_000
+
+export function isTextFontReady(text: TextParams): boolean {
+  return layoutText(text).fontReady
+}
+
+// Characters the chosen font cannot write (empty while the font loads).
+export function textMissingCharacters(text: TextParams): string[] {
+  return layoutText(text).missing
+}
+
+export function isTextContentValid(text: TextParams): boolean {
+  const layout = layoutText(text)
+  if (!layout.fontReady) return false
+  return [...text.text].length <= MAX_TEXT_LENGTH && layout.missing.length === 0 && layout.strokes.length > 0
+}
+
+export function isTextSizeValid(text: TextParams): boolean {
+  if (!(text.height > 0) || !(text.totalDepth > 0)) return false
+  if (text.layout === 'circle') return text.circleDiameter > 0
+  return text.lineSpacing > 0
+}
+
+export function isTextSpacingValid(text: TextParams): boolean {
+  return text.letterSpacingPercent >= MIN_LETTER_SPACING_PERCENT && text.letterSpacingPercent <= MAX_LETTER_SPACING_PERCENT
+}
+
+export function isTextBitValid(text: TextParams): boolean {
+  if (text.bit === 'endmill') return text.toolDiameter > 0
+  return text.vbitAngleDeg >= MIN_VBIT_ANGLE_DEG && text.vbitAngleDeg <= MAX_VBIT_ANGLE_DEG
+}
+
+export function isTextWithinLimits(params: WizardParams): boolean {
+  const { text, feeds } = params
+  if (!(feeds.stepdown > 0) || !(text.totalDepth > 0)) return true
+  if (exceedsPassLimit(text.totalDepth, feeds.stepdown)) return false
+  const points = layoutText(text).strokes.reduce((sum, stroke) => sum + stroke.length, 0)
+  return points * Math.ceil(text.totalDepth / feeds.stepdown) <= MAX_TEXT_POINTS
+}
+
+export function textFootprint(text: TextParams): { x: number; y: number } {
+  const { bounds } = layoutText(text)
+  return bounds ? { x: bounds.maxX - bounds.minX, y: bounds.maxY - bounds.minY } : { x: 0, y: 0 }
+}
+
 export const OPERATION_RULES: Record<OperationType, OperationRules> = {
   holes: {
     totalDepth: (p) => p.geometry.totalDepth,
@@ -1059,5 +1123,23 @@ export const OPERATION_RULES: Record<OperationType, OperationRules> = {
     descentAngleDeg: () => null,
     rampPathLength: () => null,
     engagement: (p) => ({ kind: 'stepover', percent: facingStepoverPercent(p.facing) }),
+  },
+  text: {
+    totalDepth: (p) => p.text.totalDepth,
+    tabs: () => null,
+    isValid: (p) =>
+      isTextSizeValid(p.text) &&
+      isTextSpacingValid(p.text) &&
+      isTextBitValid(p.text) &&
+      isTextContentValid(p.text) &&
+      isTextWithinLimits(p),
+    footprint: (p) => textFootprint(p.text),
+    zSpan: (p) => p.feeds.safeZ + p.text.totalDepth,
+    rampDescent: () => null,
+    descentAngleDeg: () => null,
+    rampPathLength: () => null,
+    // The tool cuts a groove its own width (the Feedrate Calculator is not
+    // offered for Text).
+    engagement: () => ({ kind: 'slot' }),
   },
 }

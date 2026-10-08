@@ -1,7 +1,7 @@
 # OnlyPaths
 
 Lekki, w pełni client-side generator G-code dla pojedynczych operacji
-wiercenia/kieszeniowania/obróbki boku na frezarkach CNC (GRBL/Marlin/Mach3). Użytkownik
+wiercenia/kieszeniowania/obróbki boku/grawerowania napisów na frezarkach CNC (GRBL/Marlin/Mach3). Użytkownik
 przechodzi przez 4-krokowy wizard i na końcu dostaje gotowy plik `.gcode` —
 bez logowania, bez backendu, bez CAD-a.
 
@@ -38,7 +38,7 @@ bez logowania, bez backendu, bez CAD-a.
 
 ## Stan projektu
 
-Pięć operacji (`WizardParams.operation`):
+Sześć operacji (`WizardParams.operation`):
 
 - **Hole(s)** — okrągłe otwory; metody Helix / Standard Hole × wzorce
   Single / Rectangular Grid / Grid Centered / N-Holes on Circle / Custom
@@ -63,6 +63,13 @@ Pięć operacji (`WizardParams.operation`):
   powietrzu, zbiera zadany naddatek dosuwami bocznymi co Stepover, poziom
   Z po poziomie; Climb / Conventional; powrót obok materiału na Linking
   Feed.
+- **Text** — grawerowanie napisu fontem jednoliniowym: frez jedzie po
+  osi liter. Układ **Straight** (kilka linii, wyrównanie, origin, kąt
+  obrotu) albo **On Circle** (jedna linia po okręgu, litery głowami na
+  zewnątrz albo do środka); Mirror; narzędzie Generic V-Bit (kąt tylko do
+  szerokości rowka w podglądzie) albo frez walcowy. Fonty (dziś Relief
+  SingleLine, komplet polskich znaków) doczytują się przy pierwszym
+  użyciu; bez Feedrate Calculator.
 
 ## Kluczowe decyzje (przekrojowe)
 
@@ -124,9 +131,10 @@ być wierny.
   Pocket ma dno na swojej głębokości; otwór Hole(s) z przełącznikiem
   Bottom = Closed też dostaje dno (tylko wygląd, G-code bez zmian). Bazą jest arkusz materiału, a gdy
   któryś preset to Outline Outside — suma wysp (część), z której wycinane
-  są pustki pozostałych presetów. Surface i Facing poza modelem: rysują
-  własny „pozostały materiał” (Facing — blok od gotowej krawędzi w głąb
-  detalu do brzegu widocznej płaszczyzny). Domyślnie pustki mają kształt po frezie
+  są pustki pozostałych presetów. Surface, Facing i Text poza modelem:
+  Surface i Facing rysują własny „pozostały materiał” (Facing — blok od
+  gotowej krawędzi w głąb detalu do brzegu widocznej płaszczyzny), Text —
+  kreski napisu na powierzchni (w 2D o szerokości rowka). Domyślnie pustki mają kształt po frezie
   (narożniki wewnętrzne zaokrąglone promieniem freza; w 2D kropkowany
   kontur obok ciągłego obrysu nominalnego) — wyłącznik w Settings →
   Appearance.
@@ -212,7 +220,7 @@ przez `METHOD_META`/`SURFACE_METHOD_META`/`POCKET_METHOD_META` (Outline:
 `OPERATION_META[op].generate()` — nie importować generatorów w
 komponentach. Zależne od **wzorca/kształtu/boku** — przez
 `positioningMeta.ts`/`outlineMeta.ts`/`surfaceMeta.ts`/`pocketMeta.ts`/
-`facingMeta.ts`. Kolory podglądów —
+`facingMeta.ts`/`textMeta.ts`; fonty Text — `textFonts.ts`. Kolory podglądów —
 wyłącznie przez `config/palettes.ts`.
 
 ## Hosting testowy
@@ -234,7 +242,8 @@ src/
                        appearance.ts, toolDiameters.ts
   config/              rejestry: operationMeta, methodMeta, surfaceMethodMeta,
                        pocketMethodMeta, positioningMeta, outlineMeta, surfaceMeta,
-                       pocketMeta, facingMeta; palettes, materials, routers           → CLAUDE.md
+                       pocketMeta, facingMeta, textMeta; textFonts, palettes, materials,
+                       routers                                             → CLAUDE.md
   components/
     SettingsModal.tsx, FeedCalculatorModal.tsx, ErrorBoundary.tsx,
     ProjectNameModal.tsx, useModalFocus.ts, icons.tsx                    → CLAUDE.md
@@ -253,6 +262,7 @@ src/
     surface*.ts                            Surface
     pocket*.ts                             Pocket (Spiral, Adaptive, Lightened, wejście Z)
     facing*.ts                             Facing
+    text.ts, textLayout.ts, textFont.ts    Text (silnik, układ napisu, parser fontów SVG)
     depthPasses.ts, interpolation.ts, format.ts
     validation.ts        OPERATION_RULES, walidacja, ostrzeżenia
     feedCalc.ts          model Feedrate Calculator
@@ -263,8 +273,9 @@ src/
     fuzzParams.ts, gcodeTestUtils.ts, pocketAdaptiveSim.ts   tylko testy
     *.test.ts            Vitest (w tym gcodeInvariants.test.ts)
   templates/           wbudowane projekty-szablony (pliki JSON + rejestr index.ts)
+  fonts/               fonty jednoliniowe Text (oryginalne pliki SVG, doczytywane)
 scripts/               deploy.mjs, certs/                                 → CLAUDE.md
-public/                .htaccess, robots.txt, favicon.svg
+public/                .htaccess, robots.txt, favicon.svg, licenses/ (licencje fontów)
 ```
 
 ## `.gitignore` musi wykluczać `.claude/`

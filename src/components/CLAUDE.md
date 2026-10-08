@@ -67,6 +67,9 @@
   `define` w `vite.config.ts`), "Envisioned by ThingsByPluzz" z linkiem do
   Instagrama (`@thingsbypluzz`, nowa karta, `rel="noopener noreferrer"`;
   zwykły link — nic nie jest pobierane z Instagrama przed kliknięciem).
+  Blok **Fonts**: fonty operacji Text z `TEXT_FONTS` — tytuł, autorzy,
+  licencja (link do pliku w `public/licenses/`) i źródło; wymóg licencji
+  otwartych fontów.
 - Pola liczbowe przez `NumberInput`, ale własny wzorzec commitu (bufor
   tekstu + `onBlur`, klik strzałki commituje od razu —
   `commitField()`/`handleAdjust()`), bo to zapis do `localStorage`, nie

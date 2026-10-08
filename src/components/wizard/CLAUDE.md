@@ -45,6 +45,15 @@
   Offset. Facing: Length + Remove + Depth → Origin Along + Origin Across →
   Tool Diameter → Stepover mm + % (oba edytowalne, zapisywane mm; przy
   etykiecie liczba przejść) → Direction → Lead + Clearance → Offset.
+  Text (`Step2GeometryText.tsx`): pole tekstu (własny szkic, zatwierdzany
+  po 0,4 s bez pisania albo przy wyjściu z pola; komunikaty: font się
+  ładuje, brakujące znaki, pusty tekst) → Font → Height + Spacing % +
+  Width (odczyt) → Straight: Line Spacing + Align, Origin X + Origin Y,
+  Angle / On Circle: Diameter + Rotate (kąt, na którym leży środek napisu —
+  obrót całości wokół okręgu), Letters (Heads Out | Heads In) →
+  Mirror → Bit (Generic V-Bit albo frez z listy) + V Angle (przełącznik
+  30° | 60° | 90°; zapisany kąt spoza trójki nie zaznacza żadnego) → Depth + Line
+  Width (odczyt) → Offset. Bez metody, mostków i wiersza Flutes / fz.
   Błąd pod polem, którego dotyczy.
 - **Błędne pola:** ten sam warunek, który pokazuje tekst błędu
   (`<p className="text-sm text-status-error">`), ustawia `aria-invalid`

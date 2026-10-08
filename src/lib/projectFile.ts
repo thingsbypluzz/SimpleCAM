@@ -67,6 +67,8 @@ function presetForFile(params: WizardParams): Partial<WizardParams> {
       return { operation, pocket: params.pocket, feeds, output }
     case 'facing':
       return { operation, facing: params.facing, feeds, output }
+    case 'text':
+      return { operation, text: params.text, feeds, output }
   }
 }
 
