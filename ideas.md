@@ -831,20 +831,17 @@ Waga z review w nawiasie kwadratowym.
   (2026-10-08): preset w pliku niesie tylko sekcję własnej operacji,
   posuwy i opcje wyjścia; sekcje innych operacji po wczytaniu mają
   wartości domyślne.
-- **`BL-113`** *(Otwarty)* 🟠 — **Settings: Help / Templates — gotowe
-  zestawy presetów jako samouczek.** Zgłoszone 2026-10-07. Po `BL-112`
-  (zapis i wczytywanie zestawów presetów): nowa pozycja w Settings Nav —
-  „Help” albo „Templates” — z kilkoma przygotowanymi zestawami presetów,
-  które pokazują, jak korzystać z narzędzia (np. podebranie pod śrubę,
-  krążek z otworami, kieszeń z wykończeniem). Do przegadania: nazwa i
-  zakres sekcji (same szablony czy też krótki opis kroków); lista
-  zestawów i ich opisy; zestawy wbudowane w aplikację (pliki w repo, w
-  formacie z `BL-112`); wczytanie szablonu nadpisuje sloty — potwierdzenie
-  i ewentualne wcześniejsze zapisanie bieżącego zestawu; zależność od
-  średnic narzędzi i ustawień maszyny użytkownika (szablon z frezem,
-  którego nie ma na liście); czy po wczytaniu włączyć Overlay, żeby od
-  razu było widać całość; utrzymanie szablonów przy zmianach formatu
-  presetów (test, że każdy szablon przechodzi walidację).
+- **`BL-113`** *(Zrealizowany, 2026-10-08)* 🟠 — **Settings → Templates:
+  gotowe projekty jako samouczek.** Po `BL-112`. Nowa sekcja Settings z
+  wbudowanymi projektami, które pokazują, jak korzystać z narzędzia.
+  Ustalone: nazwa „Templates”, same szablony (bez przewodnika); wczytanie
+  działa jak Load project (zastępuje sloty po potwierdzeniu, włącza
+  Overlay, nazwa szablonu staje się nazwą projektu) i zamyka Settings;
+  szablony to zwykłe pliki projektu w `src/templates/`; mają oswoić z
+  możliwościami i obsługą, nie być gotowym programem na maszynę — sekcja
+  mówi to wprost. Pierwszy szablon od użytkownika: „NEMA23 Mount” (płytka
+  mocująca silnik, pięć presetów). Test pilnuje, że każdy szablon się
+  wczytuje i jego presety przechodzą walidację.
 - **`BL-114`** *(Otwarty)* 🟠 — **Overlay jako tryb domyślny.** Zgłoszone
   2026-10-07. Po `BL-107` praca z kilkoma presetami naraz (ptaszki +
   edycja jednego na żywo) wyraźnie poprawiła wygodę — pomysł, żeby

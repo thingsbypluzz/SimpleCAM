@@ -7,6 +7,21 @@ zgodne z [SemVer](https://semver.org/). Ten plik pozostaje głównym, czytelnym
 thingsbypluzz/SimpleCAM), ale to infrastruktura pod izolację pracy
 (branch/worktree per zadanie), nie zamiennik tego changeloga.
 
+## [0.51.0] — 2026-10-08
+
+### Dodano
+
+- **Settings → Templates** (`BL-113`): gotowe projekty wbudowane w
+  aplikację, do obejrzenia i przerobienia — sposób na poznanie tego, co
+  narzędzie potrafi. Load wczytuje szablon tak jak plik projektu:
+  zastępuje presety (z potwierdzeniem, gdy któryś slot jest zajęty),
+  pokazuje je razem w Overlay i zamyka Settings. Sekcja zaznacza, że to
+  przykłady, a nie programy do uruchomienia bez sprawdzenia.
+- Pierwszy szablon: **NEMA23 Mount** — płytka mocująca silnik krokowy
+  NEMA23 z pięciu presetów (obrys z mostkami, cztery otwory pod śruby
+  silnika, otwór centrujący, dwa otwory mocujące z podebraniem pod łby
+  śrub).
+
 ## [0.50.1] — 2026-10-08
 
 ### Zmieniono

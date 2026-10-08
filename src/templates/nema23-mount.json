@@ -1,0 +1,221 @@
+{
+  "app": "OnlyPaths",
+  "kind": "project",
+  "format": 1,
+  "name": "NEMA23 Mount",
+  "savedAt": "2026-10-08T21:29:09.338Z",
+  "appVersion": "0.50.1",
+  "slots": {
+    "1": {
+      "operation": "outline",
+      "outline": {
+        "shape": "rectCentered",
+        "offsetMode": "outside",
+        "method": "ramp",
+        "toolDiameter": 3.175,
+        "totalDepth": 10,
+        "width": 56.4,
+        "height": 100,
+        "diameter": 35,
+        "offsetX": 0,
+        "offsetY": 21.8,
+        "tabsEnabled": true,
+        "tabHeight": 2,
+        "tabWidth": 4,
+        "tabCount": 2,
+        "rampAngleDeg": 2,
+        "lobeMainDiameter": 60,
+        "lobeMode": "add",
+        "lobeCount": 5,
+        "lobePitchDiameter": 70,
+        "lobeDiameter": 16,
+        "lobeStartAngle": 90,
+        "tabStartAngle": 90
+      },
+      "feeds": {
+        "stepdown": 0.65,
+        "feedrateXY": 316,
+        "plungeRate": 95,
+        "safeZ": 4,
+        "startZ": 0.5
+      },
+      "output": {
+        "interpolation": "arc",
+        "spindleStart": false,
+        "spindleStopEnd": true,
+        "returnOriginEnd": true
+      }
+    },
+    "2": {
+      "operation": "holes",
+      "method": "helix",
+      "geometry": {
+        "toolDiameter": 3.175,
+        "holeDiameter": 4,
+        "totalDepth": 10,
+        "holeBottom": "open",
+        "positioning": "gridCentered",
+        "gridX": 47.1,
+        "gridY": 47.1,
+        "circleHoleCount": 5,
+        "circleDiameter": 100,
+        "circleStartAngle": 0,
+        "customPointsText": "10,10",
+        "customPoints": [
+          {
+            "x": 10,
+            "y": 10
+          }
+        ],
+        "offsetX": 0,
+        "offsetY": 0,
+        "tabsEnabled": false,
+        "tabHeight": 1,
+        "tabWidth": 3,
+        "tabCount": 3,
+        "rampAngleDeg": 2
+      },
+      "feeds": {
+        "stepdown": 0.65,
+        "feedrateXY": 316,
+        "plungeRate": 95,
+        "safeZ": 10,
+        "startZ": 0.5
+      },
+      "output": {
+        "interpolation": "arc",
+        "spindleStart": false,
+        "spindleStopEnd": true,
+        "returnOriginEnd": true
+      }
+    },
+    "3": {
+      "operation": "outline",
+      "outline": {
+        "shape": "circle",
+        "offsetMode": "inside",
+        "method": "helix",
+        "toolDiameter": 3.175,
+        "totalDepth": 10,
+        "width": 115,
+        "height": 115,
+        "diameter": 38.2,
+        "offsetX": 0,
+        "offsetY": 0,
+        "tabsEnabled": false,
+        "tabHeight": 1,
+        "tabWidth": 3,
+        "tabCount": 3,
+        "rampAngleDeg": 2,
+        "lobeMainDiameter": 60,
+        "lobeMode": "add",
+        "lobeCount": 5,
+        "lobePitchDiameter": 70,
+        "lobeDiameter": 16,
+        "lobeStartAngle": 90,
+        "tabStartAngle": 90
+      },
+      "feeds": {
+        "stepdown": 0.65,
+        "feedrateXY": 316,
+        "plungeRate": 95,
+        "safeZ": 10,
+        "startZ": 0.5
+      },
+      "output": {
+        "interpolation": "arc",
+        "spindleStart": false,
+        "spindleStopEnd": true,
+        "returnOriginEnd": true
+      }
+    },
+    "4": {
+      "operation": "holes",
+      "method": "helix",
+      "geometry": {
+        "toolDiameter": 3.175,
+        "holeDiameter": 6,
+        "totalDepth": 10,
+        "holeBottom": "open",
+        "positioning": "gridCentered",
+        "gridX": 40,
+        "gridY": 0,
+        "circleHoleCount": 5,
+        "circleDiameter": 45,
+        "circleStartAngle": 0,
+        "customPointsText": "10,10",
+        "customPoints": [
+          {
+            "x": 10,
+            "y": 10
+          }
+        ],
+        "offsetX": 0,
+        "offsetY": 55,
+        "tabsEnabled": false,
+        "tabHeight": 1,
+        "tabWidth": 3,
+        "tabCount": 3,
+        "rampAngleDeg": 2
+      },
+      "feeds": {
+        "stepdown": 0.65,
+        "feedrateXY": 316,
+        "plungeRate": 95,
+        "safeZ": 4,
+        "startZ": 0.5
+      },
+      "output": {
+        "interpolation": "arc",
+        "spindleStart": false,
+        "spindleStopEnd": true,
+        "returnOriginEnd": true
+      }
+    },
+    "5": {
+      "operation": "holes",
+      "method": "helix",
+      "geometry": {
+        "toolDiameter": 3.175,
+        "holeDiameter": 10,
+        "totalDepth": 4,
+        "holeBottom": "closed",
+        "positioning": "gridCentered",
+        "gridX": 40,
+        "gridY": 0,
+        "circleHoleCount": 5,
+        "circleDiameter": 45,
+        "circleStartAngle": 0,
+        "customPointsText": "10,10",
+        "customPoints": [
+          {
+            "x": 10,
+            "y": 10
+          }
+        ],
+        "offsetX": 0,
+        "offsetY": 55,
+        "tabsEnabled": false,
+        "tabHeight": 1,
+        "tabWidth": 3,
+        "tabCount": 3,
+        "rampAngleDeg": 2
+      },
+      "feeds": {
+        "stepdown": 0.65,
+        "feedrateXY": 316,
+        "plungeRate": 95,
+        "safeZ": 4,
+        "startZ": 0.5
+      },
+      "output": {
+        "interpolation": "arc",
+        "spindleStart": false,
+        "spindleStopEnd": true,
+        "returnOriginEnd": true
+      }
+    },
+    "6": null,
+    "7": null
+  }
+}
