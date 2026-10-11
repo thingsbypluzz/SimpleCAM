@@ -41,8 +41,9 @@ bez logowania, bez backendu, bez CAD-a.
 Sześć operacji (`WizardParams.operation`):
 
 - **Hole(s)** — okrągłe otwory; metody Helix / Standard Hole × wzorce
-  Single / Rectangular Grid / Grid Centered / N-Holes on Circle / Custom
-  List; opcjonalne mostki.
+  Single / Rectangular Grid / Grid Centered (siatka Columns × Rows w
+  zadanym rozstawie, domyślnie 2 × 2) / N-Holes on Circle / Custom List;
+  opcjonalne mostki.
 - **Outline** — kontur Rectangle Cornered / Centered / Circle / **Lobed
   Circle** (okrąg główny z okręgami na okręgu podziałowym: dodanymi jako
   wypustki albo wyciętymi jako wcięcia — Add / Subtract) z offset mode Inside / Outside / On-line; metody

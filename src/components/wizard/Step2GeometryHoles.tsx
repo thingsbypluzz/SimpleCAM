@@ -10,12 +10,16 @@ import {
   isToolDiameterValid,
   MAX_CIRCLE_HOLE_COUNT,
   MAX_TAB_COUNT,
+  isGridCountValid,
+  MAX_GRID_COUNT,
+  MAX_GRID_HOLES,
 } from '../../lib/validation'
 import { resolveToolDiameterSelectOptions } from '../../lib/toolDiameterOptions'
 import type { ToolDiameterOption } from '../../types/toolDiameters'
 import { Checkbox } from './Checkbox'
 import { ToolChipLoad } from './ToolChipLoad'
 import { FieldRow, inputClass } from './FieldRow'
+import { gridCounts } from '../../lib/positioning'
 import { HintPopover } from './HintPopover'
 import { TextToggle } from './TextToggle'
 import { HOLE_BOTTOM_OPTIONS } from './toggleOptions'
@@ -36,7 +40,8 @@ interface Step2GeometryHolesProps {
 
 // Field order (BL-72, shared idea across all four Step 2 panels): where
 // and how big first, then the tool, then how to cut — Pattern fields with
-// the hole size (Grid: Width + Height + Depth, then Hole Diameter; N-Holes:
+// the hole size (Grid: Spacing X + Y + Depth, Columns + Rows + hole count,
+// then Hole Diameter; N-Holes:
 // Hole Count + Diameter + Depth, then Hole Diameter + Start Angle; Custom:
 // the list, then Hole Diameter + Depth; Single: just that pair, BL-93)
 // -> Tool Diameter -> Method -> Ramp + Pitch (Helix only, BL-80) -> Tabs ->
@@ -64,6 +69,8 @@ export function Step2GeometryHoles({ params, onChange, machine, toolDiameters, f
   const totalDepthField = useNumberField(geometry.totalDepth, (v) => updateGeometry({ totalDepth: v }))
   const gridXField = useNumberField(geometry.gridX, (v) => updateGeometry({ gridX: v }))
   const gridYField = useNumberField(geometry.gridY, (v) => updateGeometry({ gridY: v }))
+  const gridCountXField = useNumberField(geometry.gridCountX, (v) => updateGeometry({ gridCountX: v }))
+  const gridCountYField = useNumberField(geometry.gridCountY, (v) => updateGeometry({ gridCountY: v }))
   const circleHoleCountField = useNumberField(geometry.circleHoleCount, (v) =>
     updateGeometry({ circleHoleCount: v }),
   )
@@ -83,6 +90,9 @@ export function Step2GeometryHoles({ params, onChange, machine, toolDiameters, f
   // BL-66: the same conditions that show the errors below also mark the
   // fields they concern (aria-invalid -> error styling in inputClass).
   const circleCountInvalid = !isCircleHoleCountValid(geometry)
+  const gridCountInvalid = !isGridCountValid(geometry)
+  const gridShape = gridCounts(geometry)
+  const gridHoleCount = gridShape.columns * gridShape.rows
   const customPointsInvalid = customParse.invalidLines.length > 0 || customParse.points.length === 0
   const sizeInvalid = !isHolesSizeValid(geometry)
   const toolInvalid = !isToolDiameterValid(geometry)
@@ -141,7 +151,7 @@ export function Step2GeometryHoles({ params, onChange, machine, toolDiameters, f
         <div className="flex flex-col gap-4">
           <div className="flex items-end gap-4">
             <div className="min-w-0 flex-1">
-              <FieldRow label="Width [mm]">
+              <FieldRow label="Spacing X [mm]">
                 <NumberInput
                   type="number"
                   step="0.1"
@@ -153,7 +163,7 @@ export function Step2GeometryHoles({ params, onChange, machine, toolDiameters, f
               </FieldRow>
             </div>
             <div className="min-w-0 flex-1">
-              <FieldRow label="Height [mm]">
+              <FieldRow label="Spacing Y [mm]">
                 <NumberInput
                   type="number"
                   step="0.1"
@@ -166,6 +176,44 @@ export function Step2GeometryHoles({ params, onChange, machine, toolDiameters, f
             </div>
             {depthCell}
           </div>
+          <div className="flex items-end gap-4">
+            <div className="min-w-0 flex-1">
+              <FieldRow label="Columns (X)">
+                <NumberInput
+                  type="number"
+                  step="1"
+                  min="1"
+                  max={MAX_GRID_COUNT}
+                  className={inputClass}
+                  aria-invalid={gridCountInvalid}
+                  {...gridCountXField}
+                />
+              </FieldRow>
+            </div>
+            <div className="min-w-0 flex-1">
+              <FieldRow label="Rows (Y)">
+                <NumberInput
+                  type="number"
+                  step="1"
+                  min="1"
+                  max={MAX_GRID_COUNT}
+                  className={inputClass}
+                  aria-invalid={gridCountInvalid}
+                  {...gridCountYField}
+                />
+              </FieldRow>
+            </div>
+            <div className="min-w-0 flex-1">
+              <FieldRow label="Holes Count">
+                <input type="text" readOnly disabled value={gridHoleCount} className={`${inputClass} cursor-not-allowed opacity-70`} />
+              </FieldRow>
+            </div>
+          </div>
+          {gridCountInvalid && (
+            <p className="text-sm text-status-error">
+              Columns and Rows must be whole numbers from 1 to {MAX_GRID_COUNT}, and the grid at most {MAX_GRID_HOLES} holes.
+            </p>
+          )}
           <div className="flex items-end gap-4">
             <div className="min-w-0 flex-1">
               <FieldRow label="Hole Diameter [mm]">{holeDiameterInput}</FieldRow>

@@ -14,8 +14,9 @@
 - **Kolejność pól w Kroku 2** (komentarz „Field order” na górze każdego
   pliku): pierwszy wiersz `PickHeader.tsx` („Pattern: …” / „Shape: …” / „Side: …” z
   `OPERATION_META[op].pickKind` + `pick()`, opis pod Hint Button przy
-  prawej krawędzi). Hole(s): pola wzorca z rozmiarem otworu (Grid: Width +
-  Height + Depth, potem Hole Diameter; N-Holes: Hole Count + Diameter +
+  prawej krawędzi). Hole(s): pola wzorca z rozmiarem otworu (Grid: Spacing X +
+  Spacing Y + Depth, potem Columns (X) + Rows (Y) + odczyt Holes Count, potem
+  Hole Diameter; N-Holes: Hole Count + Diameter +
   Depth, potem Hole Diameter + Start Angle; Custom List: lista, potem Hole
   Diameter + Depth; Single: sama ta para; na prawo od Hole Diameter, w
   tym samym wierszu, przełącznik **Bottom: Open | Closed** —

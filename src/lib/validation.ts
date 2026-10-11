@@ -13,7 +13,7 @@ import type {
 import { layoutText } from './textLayout'
 import type { ToolDiameterOption } from '../types/toolDiameters'
 import type { Engagement } from './feedCalc'
-import { MAX_CIRCLE_HOLE_COUNT, resolvePoints } from './positioning'
+import { gridCounts, MAX_CIRCLE_HOLE_COUNT, MAX_GRID_COUNT, MAX_GRID_HOLES, resolvePoints } from './positioning'
 import { parseCustomPointsText } from './customPoints'
 import { rectToolDimensions } from './outlineRectangleGeometry'
 import { circleOutlineOptions, circleOutlineRadiusAndDirection } from './outlineCircle'
@@ -441,6 +441,19 @@ export { MAX_CIRCLE_HOLE_COUNT }
 
 export function isCircleHoleCountValid(geometry: GeometryParams): boolean {
   return geometry.positioning !== 'circle' || geometry.circleHoleCount <= MAX_CIRCLE_HOLE_COUNT
+}
+
+export { MAX_GRID_COUNT, MAX_GRID_HOLES }
+
+// Grid patterns (BL-117): whole numbers of columns and rows, 1 to
+// MAX_GRID_COUNT each, and no more than MAX_GRID_HOLES holes in all.
+// Vacuously valid for the other patterns.
+export function isGridCountValid(geometry: GeometryParams): boolean {
+  if (geometry.positioning !== 'grid' && geometry.positioning !== 'gridCentered') return true
+  const ok = (count: number) => Number.isInteger(count) && count >= 1 && count <= MAX_GRID_COUNT
+  if (!ok(geometry.gridCountX) || !ok(geometry.gridCountY)) return false
+  const { columns, rows } = gridCounts(geometry)
+  return columns * rows <= MAX_GRID_HOLES
 }
 
 // BL-48: every non-blank line must parse, and the list can't be empty (an
@@ -1020,6 +1033,7 @@ export const OPERATION_RULES: Record<OperationType, OperationRules> = {
       isToolDiameterValid(p.geometry) &&
       isHolesSizeValid(p.geometry) &&
       isCircleHoleCountValid(p.geometry) &&
+      isGridCountValid(p.geometry) &&
       isCustomPointsValid(p.geometry) &&
       isTabHeightValid(p.geometry) &&
       isTabWidthValid(p.geometry) &&

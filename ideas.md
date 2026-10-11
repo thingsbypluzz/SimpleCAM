@@ -895,6 +895,15 @@ Waga z review w nawiasie kwadratowym.
   ukrycie ścieżek pozostałych presetów nakładki na czas edycji (ich
   obrysy zostają, przygaszone). Znane ograniczenie: Surface i Facing nie
   mają modelu materiału, więc nie dostają kolorowych krawędzi.
+- **`BL-117`** *(Zrealizowany, 2026-10-11)* 🟢 — **Hole(s): siatka otworów
+  Columns × Rows.** Zgłoszone 2026-10-11: rozstaw jak w Rectangular Grid
+  plus liczba powtórzeń w X i Y. Ustalenia z `/grill-me`: nie nowy
+  wzorzec, tylko rozszerzenie obu dzisiejszych — Rectangular Grid i Grid
+  Centered dostają pola Columns i Rows (domyślnie 2 × 2, czyli dotychczasowe
+  cztery rogi; zapisane presety bez zmian); Width / Height stają się
+  Spacing X / Y (rozstaw sąsiednich otworów); kolejność wężem, rząd po
+  rzędzie; limit 20 w osi i 100 otworów łącznie. Rozstaw 0 nadal składa
+  oś do jednej linii otworów.
 - **`BL-61`** *(Zrealizowany, 2026-09-27)* 🔴 **[Low, kosztowne w czasie]**
   — **Podglądy duplikują geometrię silnika** — jedna lista ruchów (jak
   Adaptive) dla G-code i podglądu 3D, po jednej operacji na raz. Etapy 1–2
@@ -935,10 +944,40 @@ Pocket, 2026-09-21, i dla Adaptive, 2026-09-25; historia implementacji w
   bibliotekę do path-data) — geometria wejściowa nieporównywalna z
   dzisiejszymi kształtami parametrycznymi (Rectangle/Circle).
   **Stan (v0.52.0): etap 1 wdrożony** — operacja Text z fontem Relief
-  SingleLine, oba układy (Straight, On Circle), Mirror, Generic V-Bit /
-  frez walcowy, podglądy, doczytywanie fontu, odnośniki w About. **Zostaje
-  etap 2:** dwa dodatkowe kroje (szeryfowy i pisanka z EMS / Hershey) z
-  dorobionymi polskimi literami.
+  SingleLine, oba układy (Straight, On Circle), Mirror, Generic V-Bit
+  (kąt 30° / 60° / 90°) / frez walcowy, podglądy z okręgiem-prowadnicą
+  przy edycji, doczytywanie fontu, odnośniki w About.
+  **Kolejne kroki (w tej kolejności):**
+  1. *Dwa dodatkowe kroje* — ustalone w `/grill-me`, niezrobione. Pokazać
+     użytkownikowi kandydatów z rodzin EMS / Hershey (jeden szeryfowy,
+     jedna pisanka) i wybrać; w każdym dorysować 14 brakujących polskich
+     liter (ą ę ł ń ś ź ż, małe i wielkie) — do oceny na oko, krój ze
+     słabymi literami wypada; plik SVG do `src/fonts/`, licencja do
+     `public/licenses/`, wpis w `TEXT_FONTS` i w `textTestUtils.ts`; test
+     kompletu polskiego alfabetu dla każdego fontu. Do rozstrzygnięcia:
+     dorobione litery zmieniają oryginalny plik fontu (wtedy to „Modified
+     Version” w rozumieniu OFL — inna nazwa fontu) czy żyją w osobnym
+     pliku-nakładce obok oryginału.
+  2. *Domyślne posuwy pod grawer* — ustalone w `/grill-me`, niezrobione:
+     dziś przejście na Text zostawia posuwy z Kroku 3 (dobrane do
+     frezowania). Do ustalenia wartości i moment ich ustawienia (tylko
+     przy pierwszym wejściu w Text, bez nadpisywania tego, co użytkownik
+     wpisał).
+  3. *Wyróżnienie edytowanego presetu Text w Overlay* — kolor edycji
+     (`BL-116`) działa tylko dla operacji z modelem materiału; Text, jak
+     Surface i Facing, go nie dostaje. Dla Text prosto: jego kreski w
+     kolorze edycji.
+  4. *Szerokość rowka w 3D* — dziś linie bez grubości (ograniczenie
+     WebGL); rowek o realnej szerokości widać tylko w 2D. Opcja: wstążki
+     (siatka) zamiast linii.
+  5. *Litery na okręgu* — stawiane sztywno; przy dużych literach na małym
+     okręgu rogi sąsiednich liter się rozchodzą albo stykają. Do oceny po
+     testach: zostawić, czy wyginać litery po łuku.
+  6. *Szablon z napisem* (`BL-113`) — np. tabliczka albo podpis na
+     NEMA23 Mount, żeby szablony pokazywały też Text.
+  Do oceny przez użytkownika po testach etapu 1: ikony Text (rysowane na
+  ślepo), limity (400 znaków, Letter Spacing −30…300%), zachowanie przy
+  wolnym łączu (komunikat „Loading the font…”).
   **Ustalenia z `/grill-me` (2026-10-09) — zakres pierwszej wersji:
   grawerowanie napisów fontami jednoliniowymi, operacja „Text”.**
   - *Fonty (research na plikach źródłowych).* Wszystkie w formacie SVG

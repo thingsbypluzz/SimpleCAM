@@ -7,6 +7,27 @@ zgodne z [SemVer](https://semver.org/). Ten plik pozostaje głównym, czytelnym
 thingsbypluzz/SimpleCAM), ale to infrastruktura pod izolację pracy
 (branch/worktree per zadanie), nie zamiennik tego changeloga.
 
+## [0.53.0] — 2026-10-11
+
+### Dodano
+
+- **Hole(s): siatka otworów Columns × Rows** (`BL-117`). Rectangular Grid
+  i Grid Centered mają nowe pola Columns i Rows — siatka dowolnej liczby
+  otworów w zadanym rozstawie, od narożnika albo wyśrodkowana. Domyślne
+  2 × 2 to dotychczasowe cztery rogi prostokąta, więc zapisane presety i
+  ich G-code się nie zmieniają.
+  - Otwory są obchodzone wężem, rząd po rzędzie — najkrótszymi
+    przejazdami.
+  - Obok pól jest odczyt łącznej liczby otworów. Limit: 20 w osi i 100
+    otworów łącznie.
+  - Rozstaw 0 nadal daje jedną linię otworów (np. dwa otwory w zadanej
+    odległości); to samo robi teraz wprost jedna kolumna albo jeden rząd.
+
+### Zmieniono
+
+- Pola Width / Height wzorców Grid nazywają się teraz Spacing X /
+  Spacing Y — to rozstaw sąsiednich otworów, a nie wymiar całej siatki.
+
 ## [0.52.0] — 2026-10-09
 
 ### Dodano
