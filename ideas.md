@@ -88,6 +88,72 @@ faktycznym.
   Wizard Section — poniżej pewnej szerokości okna czytelność formularzy w
   Kroku 2/3 się rozpada. Dokładna wartość progu do ustalenia przy realnej
   implementacji, prawdopodobnie razem z sesją `/grill-me`.
+
+  **Ustalenia z makiet (2026-10-11).** Warianty narysowane w Claude
+  Design, kanwa „OnlyPaths — układy responsywne (BL-8)”
+  (`https://claude.ai/artifact/XnTkidmPS2ZLEoD1YTKo1w`); decyzje z
+  komentarzy użytkownika na kanwie. Kodu jeszcze nie ruszano.
+
+  - **Zakres:** laptop i tablet; telefon w osobnym, późniejszym kroku.
+  - **Szeroki ekran (~1440):** układ jak dziś, tylko z proporcjonalnym
+    podziałem szerokości zamiast sztywnych px.
+  - **Średni ekran (~1024, tablet poziomo, mały laptop):** wariant
+    „Średni A” — pasek kroków, wizard obok podglądu; wybrany, bo
+    utrzymuje „feel” wersji desktop. „Średni B” (podgląd nad wizardem)
+    niepreferowany.
+  - **Wąski ekran (~768, tablet pionowo):** wariant „Wąski B” — jeden
+    widok naraz, przełączany dolnym paskiem z czterema przyciskami:
+    Setup / 2D / 3D / G-code (Setup = wizard, pozostałe = zakładki
+    podglądu). „Wąski A” (podgląd przyklejony u góry) niepreferowany,
+    zostawiony na kanwie do porównania.
+  - **Header na dotyku:** nazwa wczytanego projektu w prawym górnym rogu
+    jako rozwijane menu z Load i Save (zamiast osobnych przycisków);
+    Settings jako ikona koła zębatego.
+  - **Settings i Feedrate Calculator na dotyku:** pełny ekran z
+    przyciskiem Back zamiast okna; na komputerze okno jak dziś. Settings
+    Nav staje się poziomym paskiem sekcji przewijanym w bok. Feedrate
+    Calculator: pola wejściowe w dwóch kolumnach, wyniki jako lista z
+    dużymi polami wyboru (Now / Suggested), na dole przyklejony pasek
+    Cancel / Apply. To samo rozsądnie zastosować do okna nazwy projektu
+    (propozycja, nie rysowana).
+  - **Wpisywanie liczb na dotyku:** własna, uproszczona klawiatura
+    numeryczna aplikacji (cyfry, kropka, minus, kasowanie, schowanie) z
+    paskiem nad nią: nazwa pola, poprzednie / następne pole, Done —
+    prawie wszystkie pola są liczbowe, a systemowej klawiatury nie da się
+    zmusić do takiego układu (iPad przy polu liczbowym pokazuje pełną).
+    Pola tekstowe (napis w Text, nazwa projektu, Custom List) zostają
+    przy klawiaturze systemowej.
+  - **Klawiatura — do uwzględnienia i sprawdzenia przy implementacji**
+    (znany „babol”: ekran pod klawiaturą nie daje się przewijać albo nie
+    ma jak schować klawiatury):
+    1. wysokość układu liczona z widocznego obszaru (`dvh` /
+       `visualViewport`), nie ze `100vh`;
+    2. Active Step Panel przewija się sam (`overflow-y: auto`); przy
+       otwartej klawiaturze żadnego `overflow: hidden` ani
+       `position: fixed` na całej stronie;
+    3. pole z fokusem zawsze przewinięte nad klawiaturę — po jej otwarciu
+       i po przejściu do następnego pola;
+    4. Done, Enter i dotknięcie poza polem chowają klawiaturę i
+       zatwierdzają wartość (jak dzisiejszy odroczony commit pól);
+    5. dolny pasek Setup / 2D / 3D / G-code znika na czas pisania;
+    6. pola liczbowe na dotyku nie wywołują klawiatury systemowej
+       (`inputmode="none"`); z klawiaturą fizyczną i na laptopie działają
+       jak dziś; tekst w polach ≥ 16 px, żeby iOS nie powiększał strony;
+    7. sprawdzić przecinek z polskiej klawiatury systemowej w Custom
+       List;
+    8. urządzenia do testu: iPad (Safari), tablet z Androidem (Chrome),
+       obrót ekranu przy otwartej klawiaturze, klawiatura pływająca i
+       dzielona na iPadzie, podłączona klawiatura fizyczna.
+  - **Preset Bar na dotyku:** wariant „Dotyk C” (pomysł użytkownika) —
+    dotknięcie slotu wczytuje preset, przytrzymanie otwiera menu z
+    dwiema opcjami (Show in overlay / Edit; dla włączonych: Remove from
+    overlay / Stop editing). Stan slotu nadal pokazany małymi znaczkami
+    (ptaszek, ołówek), które na dotyku nie są przyciskami; przydałaby się
+    jednorazowa podpowiedź o przytrzymaniu. Reguła „dotknięcie wczytuje
+    tylko, gdy nic nie jest w Overlay ani w edycji” zostaje. Na
+    komputerze znaczki po najechaniu jak dziś. Odrzucone: „Dotyk A”
+    (znaczki zawsze widoczne jako przyciski) i „Dotyk B” (dotknięcie
+    slotu otwiera menu).
 - **`BL-18`** *(Otwarty)* — **Zweryfikować kompatybilność wsteczną ze starszymi
   przeglądarkami.** Zgłoszenie użytkownika: na Windows 8, w kilku
   przeglądarkach, tylko Preview Section miała kolory zgodne z ustawioną
