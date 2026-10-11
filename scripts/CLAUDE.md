@@ -12,10 +12,15 @@ katalog zdalny, niczego nie wysyła. Slash command `/deploy` odpala
 - Warunki weryfikacji na tym hostingu: `FTP_HOST=v101.vh.net.pl`
   (certyfikat `*.v101.vh.net.pl`; `ftp.vh11566.vh.net.pl` to ten sam
   serwer, ale spoza certyfikatu) oraz dołożony łańcuch Let's Encrypt —
-  serwer wysyła tylko certyfikat końcowy, więc pośredni YR1 i cross-sign
-  ISRG Root YR ↔ X1 leżą w `certs/lets-encrypt-yr1-chain.pem` (ważne do
-  2028/2032), ufane obok rootów Node; `FTP_CA_FILE` nadpisuje przy zmianie
-  wystawcy. Przy błędzie weryfikacji skrypt podpowiada oba warunki.
+  serwer wysyła tylko certyfikat końcowy, więc pośrednie YR1 i YR2 oraz
+  cross-sign ISRG Root YR ↔ X1 leżą w `certs/lets-encrypt-chain.pem`
+  (ważne do 2028/2032), ufane obok rootów Node; `FTP_CA_FILE` nadpisuje
+  przy zmianie wystawcy. Przy błędzie weryfikacji skrypt podpowiada oba
+  warunki. Let's Encrypt rotuje pośredników przy odnowieniu certyfikatu
+  serwera (co ok. 3 miesiące może trafić na innego): nowego pobrać z
+  adresu „CA Issuers” w certyfikacie serwera, sprawdzić `openssl verify`
+  względem łańcucha już obecnego w pliku (musi schodzić do ISRG Root YR)
+  i dopiero wtedy dopisać — nigdy nie wyłączać weryfikacji.
 - Kolejność: nowe pliki do `assets/` (obok starych) → reszta roota
   (`.htaccess`, `robots.txt`, `favicon.svg`) → **`index.html` na końcu** →
   usunięcie z `assets/` plików spoza nowego buildu. Przerwany upload
