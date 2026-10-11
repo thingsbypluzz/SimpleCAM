@@ -32,12 +32,12 @@ const assetsDir = 'assets';
 if (process.env.FTP_REJECT_UNAUTHORIZED !== undefined) {
   console.warn('FTP_REJECT_UNAUTHORIZED is no longer supported and is ignored — certificate verification is always on.');
 }
-const caFile = process.env.FTP_CA_FILE ?? new URL('./certs/lets-encrypt-yr1-chain.pem', import.meta.url);
+const caFile = process.env.FTP_CA_FILE ?? new URL('./certs/lets-encrypt-chain.pem', import.meta.url);
 const ca = [...rootCertificates, readFileSync(caFile, 'utf8')];
 
 const TLS_ERROR_HINT = `Certificate verification failed. Check that FTP_HOST is a name the server's
 certificate is issued for (for this host: v101.vh.net.pl, not ftp.vh11566.vh.net.pl), and that
-scripts/certs/lets-encrypt-yr1-chain.pem still matches the issuer of the server's certificate
+scripts/certs/lets-encrypt-chain.pem still has the issuer of the server's certificate
 (Let's Encrypt rotates intermediates; the certificate's own "CA Issuers" URL has the current one).`;
 
 const client = new Client();
