@@ -7,37 +7,46 @@ import type { GeometryParams, Point2D } from '../types/wizard'
 // before the error shows (BL-63).
 export const MAX_CIRCLE_HOLE_COUNT = 100
 
+// Grid patterns (BL-117): at most this many columns or rows, and holes in
+// all. Validation blocks Generate above either (isGridCountValid()); the
+// pattern itself is capped too, like N-Holes on Circle.
+export const MAX_GRID_COUNT = 20
+export const MAX_GRID_HOLES = 100
+
+// The columns and rows a grid actually drills. A spacing of exactly 0 folds
+// that axis into one line of holes — the long-standing shortcut for "two
+// holes N mm apart" (set the other spacing to 0), which would otherwise
+// drill the same spot several times.
+export function gridCounts(geometry: Pick<GeometryParams, 'gridX' | 'gridY' | 'gridCountX' | 'gridCountY'>): { columns: number; rows: number } {
+  const clamp = (count: number) => Math.min(MAX_GRID_COUNT, Math.max(1, Math.round(count)))
+  return {
+    columns: geometry.gridX === 0 ? 1 : clamp(geometry.gridCountX),
+    rows: geometry.gridY === 0 ? 1 : clamp(geometry.gridCountY),
+  }
+}
+
 function rawPoints(geometry: GeometryParams): Point2D[] {
   switch (geometry.positioning) {
     case 'single':
       return [{ x: 0, y: 0 }]
-    case 'grid': {
-      const { gridX, gridY } = geometry
-      // A rectangle collapses to 2 (or 1) distinct corners when a side is
-      // exactly 0 — drilling all 4 nominal corners would just hit the same
-      // spot 2-4 times. Ergonomic shortcut for "two holes N mm apart":
-      // leave the other side at the real distance and zero this one.
-      if (gridX === 0 && gridY === 0) return [{ x: 0, y: 0 }]
-      if (gridX === 0) return [{ x: 0, y: 0 }, { x: 0, y: gridY }]
-      if (gridY === 0) return [{ x: 0, y: 0 }, { x: gridX, y: 0 }]
-      return [
-        { x: 0, y: 0 },
-        { x: gridX, y: 0 },
-        { x: gridX, y: gridY },
-        { x: 0, y: gridY },
-      ]
-    }
+    case 'grid':
     case 'gridCentered': {
       const { gridX, gridY } = geometry
-      if (gridX === 0 && gridY === 0) return [{ x: 0, y: 0 }]
-      if (gridX === 0) return [{ x: 0, y: -gridY / 2 }, { x: 0, y: gridY / 2 }]
-      if (gridY === 0) return [{ x: -gridX / 2, y: 0 }, { x: gridX / 2, y: 0 }]
-      return [
-        { x: -gridX / 2, y: -gridY / 2 },
-        { x: gridX / 2, y: -gridY / 2 },
-        { x: gridX / 2, y: gridY / 2 },
-        { x: -gridX / 2, y: gridY / 2 },
-      ]
+      const { columns, rows } = gridCounts(geometry)
+      const centered = geometry.positioning === 'gridCentered'
+      const x0 = centered ? (-gridX * (columns - 1)) / 2 : 0
+      const y0 = centered ? (-gridY * (rows - 1)) / 2 : 0
+      // Row by row, every other row backwards (a snake): the shortest
+      // travel between holes — and for 2 × 2 the lap around the rectangle
+      // the pattern has always drilled.
+      const points: Point2D[] = []
+      for (let row = 0; row < rows; row++) {
+        for (let i = 0; i < columns; i++) {
+          const column = row % 2 === 0 ? i : columns - 1 - i
+          points.push({ x: x0 + column * gridX, y: y0 + row * gridY })
+        }
+      }
+      return points
     }
     case 'circle': {
       // Guarded against fractional/negative hole counts (same defensive

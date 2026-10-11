@@ -306,6 +306,13 @@ describe('field validation on load (BL-57)', () => {
     expect(loadSlot(AUTO_SAVE_SLOT)!.geometry.holeBottom).toBe('open')
   })
 
+  it('loads grid counts; a snapshot saved before them is the 2 × 2 it always was (BL-117)', () => {
+    storeAutoSave({ operation: 'holes', geometry: { positioning: 'grid', gridCountX: 5, gridCountY: 3 } })
+    expect(loadSlot(AUTO_SAVE_SLOT)!.geometry).toMatchObject({ gridCountX: 5, gridCountY: 3 })
+    storeAutoSave({ operation: 'holes', geometry: { positioning: 'grid', gridX: 40, gridY: 20 } })
+    expect(loadSlot(AUTO_SAVE_SLOT)!.geometry).toMatchObject({ gridX: 40, gridY: 20, gridCountX: 2, gridCountY: 2 })
+  })
+
   it('loads a Text preset; an unknown font or layout falls back to the default (OP-4)', () => {
     storeAutoSave({ operation: 'text', text: { text: 'Łódź', layout: 'circle', height: 12, mirror: true, bit: 'endmill' } })
     const loaded = loadSlot(AUTO_SAVE_SLOT)!

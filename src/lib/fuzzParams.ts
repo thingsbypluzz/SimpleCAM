@@ -95,6 +95,8 @@ export function randomHoles(rng: Rng, method: 'helix' | 'standard'): WizardParam
       positioning,
       gridX: rng.chance(0.2) ? 0 : rng.range(5, 60, 1),
       gridY: rng.chance(0.2) ? 0 : rng.range(5, 60, 1),
+      gridCountX: rng.chance(0.5) ? 2 : rng.int(1, 6),
+      gridCountY: rng.chance(0.5) ? 2 : rng.int(1, 5),
       circleHoleCount: rng.int(1, 12),
       circleDiameter: rng.range(10, 80, 1),
       circleStartAngle: rng.int(0, 359),

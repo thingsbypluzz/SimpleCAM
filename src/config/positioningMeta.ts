@@ -7,6 +7,7 @@ import {
   SingleIcon,
 } from '../components/icons'
 import { fmt } from '../lib/format'
+import { gridCounts } from '../lib/positioning'
 import type { GeometryParams, PositioningMode } from '../types/wizard'
 
 export interface PositioningMeta {
@@ -26,13 +27,15 @@ export const POSITIONING_META: Record<PositioningMode, PositioningMeta> = {
   grid: {
     value: 'grid',
     title: 'Rectangular Grid',
-    description: 'Holes at the four corners of a rectangle, origin at one corner. Set Width or Height to 0 for two holes spaced by the other.',
+    description:
+      'A grid of holes, origin at its bottom-left hole: Columns × Rows, Spacing X and Y apart. 2 × 2 is the four corners of a rectangle. Set a spacing to 0 for a single line of holes.',
     Icon: RectangleIcon,
   },
   gridCentered: {
     value: 'gridCentered',
     title: 'Rectangular Grid (Centered)',
-    description: 'Holes at the four corners of a rectangle, origin at the center. Set Width or Height to 0 for two holes spaced by the other.',
+    description:
+      'A grid of holes, origin at its center: Columns × Rows, Spacing X and Y apart. 2 × 2 is the four corners of a rectangle. Set a spacing to 0 for a single line of holes.',
     Icon: RectangleCenteredIcon,
   },
   circle: {
@@ -61,17 +64,19 @@ export function positioningIcon(mode: PositioningMode) {
   return POSITIONING_META[mode].Icon
 }
 
-// grid/gridCentered collapse to 2 holes when exactly one of gridX/gridY is
-// 0 (see resolvePoints() in lib/positioning.ts) — returns the surviving
-// distance in that case, so labeling can call it out instead of showing a
-// degenerate-looking "0×N" rectangle. Both-zero collapses too (1 hole,
-// resolvePoints() handles it) but isn't relabeled here — rare enough that
-// falling back to the plain "0×0" text is fine.
-function twoHoleDistance(geometry: GeometryParams): number | null {
-  const { gridX, gridY } = geometry
-  if (gridX === 0 && gridY !== 0) return gridY
-  if (gridY === 0 && gridX !== 0) return gridX
-  return null
+// How a grid reads in labels: two holes are called just that (the distance
+// between them is what matters), 2 × 2 is the rectangle the pattern started
+// as, anything else is a grid with its counts and spacing.
+type GridLook = { kind: 'twoHoles'; distance: number } | { kind: 'rectangle' } | { kind: 'grid'; columns: number; rows: number }
+
+function gridLook(geometry: GeometryParams): GridLook {
+  const { columns, rows } = gridCounts(geometry)
+  if (columns * rows === 2) return { kind: 'twoHoles', distance: columns === 2 ? geometry.gridX : geometry.gridY }
+  if (columns === 2 && rows === 2) return { kind: 'rectangle' }
+  // A spacing of 0 with the other one given keeps the old "0×N" text for
+  // the single hole it leaves; a real grid shows its counts.
+  if (columns * rows === 1 && geometry.gridCountX === 2 && geometry.gridCountY === 2) return { kind: 'rectangle' }
+  return { kind: 'grid', columns, rows }
 }
 
 // Short lines stacked in the narrow (80px) collapsed-bar badge — broken up
@@ -81,15 +86,14 @@ export function positioningLines(geometry: GeometryParams): string[] {
   switch (geometry.positioning) {
     case 'single':
       return ['SINGLE', 'HOLE']
-    case 'grid': {
-      const twoHole = twoHoleDistance(geometry)
-      if (twoHole !== null) return ['2 HOLES', `(${fmt(twoHole)}mm apart)`]
-      return ['RECTANGLE', `(${fmt(geometry.gridX)}×${fmt(geometry.gridY)})`]
-    }
+    case 'grid':
     case 'gridCentered': {
-      const twoHole = twoHoleDistance(geometry)
-      if (twoHole !== null) return ['2 HOLES', `(${fmt(twoHole)}mm apart)`]
-      return ['RECTANGLE', 'CENTERED', `(${fmt(geometry.gridX)}×${fmt(geometry.gridY)})`]
+      const look = gridLook(geometry)
+      const centered = geometry.positioning === 'gridCentered'
+      const spacing = `(${fmt(geometry.gridX)}×${fmt(geometry.gridY)})`
+      if (look.kind === 'twoHoles') return ['2 HOLES', `(${fmt(look.distance)}mm apart)`]
+      if (look.kind === 'rectangle') return centered ? ['RECTANGLE', 'CENTERED', spacing] : ['RECTANGLE', spacing]
+      return [`GRID ${look.columns}×${look.rows}`, ...(centered ? ['CENTERED'] : []), spacing]
     }
     case 'circle':
       return [`${Math.round(geometry.circleHoleCount)}-HOLES`, 'CIRCLE', `(⌀${fmt(geometry.circleDiameter)})`]
@@ -109,15 +113,14 @@ export function patternLabel(geometry: GeometryParams): string {
   switch (geometry.positioning) {
     case 'single':
       return 'Single Hole'
-    case 'grid': {
-      const twoHole = twoHoleDistance(geometry)
-      if (twoHole !== null) return `2 Holes (${fmt(twoHole)}mm apart)`
-      return `Rectangle ${fmt(geometry.gridX)}×${fmt(geometry.gridY)}`
-    }
+    case 'grid':
     case 'gridCentered': {
-      const twoHole = twoHoleDistance(geometry)
-      if (twoHole !== null) return `2 Holes (${fmt(twoHole)}mm apart)`
-      return `Rectangle Centered ${fmt(geometry.gridX)}×${fmt(geometry.gridY)}`
+      const look = gridLook(geometry)
+      const centered = geometry.positioning === 'gridCentered' ? ' Centered' : ''
+      const spacing = `${fmt(geometry.gridX)}×${fmt(geometry.gridY)}`
+      if (look.kind === 'twoHoles') return `2 Holes (${fmt(look.distance)}mm apart)`
+      if (look.kind === 'rectangle') return `Rectangle${centered} ${spacing}`
+      return `Grid${centered} ${look.columns}×${look.rows} (${spacing})`
     }
     case 'circle':
       return `${Math.round(geometry.circleHoleCount)}-Holes Circle`

@@ -62,8 +62,12 @@ export interface GeometryParams {
   totalDepth: number
   holeBottom: HoleBottom // previews only
   positioning: PositioningMode
+  // Grid patterns: spacing between neighbouring holes and how many of them
+  // (BL-117); the default 2 × 2 is the four corners of a rectangle.
   gridX: number
   gridY: number
+  gridCountX: number // columns
+  gridCountY: number // rows
   circleHoleCount: number
   circleDiameter: number
   circleStartAngle: number
@@ -273,6 +277,8 @@ export const DEFAULT_WIZARD_PARAMS: WizardParams = {
     positioning: 'single',
     gridX: 50,
     gridY: 50,
+    gridCountX: 2,
+    gridCountY: 2,
     circleHoleCount: 5,
     circleDiameter: 45,
     circleStartAngle: 0,

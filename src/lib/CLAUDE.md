@@ -55,11 +55,19 @@ zaczyna od `zTo('rapid', startZ)`; końcowy retrakt robi `assembleProgram()`.
 
 ## Hole(s) (`positioning.ts`, `helix.ts`, `standardHole.ts`, `tabs.ts`)
 
-- **Pozycjonowanie** (`resolvePoints()`): Single (0,0), Grid (4 rogi), Grid
+- **Pozycjonowanie** (`resolvePoints()`): Single (0,0), Grid, Grid
   Centered, N-Holes on Circle (0° = +X, CCW; liczba przycięta do
-  `MAX_CIRCLE_HOLE_COUNT` = 100), Custom List. Grid/Grid Centered kolapsują
-  do 2 punktów (1, gdy oba wymiary), gdy `gridX`/`gridY` === 0 dokładnie —
-  tylko te dwa tryby (`rawPoints()`); etykiety rozpoznają kolaps do 2.
+  `MAX_CIRCLE_HOLE_COUNT` = 100), Custom List. **Grid / Grid Centered** —
+  siatka `gridCountX` × `gridCountY` otworów co `gridX` / `gridY`
+  (rozstaw sąsiednich otworów); domyślne 2 × 2 to cztery rogi prostokąta.
+  Kolejność wężem, rząd po rzędzie (dla 2 × 2 — obejście prostokąta jak
+  zawsze). Rozstaw dokładnie 0 składa daną oś do jednej linii otworów
+  niezależnie od jej liczby (`gridCounts()` — stąd „dwa otwory N mm od
+  siebie”); liczby zaokrąglane i przycinane do `MAX_GRID_COUNT` = 20.
+  Walidacja `isGridCountValid()`: liczby całkowite 1–20 i najwyżej
+  `MAX_GRID_HOLES` = 100 otworów. Etykiety (`positioningMeta.ts`): dwa
+  otwory → „2 Holes (N mm apart)”, 2 × 2 → „Rectangle W×H”, inaczej
+  „Grid N×M (X×Y)”.
   Globalny offset X/Y doliczany jako ostatni krok `resolvePoints()`.
 - **Custom List:** źródło prawdy to surowy tekst `customPointsText`;
   `customPoints` to zapisywana razem lista poprawnych linii.
