@@ -21,7 +21,7 @@ export function SurfaceMethodPicker({ params, onChange }: SurfaceMethodPickerPro
             onClick={() => onChange({ surface: { ...surface, method: method.value } })}
             title={method.description}
             className={[
-              'rounded-md border px-2.5 py-1 text-xs font-medium transition',
+              'rounded-md border px-2.5 py-1 text-xs font-medium transition pointer-coarse:min-h-11 pointer-coarse:px-4 pointer-coarse:text-sm',
               isSelected
                 ? 'border-selected-border bg-selected-bg text-selected-fg shadow-[var(--glow-selected)]'
                 : 'border-border text-muted hover:border-field-border',

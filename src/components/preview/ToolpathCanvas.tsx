@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { previewBottomBarClass, previewButtonClass, previewTopBarClass } from './previewToolbar'
 import type { PaletteId } from '../../config/palettes'
 import type { WizardParams } from '../../types/wizard'
 import type { ThemeId } from '../../types/theme'
@@ -255,27 +256,27 @@ export function ToolpathCanvas({
   return (
     <div ref={containerRef} className="relative min-h-0 w-full flex-1">
       <canvas ref={canvasRef} />
-      <div className="absolute top-3 left-3 flex flex-wrap items-center gap-1.5">
+      <div className={previewTopBarClass}>
         <button
           type="button"
           onClick={onToggleStockVisible}
-          className="rounded-md border border-field-border bg-field-bg/90 px-2.5 py-1 text-xs font-medium text-value shadow-sm hover:bg-field-bg"
+          className={previewButtonClass}
         >
           {stockVisible ? 'Hide Stock' : 'Show Stock'}
         </button>
         <button
           type="button"
           onClick={onToggleToolpathVisible}
-          className="rounded-md border border-field-border bg-field-bg/90 px-2.5 py-1 text-xs font-medium text-value shadow-sm hover:bg-field-bg"
+          className={previewButtonClass}
         >
           {toolpathVisible ? 'Hide Toolpath' : 'Show Toolpath'}
         </button>
       </div>
-      <div className="absolute right-3 bottom-3">
+      <div className={previewBottomBarClass}>
         <button
           type="button"
           onClick={fitToData}
-          className="rounded-md border border-field-border bg-field-bg/90 px-2.5 py-1 text-xs font-medium text-value shadow-sm hover:bg-field-bg"
+          className={previewButtonClass}
         >
           Fit View
         </button>

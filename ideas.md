@@ -71,7 +71,8 @@ faktycznym.
   List (ręcznie wpisane punkty) — import pliku jako alternatywne źródło
   punktów. Parsowanie formatu, ekstrakcja geometrii, mapowanie na
   otwory/kontury.
-- **`BL-8`** *(Otwarty)* — **Responsywny UI na małych ekranach.** Dziś layout zakłada
+- **`BL-8`** *(W trakcie — laptop i tablet wdrożone w v0.54.0, do sprawdzenia
+  na urządzeniach; telefon osobno)* — **Responsywny UI na małych ekranach.** Dziś layout zakłada
   desktop: dwukolumnowy układ (Wizard Section + Preview Section obok
   siebie), gęste pola liczbowe w parach X/Y w jednej linii, Preview
   Viewport 3D z absolutnie pozycjonowanymi przyciskami widoku. Dotyka
@@ -92,7 +93,31 @@ faktycznym.
   **Ustalenia z makiet (2026-10-11).** Warianty narysowane w Claude
   Design, kanwa „OnlyPaths — układy responsywne (BL-8)”
   (`https://claude.ai/artifact/XnTkidmPS2ZLEoD1YTKo1w`); decyzje z
-  komentarzy użytkownika na kanwie. Kodu jeszcze nie ruszano.
+  komentarzy użytkownika na kanwie.
+
+  **Wdrożone w v0.54.0** (opis: `CHANGELOG.md`, mechanizmy:
+  `src/components/CLAUDE.md`): trzy układy z progami 1280 i 900 px, menu
+  projektu, pełnoekranowe Settings i Feedrate Calculator, własna klawiatura
+  numeryczna, Preset Bar z przytrzymaniem. **Zostaje:**
+  - sprawdzenie na urządzeniach (lista w punkcie o klawiaturze niżej) —
+    zwłaszcza iPad: czy klawisze nie zabierają fokusu polu, czy klawiatura
+    systemowa pól tekstowych nie zasłania dołu, przytrzymanie slotu;
+  - okno nazwy projektu zostało zwykłym oknem (nie pełny ekran);
+  - małe cele dotyku, których nie powiększono: Hint Button, Checkbox,
+    przyciski Kroku 4, przyciski widoku w Preview Viewport;
+  - Feedrate Calculator w układzie wąskim ma pola wejściowe w jednej
+    kolumnie (makieta: dwie);
+  - podgląd 2D obsługuje przesuwanie i zoom tylko myszą (kółko, przeciąganie)
+    — na dotyku nie da się go przesunąć ani powiększyć palcami, działa samo
+    Fit View;
+  - telefon.
+
+  **Sugestie (użytkownik, 2026-10-11) — nieuzgodnione:**
+  - Przycisk Generate musi jakoś potwierdzić, że wykonał zadanie. Pomysł:
+    zasymulować pasek postępu kolorami przycisku — po kliknięciu wypełnia
+    się drugim kolorem kluczowym motywu od lewej do prawej i traci ten
+    kolor, gdy zmieni się którykolwiek parametr (czyli wypełnienie = „G-code
+    jest aktualny”, ten sam stan co `generatedGCode` w `App.tsx`).
 
   - **Zakres:** laptop i tablet; telefon w osobnym, późniejszym kroku.
   - **Szeroki ekran (~1440):** układ jak dziś, tylko z proporcjonalnym

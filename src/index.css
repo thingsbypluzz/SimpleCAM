@@ -18,6 +18,21 @@ body {
   margin: 0;
 }
 
+/* BL-8, touch devices. iOS zooms the page into any field whose text is
+   smaller than 16px; unlayered, so it wins over the text-size utilities.
+   The page itself never scrolls — panels do. */
+@media (pointer: coarse) {
+  input,
+  select,
+  textarea {
+    font-size: 16px;
+  }
+
+  body {
+    overscroll-behavior: none;
+  }
+}
+
 /* ==========================================================================
    UI chrome themes (Header/Wizard Section/Preview Section chrome — buttons,
    borders, badges, form fields). Independent of, but combinable with, the

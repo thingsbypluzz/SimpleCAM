@@ -1,10 +1,77 @@
 # src/components — modale i komponenty najwyższego poziomu
 
+## Układy i dotyk (`useViewport.ts`)
+
+- `useLayoutMode()` → `'wide' | 'medium' | 'narrow'` z szerokości okna
+  (progi `WIDE_MIN_WIDTH` = 1280, `MEDIUM_MIN_WIDTH` = 900). `App.tsx`
+  składa każdy układ z tych samych kawałków (`presetBar`,
+  `renderStepPanel()`, `previewTabs`, `previewViewport`, `railWizard`) —
+  różni się tylko rozmieszczenie, nie zawartość kroków ani podglądów.
+- `useCoarsePointer()` — `pointer: coarse`. Steruje zachowaniem dotykowym
+  niezależnie od układu (duży tablet poziomo ma układ szeroki i dotyk).
+- `useVisibleHeight()` — na dotyku publikuje wysokość widocznego obszaru
+  (`visualViewport`) jako `--app-h`; korzeń aplikacji ma
+  `h-[var(--app-h,100dvh)]`, więc klawiatura systemowa (pola tekstowe)
+  skraca układ zamiast zasłaniać jego dół. Pomijane przy powiększeniu
+  strony gestem.
+- Przewija się zawsze panel (Active Step Panel, treść okna), nigdy strona.
+- Cele dotyku: wariant `pointer-coarse:` w klasach (`inputClass`,
+  przełączniki tekstowe, zakładki podglądu, Next); tekst pól 16 px — reguła
+  w `index.css` (iOS powiększa stronę przy mniejszym).
+
+## Preset Bar (`PresetBar.tsx`) i menu projektu (`ProjectMenu.tsx`)
+
+- `PresetBar` — sloty `[1]…[7]` i oko Overlay; stan i akcje dostaje z
+  `App.tsx`. Napisy trybów („Overlay Mode — …”, „Auto-save Mode Enabled”)
+  przychodzą jako `labels`: w układzie szerokim wiszą na lewo od ramki, w
+  wąskim stoją między slotami a okiem, w średnim rysuje je `App.tsx` w
+  wierszu Preview Tabs.
+- `touch`: znaczki są wtedy tylko wskaźnikami stanu; przytrzymanie slotu
+  (`LONG_PRESS_MS` = 500) otwiera menu (`role="menu"`), a kliknięcie, które
+  przychodzi po puszczeniu palca, jest pomijane. Menu zamyka dotknięcie
+  poza nim albo Escape. Podpowiedź o przytrzymaniu pokazuje się, dopóki
+  użytkownik jej nie zamknie albo nie przytrzyma slotu (`hintStorage.ts`).
+- `ProjectMenu` — przycisk z nazwą projektu (kropka przy niezapisanych
+  zmianach) i menu Load project / Save project; używany w układzie średnim
+  i wąskim. Ukryty `<input type="file">` jest jeden, w `App.tsx`.
+
+## Klawiatura numeryczna (`NumericKeypad.tsx`, `keypadContext.ts`)
+
+- Tylko na dotyku. Własna, bo systemowej nie da się ograniczyć do cyfr
+  (iPad pokazuje pełną), nie zawsze ma klawisz chowania i zasłania stronę
+  bez zmiany jej rozmiaru.
+- `KeypadProvider` (w `main.tsx`, wokół `<App />`) trzyma pole, w które się
+  pisze. `NumberInput` na dotyku jest polem `type="text"` z
+  `inputMode="none"` i atrybutem `data-keypad`; przy fokusie woła
+  `attach()`. Tekstowe, bo pole liczbowe wyczyściłoby liczbę w trakcie
+  pisania („47.”, „-”).
+- Klawisz wpisuje tekst natywnym setterem i zdarzeniem `input`, więc pole
+  dostaje zwykły `onChange` — zatwierdzanie i walidacja działają jak przy
+  klawiaturze fizycznej. Logika klawiszy: `lib/keypadInput.ts`
+  (`applyKey()`): klawiatura edytuje tylko koniec tekstu; pierwszy klawisz
+  po wejściu w pole zaczyna liczbę od nowa (tekst jest zaznaczony), a
+  dotknięcie pola, które już jest w edycji, przechodzi w dopisywanie.
+- Klawisze działają na `pointerdown` z `preventDefault` — nie zabierają
+  fokusu polu. Done i klawisz chowania robią `blur()` (to zatwierdza
+  wartość); dotknięcie poza klawiaturą i poza polami liczbowymi też ją
+  zamyka. Poprzednie / następne pole — po widocznych polach `data-keypad`
+  w tym samym oknie dialogowym albo na stronie.
+- Klawiatura jest `fixed` na dole (nad oknami pełnoekranowymi) i ustawia
+  `--keypad-h` — dolny padding korzenia aplikacji i okien pełnoekranowych,
+  więc treść się skraca i przewija, a edytowane pole jest dosuwane na
+  środek. W układzie wąskim dolny pasek widoków znika na czas pisania
+  (`useKeypad().open`).
+- Pola tekstowe (napis w Text, nazwa projektu, Custom List) zostają przy
+  klawiaturze systemowej.
+
 ## Settings Modal (`SettingsModal.tsx`)
 
 - Okno 920×640 px. Nakładka `bg-black/50 backdrop-blur-sm`; podgląd 3D wstrzymany
   (`renderPaused`). Fokus/Escape/pułapka Tab — `useModalFocus.ts` (wspólne
   z kalkulatorem).
+- `fullScreen` (dotyk albo układ średni / wąski): cały ekran bez nakładki,
+  u góry przycisk Back i tytuł, Settings Nav jako jeden wiersz przewijany
+  w bok; treść sekcji bez zmian.
 - Settings Nav w kolejności: **Machine**, **Controller**, **Tabs**,
   **Tool Diameters**, **Feed Tables**, **Templates**, **Appearance**,
   **Privacy**, **Reset**, **About**
@@ -98,6 +165,9 @@
 - Otwierany Icon Buttonem (`CalculatorIcon`) na końcu wiersza Feedrate XY
   w Kroku 3. Wzorzec Settings Modal (blur, `renderPaused`,
   `useModalFocus()`).
+- `fullScreen` jak w Settings (Back zamiast ✕); `stacked` (układ wąski) —
+  pola wejściowe nad wynikami w jednej przewijanej kolumnie zamiast dwóch
+  kolumn obok siebie.
 - Wejścia: Method (`OPERATION_META[op].calcMethods()` — ta sama lista co w
   Kroku 2), materiał (`config/materials.ts`, 10 wpisów z notą), średnica
   freza (Drop-down z listy Settings → Tool Diameters,

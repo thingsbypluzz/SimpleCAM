@@ -3,6 +3,10 @@
 - `Step1Positioning.tsx` — tylko wybór operacji i wzorca/kształtu (pionowy
   stos operacji z listą wariantów). `Step2Geometry.tsx` — router na
   `params.operation` → `Step2GeometryHoles/Outline/Surface/Pocket/Facing.tsx`.
+- `StepRail.tsx` — cztery kroki jako wiersz przycisków nad otwartym
+  krokiem (układ średni i wąski, zamiast kolumn Step N Summary): numer i
+  krótka nazwa, pod nimi jedna linia stanu (operacja, metoda, posuw, znaczek
+  Kroku 4 z „generated” / „not generated”); aktywny z `aria-current="step"`.
 - `Step1Summary.tsx` — zwinięty Krok 1: wszystkie operacje w kolejności
   Kroku 1 (`OPERATION_LIST`). Aktywna podświetlona na swoim miejscu
   (tokeny `selected-*`, nazwa, duża ikona i opis wybranego wzorca/
@@ -125,7 +129,9 @@
   `roundToStepPrecision()` (1/100 mm). Tekst nie śledzi wartości z
   zewnątrz — wczytanie presetu podbija `paramsLoadGeneration` (`key` Kroków
   2/3) w `App.tsx`. `NumberInput` chowa natywny spinner, dwa przyciski obok
-  siebie, tokeny motywu.
+  siebie, tokeny motywu. Na dotyku `NumberInput` jest polem tekstowym bez
+  przycisków góra/dół, obsługiwanym przez własną klawiaturę numeryczną
+  (`src/components/CLAUDE.md`).
 - **Krok 3:** pierwszy wiersz Spindle [RPM] — edytuje
   `machine.spindleSpeed` z Settings → Machine przez `handleSaveMachine()`
   (tylko wartość > 0); przy wybranym routerze pole jest wąskie, a obok

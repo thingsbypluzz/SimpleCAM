@@ -31,6 +31,8 @@ interface SettingsModalProps {
   // before overwriting occupied ones and closes the modal).
   onLoadTemplate: (template: ProjectTemplate) => void
   onClose: () => void
+  // BL-8: the whole screen instead of a window.
+  fullScreen?: boolean
 }
 
 type TravelField = 'travelX' | 'travelY' | 'travelZ'
@@ -144,6 +146,7 @@ export function SettingsModal({
   onResetAll,
   onLoadTemplate,
   onClose,
+  fullScreen = false,
 }: SettingsModalProps) {
   const [activeSection, setActiveSection] = useState<SectionId>('machine')
   // Feed Tables: which machine rigidity the material table is shown for —
@@ -323,15 +326,23 @@ export function SettingsModal({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm"
-      onClick={onClose}
+      className={
+        fullScreen
+          ? 'fixed inset-0 z-50 flex flex-col bg-bg pb-[var(--keypad-h,0px)]'
+          : 'fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm'
+      }
+      onClick={fullScreen ? undefined : onClose}
     >
       <div
         ref={modalRef}
         role="dialog"
         aria-modal="true"
         aria-labelledby="settings-modal-title"
-        className="relative flex h-[640px] w-[920px] overflow-hidden rounded-lg border border-border bg-bg shadow-xl"
+        className={
+          fullScreen
+            ? 'relative flex min-h-0 flex-1 flex-col overflow-hidden'
+            : 'relative flex h-[640px] max-h-[95vh] w-[920px] max-w-[95vw] overflow-hidden rounded-lg border border-border bg-bg shadow-xl'
+        }
         onClick={(e) => e.stopPropagation()}
       >
         {/* Sibling of the scrollable content pane below, not a child of it —
@@ -339,41 +350,68 @@ export function SettingsModal({
             scrolls right along with it, which is what made this button
             drift out of view on a section taller than the modal. Anchored to this non-scrolling
             card instead, it now stays pinned regardless of inner scroll. */}
-        <button
-          ref={closeButtonRef}
-          type="button"
-          onClick={onClose}
-          aria-label="Close settings"
-          className="absolute top-4 right-4 z-10 flex h-7 w-7 items-center justify-center rounded-md text-muted hover:bg-border/40 hover:text-fg"
-        >
-          ✕
-        </button>
-
-        <div className="flex w-44 shrink-0 flex-col gap-1 border-r border-border bg-code-bg p-4">
-          <span
-            id="settings-modal-title"
-            className="mb-2 px-2 text-xs font-semibold tracking-wide text-muted uppercase"
+        {/* BL-8: full screen (a touch device, a small window) — a Back
+            button and the title on top, the sections as one row that
+            scrolls sideways; a window otherwise, with ✕ and the sections
+            in a column. */}
+        {fullScreen ? (
+          <div className="flex shrink-0 items-center gap-3 border-b border-border px-4 py-2">
+            <button
+              ref={closeButtonRef}
+              type="button"
+              onClick={onClose}
+              aria-label="Close settings and go back"
+              className="flex h-11 items-center gap-2 rounded-md border border-border px-3.5 text-sm font-semibold text-value hover:bg-border/40"
+            >
+              <span aria-hidden="true">‹</span>
+              Back
+            </button>
+            <span id="settings-modal-title" className="text-base font-semibold text-fg">
+              Settings
+            </span>
+          </div>
+        ) : (
+          <button
+            ref={closeButtonRef}
+            type="button"
+            onClick={onClose}
+            aria-label="Close settings"
+            className="absolute top-4 right-4 z-10 flex h-7 w-7 items-center justify-center rounded-md text-muted hover:bg-border/40 hover:text-fg"
           >
-            Settings
-          </span>
+            ✕
+          </button>
+        )}
+
+        <div
+          className={
+            fullScreen
+              ? 'flex shrink-0 gap-2 overflow-x-auto border-b border-border bg-code-bg px-4 py-2'
+              : 'flex w-44 shrink-0 flex-col gap-1 border-r border-border bg-code-bg p-4'
+          }
+        >
+          {!fullScreen && (
+            <span id="settings-modal-title" className="mb-2 px-2 text-xs font-semibold tracking-wide text-muted uppercase">
+              Settings
+            </span>
+          )}
           {SECTIONS.map((section) => (
             <button
               key={section.id}
               type="button"
               aria-current={activeSection === section.id ? 'page' : undefined}
               onClick={() => setActiveSection(section.id)}
-              className={
-                activeSection === section.id
-                  ? 'rounded-md bg-accent-bg px-2 py-1.5 text-left text-sm font-medium text-accent-fg'
-                  : 'rounded-md px-2 py-1.5 text-left text-sm font-medium text-value hover:bg-border/40'
-              }
+              className={[
+                'rounded-md text-left text-sm font-medium',
+                fullScreen ? 'flex h-11 shrink-0 items-center px-3.5 whitespace-nowrap' : 'px-2 py-1.5',
+                activeSection === section.id ? 'bg-accent-bg text-accent-fg' : 'text-value hover:bg-border/40',
+              ].join(' ')}
             >
               {section.label}
             </button>
           ))}
         </div>
 
-        <div className="flex flex-1 flex-col gap-4 overflow-y-auto p-6">
+        <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto p-6">
           {activeSection === 'machine' && (
             <>
               <h2 className="text-sm font-semibold text-fg">

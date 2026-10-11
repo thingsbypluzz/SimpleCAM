@@ -45,6 +45,9 @@ interface FeedCalculatorModalProps {
   // selected) into Settings → Machine.
   onApply: (patch: Partial<WizardParams>, spindleSpeed: number | null) => void
   onClose: () => void
+  // BL-8: the whole screen instead of a window; `stacked` — one column.
+  fullScreen?: boolean
+  stacked?: boolean
 }
 
 type ResultKey = 'rpm' | 'feed' | 'plunge' | 'stepdown' | 'width' | 'linking' | 'finishStock' | 'finishFeed' | 'rampAngle'
@@ -66,7 +69,7 @@ const chipLoadText = (n: number) => String(Math.round(n * 10000) / 10000)
 // were computed for), each result only when its checkbox is on. The
 // material and tool (flutes, carbide/HSS) are remembered across sessions;
 // a typed chip load is not.
-export function FeedCalculatorModal({ params, machine, settings, toolDiameters, onSaveSettings, onApply, onClose }: FeedCalculatorModalProps) {
+export function FeedCalculatorModal({ params, machine, settings, toolDiameters, onSaveSettings, onApply, onClose, fullScreen = false, stacked = false }: FeedCalculatorModalProps) {
   const { modalRef, initialFocusRef: closeButtonRef } = useModalFocus<HTMLButtonElement>(onClose)
   const meta = OPERATION_META[params.operation]
   const currentMethod = meta.methodValue(params)
@@ -262,32 +265,70 @@ export function FeedCalculatorModal({ params, machine, settings, toolDiameters, 
   const rigidity = `${RIGIDITY_LABEL[machine.rigidity]} × ${rigidityFactor(machine.rigidity)}`
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm" onClick={onClose}>
+    <div
+      className={
+        fullScreen
+          ? 'fixed inset-0 z-50 flex flex-col bg-bg pb-[var(--keypad-h,0px)]'
+          : 'fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm'
+      }
+      onClick={fullScreen ? undefined : onClose}
+    >
       <div
         ref={modalRef}
         role="dialog"
         aria-modal="true"
         aria-labelledby="feed-calc-title"
-        className="relative flex h-[680px] max-h-[95vh] w-[900px] max-w-[95vw] flex-col overflow-hidden rounded-lg border border-border bg-bg shadow-xl"
+        className={
+          fullScreen
+            ? 'relative flex min-h-0 flex-1 flex-col overflow-hidden'
+            : 'relative flex h-[680px] max-h-[95vh] w-[900px] max-w-[95vw] flex-col overflow-hidden rounded-lg border border-border bg-bg shadow-xl'
+        }
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex items-center justify-between border-b border-border px-6 py-4">
-          <h2 id="feed-calc-title" className="text-sm font-semibold text-fg">
-            Feedrate Calculator — {meta.label}
-          </h2>
-          <button
-            ref={closeButtonRef}
-            type="button"
-            onClick={onClose}
-            aria-label="Close feedrate calculator"
-            className="flex h-7 w-7 items-center justify-center rounded-md text-muted hover:bg-border/40 hover:text-fg"
-          >
-            ✕
-          </button>
-        </div>
+        {/* BL-8: full screen (a touch device, a small window) — Back on the
+            left instead of ✕; `stacked` puts the inputs above the results
+            in one scrolling column. */}
+        {fullScreen ? (
+          <div className="flex shrink-0 items-center gap-3 border-b border-border px-4 py-2">
+            <button
+              ref={closeButtonRef}
+              type="button"
+              onClick={onClose}
+              aria-label="Close the calculator and go back"
+              className="flex h-11 items-center gap-2 rounded-md border border-border px-3.5 text-sm font-semibold text-value hover:bg-border/40"
+            >
+              <span aria-hidden="true">‹</span>
+              Back
+            </button>
+            <h2 id="feed-calc-title" className="text-base font-semibold text-fg">
+              Feedrate Calculator — {meta.label}
+            </h2>
+          </div>
+        ) : (
+          <div className="flex items-center justify-between border-b border-border px-6 py-4">
+            <h2 id="feed-calc-title" className="text-sm font-semibold text-fg">
+              Feedrate Calculator — {meta.label}
+            </h2>
+            <button
+              ref={closeButtonRef}
+              type="button"
+              onClick={onClose}
+              aria-label="Close feedrate calculator"
+              className="flex h-7 w-7 items-center justify-center rounded-md text-muted hover:bg-border/40 hover:text-fg"
+            >
+              ✕
+            </button>
+          </div>
+        )}
 
-        <div className="flex min-h-0 flex-1">
-          <div className="flex w-[320px] shrink-0 flex-col gap-4 overflow-y-auto border-r border-border bg-code-bg p-6">
+        <div className={stacked ? 'flex min-h-0 flex-1 flex-col overflow-y-auto' : 'flex min-h-0 flex-1'}>
+          <div
+            className={
+              stacked
+                ? 'flex shrink-0 flex-col gap-4 border-b border-border bg-code-bg p-6'
+                : 'flex w-[320px] shrink-0 flex-col gap-4 overflow-y-auto border-r border-border bg-code-bg p-6'
+            }
+          >
             <Field label="Method">
               <select className={inputClass} value={method} onChange={(e) => setMethod(e.target.value)}>
                 {methodOptions.map((opt) => (
@@ -390,7 +431,7 @@ export function FeedCalculatorModal({ params, machine, settings, toolDiameters, 
             </div>
           </div>
 
-          <div className="flex min-w-0 flex-1 flex-col gap-4 overflow-y-auto p-6">
+          <div className={stacked ? 'flex shrink-0 flex-col gap-4 p-6' : 'flex min-w-0 flex-1 flex-col gap-4 overflow-y-auto p-6'}>
             <table className="w-full text-sm">
               <thead>
                 <tr className="text-left text-xs text-muted">
@@ -510,11 +551,11 @@ export function FeedCalculatorModal({ params, machine, settings, toolDiameters, 
           </div>
         </div>
 
-        <div className="flex justify-end gap-3 border-t border-border px-6 py-4">
+        <div className="flex shrink-0 justify-end gap-3 border-t border-border px-6 py-4">
           <button
             type="button"
             onClick={onClose}
-            className="rounded-md border border-border px-4 py-2 text-sm font-medium text-muted hover:border-field-border hover:text-fg"
+            className="rounded-md border border-border px-4 py-2 text-sm font-medium text-muted hover:border-field-border hover:text-fg pointer-coarse:min-h-11 pointer-coarse:px-6"
           >
             Cancel
           </button>
@@ -522,7 +563,7 @@ export function FeedCalculatorModal({ params, machine, settings, toolDiameters, 
             type="button"
             disabled={!inputsValid || !anySelected}
             onClick={handleApply}
-            className="rounded-md bg-btn-bg px-4 py-2 text-sm font-medium text-btn-fg shadow-[var(--glow-btn)] hover:bg-btn-bg-hover disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-btn-bg"
+            className="rounded-md bg-btn-bg px-4 py-2 text-sm font-medium text-btn-fg shadow-[var(--glow-btn)] hover:bg-btn-bg-hover disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-btn-bg pointer-coarse:min-h-11 pointer-coarse:px-6"
           >
             Apply selected
           </button>

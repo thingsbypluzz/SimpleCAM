@@ -616,6 +616,9 @@ symulacji materiału.
 - `presetLabel()` — auto-opis slotu (pattern/kształt najpierw, metoda
   potem). `toolDiameterOptions.ts::resolveToolDiameterSelectOptions()` —
   dokleja do listy bieżącą średnicę, gdy nie ma jej na liście.
+- `hintStorage.ts` (`simplecam.hints`) — jednorazowe podpowiedzi, które
+  użytkownik już zamknął (dziś: przytrzymanie slotu w Preset Bar na
+  dotyku); czyszczone przez Reset All Settings.
 
 ## Feedrate Calculator — model (`feedCalc.ts`)
 

@@ -110,8 +110,23 @@ Artifactu **Interface Anatomy**
 aktualizować go tylko, gdy layout zmieni się na tyle, że mockup przestanie
 być wierny.
 
-- **Pionowy akordeon** 4 kroków: aktywny rozwinięty (~420px), pozostałe
-  zwinięte do Step N Summary (80px); klik w dowolny przełącza, bez
+- **Trzy układy, wybierane szerokością okna** (`useLayoutMode()`,
+  `components/useViewport.ts`): **szeroki** (≥ 1280 px) — akordeon obok
+  podglądu; **średni** (900–1279 px, tablet poziomo, mały laptop) — nad
+  otwartym krokiem pasek czterech kroków (`StepRail`), wizard obok
+  podglądu; **wąski** (< 900 px, tablet pionowo) — jeden widok naraz,
+  przełączany dolnym paskiem Setup / 2D / 3D / G-code (Setup = pasek
+  kroków + otwarty krok, bez osobnych Preview Tabs). Telefon nie jest
+  jeszcze wspierany.
+- **Zachowania dotykowe idą za wskaźnikiem, nie za szerokością**
+  (`useCoarsePointer()` — `pointer: coarse`): własna klawiatura numeryczna
+  dla pól liczbowych, Preset Bar z przytrzymaniem, większe cele dotyku
+  (wariant `pointer-coarse:`), tekst pól 16 px. Settings i Feedrate
+  Calculator zajmują cały ekran na dotyku **albo** w układzie średnim /
+  wąskim. Szczegóły: `src/components/CLAUDE.md`.
+- **Pionowy akordeon** 4 kroków (układ szeroki): Wizard Section zajmuje
+  42% okna (od 660 do 760 px), aktywny krok bierze to, co zostaje po
+  trzech zwiniętych Step N Summary (80px); klik w dowolny przełącza, bez
   „Wstecz” i blokady kolejności.
 - W panelu jedna kolumna, pary pól pokrewnych w jednym wierszu. Kolejność
   pól w Kroku 2: najpierw gdzie i jak duże, potem narzędzie, potem jak
@@ -141,7 +156,10 @@ być wierny.
   Appearance.
 - **Header:** Preset Bar `[1]…[7]` i oko Overlay (we wspólnej ramce), obok
   — poza ramką — nazwa projektu, Load i Save projektu; dark/light (dark
-  domyślny niezależnie od systemu), Settings.
+  domyślny niezależnie od systemu), Settings. W układzie średnim i wąskim
+  nazwa projektu jest jednym przyciskiem w prawym górnym rogu, który
+  rozwija menu z Load i Save (`ProjectMenu`); w wąskim Preset Bar ma
+  własny, drugi wiersz Header.
 - **Projekt** (`lib/projectFile.ts`, `simplecam.project`): siedem slotów
   presetów jako jeden plik JSON (`onlypaths-<nazwa>-<data>.json`) — bez
   ustawień maszyny, narzędzi i wyglądu; każdy preset tylko z sekcją
@@ -165,7 +183,11 @@ być wierny.
   (ołówek, kolor `--edit`) — edycja. Puste kółko po najechaniu/fokusie,
   wypełnione i stale widoczne, gdy włączone. Klik w sam slot wczytuje
   preset tylko wtedy, gdy nic nie jest w Overlay ani w edycji — inaczej
-  nic nie robi.
+  nic nie robi. **Na dotyku** znaczki tylko pokazują stan (nie są
+  przyciskami): dotknięcie slotu wczytuje preset na tej samej zasadzie, a
+  przytrzymanie otwiera menu z dwiema opcjami — Show in overlay / Remove
+  from overlay oraz Edit / Stop editing; jednorazowa podpowiedź o
+  przytrzymaniu (`simplecam.hints`).
 - **Overlay:** aktywny, gdy co najmniej jeden slot ma ptaszek (bez
   osobnego trybu); 2D i 3D naraz. Żywy wzorzec wtedy ukryty
   (`showActivePattern`), Generate zablokowany (`canGenerate`), baner
@@ -247,10 +269,12 @@ src/
                        routers                                             → CLAUDE.md
   components/
     SettingsModal.tsx, FeedCalculatorModal.tsx, ErrorBoundary.tsx,
-    ProjectNameModal.tsx, useModalFocus.ts, icons.tsx                    → CLAUDE.md
+    ProjectNameModal.tsx, useModalFocus.ts, icons.tsx,
+    useViewport.ts (układ, dotyk), PresetBar.tsx, ProjectMenu.tsx,
+    NumericKeypad.tsx, keypadContext.ts                                  → CLAUDE.md
     wizard/            Step1Positioning, Step2Geometry(+Holes/Outline/Surface/Pocket/Facing),
                        Step3Feeds, Step4Output, pickery metod, PickHeader, MiniStat, ToolChipLoad,
-                       TextToggle, NumberInput, useNumberField, Checkbox,
+                       TextToggle, NumberInput, useNumberField, Checkbox, StepRail,
                        FieldRow, HintPopover                              → CLAUDE.md
     preview/           ToolpathCanvas, drawToolpath, camera2d (2D)       → CLAUDE.md
     preview3d/         Scene3D, buildScene, cameraPresets (3D)            → CLAUDE.md
@@ -269,6 +293,7 @@ src/
     feedCalc.ts          model Feedrate Calculator
     stockModel.ts        model materiału dla obu podglądów
     storage.ts, *Storage.ts, presetLabel.ts, toolDiameterOptions.ts, overlayParams.ts
+    keypadInput.ts       co klawisz klawiatury numerycznej robi z tekstem pola
     projectFile.ts       plik projektu (zestaw presetów) — budowanie, parsowanie, odcisk
     download.ts          plik do pobrania (jedyny efekt uboczny)
     fuzzParams.ts, gcodeTestUtils.ts, pocketAdaptiveSim.ts   tylko testy

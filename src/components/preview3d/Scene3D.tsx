@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react'
+import { previewBottomBarClass, previewButtonClass, previewTopBarClass } from '../preview/previewToolbar'
 import * as THREE from 'three'
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js'
 import type { PaletteId } from '../../config/palettes'
@@ -363,13 +364,12 @@ export function Scene3D({
     frameCamera(camera, controls, bounds, direction.normalize(), camera.up.clone())
   }
 
-  const buttonClass =
-    'rounded-md border border-field-border bg-field-bg/90 px-2.5 py-1 text-xs font-medium text-value shadow-sm hover:bg-field-bg'
+  const buttonClass = previewButtonClass
 
   return (
     <div className="relative min-h-0 w-full flex-1">
       <div ref={containerRef} className="h-full w-full" />
-      <div className="absolute top-3 left-3 flex flex-wrap items-center gap-1.5">
+      <div className={previewTopBarClass}>
         <button type="button" onClick={onToggleStockVisible} className={buttonClass}>
           {stockVisible ? 'Hide Stock' : 'Show Stock'}
         </button>
@@ -383,12 +383,12 @@ export function Scene3D({
           {gridLabelsEnabled ? 'Hide Grid Labels' : 'Show Grid Labels'}
         </button>
       </div>
-      <div className="absolute right-3 bottom-3 flex flex-wrap items-center justify-end gap-1.5">
+      <div className={previewBottomBarClass}>
         {/* Two different kinds of action, grouped and separated by a hairline:
             the presets set a specific viewing angle, Fit View keeps whatever
             angle is current and only refits distance/target — visually
             identical buttons made that distinction invisible. */}
-        <div className="flex flex-wrap items-center justify-end gap-1.5">
+        <div className="flex flex-wrap items-center justify-end gap-1.5 pointer-coarse:contents">
           {PRESET_BUTTONS.map((preset) => (
             <button
               key={preset.name}
@@ -400,7 +400,7 @@ export function Scene3D({
             </button>
           ))}
         </div>
-        <div className="h-5 w-px bg-field-border" aria-hidden="true" />
+        <div className="h-5 w-px bg-field-border pointer-coarse:hidden" aria-hidden="true" />
         <button type="button" onClick={handleFitView} className={buttonClass}>
           Fit View
         </button>

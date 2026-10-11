@@ -7,6 +7,44 @@ zgodne z [SemVer](https://semver.org/). Ten plik pozostaje głównym, czytelnym
 thingsbypluzz/SimpleCAM), ale to infrastruktura pod izolację pracy
 (branch/worktree per zadanie), nie zamiennik tego changeloga.
 
+## [0.54.0] — 2026-10-11
+
+### Dodano
+
+- **Układ dopasowany do okna i tabletu** (`BL-8`). Aplikacja ma trzy
+  układy, wybierane szerokością okna:
+  - **szeroki** (od 1280 px) — jak dotąd, akordeon kroków obok podglądu;
+    szerokość kroków rośnie z oknem (42% okna, od 660 do 760 px) zamiast
+    stać na sztywnych 420 px;
+  - **średni** (900–1279 px, tablet poziomo, mały laptop) — nad otwartym
+    krokiem pasek czterech kroków, wizard nadal obok podglądu;
+  - **wąski** (poniżej 900 px, tablet pionowo) — jeden widok naraz,
+    przełączany dolnym paskiem Setup / 2D / 3D / G-code.
+  W układzie średnim i wąskim nazwa projektu jest przyciskiem w prawym
+  górnym rogu z menu Load project / Save project. Telefon nie jest jeszcze
+  wspierany.
+- **Obsługa dotykiem.**
+  - **Własna klawiatura numeryczna** dla pól liczbowych: cyfry, kropka,
+    minus, kasowanie, schowanie; nad nią nazwa pola, przejście do
+    poprzedniego / następnego pola i Done. Strona robi dla niej miejsce,
+    więc panel dalej się przewija, a edytowane pole jest zawsze widoczne.
+    Pierwszy klawisz po wejściu w pole zaczyna liczbę od nowa. Pola
+    tekstowe zostają przy klawiaturze systemowej.
+  - **Preset Bar:** dotknięcie slotu wczytuje preset, przytrzymanie otwiera
+    menu z Overlay i edycją; znaczki na slotach pokazują stan.
+  - **Settings i Feedrate Calculator** na pełnym ekranie z przyciskiem Back
+    (także w układzie średnim i wąskim bez dotyku); sekcje Settings jako
+    wiersz przewijany w bok.
+  - **Przyciski podglądów 2D i 3D** jako dwa paski na całą szerokość (górny
+    i dolny), wielkości slotów Preset Bar.
+  - Większe pola, przełączniki i przyciski; tekst pól 16 px, żeby iOS nie
+    powiększał strony.
+
+### Zmieniono
+
+- Wysokość aplikacji liczona jest z widocznego obszaru (`dvh`, na dotyku z
+  `visualViewport`) — klawiatura systemowa nie zasłania już dołu ekranu.
+
 ## [0.53.0] — 2026-10-11
 
 ### Dodano
