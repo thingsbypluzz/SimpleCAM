@@ -104,3 +104,22 @@ export function panBy(camera: Camera2D, dx: number, dy: number): Camera2D {
     centerY: camera.centerY + dy / camera.scale,
   }
 }
+
+// A touch gesture (BL-8): fingers that went down at `startMid` (their
+// midpoint, in screen px) are now at `mid`, `spread` times as far apart
+// (1 for a single finger). The world point that was under the fingers
+// stays under them — a drag pans, a pinch zooms, both at once work.
+// Always computed from the camera at the gesture's start, like the mouse
+// pan, so it cannot drift.
+export function gestureCamera(
+  start: Camera2D,
+  width: number,
+  height: number,
+  startMid: readonly [number, number],
+  mid: readonly [number, number],
+  spread: number,
+  fitScale: number,
+): Camera2D {
+  const zoomed = zoomAt(start, width, height, startMid[0], startMid[1], spread, fitScale)
+  return panBy(zoomed, mid[0] - startMid[0], mid[1] - startMid[1])
+}

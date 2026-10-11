@@ -7,6 +7,14 @@ zgodne z [SemVer](https://semver.org/). Ten plik pozostaje głównym, czytelnym
 thingsbypluzz/SimpleCAM), ale to infrastruktura pod izolację pracy
 (branch/worktree per zadanie), nie zamiennik tego changeloga.
 
+## [0.54.1] — 2026-10-12
+
+### Dodano
+
+- **Podgląd 2D obsługuje dotyk** (`BL-8`): jeden palec przesuwa widok, dwa
+  palce powiększają go i pomniejszają wokół punktu między nimi — tak jak w
+  podglądzie 3D. Dotąd 2D reagował tylko na mysz.
+
 ## [0.54.0] — 2026-10-11
 
 ### Dodano

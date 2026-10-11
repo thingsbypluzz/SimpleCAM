@@ -3,7 +3,7 @@ import { previewBottomBarClass, previewButtonClass, previewTopBarClass } from '.
 import type { PaletteId } from '../../config/palettes'
 import type { WizardParams } from '../../types/wizard'
 import type { ThemeId } from '../../types/theme'
-import { computeFitCamera, panBy, zoomAt, type Camera2D } from './camera2d'
+import { computeFitCamera, gestureCamera, panBy, zoomAt, type Camera2D } from './camera2d'
 import { computeToolpathDataBounds, drawToolpath } from './drawToolpath'
 
 interface ToolpathCanvasProps {
@@ -236,6 +236,55 @@ export function ToolpathCanvas({
       canvas.style.cursor = ''
     }
 
+    // Touch (BL-8): one finger drags the view, two pinch-zoom it about the
+    // point between them (and drag it along) — the same moves the 3D
+    // preview answers to. Each finger going down or up restarts the
+    // gesture from the camera as it is, so the view never jumps.
+    const fingers = new Map<number, [number, number]>()
+    let gesture: { startCamera: Camera2D; startMid: [number, number]; startDist: number } | null = null
+
+    const fingerState = (): { mid: [number, number]; dist: number } => {
+      const rect = canvas.getBoundingClientRect()
+      const points = [...fingers.values()].slice(0, 2)
+      const [ax, ay] = points[0]
+      const [bx, by] = points[1] ?? points[0]
+      return { mid: [(ax + bx) / 2 - rect.left, (ay + by) / 2 - rect.top], dist: Math.hypot(bx - ax, by - ay) }
+    }
+    const restartGesture = () => {
+      const current = cameraRef.current
+      if (fingers.size === 0 || !current) {
+        gesture = null
+        return
+      }
+      const { mid, dist } = fingerState()
+      gesture = { startCamera: current, startMid: mid, startDist: dist }
+    }
+    const handlePointerDown = (e: PointerEvent) => {
+      if (e.pointerType === 'mouse') return
+      canvas.setPointerCapture(e.pointerId)
+      fingers.set(e.pointerId, [e.clientX, e.clientY])
+      restartGesture()
+    }
+    const handlePointerMove = (e: PointerEvent) => {
+      if (!fingers.has(e.pointerId) || !gesture) return
+      fingers.set(e.pointerId, [e.clientX, e.clientY])
+      const rect = canvas.getBoundingClientRect()
+      const { mid, dist } = fingerState()
+      const spread = fingers.size > 1 && gesture.startDist > 0 ? dist / gesture.startDist : 1
+      setCamera(gestureCamera(gesture.startCamera, rect.width, rect.height, gesture.startMid, mid, spread, fitScaleRef.current))
+    }
+    const handlePointerEnd = (e: PointerEvent) => {
+      if (!fingers.delete(e.pointerId)) return
+      restartGesture()
+    }
+
+    // The canvas handles its own touches; the browser must not scroll or
+    // zoom the page with them.
+    canvas.style.touchAction = 'none'
+    canvas.addEventListener('pointerdown', handlePointerDown)
+    canvas.addEventListener('pointermove', handlePointerMove)
+    canvas.addEventListener('pointerup', handlePointerEnd)
+    canvas.addEventListener('pointercancel', handlePointerEnd)
     canvas.addEventListener('wheel', handleWheel, { passive: false })
     canvas.addEventListener('contextmenu', handleContextMenu)
     canvas.addEventListener('mousedown', handleMouseDown)
@@ -246,6 +295,10 @@ export function ToolpathCanvas({
 
     return () => {
       canvas.removeEventListener('wheel', handleWheel)
+      canvas.removeEventListener('pointerdown', handlePointerDown)
+      canvas.removeEventListener('pointermove', handlePointerMove)
+      canvas.removeEventListener('pointerup', handlePointerEnd)
+      canvas.removeEventListener('pointercancel', handlePointerEnd)
       canvas.removeEventListener('contextmenu', handleContextMenu)
       canvas.removeEventListener('mousedown', handleMouseDown)
       window.removeEventListener('mousemove', handleMouseMove)

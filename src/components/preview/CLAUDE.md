@@ -34,10 +34,14 @@
   albo dwie krawędzie On-line) i pętla ścieżki z tych samych próbek i
   zakresów mostków, których używa silnik.
 - `camera2d.ts` — czysta matematyka kamery (`Camera2D = { scale, centerX,
-  centerY }`): `computeFitCamera()`, `zoomAt()`, `panBy()`,
+  centerY }`): `computeFitCamera()`, `zoomAt()`, `panBy()`, `gestureCamera()`,
   `worldToScreen()`/`screenToWorld()`, `clampScale()`.
 - `ToolpathCanvas.tsx` — właściciel kamery: scroll = zoom do kursora, prawy
-  przycisk + przeciąganie = pan (menu kontekstowe wyłączone), zoom
+  przycisk + przeciąganie = pan (menu kontekstowe wyłączone); dotykiem
+  (zdarzenia wskaźnika inne niż mysz, `touch-action: none` na kanwie) jeden
+  palec przesuwa, dwa palce powiększają wokół punktu między nimi i
+  jednocześnie przesuwają — gest liczony zawsze od kamery z jego początku,
+  a każdy palec położony albo zdjęty zaczyna go od nowa; zoom
   `0.2×`–`20×` względem skali fitu. Fit przy pierwszym montażu; edycja
   parametrów nie rusza kamery; zmiana zestawu pokazywanych presetów (prop
   `fitKey`) = pełny re-fit. Fit

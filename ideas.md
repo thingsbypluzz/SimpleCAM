@@ -107,9 +107,6 @@ faktycznym.
     przyciski Kroku 4, przyciski widoku w Preview Viewport;
   - Feedrate Calculator w układzie wąskim ma pola wejściowe w jednej
     kolumnie (makieta: dwie);
-  - podgląd 2D obsługuje przesuwanie i zoom tylko myszą (kółko, przeciąganie)
-    — na dotyku nie da się go przesunąć ani powiększyć palcami, działa samo
-    Fit View;
   - telefon.
 
   **Sugestie (użytkownik, 2026-10-11) — nieuzgodnione:**
