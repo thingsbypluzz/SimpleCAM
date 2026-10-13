@@ -71,8 +71,9 @@ faktycznym.
   List (ręcznie wpisane punkty) — import pliku jako alternatywne źródło
   punktów. Parsowanie formatu, ekstrakcja geometrii, mapowanie na
   otwory/kontury.
-- **`BL-8`** *(W trakcie — laptop i tablet wdrożone w v0.54.0, do sprawdzenia
-  na urządzeniach; telefon osobno)* — **Responsywny UI na małych ekranach.** Dziś layout zakłada
+- **`BL-8`** *(W trakcie — laptop i tablet wdrożone w v0.54.0–v0.55.1 i
+  sprawdzone na tablecie z Androidem; zostaje iPad, drobne cele dotyku i
+  telefon)* — **Responsywny UI na małych ekranach.** Dziś layout zakłada
   desktop: dwukolumnowy układ (Wizard Section + Preview Section obok
   siebie), gęste pola liczbowe w parach X/Y w jednej linii, Preview
   Viewport 3D z absolutnie pozycjonowanymi przyciskami widoku. Dotyka
@@ -95,19 +96,43 @@ faktycznym.
   (`https://claude.ai/artifact/XnTkidmPS2ZLEoD1YTKo1w`); decyzje z
   komentarzy użytkownika na kanwie.
 
-  **Wdrożone w v0.54.0** (opis: `CHANGELOG.md`, mechanizmy:
-  `src/components/CLAUDE.md`): trzy układy z progami 1280 i 900 px, menu
-  projektu, pełnoekranowe Settings i Feedrate Calculator, własna klawiatura
-  numeryczna, Preset Bar z przytrzymaniem. **Zostaje:**
-  - sprawdzenie na urządzeniach (lista w punkcie o klawiaturze niżej) —
-    zwłaszcza iPad: czy klawisze nie zabierają fokusu polu, czy klawiatura
-    systemowa pól tekstowych nie zasłania dołu, przytrzymanie slotu;
+  **Wdrożone** (opis: `CHANGELOG.md`, mechanizmy:
+  `src/components/CLAUDE.md`):
+  - v0.54.0 — trzy układy z progami 1280 i 900 px, menu projektu,
+    pełnoekranowe Settings i Feedrate Calculator, własna klawiatura
+    numeryczna, Preset Bar z przytrzymaniem; przyciski podglądu jako
+    pełnej szerokości paski u góry i u dołu Preview Viewport;
+  - v0.54.1 — przesuwanie i szczypanie w podglądzie 2D (te same gesty co
+    w 3D);
+  - v0.55.0 — uproszczony podgląd 3D bez WebGL 2 (`BL-118`), blok
+    Diagnostics w Settings → About, poprawka kolorów w Android WebView;
+  - v0.55.1 — klawiatura numeryczna widoczna w Firefoksie na Androidzie.
+
+  **Sprawdzone na urządzeniach (2026-10-13):** stary tablet Samsung Galaxy
+  Tab 3 Lite (600 × 1024, układ wąski, Mali-400 bez WebGL 2, LineageOS /
+  Android 8.1) — wbudowana przeglądarka (WebView Chrome 138) i Firefox
+  Focus 157: układ, klawiatura numeryczna, uproszczony podgląd 3D działają.
+  Telefon (obejrzany przez użytkownika, bez osobnego układu): „wygląda
+  naprawdę nieźle”. Nauka z testów: zgłoszenie z nietypowego urządzenia
+  zaczynać od bloku Diagnostics.
+
+  **Zostaje:**
+  - iPad (Safari), niesprawdzony: czy klawisze nie zabierają fokusu polu,
+    czy klawiatura systemowa pól tekstowych nie zasłania dołu,
+    przytrzymanie slotu, obrót ekranu przy otwartej klawiaturze,
+    klawiatura pływająca i dzielona, podłączona klawiatura fizyczna;
+  - niewyjaśnione: Firefox na Androidzie podaje obszar układu wyższy niż
+    ekran (1291 px przy widocznych 944) — obejście działa, przyczyna
+    nieznana (wiersz „Page” w Diagnostics);
+  - pole liczbowe po dotknięciu nie pokazuje już, że pierwsza cyfra
+    zastąpi wartość (zaznaczenie usunięte z powodu paska Cut / Copy) —
+    do oceny, czy potrzebny inny sygnał;
   - okno nazwy projektu zostało zwykłym oknem (nie pełny ekran);
   - małe cele dotyku, których nie powiększono: Hint Button, Checkbox,
-    przyciski Kroku 4, przyciski widoku w Preview Viewport;
+    przyciski Kroku 4;
   - Feedrate Calculator w układzie wąskim ma pola wejściowe w jednej
     kolumnie (makieta: dwie);
-  - telefon.
+  - telefon — osobny układ.
 
   **Sugestie (użytkownik, 2026-10-11) — nieuzgodnione:**
   - Przycisk Generate musi jakoś potwierdzić, że wykonał zadanie. Pomysł:
