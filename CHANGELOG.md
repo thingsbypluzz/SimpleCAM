@@ -7,6 +7,62 @@ zgodne z [SemVer](https://semver.org/). Ten plik pozostaje głównym, czytelnym
 thingsbypluzz/SimpleCAM), ale to infrastruktura pod izolację pracy
 (branch/worktree per zadanie), nie zamiennik tego changeloga.
 
+## [0.55.0] — 2026-10-13
+
+### Dodano
+
+- **Blok Diagnostics w Settings → About.** Pokazuje, co oferuje
+  przeglądarka i urządzenie: user agent, rozmiar okna i wybrany układ, typ
+  wskaźnika, WebGL 1 / 2 z nazwą układu graficznego, używany podgląd 3D,
+  motyw, brakujące funkcje CSS i dostępność pamięci przeglądarki. Przycisk
+  Copy kopiuje całość jako tekst. Powód: zgłoszenia z nietypowych urządzeń
+  (stary tablet, wbudowana przeglądarka) wymagały dotąd zgadywania, czego
+  przeglądarka nie obsługuje. Nic nie jest zapisywane ani wysyłane.
+- **Uproszczony podgląd 3D bez WebGL** (`BL-118`). Urządzenie, którego
+  grafika nie obsługuje WebGL 2 (np. starszy tablet), dostaje w zakładce 3D
+  lekki podgląd na zwykłej kanwie: ścieżka narzędzia i obrys materiału w
+  rzucie, z siatką i osiami. Obraca się, przesuwa i skaluje jak pełny
+  podgląd (jeden palec albo lewy przycisk obraca, dwa palce albo prawy
+  przycisk przesuwają, szczypanie albo kółko powiększa), ma te same widoki
+  Top / Isometric / Front / Side i Fit View.
+  - Nie ma głębi ani litego, oświetlonego materiału — ścieżkę widać przez
+    materiał; brak też etykiet siatki, bloków Surface i Facing oraz kresek
+    napisu Text (ich ścieżki są).
+  - Podczas obracania długa ścieżka (np. Pocket Adaptive) jest rysowana
+    przerzedzona, żeby widok nadążał za palcem; po puszczeniu wraca cała.
+  - Settings → Appearance → **Simple 3D Preview** włącza go także tam,
+    gdzie działa pełny podgląd — dla wolnych urządzeń.
+
+### Naprawiono
+
+- **Jasne albo szare przyciski we wbudowanej przeglądarce Androida.**
+  Przyciski bez własnego tła (Header, Preset Bar, pasek kroków, dolny
+  pasek, nieaktywne przełączniki, lista operacji) były rysowane systemową
+  powierzchnią przycisku zamiast przezroczystego tła, a przezroczyste
+  ramki — kolorem tekstu. Przyczyna: minifikator skracał kolory z
+  przezroczystością do zapisu szesnastkowego z kanałem alfa (`#0000`,
+  `#00f0ff1a`), a Android WebView w aplikacjach celujących w stare SDK
+  takiego zapisu nie przyjmuje — każdy taki kolor przepadał. Build
+  zostawia teraz te kolory jako `transparent` / `rgba()`
+  (`vite.config.ts`).
+- **Natywne kontrolki idą za przełącznikiem Dark / Light aplikacji.**
+  Aplikacja deklarowała `color-scheme: light dark`, więc paski przewijania
+  i listy rozwijane brały kolory z ustawienia systemu — jasne w ciemnej
+  aplikacji na urządzeniu ustawionym na jasny motyw. Teraz `color-scheme`
+  wynika z przełącznika (motywy Arcade zawsze ciemne).
+- **Aplikacja nie wywraca się już na urządzeniach bez WebGL 2.** Pełny
+  podgląd 3D wymaga WebGL 2; na starszym GPU, który ma tylko WebGL 1
+  (zgłoszenie: tablet Samsung z Mali-400), samo otwarcie zakładki 3D —
+  domyślnej — kończyło się ekranem błędu całej aplikacji. Teraz aplikacja
+  sprawdza WebGL 2 na starcie i w razie jego braku, albo gdy podgląd 3D
+  nie może wystartować z innego powodu, pokazuje podgląd uproszczony.
+
+### Zmieniono
+
+- Pełny podgląd 3D i uproszczony biorą ścieżki z jednego miejsca
+  (`lib/previewPaths.ts`) zamiast wybierać silnik osobno dla każdej
+  operacji w kodzie sceny.
+
 ## [0.54.1] — 2026-10-12
 
 ### Dodano

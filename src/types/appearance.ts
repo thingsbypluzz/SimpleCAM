@@ -25,6 +25,10 @@ export interface AppearanceSettings {
   // Both previews — stock drawn as the tool leaves it (inside corners
   // rounded to the tool radius) instead of the nominal shapes (BL-86).
   cutShapeEnabled: boolean
+  // BL-118: show the simplified 3D preview (plain canvas, no WebGL) even
+  // where the full one would run. A device without WebGL 2 gets it either
+  // way.
+  simple3DPreview: boolean
 }
 
 export const DEFAULT_APPEARANCE_SETTINGS: AppearanceSettings = {
@@ -34,4 +38,5 @@ export const DEFAULT_APPEARANCE_SETTINGS: AppearanceSettings = {
   grid3DLabelSize: 'medium',
   stockEdges3DEnabled: true,
   cutShapeEnabled: true,
+  simple3DPreview: false,
 }

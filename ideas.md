@@ -189,6 +189,13 @@ faktycznym.
   starszym silniku, zidentyfikowania, które konkretne właściwości CSS się
   nie renderują, i albo dodania fallbacków, albo świadomej decyzji "nie
   wspieramy X" udokumentowanej w `CLAUDE.md`.
+
+  **Rozpoznany przypadek (2026-10-13): brak WebGL 2.** Stary tablet
+  Samsung (GPU Mali-400) wywracał całą aplikację po wejściu w podgląd 3D.
+  Przyczyna: Three.js od wydania r163 działa tylko na WebGL 2, a to
+  urządzenie ma wyłącznie WebGL 1 (potwierdzone na webglreport.com). Od
+  v0.55.0 aplikacja to wykrywa i pokazuje w zakładce 3D uproszczony
+  podgląd bez WebGL (`BL-118`).
 - **`BL-20`** *(Odrzucony, 2026-09-12 — w zamian `BL-29` Privacy Policy:
   prostsze rozwiązanie, bez trackingu i bez implikacji RODO poniżej)* —
   🔒 **Licznik użytkowników (unikalne IP).** Wymaga własnej,
@@ -992,6 +999,20 @@ Waga z review w nawiasie kwadratowym.
   Spacing X / Y (rozstaw sąsiednich otworów); kolejność wężem, rząd po
   rzędzie; limit 20 w osi i 100 otworów łącznie. Rozstaw 0 nadal składa
   oś do jednej linii otworów.
+- **`BL-118`** *(Zrealizowany, 2026-10-13)* 🟡 — **Uproszczony podgląd „3D” bez WebGL 2.**
+  Zgłoszone 2026-10-13 po teście na starym tablecie (patrz `BL-18`).
+  Wdrożone w v0.55.0: lekki podgląd na zwykłym Canvas — ścieżka z listy
+  ruchów silnika i obrys modelu materiału w rzucie ortogonalnym, obracany,
+  przesuwany i skalowany palcem / myszą, widoki Top / Isometric / Front /
+  Side. Rozstrzygnięte przy implementacji: rysuje obrys materiału i
+  presety Overlay; włącza się sam bez WebGL 2 i ręcznie w Settings →
+  Appearance (Simple 3D Preview). Bez głębi, litego materiału, etykiet
+  siatki, bloków Surface / Facing i kresek Text. **Do sprawdzenia na
+  urządzeniu:** płynność na Mali-400 przy długich ścieżkach.
+  **Odrzucone:** druga, stara wersja Three.js (r162, ostatnia z WebGL 1)
+  doczytywana jako fallback — cały kod sceny musiałby działać na dwóch
+  wersjach biblioteki, a wydajność Mali-400 jest niewiadomą; przełącznik
+  „use WebGL 1” w Settings kosztuje tyle samo.
 - **`BL-61`** *(Zrealizowany, 2026-09-27)* 🔴 **[Low, kosztowne w czasie]**
   — **Podglądy duplikują geometrię silnika** — jedna lista ruchów (jak
   Adaptive) dla G-code i podglądu 3D, po jednej operacji na raz. Etapy 1–2

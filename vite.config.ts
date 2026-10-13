@@ -2,6 +2,7 @@ import { readFileSync } from 'node:fs'
 import { defineConfig } from 'vitest/config'
 import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
+import { Features } from 'lightningcss'
 
 // Read at config-eval time (Node, not the browser) and inline as a define —
 // avoids needing `resolveJsonModule` in tsconfig just for one string, and
@@ -14,6 +15,16 @@ export default defineConfig({
   plugins: [react(), tailwindcss()],
   define: {
     __APP_VERSION__: JSON.stringify(version),
+  },
+  css: {
+    lightningcss: {
+      // Colors with alpha stay `rgba()` / `transparent` in the built CSS.
+      // The minifier would shorten them to 4- and 8-digit hex (`#0000`),
+      // which an Android WebView rejects for apps that target an old SDK
+      // (it keeps the legacy #AARRGGBB reading there) — every transparent
+      // or translucent color then falls back to the browser's default.
+      include: Features.HexAlphaColors,
+    },
   },
   test: {
     // .claude/worktrees/ sits inside the project root (for isolated

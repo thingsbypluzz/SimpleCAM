@@ -12,7 +12,8 @@ bez logowania, bez backendu, bez CAD-a.
   którego dotyczą (Claude Code ładuje je przy pracy w tym katalogu):
   `src/lib/CLAUDE.md` (silnik G-code, operacje, walidacja, storage, model
   Feedrate Calculator, testy), `src/components/preview3d/CLAUDE.md`
-  (podgląd 3D), `src/components/preview/CLAUDE.md` (podgląd 2D),
+  (podgląd 3D), `src/components/previewLite/CLAUDE.md` (uproszczony
+  podgląd 3D bez WebGL), `src/components/preview/CLAUDE.md` (podgląd 2D),
   `src/components/wizard/CLAUDE.md` (kroki, pola, kolejność pól),
   `src/components/CLAUDE.md` (Settings Modal, Feedrate Calculator UI),
   `src/config/CLAUDE.md` (rejestry, motywy, palety), `scripts/CLAUDE.md`
@@ -29,6 +30,9 @@ bez logowania, bez backendu, bez CAD-a.
 - **Vite + React + TypeScript** (SPA, bez SSR/routingu).
 - **Tailwind CSS v4** (`@tailwindcss/vite`, bez `tailwind.config.js` —
   CSS-first, motywy w `src/index.css`).
+  Build nie skraca kolorów z przezroczystością do zapisu `#RRGGBBAA` /
+  `#RGBA` (`css.lightningcss.include` w `vite.config.ts`) — Android WebView
+  w starszych aplikacjach takich kolorów nie przyjmuje.
 - **Vitest** — testy silnika G-code.
 - Podglądy: **Canvas API** (2D, `src/components/preview/`) i **Three.js**
   (3D, `src/components/preview3d/`, ładowany leniwie przez `React.lazy`).
@@ -133,7 +137,10 @@ być wierny.
   ciąć; pierwszy wiersz „Pattern:/Shape:” (szczegóły:
   `src/components/wizard/CLAUDE.md`).
 - **Preview Tabs:** 2D / 3D (domyślna) / G-Code (najwyżej 5000 linii,
-  pełny program w pobranym pliku). Podgląd dostaje odroczoną kopię
+  pełny program w pobranym pliku). Pełny podgląd 3D wymaga WebGL 2 — bez
+  niego (albo po włączeniu w Settings → Appearance) zakładka 3D pokazuje
+  uproszczony podgląd na zwykłej kanwie: ścieżka i obrys materiału w
+  rzucie, obracane i skalowane tak samo, bez litego materiału. Podgląd dostaje odroczoną kopię
   parametrów (`useDeferredValue`) i pamięta widok przy przełączaniu
   zakładek (tylko w sesji). Hide/Show Stock i Hide/Show Toolpath — wspólny
   stan sesyjny obu podglądów; w 3D dodatkowo Solid/Transparent Stock (lity,
@@ -270,6 +277,7 @@ src/
   components/
     SettingsModal.tsx, FeedCalculatorModal.tsx, ErrorBoundary.tsx,
     ProjectNameModal.tsx, useModalFocus.ts, icons.tsx,
+    DiagnosticsBlock.tsx, diagnostics.ts (Settings → About),
     useViewport.ts (układ, dotyk), PresetBar.tsx, ProjectMenu.tsx,
     NumericKeypad.tsx, keypadContext.ts                                  → CLAUDE.md
     wizard/            Step1Positioning, Step2Geometry(+Holes/Outline/Surface/Pocket/Facing),
@@ -278,6 +286,7 @@ src/
                        FieldRow, HintPopover                              → CLAUDE.md
     preview/           ToolpathCanvas, drawToolpath, camera2d (2D)       → CLAUDE.md
     preview3d/         Scene3D, buildScene, cameraPresets (3D)            → CLAUDE.md
+    previewLite/       LitePreview3D, drawLiteScene, camera3d (3D bez WebGL) → CLAUDE.md
   lib/                 silnik G-code (czyste funkcje)                     → CLAUDE.md
     program.ts           szkielet programu, dialekty
     toolpath.ts          wspólna lista ruchów i formatter G-code
@@ -294,6 +303,7 @@ src/
     stockModel.ts        model materiału dla obu podglądów
     storage.ts, *Storage.ts, presetLabel.ts, toolDiameterOptions.ts, overlayParams.ts
     keypadInput.ts       co klawisz klawiatury numerycznej robi z tekstem pola
+    previewPaths.ts      listy ruchów silników dla podglądów 3D (jedna dyspozycja)
     projectFile.ts       plik projektu (zestaw presetów) — budowanie, parsowanie, odcisk
     download.ts          plik do pobrania (jedyny efekt uboczny)
     fuzzParams.ts, gcodeTestUtils.ts, pocketAdaptiveSim.ts   tylko testy

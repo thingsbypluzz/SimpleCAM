@@ -14,6 +14,7 @@ import { NumberInput } from './wizard/NumberInput'
 import { TextToggle } from './wizard/TextToggle'
 import { roundToStepPrecision } from './wizard/useNumberField'
 import { useModalFocus } from './useModalFocus'
+import { DiagnosticsBlock } from './DiagnosticsBlock'
 import { PROJECT_TEMPLATES, templateSlots, type ProjectTemplate } from '../templates'
 import { presetLabel } from '../lib/presetLabel'
 import { PRESET_SLOT_IDS } from '../lib/storage'
@@ -903,6 +904,20 @@ export function SettingsModal({
               </div>
 
               <div className="flex flex-col gap-2 border-t border-border pt-4">
+                <span className="text-sm font-medium text-value">Simple 3D Preview</span>
+                <Checkbox
+                  checked={appearance.simple3DPreview}
+                  onChange={(checked) => onSaveAppearance({ ...appearance, simple3DPreview: checked })}
+                  label="Use the simple 3D preview"
+                  className="text-sm text-value"
+                />
+                <p className="text-sm text-muted">
+                  A lighter 3D preview for slow devices: the toolpath and the stock's outline, without solid, shaded
+                  material. A device whose graphics cannot run the full 3D preview gets it automatically.
+                </p>
+              </div>
+
+              <div className="flex flex-col gap-2 border-t border-border pt-4">
                 <span className="text-sm font-medium text-value">
                   Stock Edges (3D Preview)
                 </span>
@@ -1116,6 +1131,8 @@ export function SettingsModal({
                   ))}
                 </ul>
               </div>
+
+              <DiagnosticsBlock simple3DPreview={appearance.simple3DPreview} />
             </>
           )}
         </div>

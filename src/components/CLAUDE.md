@@ -95,7 +95,8 @@
   mm"`; błąd dodania oznacza pole „New diameter” przez `aria-invalid`,
   poza błędem pełnej listy). **Appearance:** Theme (karty ze swatchami, `aria-pressed`),
   Preview Color Palette, Cut Shape (checkbox — materiał w podglądach w kształcie
-  po frezie, `cutShapeEnabled`), Stock Edges 3D (checkbox — obrys krawędzi materiału),
+  po frezie, `cutShapeEnabled`), Simple 3D Preview (checkbox — uproszczony podgląd 3D także tam, gdzie
+  działa pełny, `simple3DPreview`), Stock Edges 3D (checkbox — obrys krawędzi materiału),
   Grid Labels 3D (checkbox + rozmiar).
 - **Templates:** gotowe projekty wbudowane w aplikację
   (`PROJECT_TEMPLATES` w `src/templates/index.ts`). Każdy to zwykły plik
@@ -137,6 +138,15 @@
   Blok **Fonts**: fonty operacji Text z `TEXT_FONTS` — tytuł, autorzy,
   licencja (link do pliku w `public/licenses/`) i źródło; wymóg licencji
   otwartych fontów.
+  Blok **Diagnostics** (`DiagnosticsBlock.tsx`, dane z `diagnostics.ts`):
+  co oferuje ta przeglądarka i urządzenie — user agent, rozmiar okna i
+  układ, typ wskaźnika, WebGL 1 / 2 i nazwa układu graficznego, który
+  podgląd 3D jest używany, motyw, styl gołego przycisku (tło, `appearance`,
+  `color-scheme` — czy reset stylów wygrał z przeglądarką), brakujące funkcje CSS, na których opiera
+  się arkusz stylów, dostępność `localStorage`. Czytane raz przy otwarciu
+  sekcji, nigdzie nie zapisywane ani nie wysyłane; przycisk Copy kopiuje
+  całość jako tekst (wiersze są też zaznaczalne ręcznie). Nowa funkcja
+  przeglądarki, od której zależy aplikacja, dostaje tu swój wiersz.
 - Pola liczbowe przez `NumberInput`, ale własny wzorzec commitu (bufor
   tekstu + `onBlur`, klik strzałki commituje od razu —
   `commitField()`/`handleAdjust()`), bo to zapis do `localStorage`, nie

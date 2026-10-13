@@ -47,6 +47,9 @@ interface Scene3DProps {
   // redraws when the scene or viewport actually changes (e.g. a palette
   // picked in Settings > Appearance still shows up behind the blur).
   renderPaused?: boolean
+  // The renderer could not be created (no WebGL 2, a blocked GPU, too many
+  // contexts) — the preview shows nothing and App takes over.
+  onUnavailable?: () => void
   // BL-76: the last view, kept by App.tsx across unmounts (switching to the
   // 2D or G-Code tab unmounts this component) — restored on the next mount
   // instead of the default Front framing. Session-only, never persisted.
@@ -97,6 +100,7 @@ export function Scene3D({
   onToggleToolpathVisible,
   onToggleGridLabels,
   renderPaused = false,
+  onUnavailable,
   viewMemory,
 }: Scene3DProps) {
   const containerRef = useRef<HTMLDivElement>(null)
@@ -107,6 +111,10 @@ export function Scene3D({
   const contentGroupRef = useRef<THREE.Group | null>(null)
   const boundsRef = useRef<THREE.Box3 | null>(null)
   const labelsRef = useRef<THREE.Sprite[]>([])
+  const onUnavailableRef = useRef(onUnavailable)
+  useEffect(() => {
+    onUnavailableRef.current = onUnavailable
+  })
   const renderPausedRef = useRef(renderPaused)
   const needsRenderRef = useRef(true)
 
@@ -132,13 +140,25 @@ export function Scene3D({
     // radius of zero — there's nothing to rotate around.
     hasFramedRef.current = false
 
+    // Three.js throws when it cannot get a WebGL 2 context. Caught before
+    // anything else is set up, so there is nothing to tear down — and App
+    // shows a note in the preview's place instead of the whole app falling
+    // over to the ErrorBoundary.
+    let renderer: THREE.WebGLRenderer
+    try {
+      renderer = new THREE.WebGLRenderer({ antialias: true })
+    } catch (err) {
+      console.warn('OnlyPaths: the 3D preview could not start', err)
+      onUnavailableRef.current?.()
+      return
+    }
+
     const scene = new THREE.Scene()
     sceneRef.current = scene
 
     const camera = new THREE.PerspectiveCamera(50, 1, 0.1, 10000)
     cameraRef.current = camera
 
-    const renderer = new THREE.WebGLRenderer({ antialias: true })
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
     rendererRef.current = renderer
     container.appendChild(renderer.domElement)

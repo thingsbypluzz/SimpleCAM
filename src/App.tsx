@@ -56,6 +56,8 @@ import { StepRail, type StepRailItem } from './components/wizard/StepRail'
 import { clearHints } from './lib/hintStorage'
 import { templateSlots, type ProjectTemplate } from './templates'
 import { ensureTextFont } from './config/textFonts'
+import { hasWebGL2 } from './components/preview3d/webglSupport'
+import { LitePreview3D, type SavedLiteView } from './components/previewLite/LitePreview3D'
 import { getLoadedFont } from './lib/textFont'
 import { presetLabel } from './lib/presetLabel'
 import {
@@ -219,6 +221,12 @@ function App() {
   const [appearance, setAppearance] = useState(loadAppearanceSettings)
   useChromeTheme(appearance.theme)
   const [generatedGCode, setGeneratedGCode] = useState<string[] | null>(null)
+  // The full 3D preview needs WebGL 2. Without it (an older GPU), or when
+  // its renderer fails to start for any other reason, the 3D tab shows the
+  // simplified preview (BL-118) — as it does when Settings → Appearance
+  // asks for it.
+  const [preview3DAvailable, setPreview3DAvailable] = useState(hasWebGL2)
+  const simple3D = !preview3DAvailable || appearance.simple3DPreview
   const [previewTab, setPreviewTab] = useState<'2d' | '3d' | 'gcode'>('3d')
   const [machine, setMachine] = useState(loadMachineSettings)
   const [toolDiameters, setToolDiameters] = useState(loadToolDiameterOptions)
@@ -423,6 +431,7 @@ function App() {
   // Session-only (a page reload starts from Front / Fit View again).
   const saved2DViewRef = useRef<Saved2DView | null>(null)
   const saved3DViewRef = useRef<Saved3DView | null>(null)
+  const savedLiteViewRef = useRef<SavedLiteView | null>(null)
 
   const handleSaveMachine = (next: typeof machine) => {
     // Unlike travel X/Y/Z (which only affect the soft machineFitWarnings
@@ -862,7 +871,33 @@ function App() {
         />
       )}
 
-      {previewTab === '3d' && (
+      {previewTab === '3d' && simple3D && (
+        <LitePreview3D
+          viewMemory={savedLiteViewRef}
+          params={previewParams}
+          isDark={isDark}
+          paletteId={appearance.palette}
+          themeId={appearance.theme}
+          overlayParams={overlayParams}
+          showActivePattern={!overlayHidesLive}
+          dimOverlay={editingInOverlay}
+          activeToolpathVisible={!previewToolpathBlocked}
+          fitKey={previewFitKey}
+          fontEpoch={fontEpoch}
+          stockVisible={stockVisible}
+          toolpathVisible={toolpathVisible}
+          cutShapeEnabled={appearance.cutShapeEnabled}
+          onToggleStockVisible={() => setStockVisible((v) => !v)}
+          onToggleToolpathVisible={() => setToolpathVisible((v) => !v)}
+          note={
+            preview3DAvailable
+              ? 'Simple 3D preview (Settings → Appearance)'
+              : 'Simple 3D preview — this device cannot run the full one (no WebGL 2)'
+          }
+        />
+      )}
+
+      {previewTab === '3d' && !simple3D && (
         <Suspense
           fallback={
             <div className="flex flex-1 items-center justify-center text-sm text-muted">
@@ -891,6 +926,7 @@ function App() {
             cutShapeEnabled={appearance.cutShapeEnabled}
             onToggleStockSolid={() => setStockSolid((v) => !v)}
             renderPaused={isSettingsOpen || isFeedCalcOpen || isProjectNameOpen}
+            onUnavailable={() => setPreview3DAvailable(false)}
             onToggleStockVisible={() => setStockVisible((v) => !v)}
             onToggleToolpathVisible={() => setToolpathVisible((v) => !v)}
             onToggleGridLabels={() =>

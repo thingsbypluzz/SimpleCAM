@@ -576,6 +576,17 @@ symulacji materiału.
   (raster) — ochrona podglądu przed zamrożeniem, walidacja blokuje Generate
   wcześniej.
 
+## Ścieżki dla podglądów (`previewPaths.ts`)
+
+- `operationToolpaths(params)` — listy ruchów silnika dla zestawu
+  parametrów: jedna na operację, dla Hole(s) jedna na otwór w kolejności
+  obróbki. Jedyne miejsce, które wybiera budowniczego ścieżki dla
+  podglądów 3D (pełnego i uproszczonego).
+- `previewPolylines(params)` — to samo jako łamane (`Float32Array` x, y, z)
+  pogrupowane po rodzaju ruchu, z łukami próbkowanymi przez `movePoints()`,
+  retraktem na Safe Z po każdej ścieżce i przejazdem na Safe Z między
+  otworami — gotowe do narysowania bez biblioteki 3D.
+
 ## localStorage (`storage.ts`, `*Storage.ts`)
 
 - `simplecam.storage`: `{ version, slots: { "0"…"7" } }`. Slot `"0"` =
