@@ -43,6 +43,8 @@ export function loadAppearanceSettings(): AppearanceSettings {
           : DEFAULT_APPEARANCE_SETTINGS.stockEdges3DEnabled,
       cutShapeEnabled:
         typeof parsed.cutShapeEnabled === 'boolean' ? parsed.cutShapeEnabled : DEFAULT_APPEARANCE_SETTINGS.cutShapeEnabled,
+      simple3DPreview:
+        typeof parsed.simple3DPreview === 'boolean' ? parsed.simple3DPreview : DEFAULT_APPEARANCE_SETTINGS.simple3DPreview,
     }
   } catch (err) {
     console.warn('OnlyPaths: could not read appearance settings from localStorage', err)

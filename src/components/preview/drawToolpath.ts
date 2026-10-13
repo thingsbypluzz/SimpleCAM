@@ -586,6 +586,21 @@ export function computeToolpathDataBounds(
   return computeCombinedBounds(allPatterns)
 }
 
+// The stock sheet and the stock model of everything shown — for the
+// simplified 3D preview (previewLite/), which draws the same plate and the
+// same model this preview does. `presets` reference-equal between calls
+// reuse the cached model.
+export function previewStock(
+  params: WizardParams,
+  overlayParams: readonly WizardParams[],
+  showActivePattern: boolean,
+  cutShape: boolean,
+): { sheet: StockSheet; model: StockModel | null } {
+  const shown = [...overlayParams, ...(showActivePattern ? [params] : [])]
+  const sheet = stockSheetRect(patternFootprint(shown.map(resolvePattern)))
+  return { sheet, model: cachedStockModel(shown, sheet, cutShape) }
+}
+
 // On-line Rectangle's two real edges (inner island, outer wall of the
 // surrounding stock) — empty for Inside/Outside. Same geometry as the 3D
 // walls (onLineRectDimensions()).

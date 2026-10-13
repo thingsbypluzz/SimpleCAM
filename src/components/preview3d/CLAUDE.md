@@ -3,6 +3,8 @@
 Ładowany leniwie (`React.lazy` w `App.tsx`), poza głównym bundle'em.
 Ścieżka narzędzia każdej operacji rysowana wprost z listy ruchów silnika
 (`toolpathLines3D()`, `lib/toolpath.ts`) — podgląd nie liczy ścieżki sam.
+Listy ruchów dla danej operacji daje `operationToolpaths()`
+(`lib/previewPaths.ts`) — wspólne z uproszczonym podglądem (`previewLite/`).
 
 ## Mapowanie współrzędnych
 
@@ -133,6 +135,14 @@ Adaptive, kropkowane w kolorze `linking` palety). Każdy styl = osobne
   obliczenia przy bieżącym kącie.
 - `handleResize()` czyta `devicePixelRatio` przy każdym resize (zoom
   przeglądarki); korzeń `flex-1 min-h-0`, nie `h-full w-full`.
+- **WebGL 2 jest wymagany** (Three.js nie ma już ścieżki WebGL 1).
+  `webglSupport.ts` (`hasWebGL2()`, bez importu `three`, jedno sprawdzenie
+  na sesję) — `App.tsx` pyta o to przed załadowaniem chunka 3D: bez WebGL 2
+  zakładka 3D pokazuje uproszczony podgląd (`previewLite/`), a ten chunk w
+  ogóle się nie pobiera. Samo utworzenie renderera jest w `try/catch`: gdy
+  się nie uda mimo WebGL 2 (zablokowane GPU, limit kontekstów), `Scene3D`
+  woła `onUnavailable` i `App.tsx` przełącza się na ten sam uproszczony
+  podgląd.
 - `renderPaused` (modal otwarty) — pętla rysuje tylko po realnej zmianie.
   Sprzątanie: `renderer.forceContextLoss()` (limit kontekstów WebGL).
 - Przyciski w podglądzie: Hide/Show Stock, Solid/Transparent Stock (stan

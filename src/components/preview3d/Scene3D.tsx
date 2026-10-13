@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react'
+import { previewBottomBarClass, previewButtonClass, previewTopBarClass } from '../preview/previewToolbar'
 import * as THREE from 'three'
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js'
 import type { PaletteId } from '../../config/palettes'
@@ -46,6 +47,9 @@ interface Scene3DProps {
   // redraws when the scene or viewport actually changes (e.g. a palette
   // picked in Settings > Appearance still shows up behind the blur).
   renderPaused?: boolean
+  // The renderer could not be created (no WebGL 2, a blocked GPU, too many
+  // contexts) — the preview shows nothing and App takes over.
+  onUnavailable?: () => void
   // BL-76: the last view, kept by App.tsx across unmounts (switching to the
   // 2D or G-Code tab unmounts this component) — restored on the next mount
   // instead of the default Front framing. Session-only, never persisted.
@@ -96,6 +100,7 @@ export function Scene3D({
   onToggleToolpathVisible,
   onToggleGridLabels,
   renderPaused = false,
+  onUnavailable,
   viewMemory,
 }: Scene3DProps) {
   const containerRef = useRef<HTMLDivElement>(null)
@@ -106,6 +111,10 @@ export function Scene3D({
   const contentGroupRef = useRef<THREE.Group | null>(null)
   const boundsRef = useRef<THREE.Box3 | null>(null)
   const labelsRef = useRef<THREE.Sprite[]>([])
+  const onUnavailableRef = useRef(onUnavailable)
+  useEffect(() => {
+    onUnavailableRef.current = onUnavailable
+  })
   const renderPausedRef = useRef(renderPaused)
   const needsRenderRef = useRef(true)
 
@@ -131,13 +140,25 @@ export function Scene3D({
     // radius of zero — there's nothing to rotate around.
     hasFramedRef.current = false
 
+    // Three.js throws when it cannot get a WebGL 2 context. Caught before
+    // anything else is set up, so there is nothing to tear down — and App
+    // shows a note in the preview's place instead of the whole app falling
+    // over to the ErrorBoundary.
+    let renderer: THREE.WebGLRenderer
+    try {
+      renderer = new THREE.WebGLRenderer({ antialias: true })
+    } catch (err) {
+      console.warn('OnlyPaths: the 3D preview could not start', err)
+      onUnavailableRef.current?.()
+      return
+    }
+
     const scene = new THREE.Scene()
     sceneRef.current = scene
 
     const camera = new THREE.PerspectiveCamera(50, 1, 0.1, 10000)
     cameraRef.current = camera
 
-    const renderer = new THREE.WebGLRenderer({ antialias: true })
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
     rendererRef.current = renderer
     container.appendChild(renderer.domElement)
@@ -363,13 +384,12 @@ export function Scene3D({
     frameCamera(camera, controls, bounds, direction.normalize(), camera.up.clone())
   }
 
-  const buttonClass =
-    'rounded-md border border-field-border bg-field-bg/90 px-2.5 py-1 text-xs font-medium text-value shadow-sm hover:bg-field-bg'
+  const buttonClass = previewButtonClass
 
   return (
     <div className="relative min-h-0 w-full flex-1">
       <div ref={containerRef} className="h-full w-full" />
-      <div className="absolute top-3 left-3 flex flex-wrap items-center gap-1.5">
+      <div className={previewTopBarClass}>
         <button type="button" onClick={onToggleStockVisible} className={buttonClass}>
           {stockVisible ? 'Hide Stock' : 'Show Stock'}
         </button>
@@ -383,12 +403,12 @@ export function Scene3D({
           {gridLabelsEnabled ? 'Hide Grid Labels' : 'Show Grid Labels'}
         </button>
       </div>
-      <div className="absolute right-3 bottom-3 flex flex-wrap items-center justify-end gap-1.5">
+      <div className={previewBottomBarClass}>
         {/* Two different kinds of action, grouped and separated by a hairline:
             the presets set a specific viewing angle, Fit View keeps whatever
             angle is current and only refits distance/target — visually
             identical buttons made that distinction invisible. */}
-        <div className="flex flex-wrap items-center justify-end gap-1.5">
+        <div className="flex flex-wrap items-center justify-end gap-1.5 pointer-coarse:contents">
           {PRESET_BUTTONS.map((preset) => (
             <button
               key={preset.name}
@@ -400,7 +420,7 @@ export function Scene3D({
             </button>
           ))}
         </div>
-        <div className="h-5 w-px bg-field-border" aria-hidden="true" />
+        <div className="h-5 w-px bg-field-border pointer-coarse:hidden" aria-hidden="true" />
         <button type="button" onClick={handleFitView} className={buttonClass}>
           Fit View
         </button>

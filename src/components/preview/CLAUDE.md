@@ -34,10 +34,14 @@
   albo dwie krawędzie On-line) i pętla ścieżki z tych samych próbek i
   zakresów mostków, których używa silnik.
 - `camera2d.ts` — czysta matematyka kamery (`Camera2D = { scale, centerX,
-  centerY }`): `computeFitCamera()`, `zoomAt()`, `panBy()`,
+  centerY }`): `computeFitCamera()`, `zoomAt()`, `panBy()`, `gestureCamera()`,
   `worldToScreen()`/`screenToWorld()`, `clampScale()`.
 - `ToolpathCanvas.tsx` — właściciel kamery: scroll = zoom do kursora, prawy
-  przycisk + przeciąganie = pan (menu kontekstowe wyłączone), zoom
+  przycisk + przeciąganie = pan (menu kontekstowe wyłączone); dotykiem
+  (zdarzenia wskaźnika inne niż mysz, `touch-action: none` na kanwie) jeden
+  palec przesuwa, dwa palce powiększają wokół punktu między nimi i
+  jednocześnie przesuwają — gest liczony zawsze od kamery z jego początku,
+  a każdy palec położony albo zdjęty zaczyna go od nowa; zoom
   `0.2×`–`20×` względem skali fitu. Fit przy pierwszym montażu; edycja
   parametrów nie rusza kamery; zmiana zestawu pokazywanych presetów (prop
   `fitKey`) = pełny re-fit. Fit
@@ -63,3 +67,10 @@
   zmieniają. On Circle: gdy Text jest żywym wzorcem (`isActive` —
   edytowanym w wizardzie), okrąg bazowy jest rysowany kropkowaną,
   przygaszoną linią jako prowadnica; presety nakładki go nie mają.
+- **Przyciski na Preview Viewport** (`previewToolbar.ts`, wspólne dla 2D i
+  3D): myszą — małe przyciski w narożnikach; na dotyku
+  (`pointer-coarse:`) dwa paski na całą szerokość, górny i dolny, z
+  przyciskami wysokości slotu Preset Bar dzielącymi szerokość po równo.
+  Paski leżą na podglądzie (nie zmieniają rozmiaru kanwy), więc banery
+  „Preview mode” / „Fix the highlighted fields…” w `App.tsx` schodzą na
+  dotyku pod górny pasek.

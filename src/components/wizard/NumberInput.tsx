@@ -1,5 +1,6 @@
 import { useEffect, useRef, type InputHTMLAttributes, type PointerEvent } from 'react'
 import { ChevronDownIcon, ChevronUpIcon } from '../icons'
+import { KEYPAD_FIELD_ATTR, useKeypad } from '../keypadContext'
 
 // Deliberately doesn't Omit 'type' — call sites keep writing
 // `type="number"` (harmless, overridden below) so swapping the tag name
@@ -67,15 +68,38 @@ function useHoldRepeat(onAdjust: (delta: number) => void) {
 // range already isn't blocked today (min/max only ever drove the native
 // spinner and :invalid styling), so the buttons stay exactly as
 // permissive as the keyboard.
-export function NumberInput({ className, onAdjust, step, ...rest }: NumberInputProps) {
+export function NumberInput({ className, onAdjust, step, onFocus, ...rest }: NumberInputProps) {
   const delta = stepAmount(step)
   const holdHandlers = useHoldRepeat(onAdjust)
+  // BL-8: on a touch device the field is typed into with the app's own
+  // keypad (NumericKeypad.tsx). A text input then, so a number in the
+  // making ("47.", "-") survives — a number input would blank it — and
+  // without the system keyboard; the two small buttons give way to the
+  // keypad as well.
+  const keypad = useKeypad()
+  if (keypad.enabled) {
+    return (
+      <input
+        {...rest}
+        type="text"
+        inputMode="none"
+        autoComplete="off"
+        {...{ [KEYPAD_FIELD_ATTR]: '' }}
+        className={className}
+        onFocus={(e) => {
+          onFocus?.(e)
+          if (!e.target.readOnly) keypad.attach(e.target)
+        }}
+      />
+    )
+  }
   return (
     <div className="relative">
       <input
         type="number"
         step={step}
         className={`${className} appearance-none pr-11 [-moz-appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none`}
+        onFocus={onFocus}
         {...rest}
       />
       <div className="absolute inset-y-0 right-1 flex items-center gap-0.5">

@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { previewBottomBarClass, previewButtonClass, previewTopBarClass } from './previewToolbar'
 import type { PaletteId } from '../../config/palettes'
 import type { WizardParams } from '../../types/wizard'
 import type { ThemeId } from '../../types/theme'
-import { computeFitCamera, panBy, zoomAt, type Camera2D } from './camera2d'
+import { computeFitCamera, gestureCamera, panBy, zoomAt, type Camera2D } from './camera2d'
 import { computeToolpathDataBounds, drawToolpath } from './drawToolpath'
 
 interface ToolpathCanvasProps {
@@ -235,6 +236,55 @@ export function ToolpathCanvas({
       canvas.style.cursor = ''
     }
 
+    // Touch (BL-8): one finger drags the view, two pinch-zoom it about the
+    // point between them (and drag it along) — the same moves the 3D
+    // preview answers to. Each finger going down or up restarts the
+    // gesture from the camera as it is, so the view never jumps.
+    const fingers = new Map<number, [number, number]>()
+    let gesture: { startCamera: Camera2D; startMid: [number, number]; startDist: number } | null = null
+
+    const fingerState = (): { mid: [number, number]; dist: number } => {
+      const rect = canvas.getBoundingClientRect()
+      const points = [...fingers.values()].slice(0, 2)
+      const [ax, ay] = points[0]
+      const [bx, by] = points[1] ?? points[0]
+      return { mid: [(ax + bx) / 2 - rect.left, (ay + by) / 2 - rect.top], dist: Math.hypot(bx - ax, by - ay) }
+    }
+    const restartGesture = () => {
+      const current = cameraRef.current
+      if (fingers.size === 0 || !current) {
+        gesture = null
+        return
+      }
+      const { mid, dist } = fingerState()
+      gesture = { startCamera: current, startMid: mid, startDist: dist }
+    }
+    const handlePointerDown = (e: PointerEvent) => {
+      if (e.pointerType === 'mouse') return
+      canvas.setPointerCapture(e.pointerId)
+      fingers.set(e.pointerId, [e.clientX, e.clientY])
+      restartGesture()
+    }
+    const handlePointerMove = (e: PointerEvent) => {
+      if (!fingers.has(e.pointerId) || !gesture) return
+      fingers.set(e.pointerId, [e.clientX, e.clientY])
+      const rect = canvas.getBoundingClientRect()
+      const { mid, dist } = fingerState()
+      const spread = fingers.size > 1 && gesture.startDist > 0 ? dist / gesture.startDist : 1
+      setCamera(gestureCamera(gesture.startCamera, rect.width, rect.height, gesture.startMid, mid, spread, fitScaleRef.current))
+    }
+    const handlePointerEnd = (e: PointerEvent) => {
+      if (!fingers.delete(e.pointerId)) return
+      restartGesture()
+    }
+
+    // The canvas handles its own touches; the browser must not scroll or
+    // zoom the page with them.
+    canvas.style.touchAction = 'none'
+    canvas.addEventListener('pointerdown', handlePointerDown)
+    canvas.addEventListener('pointermove', handlePointerMove)
+    canvas.addEventListener('pointerup', handlePointerEnd)
+    canvas.addEventListener('pointercancel', handlePointerEnd)
     canvas.addEventListener('wheel', handleWheel, { passive: false })
     canvas.addEventListener('contextmenu', handleContextMenu)
     canvas.addEventListener('mousedown', handleMouseDown)
@@ -245,6 +295,10 @@ export function ToolpathCanvas({
 
     return () => {
       canvas.removeEventListener('wheel', handleWheel)
+      canvas.removeEventListener('pointerdown', handlePointerDown)
+      canvas.removeEventListener('pointermove', handlePointerMove)
+      canvas.removeEventListener('pointerup', handlePointerEnd)
+      canvas.removeEventListener('pointercancel', handlePointerEnd)
       canvas.removeEventListener('contextmenu', handleContextMenu)
       canvas.removeEventListener('mousedown', handleMouseDown)
       window.removeEventListener('mousemove', handleMouseMove)
@@ -255,27 +309,27 @@ export function ToolpathCanvas({
   return (
     <div ref={containerRef} className="relative min-h-0 w-full flex-1">
       <canvas ref={canvasRef} />
-      <div className="absolute top-3 left-3 flex flex-wrap items-center gap-1.5">
+      <div className={previewTopBarClass}>
         <button
           type="button"
           onClick={onToggleStockVisible}
-          className="rounded-md border border-field-border bg-field-bg/90 px-2.5 py-1 text-xs font-medium text-value shadow-sm hover:bg-field-bg"
+          className={previewButtonClass}
         >
           {stockVisible ? 'Hide Stock' : 'Show Stock'}
         </button>
         <button
           type="button"
           onClick={onToggleToolpathVisible}
-          className="rounded-md border border-field-border bg-field-bg/90 px-2.5 py-1 text-xs font-medium text-value shadow-sm hover:bg-field-bg"
+          className={previewButtonClass}
         >
           {toolpathVisible ? 'Hide Toolpath' : 'Show Toolpath'}
         </button>
       </div>
-      <div className="absolute right-3 bottom-3">
+      <div className={previewBottomBarClass}>
         <button
           type="button"
           onClick={fitToData}
-          className="rounded-md border border-field-border bg-field-bg/90 px-2.5 py-1 text-xs font-medium text-value shadow-sm hover:bg-field-bg"
+          className={previewButtonClass}
         >
           Fit View
         </button>

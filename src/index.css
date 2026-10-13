@@ -10,12 +10,41 @@
 
 @custom-variant dark (&:where(.dark, .dark *));
 
+/* Native controls (buttons, scrollbars, selects) follow the app's own
+   dark / light switch, never the system's preference: a device set to light
+   would otherwise paint them light inside the dark app. The Arcade themes
+   are dark in both positions of the switch. */
 :root {
-  color-scheme: light dark;
+  color-scheme: light;
+}
+
+:root.dark,
+:root[data-theme^="arcade-"] {
+  color-scheme: dark;
 }
 
 body {
   margin: 0;
+}
+
+/* BL-8, touch devices. iOS zooms the page into any field whose text is
+   smaller than 16px; unlayered, so it wins over the text-size utilities.
+   The page itself never scrolls — panels do. */
+@media (pointer: coarse) {
+  input,
+  select,
+  textarea {
+    font-size: 16px;
+  }
+
+  html,
+  body {
+    overflow: hidden;
+  }
+
+  body {
+    overscroll-behavior: none;
+  }
 }
 
 /* ==========================================================================

@@ -24,11 +24,9 @@ const Scene3D = lazy(() =>
 )
 import {
   CheckIcon,
-  EyeIcon,
   FeedIcon,
   SpindleIcon,
   OpenFileIcon,
-  PencilIcon,
   SaveFileIcon,
   PlungeIcon,
   StartZIcon,
@@ -50,8 +48,16 @@ import {
 import { loadProjectInfo, NO_PROJECT, saveProjectInfo, type ProjectInfo } from './lib/projectStorage'
 import { downloadTextFile } from './lib/download'
 import { ProjectNameModal } from './components/ProjectNameModal'
+import { PresetBar } from './components/PresetBar'
+import { ProjectMenu } from './components/ProjectMenu'
+import { useKeypad } from './components/keypadContext'
+import { useCoarsePointer, useLayoutMode, useVisibleHeight } from './components/useViewport'
+import { StepRail, type StepRailItem } from './components/wizard/StepRail'
+import { clearHints } from './lib/hintStorage'
 import { templateSlots, type ProjectTemplate } from './templates'
 import { ensureTextFont } from './config/textFonts'
+import { hasWebGL2 } from './components/preview3d/webglSupport'
+import { LitePreview3D, type SavedLiteView } from './components/previewLite/LitePreview3D'
 import { getLoadedFont } from './lib/textFont'
 import { presetLabel } from './lib/presetLabel'
 import {
@@ -215,6 +221,12 @@ function App() {
   const [appearance, setAppearance] = useState(loadAppearanceSettings)
   useChromeTheme(appearance.theme)
   const [generatedGCode, setGeneratedGCode] = useState<string[] | null>(null)
+  // The full 3D preview needs WebGL 2. Without it (an older GPU), or when
+  // its renderer fails to start for any other reason, the 3D tab shows the
+  // simplified preview (BL-118) — as it does when Settings → Appearance
+  // asks for it.
+  const [preview3DAvailable, setPreview3DAvailable] = useState(hasWebGL2)
+  const simple3D = !preview3DAvailable || appearance.simple3DPreview
   const [previewTab, setPreviewTab] = useState<'2d' | '3d' | 'gcode'>('3d')
   const [machine, setMachine] = useState(loadMachineSettings)
   const [toolDiameters, setToolDiameters] = useState(loadToolDiameterOptions)
@@ -245,6 +257,16 @@ function App() {
   // blur, so without a remount an open step kept showing the previous
   // preset's values while Preview/G-code already used the new ones.
   const [paramsLoadGeneration, setParamsLoadGeneration] = useState(0)
+  // BL-8: the layout follows the window's width; touch behavior follows the
+  // pointer. In the narrow layout one view shows at a time — the wizard
+  // ('setup') or the preview tab picked on the bottom bar.
+  const layout = useLayoutMode()
+  const touch = useCoarsePointer()
+  useVisibleHeight(touch)
+  const keypad = useKeypad()
+  const [narrowView, setNarrowView] = useState<'setup' | 'preview'>('setup')
+  // Settings and the Feedrate Calculator take the whole screen there.
+  const fullScreenModals = layout !== 'wide' || touch
 
   // Any parameter change invalidates the last generated snapshot — Copy/
   // Download must not act on G-code that no longer matches the current
@@ -409,6 +431,7 @@ function App() {
   // Session-only (a page reload starts from Front / Fit View again).
   const saved2DViewRef = useRef<Saved2DView | null>(null)
   const saved3DViewRef = useRef<Saved3DView | null>(null)
+  const savedLiteViewRef = useRef<SavedLiteView | null>(null)
 
   const handleSaveMachine = (next: typeof machine) => {
     // Unlike travel X/Y/Z (which only affect the soft machineFitWarnings
@@ -482,6 +505,7 @@ function App() {
     setEditingSlot(null)
     setOverlaySlots(new Set())
     updateProject(NO_PROJECT)
+    clearHints()
   }
 
   // Generate is also the auto-save trigger for the hidden slot 0 — see
@@ -577,596 +601,644 @@ function App() {
     })
   }
 
-  return (
-    <div className="relative flex h-svh flex-col bg-bg text-fg shadow-[var(--frame-glow)]">
-      <header className="grid grid-cols-[1fr_auto_1fr] items-center gap-4 border-b border-border px-6 py-4">
-        <div>
-          <h1 className="text-xl font-semibold">
-            <span className="text-wordmark-only" style={{ textShadow: 'var(--wordmark-only-glow)' }}>
-              Only
-            </span>
-            <span className="text-wordmark-paths" style={{ textShadow: 'var(--wordmark-paths-glow)' }}>
-              Paths
-            </span>
-          </h1>
-          <p className="text-xs text-muted">
-            Helps you CAM. Every time!
-          </p>
-          <p className="text-[11px] text-muted">Envisioned by ThingsByPluzz</p>
-        </div>
+  // BL-8: which of the three layouts the window gets, and whether a finger
+  // is the pointer. The pieces below are shared by all three.
+  const compact = layout !== 'wide'
 
-        <div className="flex items-center justify-self-center gap-4">
-        <div
-          className={[
-            'relative flex items-center gap-2 rounded-lg border px-2 py-2 transition-colors',
-            overlayEnabled || editingSlot ? 'border-border' : 'border-transparent',
-          ].join(' ')}
-        >
-          {/* BL-25: absolutely positioned off the LEFT edge of the preset
-              group (not a normal flex sibling) so it never pushes the
-              icons/eye/pencil buttons sideways when it appears or
-              disappears — they stay put, this floats. Two states: neutral
-              "select a preset" text before anything is armed, then the
-              validity-colored "Auto-save Mode Enabled" once a slot is
-              picked (green/red per isGeometryValid — red flags moments
-              live-save is being skipped for invalid params). */}
-          {(overlayEnabled || editingSlot) && (
-            <div className="absolute top-1/2 right-full mr-3 flex -translate-y-1/2 flex-col items-end gap-0.5 text-xs font-semibold whitespace-nowrap">
-              {/* BL-105: Overlay's label, in Overlay's color; with a preset
-                  being edited too it sits above Edit's (BL-107). */}
-              {overlayEnabled && (
-                <span className="text-accent-fg">
-                  {`Overlay Mode — ${overlaySlots.size} ${overlaySlots.size === 1 ? 'preset' : 'presets'} shown`}
-                </span>
-              )}
-              {editingSlot && (
-                <span className={isGeometryValid ? 'text-status-success' : 'text-status-error'}>
-                  Auto-save Mode Enabled
-                </span>
-              )}
+  const wordmark = (
+    <h1 className="text-xl font-semibold">
+      <span className="text-wordmark-only" style={{ textShadow: 'var(--wordmark-only-glow)' }}>
+        Only
+      </span>
+      <span className="text-wordmark-paths" style={{ textShadow: 'var(--wordmark-paths-glow)' }}>
+        Paths
+      </span>
+    </h1>
+  )
+
+  // The two mode labels by the Preset Bar: Overlay's, in Overlay's color
+  // (BL-105), above Edit's (BL-107) — green/red per isGeometryValid, red
+  // flagging the moments live-save is skipped for invalid params.
+  const modeLabels = (
+    <>
+      {overlayEnabled && (
+        <span className="text-accent-fg">
+          {`Overlay Mode — ${overlaySlots.size} ${overlaySlots.size === 1 ? 'preset' : 'presets'} shown`}
+        </span>
+      )}
+      {editingSlot && (
+        <span className={isGeometryValid ? 'text-status-success' : 'text-status-error'}>Auto-save Mode Enabled</span>
+      )}
+    </>
+  )
+
+  const presetBar = (
+    <PresetBar
+      layout={layout}
+      touch={touch}
+      presetSlots={presetSlots}
+      overlaySlots={overlaySlots}
+      editingSlot={editingSlot}
+      justLoadedSlot={justLoadedSlot}
+      labels={modeLabels}
+      onLoad={handleLoadPreset}
+      onToggleOverlaySlot={handleToggleOverlaySlot}
+      onEditSlot={handleEditSlot}
+      onToggleOverlay={handleToggleOverlay}
+      onStopEditing={SHOW_EDIT_BUTTON ? () => setEditingSlot(null) : undefined}
+    />
+  )
+
+  // The medium and narrow layouts fold the project's name, Load and Save
+  // into one menu button.
+  const projectMenu = (
+    <ProjectMenu
+      name={project.name}
+      dirty={projectDirty}
+      presetCount={presetCount}
+      onLoad={() => projectFileInputRef.current?.click()}
+      onSave={() => setIsProjectNameOpen(true)}
+    />
+  )
+
+  const headerButtonClass = `flex ${compact ? 'h-11 w-11' : 'h-9 w-9'} shrink-0 items-center justify-center rounded-md border border-border text-value hover:bg-border/40`
+  const headerButtons = (
+    <>
+      <button
+        type="button"
+        onClick={() => setIsDark((d) => !d)}
+        aria-label="Toggle dark mode"
+        aria-pressed={isDark}
+        title="Toggle dark mode"
+        className={headerButtonClass}
+      >
+        {isDark ? (
+          <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2">
+            <circle cx="12" cy="12" r="4" />
+            <path strokeLinecap="round" d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41" />
+          </svg>
+        ) : (
+          <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79Z" />
+          </svg>
+        )}
+      </button>
+
+      <button
+        type="button"
+        onClick={() => setIsSettingsOpen(true)}
+        aria-label="Settings"
+        title="Settings"
+        className={headerButtonClass}
+      >
+        <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2">
+          <circle cx="12" cy="12" r="3" />
+          <path strokeLinecap="round" strokeLinejoin="round" d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.6 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.6a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1Z" />
+        </svg>
+      </button>
+    </>
+  )
+
+  // The open step: its heading, its fields and the Next button.
+  const renderStepPanel = (step: (typeof STEP_META)[number]) => (
+    <>
+      <div className="mb-4 flex items-center justify-between gap-2">
+        <h2 className="text-xs font-semibold uppercase tracking-wide text-muted">
+          Step {step.id} · {step.title}
+        </h2>
+        {step.id === 4 && (
+          <span
+            className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full ${step4BadgeInfo.colorClassName}`}
+            title={step4BadgeInfo.title}
+          >
+            <step4BadgeInfo.Icon className="h-4 w-4" />
+          </span>
+        )}
+      </div>
+
+      {step.id === 1 && (
+        <Step1Positioning params={params} onChange={updateParams} />
+      )}
+      {step.id === 2 && (
+        <Step2Geometry
+          key={paramsLoadGeneration}
+          params={params}
+          onChange={updateParams}
+          machine={machine}
+          toolDiameters={toolDiameters}
+          flutes={feedCalc.flutes}
+          onFlutesChange={(flutes) => handleSaveFeedCalc({ ...feedCalc, flutes })}
+        />
+      )}
+      {step.id === 3 && (
+        <Step3Feeds
+          key={paramsLoadGeneration}
+          params={params}
+          onChange={updateParams}
+          machine={machine}
+          stepdownLabel={activeMethodDisplay.stepdown.fieldLabel}
+          onOpenCalculator={() => setIsFeedCalcOpen(true)}
+          onSaveMachine={handleSaveMachine}
+        />
+      )}
+      {step.id === 4 && (
+        <>
+          {showRestoredBanner && (
+            <div className="mb-4 rounded-md border border-accent-border bg-accent-bg px-3 py-2 text-xs text-accent-fg">
+              Restored from your last session — click Generate to refresh the G-code.
             </div>
           )}
-          {PRESET_SLOT_IDS.map((id) => {
-            const preset = presetSlots[id]
-            const PresetIcon = preset ? OPERATION_META[preset.operation].pickIcon(preset) : null
-            const isOverlaySelected = overlaySlots.has(id)
-            const isEditingSlot = editingSlot === id
-            // A plain click loads the preset — only while nothing is
-            // overlaid or edited (loading over an armed slot would be
-            // live-saved straight into it).
-            const canLoad = !overlayEnabled && !editingSlot
-            const isJustLoaded = canLoad && justLoadedSlot === id
-            const baseClassName = !preset
-              ? 'flex h-11 w-11 cursor-default items-center justify-center rounded-md border border-empty-border text-xs font-semibold text-empty-fg'
-              : isEditingSlot
-                ? 'flex h-11 w-11 items-center justify-center rounded-md border-2 border-edit text-edit-fg shadow-[var(--glow-edit)]'
-                : isOverlaySelected
-                  ? 'flex h-11 w-11 items-center justify-center rounded-md border-2 border-accent text-accent-fg shadow-[var(--glow-accent)]'
-                  : `flex h-11 w-11 items-center justify-center rounded-md border border-accent-border text-accent-fg shadow-[var(--glow-accent)]${canLoad ? ' hover:bg-accent-bg' : ''}`
-            // The two corner badges (BL-107): an empty ring on hover/focus,
-            // filled while on — so the state never rests on color alone.
-            const badgeBase =
-              'absolute flex h-5 w-5 items-center justify-center rounded-full border transition-opacity focus-visible:opacity-100'
-            const badgeHidden = ' opacity-0 group-hover:opacity-100 group-focus-within:opacity-100'
-            return (
-              <div key={id} className="group relative">
-                <button
-                  type="button"
-                  onClick={() => handleLoadPreset(id)}
-                  disabled={!preset}
-                  aria-disabled={preset && !canLoad ? true : undefined}
-                  title={
-                    !preset
-                      ? `Preset [${id}] — empty`
-                      : canLoad
-                        ? `Load preset [${id}] — ${presetLabel(preset)}`
-                        : `Preset [${id}] — ${presetLabel(preset)}`
-                  }
-                  className={`${baseClassName}${preset && !canLoad ? ' cursor-default' : ''} transition-shadow duration-700${isJustLoaded ? ' ring-2 ring-accent ring-offset-2 ring-offset-bg' : ''}`}
-                >
-                  {PresetIcon ? <PresetIcon className="h-7 w-7" /> : id}
-                </button>
-                {preset && (
-                  <button
-                    type="button"
-                    onClick={() => handleToggleOverlaySlot(id)}
-                    aria-pressed={isOverlaySelected}
-                    aria-label={`Show preset ${id} in overlay`}
-                    title={`${isOverlaySelected ? 'Remove' : 'Add'} preset [${id}] ${isOverlaySelected ? 'from' : 'to'} overlay`}
-                    className={`${badgeBase} -top-1.5 -left-1.5 ${
-                      isOverlaySelected
-                        ? 'border-accent bg-accent text-btn-fg'
-                        : `border-accent bg-bg text-accent-fg${badgeHidden}`
-                    }`}
-                  >
-                    <CheckIcon className="h-3 w-3" />
-                  </button>
-                )}
-                {preset && (
-                  <button
-                    type="button"
-                    onClick={() => handleEditSlot(id)}
-                    aria-pressed={isEditingSlot}
-                    aria-label={`Edit preset ${id}`}
-                    title={
-                      isEditingSlot
-                        ? `Editing preset [${id}] (auto-saving) — click to stop`
-                        : `Edit preset [${id}] — loads it and auto-saves further changes`
-                    }
-                    className={`${badgeBase} -top-1.5 -right-1.5 ${
-                      isEditingSlot
-                        ? 'border-edit bg-edit text-edit-on'
-                        : `border-edit bg-bg text-edit-fg${badgeHidden}`
-                    }`}
-                  >
-                    <PencilIcon className="h-3 w-3" />
-                  </button>
-                )}
-              </div>
-            )
-          })}
-          {/* BL-107: the eye and the pencil show whether anything is
-              overlaid / edited and switch it off; the unlit eye shows every
-              saved preset at once. Picking happens on the slots' badges. */}
+          <Step4Output
+            params={params}
+            onChange={updateParams}
+            generatedGCode={generatedGCode}
+            onGenerate={handleGenerate}
+            canGenerate={isGeometryValid && !overlayHidesLive}
+            overlayActive={overlayHidesLive}
+            presetSlots={presetSlots}
+            onSaveToPreset={handleSaveToPreset}
+            onDeletePreset={handleDeletePreset}
+            warnings={step4Warnings}
+          />
+        </>
+      )}
+
+      {STEPS_WITH_NEXT_BUTTON.has(step.id) && (
+        <div className="mt-6 flex justify-end">
           <button
             type="button"
-            onClick={handleToggleOverlay}
-            aria-label="Toggle preset overlay"
-            aria-pressed={overlayEnabled}
-            title={
-              overlayEnabled
-                ? 'Overlay preview: on — click to remove every preset from the overlay'
-                : 'Overlay preview: off — click to show all saved presets (or use the checkmark on a preset)'
-            }
+            onClick={goForward}
+            className="rounded-md bg-btn-bg px-4 py-2 text-sm font-medium text-btn-fg shadow-[var(--glow-btn)] pointer-coarse:min-h-11 pointer-coarse:px-6"
+          >
+            Next
+          </button>
+        </div>
+      )}
+    </>
+  )
+
+  const stepRailItems: StepRailItem[] = [
+    { id: 1, label: 'Operation', detail: operationMeta.label, title: collapsedStepTitle(1, params) },
+    { id: 2, label: 'Geometry', detail: activeMethodDisplay.shortLabel, title: collapsedStepTitle(2, params) },
+    { id: 3, label: 'Feeds', detail: `${params.feeds.feedrateXY} mm/min`, title: collapsedStepTitle(3, params) },
+    {
+      id: 4,
+      label: 'G-code',
+      detail: (
+        <>
+          <span className={`flex h-3.5 w-3.5 shrink-0 items-center justify-center rounded-full ${step4BadgeInfo.colorClassName}`}>
+            <step4BadgeInfo.Icon className="h-2.5 w-2.5" />
+          </span>
+          {generatedGCode ? 'generated' : 'not generated'}
+        </>
+      ),
+      title: step4BadgeInfo.title,
+    },
+  ]
+  // Medium and narrow: the step rail above the open step.
+  const railWizard = (
+    <>
+      <StepRail items={stepRailItems} activeStep={activeStep} onSelect={setActiveStep} />
+      <div className="flex min-h-0 flex-1 flex-col overflow-y-auto p-5">
+        {renderStepPanel(STEP_META.find((step) => step.id === activeStep) ?? STEP_META[0])}
+      </div>
+    </>
+  )
+
+  const previewTabs = (
+    <div className="flex items-center justify-between gap-3 border-b border-border px-6 py-3">
+      <div className="flex gap-2" role="tablist" aria-label="Preview">
+        {(['2d', '3d', 'gcode'] as const).map((tab) => (
+          <button
+            key={tab}
+            type="button"
+            role="tab"
+            aria-selected={previewTab === tab}
+            onClick={() => setPreviewTab(tab)}
             className={[
-              'ml-11 flex h-11 w-11 items-center justify-center rounded-md border transition',
-              overlayEnabled
-                ? 'border-2 border-accent bg-accent-bg text-accent-fg shadow-[var(--glow-accent)]'
-                : 'border-border text-value hover:bg-border/40',
+              'rounded-md px-2.5 py-1 text-xs font-semibold uppercase tracking-wide transition pointer-coarse:min-h-11 pointer-coarse:px-3',
+              previewTab === tab
+                ? 'bg-tab-active-bg text-tab-active-fg shadow-[var(--glow-accent)]'
+                : 'text-muted hover:text-fg',
             ].join(' ')}
           >
-            <EyeIcon className="h-5 w-5" />
+            {tab === '2d' ? '2D Preview' : tab === '3d' ? '3D Preview' : 'G-Code'}
           </button>
-          {/* The Header's own "stop editing" pencil is hidden for now (BL-115):
-              the pencil badge on the edited slot does the same job. Kept in
-              the code until the decision to remove it for good. */}
-          {SHOW_EDIT_BUTTON && (
-            <button
-              type="button"
-              onClick={() => setEditingSlot(null)}
-              disabled={!editingSlot}
-              aria-label="Stop editing the preset"
-              aria-pressed={editingSlot !== null}
-              title={
-                editingSlot
-                  ? `Editing preset [${editingSlot}] — click to stop auto-saving`
-                  : 'Not editing — use the pencil on a preset to edit it'
-              }
-              className={[
-                'flex h-11 w-11 items-center justify-center rounded-md border transition',
-                editingSlot
-                  ? 'border-2 border-edit bg-edit-bg text-edit-fg shadow-[var(--glow-edit)]'
-                  : 'border-border text-value opacity-50',
-              ].join(' ')}
-            >
-              <PencilIcon className="h-5 w-5" />
-            </button>
-          )}
+        ))}
+      </div>
+      {layout === 'medium' && (overlayEnabled || editingSlot) ? (
+        <div className="flex min-w-0 flex-col items-end text-[11px] leading-tight font-semibold whitespace-nowrap">{modeLabels}</div>
+      ) : (
+        previewTab === 'gcode' && generatedGCode && <span className="text-xs text-muted">{generatedGCode.length} lines</span>
+      )}
+    </div>
+  )
+
+  const previewViewport = (
+    <div className="relative flex flex-1 flex-col overflow-hidden shadow-[var(--preview-inset)]">
+      {overlayHidesLive && previewTab !== 'gcode' && (
+        <div className="pointer-events-none absolute top-3 left-1/2 z-10 -translate-x-1/2 pointer-coarse:top-20 rounded-full bg-accent px-3 py-1 text-xs font-semibold text-btn-fg shadow-lg">
+          Preview mode
         </div>
-        {/* BL-112: the presets as one project file, outside the preset
-            group's frame — the project's name (with a dot while the slots
-            differ from the file), then Load and Save. */}
-        <div className="flex items-center gap-2">
-          <span
-            title={
-              project.name === null
-                ? 'No project saved or loaded yet'
-                : projectDirty
-                  ? `Project "${project.name}" — presets changed since it was saved`
-                  : `Project "${project.name}"`
+      )}
+      {previewToolpathBlocked && previewTab !== 'gcode' && (
+        <div
+          role="status"
+          className="pointer-events-none absolute top-3 left-1/2 z-10 -translate-x-1/2 pointer-coarse:top-20 rounded-full border border-status-delete-fg bg-status-delete-bg px-3 py-1 text-xs font-semibold whitespace-nowrap text-status-delete-fg shadow-lg"
+        >
+          Fix the highlighted fields to see the toolpath
+        </div>
+      )}
+
+      {previewTab === '2d' && (
+        <ToolpathCanvas
+          viewMemory={saved2DViewRef}
+          params={previewParams}
+          isDark={isDark}
+          paletteId={appearance.palette}
+          themeId={appearance.theme}
+          overlayParams={overlayParams}
+          showActivePattern={!overlayHidesLive}
+          dimOverlay={editingInOverlay}
+          activeToolpathVisible={!previewToolpathBlocked}
+          fitKey={previewFitKey}
+          fontEpoch={fontEpoch}
+          stockVisible={stockVisible}
+          toolpathVisible={toolpathVisible}
+          cutShapeEnabled={appearance.cutShapeEnabled}
+          onToggleStockVisible={() => setStockVisible((v) => !v)}
+          onToggleToolpathVisible={() => setToolpathVisible((v) => !v)}
+        />
+      )}
+
+      {previewTab === '3d' && simple3D && (
+        <LitePreview3D
+          viewMemory={savedLiteViewRef}
+          params={previewParams}
+          isDark={isDark}
+          paletteId={appearance.palette}
+          themeId={appearance.theme}
+          overlayParams={overlayParams}
+          showActivePattern={!overlayHidesLive}
+          dimOverlay={editingInOverlay}
+          activeToolpathVisible={!previewToolpathBlocked}
+          fitKey={previewFitKey}
+          fontEpoch={fontEpoch}
+          stockVisible={stockVisible}
+          toolpathVisible={toolpathVisible}
+          cutShapeEnabled={appearance.cutShapeEnabled}
+          onToggleStockVisible={() => setStockVisible((v) => !v)}
+          onToggleToolpathVisible={() => setToolpathVisible((v) => !v)}
+          note={
+            preview3DAvailable
+              ? 'Simple 3D preview (Settings → Appearance)'
+              : 'Simple 3D preview — this device cannot run the full one (no WebGL 2)'
+          }
+        />
+      )}
+
+      {previewTab === '3d' && !simple3D && (
+        <Suspense
+          fallback={
+            <div className="flex flex-1 items-center justify-center text-sm text-muted">
+              Loading 3D viewer…
+            </div>
+          }
+        >
+          <Scene3D
+            viewMemory={saved3DViewRef}
+            params={previewParams}
+            isDark={isDark}
+            paletteId={appearance.palette}
+            themeId={appearance.theme}
+            overlayParams={overlayParams}
+            showActivePattern={!overlayHidesLive}
+            dimOverlay={editingInOverlay}
+            activeToolpathVisible={!previewToolpathBlocked}
+            fitKey={previewFitKey}
+            fontEpoch={fontEpoch}
+            gridLabelsEnabled={appearance.grid3DLabelsEnabled}
+            gridLabelSize={appearance.grid3DLabelSize}
+            stockVisible={stockVisible}
+            toolpathVisible={toolpathVisible}
+            stockSolid={stockSolid}
+            stockEdgesEnabled={appearance.stockEdges3DEnabled}
+            cutShapeEnabled={appearance.cutShapeEnabled}
+            onToggleStockSolid={() => setStockSolid((v) => !v)}
+            renderPaused={isSettingsOpen || isFeedCalcOpen || isProjectNameOpen}
+            onUnavailable={() => setPreview3DAvailable(false)}
+            onToggleStockVisible={() => setStockVisible((v) => !v)}
+            onToggleToolpathVisible={() => setToolpathVisible((v) => !v)}
+            onToggleGridLabels={() =>
+              handleSaveAppearance({
+                ...appearance,
+                grid3DLabelsEnabled: !appearance.grid3DLabelsEnabled,
+              })
             }
-            className="flex h-7 max-w-40 items-center gap-1.5 rounded-md border border-edit px-2 text-xs font-semibold text-edit-fg shadow-[var(--glow-edit)]"
-          >
-            <span className="truncate">{project.name ?? 'Untitled'}</span>
-            {projectDirty && (
-              <span className="flex shrink-0 items-center gap-1" role="status">
-                <span aria-hidden="true" className="h-1.5 w-1.5 rounded-full bg-edit" />
-                <span className="sr-only">unsaved changes</span>
+          />
+        </Suspense>
+      )}
+
+      {previewTab === 'gcode' &&
+        (generatedGCode ? (
+          <pre className="flex-1 overflow-auto bg-code-bg p-6 font-mono text-xs leading-relaxed text-value">
+            {generatedGCode.slice(0, GCODE_PREVIEW_LINES).join('\n')}
+            {generatedGCode.length > GCODE_PREVIEW_LINES && (
+              <span className="mt-4 block font-sans text-sm text-muted">
+                … {generatedGCode.length - GCODE_PREVIEW_LINES} more lines not shown. Download the file from
+                Step 4 for the full program.
               </span>
             )}
-          </span>
-          <button
-            type="button"
-            onClick={() => projectFileInputRef.current?.click()}
-            aria-label="Load project from a file"
-            title="Load project — replaces all presets with the ones in a project file"
-            className="flex h-11 w-11 items-center justify-center rounded-md border border-border text-value transition hover:bg-border/40"
-          >
-            <OpenFileIcon className="h-5 w-5" />
-          </button>
-          <input
-            ref={projectFileInputRef}
-            type="file"
-            accept=".json,application/json"
-            className="hidden"
-            onChange={(e) => {
-              const file = e.target.files?.[0]
-              // Cleared so picking the same file again fires onChange again.
-              e.target.value = ''
-              if (file) void handleLoadProjectFile(file)
-            }}
-          />
-          <button
-            type="button"
-            onClick={() => setIsProjectNameOpen(true)}
-            disabled={presetCount === 0}
-            aria-label="Save project to a file"
-            title={presetCount === 0 ? 'Save project — no presets to save yet' : 'Save project — all presets to one file'}
-            className={[
-              'flex h-11 w-11 items-center justify-center rounded-md border border-border text-value transition',
-              presetCount === 0 ? 'opacity-50' : 'hover:bg-border/40',
-            ].join(' ')}
-          >
-            <SaveFileIcon className="h-5 w-5" />
-          </button>
-        </div>
-        </div>
+          </pre>
+        ) : (
+          <div className="flex flex-1 items-center justify-center p-6 text-center text-sm text-muted">
+            Go to Step 4 and click "Generate" to preview the G-code.
+          </div>
+        ))}
+    </div>
+  )
 
-        <div className="flex items-center justify-self-end gap-2">
-          <button
-            type="button"
-            onClick={() => setIsDark((d) => !d)}
-            aria-label="Toggle dark mode"
-            aria-pressed={isDark}
-            title="Toggle dark mode"
-            className="flex h-9 w-9 items-center justify-center rounded-md border border-border text-value hover:bg-border/40"
-          >
-            {isDark ? (
-              <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2">
-                <circle cx="12" cy="12" r="4" />
-                <path strokeLinecap="round" d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41" />
-              </svg>
-            ) : (
-              <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79Z" />
-              </svg>
-            )}
-          </button>
+  return (
+    <div className="relative flex h-[var(--app-h,100dvh)] flex-col bg-bg pb-[var(--keypad-h,0px)] text-fg shadow-[var(--frame-glow)]">
+      {layout === 'wide' && (
+        <header className="grid grid-cols-[1fr_auto_1fr] items-center gap-4 border-b border-border px-6 py-4">
+          <div>
+            {wordmark}
+            <p className="text-xs text-muted">Helps you CAM. Every time!</p>
+            <p className="text-[11px] text-muted">Envisioned by ThingsByPluzz</p>
+          </div>
 
-          <button
-            type="button"
-            onClick={() => setIsSettingsOpen(true)}
-            aria-label="Settings"
-            title="Settings"
-            className="flex h-9 w-9 items-center justify-center rounded-md border border-border text-value hover:bg-border/40"
-          >
-            <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2">
-              <circle cx="12" cy="12" r="3" />
-              <path strokeLinecap="round" strokeLinejoin="round" d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.6 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.6a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1Z" />
-            </svg>
-          </button>
-        </div>
-      </header>
+          <div className="flex items-center justify-self-center gap-4">
+            {presetBar}
+            {/* BL-112: the presets as one project file, outside the preset
+                group's frame — the project's name (with a dot while the
+                slots differ from the file), then Load and Save. */}
+            <div className="flex items-center gap-2">
+              <span
+                title={
+                  project.name === null
+                    ? 'No project saved or loaded yet'
+                    : projectDirty
+                      ? `Project "${project.name}" — presets changed since it was saved`
+                      : `Project "${project.name}"`
+                }
+                className="flex h-7 max-w-40 items-center gap-1.5 rounded-md border border-edit px-2 text-xs font-semibold text-edit-fg shadow-[var(--glow-edit)]"
+              >
+                <span className="truncate">{project.name ?? 'Untitled'}</span>
+                {projectDirty && (
+                  <span className="flex shrink-0 items-center gap-1" role="status">
+                    <span aria-hidden="true" className="h-1.5 w-1.5 rounded-full bg-edit" />
+                    <span className="sr-only">unsaved changes</span>
+                  </span>
+                )}
+              </span>
+              <button
+                type="button"
+                onClick={() => projectFileInputRef.current?.click()}
+                aria-label="Load project from a file"
+                title="Load project — replaces all presets with the ones in a project file"
+                className="flex h-11 w-11 items-center justify-center rounded-md border border-border text-value transition hover:bg-border/40"
+              >
+                <OpenFileIcon className="h-5 w-5" />
+              </button>
+              <button
+                type="button"
+                onClick={() => setIsProjectNameOpen(true)}
+                disabled={presetCount === 0}
+                aria-label="Save project to a file"
+                title={presetCount === 0 ? 'Save project — no presets to save yet' : 'Save project — all presets to one file'}
+                className={[
+                  'flex h-11 w-11 items-center justify-center rounded-md border border-border text-value transition',
+                  presetCount === 0 ? 'opacity-50' : 'hover:bg-border/40',
+                ].join(' ')}
+              >
+                <SaveFileIcon className="h-5 w-5" />
+              </button>
+            </div>
+          </div>
 
-      <div className="flex flex-1 overflow-hidden">
-        <div className="flex shrink-0 overflow-x-auto border-r border-border">
-          {STEP_META.map((step) => {
-            if (step.id === activeStep) {
-              return (
-                <div
-                  key={step.id}
-                  className="flex w-[420px] shrink-0 flex-col overflow-y-auto border-r border-border p-6"
-                >
-                  <div className="mb-4 flex items-center justify-between gap-2">
-                    <h2 className="text-xs font-semibold uppercase tracking-wide text-muted">
-                      Step {step.id} · {step.title}
-                    </h2>
-                    {step.id === 4 && (
-                      <span
-                        className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full ${step4BadgeInfo.colorClassName}`}
-                        title={step4BadgeInfo.title}
-                      >
-                        <step4BadgeInfo.Icon className="h-4 w-4" />
-                      </span>
-                    )}
+          <div className="flex items-center justify-self-end gap-2">{headerButtons}</div>
+        </header>
+      )}
+      {layout === 'medium' && (
+        <header className="flex items-center justify-between gap-3 border-b border-border px-4 py-2">
+          {wordmark}
+          {presetBar}
+          <div className="flex min-w-0 items-center gap-2">
+            {projectMenu}
+            {headerButtons}
+          </div>
+        </header>
+      )}
+      {layout === 'narrow' && (
+        <header className="border-b border-border">
+          <div className="flex items-center justify-between gap-3 px-4 py-2">
+            {wordmark}
+            <div className="flex min-w-0 items-center gap-2">
+              {projectMenu}
+              {headerButtons}
+            </div>
+          </div>
+          <div className="border-t border-border px-4 py-2">{presetBar}</div>
+        </header>
+      )}
+      <input
+        ref={projectFileInputRef}
+        type="file"
+        accept=".json,application/json"
+        className="hidden"
+        onChange={(e) => {
+          const file = e.target.files?.[0]
+          // Cleared so picking the same file again fires onChange again.
+          e.target.value = ''
+          if (file) void handleLoadProjectFile(file)
+        }}
+      />
+
+      {layout === 'wide' && (
+        <div className="flex flex-1 overflow-hidden">
+          {/* The accordion takes a share of the window, between a floor
+              that keeps the open step's fields readable and a ceiling. */}
+          <div className="flex w-[42%] max-w-[760px] min-w-[660px] shrink-0 overflow-x-auto border-r border-border">
+            {STEP_META.map((step) => {
+              if (step.id === activeStep) {
+                return (
+                  <div key={step.id} className="flex min-w-0 flex-1 flex-col overflow-y-auto border-r border-border p-6">
+                    {renderStepPanel(step)}
                   </div>
+                )
+              }
 
-                  {step.id === 1 && (
-                    <Step1Positioning params={params} onChange={updateParams} />
-                  )}
+              if (step.id === 1) {
+                return (
+                  <Step1Summary
+                    key={step.id}
+                    params={params}
+                    title={collapsedStepTitle(step.id, params)}
+                    onOpen={() => setActiveStep(step.id)}
+                    onSwitchOperation={(operation) => {
+                      updateParams({ operation })
+                      setActiveStep(step.id)
+                    }}
+                  />
+                )
+              }
+
+              return (
+                <button
+                  key={step.id}
+                  type="button"
+                  onClick={() => setActiveStep(step.id)}
+                  title={collapsedStepTitle(step.id, params)}
+                  className="flex w-20 shrink-0 flex-col items-center gap-3 border-r border-border py-4 hover:bg-border/40"
+                >
                   {step.id === 2 && (
-                    <Step2Geometry
-                      key={paramsLoadGeneration}
-                      params={params}
-                      onChange={updateParams}
-                      machine={machine}
-                      toolDiameters={toolDiameters}
-                      flutes={feedCalc.flutes}
-                      onFlutesChange={(flutes) => handleSaveFeedCalc({ ...feedCalc, flutes })}
-                    />
-                  )}
-                  {step.id === 3 && (
-                    <Step3Feeds
-                      key={paramsLoadGeneration}
-                      params={params}
-                      onChange={updateParams}
-                      machine={machine}
-                      stepdownLabel={activeMethodDisplay.stepdown.fieldLabel}
-                      onOpenCalculator={() => setIsFeedCalcOpen(true)}
-                      onSaveMachine={handleSaveMachine}
-                    />
-                  )}
-                  {step.id === 4 && (
-                    <>
-                      {showRestoredBanner && (
-                        <div className="mb-4 rounded-md border border-accent-border bg-accent-bg px-3 py-2 text-xs text-accent-fg">
-                          Restored from your last session — click Generate to refresh the G-code.
-                        </div>
-                      )}
-                      <Step4Output
-                        params={params}
-                        onChange={updateParams}
-                        generatedGCode={generatedGCode}
-                        onGenerate={handleGenerate}
-                        canGenerate={isGeometryValid && !overlayHidesLive}
-                        overlayActive={overlayHidesLive}
-                        presetSlots={presetSlots}
-                        onSaveToPreset={handleSaveToPreset}
-                        onDeletePreset={handleDeletePreset}
-                        warnings={step4Warnings}
+                    <div className="flex flex-col items-center gap-4">
+                      <span className="text-[10px] font-semibold uppercase text-muted">
+                        {step.title}
+                      </span>
+                      <MiniStat
+                        icon={<activeMethodDisplay.Icon className="h-8 w-8" />}
+                        label="METHOD"
+                        value={activeMethodDisplay.shortLabel}
+                        title={`Method: ${activeMethodDisplay.title}`}
                       />
-                    </>
-                  )}
-
-                  {STEPS_WITH_NEXT_BUTTON.has(step.id) && (
-                    <div className="mt-6 flex justify-end">
-                      <button
-                        type="button"
-                        onClick={goForward}
-                        className="rounded-md bg-btn-bg px-4 py-2 text-sm font-medium text-btn-fg shadow-[var(--glow-btn)]"
-                      >
-                        Next
-                      </button>
+                      {operationMeta.geometryStats(params).map((stat) => (
+                        <MiniStat
+                          key={stat.label}
+                          icon={<stat.Icon className="h-8 w-8" />}
+                          label={stat.label}
+                          value={stat.value}
+                          unit={stat.unit}
+                          title={stat.title}
+                        />
+                      ))}
                     </div>
                   )}
-                </div>
-              )
-            }
 
-            if (step.id === 1) {
-              return (
-                <Step1Summary
-                  key={step.id}
-                  params={params}
-                  title={collapsedStepTitle(step.id, params)}
-                  onOpen={() => setActiveStep(step.id)}
-                  onSwitchOperation={(operation) => {
-                    updateParams({ operation })
-                    setActiveStep(step.id)
-                  }}
-                />
-              )
-            }
-
-            return (
-              <button
-                key={step.id}
-                type="button"
-                onClick={() => setActiveStep(step.id)}
-                title={collapsedStepTitle(step.id, params)}
-                className="flex w-20 shrink-0 flex-col items-center gap-3 border-r border-border py-4 hover:bg-border/40"
-              >
-                {step.id === 2 && (
-                  <div className="flex flex-col items-center gap-4">
-                    <span className="text-[10px] font-semibold uppercase text-muted">
-                      {step.title}
-                    </span>
-                    <MiniStat
-                      icon={<activeMethodDisplay.Icon className="h-8 w-8" />}
-                      label="METHOD"
-                      value={activeMethodDisplay.shortLabel}
-                      title={`Method: ${activeMethodDisplay.title}`}
-                    />
-                    {operationMeta.geometryStats(params).map((stat) => (
+                  {step.id === 3 && (
+                    <div className="flex flex-col items-center gap-4">
+                      <span className="text-[10px] font-semibold uppercase text-muted">
+                        {step.title}
+                      </span>
                       <MiniStat
-                        key={stat.label}
-                        icon={<stat.Icon className="h-8 w-8" />}
-                        label={stat.label}
-                        value={stat.value}
-                        unit={stat.unit}
-                        title={stat.title}
+                        icon={<SpindleIcon className="h-8 w-8" />}
+                        label="SPINDLE"
+                        value={spindleDial ? `dial ${spindleDial.position}` : `${machine.spindleSpeed}`}
+                        unit={spindleDial ? undefined : 'RPM'}
+                        title={`Spindle Speed: ${machine.spindleSpeed} RPM${spindleDial ? ` — ${spindleDial.label} dial ${spindleDial.position} (≈ ${spindleDial.rpm} RPM)` : ''} (global, Settings → Machine)`}
                       />
-                    ))}
-                  </div>
-                )}
-
-                {step.id === 3 && (
-                  <div className="flex flex-col items-center gap-4">
-                    <span className="text-[10px] font-semibold uppercase text-muted">
-                      {step.title}
-                    </span>
-                    <MiniStat
-                      icon={<SpindleIcon className="h-8 w-8" />}
-                      label="SPINDLE"
-                      value={spindleDial ? `dial ${spindleDial.position}` : `${machine.spindleSpeed}`}
-                      unit={spindleDial ? undefined : 'RPM'}
-                      title={`Spindle Speed: ${machine.spindleSpeed} RPM${spindleDial ? ` — ${spindleDial.label} dial ${spindleDial.position} (≈ ${spindleDial.rpm} RPM)` : ''} (global, Settings → Machine)`}
-                    />
-                    <MiniStat
-                      icon={<FeedIcon className="h-8 w-8" />}
-                      label="FEED"
-                      value={`${params.feeds.feedrateXY}`}
-                      unit="mm/min"
-                      title={`Feedrate XY: ${params.feeds.feedrateXY} mm/min`}
-                    />
-                    <MiniStat
-                      icon={<PlungeIcon className="h-8 w-8" />}
-                      label="PLUNGE"
-                      value={`${params.feeds.plungeRate}`}
-                      unit="mm/min"
-                      title={`Plunge Rate: ${params.feeds.plungeRate} mm/min`}
-                    />
-                    <MiniStat
-                      icon={<StepdownIcon className="h-8 w-8" />}
-                      label={activeMethodDisplay.stepdown.shortLabel}
-                      value={`${params.feeds.stepdown}`}
-                      unit="mm"
-                      title={`Stepdown: ${params.feeds.stepdown} mm`}
-                    />
-                    {params.feeds.startZ !== 0 && (
                       <MiniStat
-                        icon={<StartZIcon className="h-8 w-8" />}
-                        label="STARTZ"
-                        value={`${params.feeds.startZ}`}
+                        icon={<FeedIcon className="h-8 w-8" />}
+                        label="FEED"
+                        value={`${params.feeds.feedrateXY}`}
+                        unit="mm/min"
+                        title={`Feedrate XY: ${params.feeds.feedrateXY} mm/min`}
+                      />
+                      <MiniStat
+                        icon={<PlungeIcon className="h-8 w-8" />}
+                        label="PLUNGE"
+                        value={`${params.feeds.plungeRate}`}
+                        unit="mm/min"
+                        title={`Plunge Rate: ${params.feeds.plungeRate} mm/min`}
+                      />
+                      <MiniStat
+                        icon={<StepdownIcon className="h-8 w-8" />}
+                        label={activeMethodDisplay.stepdown.shortLabel}
+                        value={`${params.feeds.stepdown}`}
                         unit="mm"
-                        title={`Start Z: ${params.feeds.startZ} mm`}
+                        title={`Stepdown: ${params.feeds.stepdown} mm`}
                       />
-                    )}
-                  </div>
-                )}
-
-                {step.id === 4 && (
-                  <>
-                    <span
-                      className={`flex h-10 w-10 items-center justify-center rounded-full ${step4BadgeInfo.colorClassName}`}
-                      title={step4BadgeInfo.title}
-                    >
-                      <step4BadgeInfo.Icon className="h-5 w-5" />
-                    </span>
-                    <span className="[writing-mode:vertical-rl] rotate-180 text-xs font-medium text-muted">
-                      {step.title}
-                    </span>
-                  </>
-                )}
-              </button>
-            )
-          })}
-        </div>
-
-        <div className="flex flex-1 flex-col overflow-hidden">
-          <div className="flex items-center justify-between border-b border-border px-6 py-3">
-            <div className="flex gap-2" role="tablist" aria-label="Preview">
-              {(['2d', '3d', 'gcode'] as const).map((tab) => (
-                <button
-                  key={tab}
-                  type="button"
-                  role="tab"
-                  aria-selected={previewTab === tab}
-                  onClick={() => setPreviewTab(tab)}
-                  className={[
-                    'rounded-md px-2.5 py-1 text-xs font-semibold uppercase tracking-wide transition',
-                    previewTab === tab
-                      ? 'bg-tab-active-bg text-tab-active-fg shadow-[var(--glow-accent)]'
-                      : 'text-muted hover:text-fg',
-                  ].join(' ')}
-                >
-                  {tab === '2d' ? '2D Preview' : tab === '3d' ? '3D Preview' : 'G-Code'}
-                </button>
-              ))}
-            </div>
-            {previewTab === 'gcode' && generatedGCode && (
-              <span className="text-xs text-muted">
-                {generatedGCode.length} lines
-              </span>
-            )}
-          </div>
-
-          <div className="relative flex flex-1 flex-col overflow-hidden shadow-[var(--preview-inset)]">
-            {overlayHidesLive && previewTab !== 'gcode' && (
-              <div className="pointer-events-none absolute top-3 left-1/2 z-10 -translate-x-1/2 rounded-full bg-accent px-3 py-1 text-xs font-semibold text-btn-fg shadow-lg">
-                Preview mode
-              </div>
-            )}
-            {previewToolpathBlocked && previewTab !== 'gcode' && (
-              <div
-                role="status"
-                className="pointer-events-none absolute top-3 left-1/2 z-10 -translate-x-1/2 rounded-full border border-status-delete-fg bg-status-delete-bg px-3 py-1 text-xs font-semibold whitespace-nowrap text-status-delete-fg shadow-lg"
-              >
-                Fix the highlighted fields to see the toolpath
-              </div>
-            )}
-
-            {previewTab === '2d' && (
-              <ToolpathCanvas
-                viewMemory={saved2DViewRef}
-                params={previewParams}
-                isDark={isDark}
-                paletteId={appearance.palette}
-                themeId={appearance.theme}
-                overlayParams={overlayParams}
-                showActivePattern={!overlayHidesLive}
-                dimOverlay={editingInOverlay}
-                activeToolpathVisible={!previewToolpathBlocked}
-                fitKey={previewFitKey}
-                fontEpoch={fontEpoch}
-                stockVisible={stockVisible}
-                toolpathVisible={toolpathVisible}
-                cutShapeEnabled={appearance.cutShapeEnabled}
-                onToggleStockVisible={() => setStockVisible((v) => !v)}
-                onToggleToolpathVisible={() => setToolpathVisible((v) => !v)}
-              />
-            )}
-
-            {previewTab === '3d' && (
-              <Suspense
-                fallback={
-                  <div className="flex flex-1 items-center justify-center text-sm text-muted">
-                    Loading 3D viewer…
-                  </div>
-                }
-              >
-                <Scene3D
-                  viewMemory={saved3DViewRef}
-                  params={previewParams}
-                  isDark={isDark}
-                  paletteId={appearance.palette}
-                  themeId={appearance.theme}
-                  overlayParams={overlayParams}
-                  showActivePattern={!overlayHidesLive}
-                  dimOverlay={editingInOverlay}
-                  activeToolpathVisible={!previewToolpathBlocked}
-                  fitKey={previewFitKey}
-                  fontEpoch={fontEpoch}
-                  gridLabelsEnabled={appearance.grid3DLabelsEnabled}
-                  gridLabelSize={appearance.grid3DLabelSize}
-                  stockVisible={stockVisible}
-                  toolpathVisible={toolpathVisible}
-                  stockSolid={stockSolid}
-                  stockEdgesEnabled={appearance.stockEdges3DEnabled}
-                  cutShapeEnabled={appearance.cutShapeEnabled}
-                  onToggleStockSolid={() => setStockSolid((v) => !v)}
-                  renderPaused={isSettingsOpen || isFeedCalcOpen || isProjectNameOpen}
-                  onToggleStockVisible={() => setStockVisible((v) => !v)}
-                  onToggleToolpathVisible={() => setToolpathVisible((v) => !v)}
-                  onToggleGridLabels={() =>
-                    handleSaveAppearance({
-                      ...appearance,
-                      grid3DLabelsEnabled: !appearance.grid3DLabelsEnabled,
-                    })
-                  }
-                />
-              </Suspense>
-            )}
-
-            {previewTab === 'gcode' &&
-              (generatedGCode ? (
-                <pre className="flex-1 overflow-auto bg-code-bg p-6 font-mono text-xs leading-relaxed text-value">
-                  {generatedGCode.slice(0, GCODE_PREVIEW_LINES).join('\n')}
-                  {generatedGCode.length > GCODE_PREVIEW_LINES && (
-                    <span className="mt-4 block font-sans text-sm text-muted">
-                      … {generatedGCode.length - GCODE_PREVIEW_LINES} more lines not shown. Download the file from
-                      Step 4 for the full program.
-                    </span>
+                      {params.feeds.startZ !== 0 && (
+                        <MiniStat
+                          icon={<StartZIcon className="h-8 w-8" />}
+                          label="STARTZ"
+                          value={`${params.feeds.startZ}`}
+                          unit="mm"
+                          title={`Start Z: ${params.feeds.startZ} mm`}
+                        />
+                      )}
+                    </div>
                   )}
-                </pre>
-              ) : (
-                <div className="flex flex-1 items-center justify-center p-6 text-center text-sm text-muted">
-                  Go to Step 4 and click "Generate" to preview the G-code.
-                </div>
-              ))}
+
+                  {step.id === 4 && (
+                    <>
+                      <span
+                        className={`flex h-10 w-10 items-center justify-center rounded-full ${step4BadgeInfo.colorClassName}`}
+                        title={step4BadgeInfo.title}
+                      >
+                        <step4BadgeInfo.Icon className="h-5 w-5" />
+                      </span>
+                      <span className="[writing-mode:vertical-rl] rotate-180 text-xs font-medium text-muted">
+                        {step.title}
+                      </span>
+                    </>
+                  )}
+                </button>
+              )
+            })}
+          </div>
+
+          <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
+            {previewTabs}
+            {previewViewport}
           </div>
         </div>
-      </div>
+      )}
+      {layout === 'medium' && (
+        <div className="flex flex-1 overflow-hidden">
+          <div className="flex w-[40%] max-w-[460px] min-w-[380px] shrink-0 flex-col border-r border-border">{railWizard}</div>
+          <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
+            {previewTabs}
+            {previewViewport}
+          </div>
+        </div>
+      )}
+      {layout === 'narrow' && (
+        <>
+          <div className="flex min-h-0 flex-1 flex-col overflow-hidden">{narrowView === 'setup' ? railWizard : previewViewport}</div>
+          {/* One view at a time: the wizard or one of the three previews.
+              Gone while the keypad is up — it would only take room from the
+              fields. */}
+          {!keypad.open && (
+            <nav aria-label="View" className="grid shrink-0 grid-cols-4 gap-2 border-t border-border bg-code-bg px-4 py-2.5">
+              {(
+                [
+                  ['setup', 'Setup'],
+                  ['2d', '2D'],
+                  ['3d', '3D'],
+                  ['gcode', 'G-code'],
+                ] as const
+              ).map(([view, label]) => {
+                const pressed = view === 'setup' ? narrowView === 'setup' : narrowView === 'preview' && previewTab === view
+                return (
+                  <button
+                    key={view}
+                    type="button"
+                    aria-pressed={pressed}
+                    onClick={() => {
+                      if (view === 'setup') {
+                        setNarrowView('setup')
+                        return
+                      }
+                      setPreviewTab(view)
+                      setNarrowView('preview')
+                    }}
+                    className={[
+                      'h-13 rounded-lg text-sm font-semibold transition',
+                      pressed
+                        ? 'border-2 border-accent bg-accent-bg text-fg shadow-[var(--glow-accent)]'
+                        : 'border border-border text-muted',
+                    ].join(' ')}
+                  >
+                    {label}
+                  </button>
+                )
+              })}
+            </nav>
+          )}
+        </>
+      )}
 
       {isFeedCalcOpen && (
         <FeedCalculatorModal
@@ -1177,6 +1249,8 @@ function App() {
           onSaveSettings={handleSaveFeedCalc}
           onApply={handleApplyFeedCalc}
           onClose={() => setIsFeedCalcOpen(false)}
+        fullScreen={fullScreenModals}
+        stacked={layout === 'narrow'}
         />
       )}
 
@@ -1200,6 +1274,7 @@ function App() {
           onResetAll={handleResetAllSettings}
           onLoadTemplate={handleLoadTemplate}
           onClose={() => setIsSettingsOpen(false)}
+        fullScreen={fullScreenModals}
         />
       )}
 

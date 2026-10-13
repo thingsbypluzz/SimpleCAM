@@ -7,6 +7,127 @@ zgodne z [SemVer](https://semver.org/). Ten plik pozostaje głównym, czytelnym
 thingsbypluzz/SimpleCAM), ale to infrastruktura pod izolację pracy
 (branch/worktree per zadanie), nie zamiennik tego changeloga.
 
+## [0.55.1] — 2026-10-13
+
+### Naprawiono
+
+- **Klawiatura numeryczna nie pojawiała się w Firefoksie na Androidzie.**
+  Dotknięcie pola robiło na nią miejsce, ale sama klawiatura lądowała pod
+  ekranem: Firefox podawał obszar układu wyższy niż widoczna część strony
+  (1291 px przy widocznych 944), a klawiatura była przypięta do jego dołu.
+  Klawiatura, Settings i Feedrate Calculator na cały ekran są teraz
+  przypięte do widocznej wysokości (`--app-h`), a strona na dotyku nie ma
+  własnego przewijania. Pole po dotknięciu nie zaznacza już swojej
+  wartości — zaznaczenie wywoływało systemowy pasek Cut / Copy, który
+  zasłaniał sąsiednie pola; pierwsza cyfra nadal zastępuje starą wartość.
+
+### Zmieniono
+
+- **Diagnostics** (Settings → About) pokazuje też rozmiar treści strony
+  (wiersz „Page”) — widać po nim, czy coś wystaje poza ekran.
+
+## [0.55.0] — 2026-10-13
+
+### Dodano
+
+- **Blok Diagnostics w Settings → About.** Pokazuje, co oferuje
+  przeglądarka i urządzenie: user agent, rozmiar okna i wybrany układ, typ
+  wskaźnika, WebGL 1 / 2 z nazwą układu graficznego, używany podgląd 3D,
+  motyw, brakujące funkcje CSS i dostępność pamięci przeglądarki. Przycisk
+  Copy kopiuje całość jako tekst. Powód: zgłoszenia z nietypowych urządzeń
+  (stary tablet, wbudowana przeglądarka) wymagały dotąd zgadywania, czego
+  przeglądarka nie obsługuje. Nic nie jest zapisywane ani wysyłane.
+- **Uproszczony podgląd 3D bez WebGL** (`BL-118`). Urządzenie, którego
+  grafika nie obsługuje WebGL 2 (np. starszy tablet), dostaje w zakładce 3D
+  lekki podgląd na zwykłej kanwie: ścieżka narzędzia i obrys materiału w
+  rzucie, z siatką i osiami. Obraca się, przesuwa i skaluje jak pełny
+  podgląd (jeden palec albo lewy przycisk obraca, dwa palce albo prawy
+  przycisk przesuwają, szczypanie albo kółko powiększa), ma te same widoki
+  Top / Isometric / Front / Side i Fit View.
+  - Nie ma głębi ani litego, oświetlonego materiału — ścieżkę widać przez
+    materiał; brak też etykiet siatki, bloków Surface i Facing oraz kresek
+    napisu Text (ich ścieżki są).
+  - Podczas obracania długa ścieżka (np. Pocket Adaptive) jest rysowana
+    przerzedzona, żeby widok nadążał za palcem; po puszczeniu wraca cała.
+  - Settings → Appearance → **Simple 3D Preview** włącza go także tam,
+    gdzie działa pełny podgląd — dla wolnych urządzeń.
+
+### Naprawiono
+
+- **Jasne albo szare przyciski we wbudowanej przeglądarce Androida.**
+  Przyciski bez własnego tła (Header, Preset Bar, pasek kroków, dolny
+  pasek, nieaktywne przełączniki, lista operacji) były rysowane systemową
+  powierzchnią przycisku zamiast przezroczystego tła, a przezroczyste
+  ramki — kolorem tekstu. Przyczyna: minifikator skracał kolory z
+  przezroczystością do zapisu szesnastkowego z kanałem alfa (`#0000`,
+  `#00f0ff1a`), a Android WebView w aplikacjach celujących w stare SDK
+  takiego zapisu nie przyjmuje — każdy taki kolor przepadał. Build
+  zostawia teraz te kolory jako `transparent` / `rgba()`
+  (`vite.config.ts`).
+- **Natywne kontrolki idą za przełącznikiem Dark / Light aplikacji.**
+  Aplikacja deklarowała `color-scheme: light dark`, więc paski przewijania
+  i listy rozwijane brały kolory z ustawienia systemu — jasne w ciemnej
+  aplikacji na urządzeniu ustawionym na jasny motyw. Teraz `color-scheme`
+  wynika z przełącznika (motywy Arcade zawsze ciemne).
+- **Aplikacja nie wywraca się już na urządzeniach bez WebGL 2.** Pełny
+  podgląd 3D wymaga WebGL 2; na starszym GPU, który ma tylko WebGL 1
+  (zgłoszenie: tablet Samsung z Mali-400), samo otwarcie zakładki 3D —
+  domyślnej — kończyło się ekranem błędu całej aplikacji. Teraz aplikacja
+  sprawdza WebGL 2 na starcie i w razie jego braku, albo gdy podgląd 3D
+  nie może wystartować z innego powodu, pokazuje podgląd uproszczony.
+
+### Zmieniono
+
+- Pełny podgląd 3D i uproszczony biorą ścieżki z jednego miejsca
+  (`lib/previewPaths.ts`) zamiast wybierać silnik osobno dla każdej
+  operacji w kodzie sceny.
+
+## [0.54.1] — 2026-10-12
+
+### Dodano
+
+- **Podgląd 2D obsługuje dotyk** (`BL-8`): jeden palec przesuwa widok, dwa
+  palce powiększają go i pomniejszają wokół punktu między nimi — tak jak w
+  podglądzie 3D. Dotąd 2D reagował tylko na mysz.
+
+## [0.54.0] — 2026-10-11
+
+### Dodano
+
+- **Układ dopasowany do okna i tabletu** (`BL-8`). Aplikacja ma trzy
+  układy, wybierane szerokością okna:
+  - **szeroki** (od 1280 px) — jak dotąd, akordeon kroków obok podglądu;
+    szerokość kroków rośnie z oknem (42% okna, od 660 do 760 px) zamiast
+    stać na sztywnych 420 px;
+  - **średni** (900–1279 px, tablet poziomo, mały laptop) — nad otwartym
+    krokiem pasek czterech kroków, wizard nadal obok podglądu;
+  - **wąski** (poniżej 900 px, tablet pionowo) — jeden widok naraz,
+    przełączany dolnym paskiem Setup / 2D / 3D / G-code.
+  W układzie średnim i wąskim nazwa projektu jest przyciskiem w prawym
+  górnym rogu z menu Load project / Save project. Telefon nie jest jeszcze
+  wspierany.
+- **Obsługa dotykiem.**
+  - **Własna klawiatura numeryczna** dla pól liczbowych: cyfry, kropka,
+    minus, kasowanie, schowanie; nad nią nazwa pola, przejście do
+    poprzedniego / następnego pola i Done. Strona robi dla niej miejsce,
+    więc panel dalej się przewija, a edytowane pole jest zawsze widoczne.
+    Pierwszy klawisz po wejściu w pole zaczyna liczbę od nowa. Pola
+    tekstowe zostają przy klawiaturze systemowej.
+  - **Preset Bar:** dotknięcie slotu wczytuje preset, przytrzymanie otwiera
+    menu z Overlay i edycją; znaczki na slotach pokazują stan.
+  - **Settings i Feedrate Calculator** na pełnym ekranie z przyciskiem Back
+    (także w układzie średnim i wąskim bez dotyku); sekcje Settings jako
+    wiersz przewijany w bok.
+  - **Przyciski podglądów 2D i 3D** jako dwa paski na całą szerokość (górny
+    i dolny), wielkości slotów Preset Bar.
+  - Większe pola, przełączniki i przyciski; tekst pól 16 px, żeby iOS nie
+    powiększał strony.
+
+### Zmieniono
+
+- Wysokość aplikacji liczona jest z widocznego obszaru (`dvh`, na dotyku z
+  `visualViewport`) — klawiatura systemowa nie zasłania już dołu ekranu.
+
 ## [0.53.0] — 2026-10-11
 
 ### Dodano

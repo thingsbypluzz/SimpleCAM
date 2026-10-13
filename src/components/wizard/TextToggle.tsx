@@ -31,7 +31,7 @@ export function TextToggle<T extends string>({ options, value, onChange, disable
           disabled={disabled}
           onClick={() => onChange(opt.value)}
           className={[
-            'rounded-md border px-2.5 py-1 text-xs font-medium transition disabled:cursor-not-allowed disabled:opacity-50',
+            'rounded-md border px-2.5 py-1 text-xs font-medium transition pointer-coarse:min-h-11 pointer-coarse:px-4 pointer-coarse:text-sm disabled:cursor-not-allowed disabled:opacity-50',
             value === opt.value
               ? 'border-selected-border bg-selected-bg text-selected-fg shadow-[var(--glow-selected)]'
               : 'border-border text-muted hover:border-field-border',

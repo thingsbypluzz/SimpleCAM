@@ -1,14 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import {
-  clampScale,
-  computeFitCamera,
-  MAX_ZOOM_FACTOR,
-  MIN_ZOOM_FACTOR,
-  panBy,
-  screenToWorld,
-  worldToScreen,
-  zoomAt,
-} from './camera2d'
+import { MAX_ZOOM_FACTOR, MIN_ZOOM_FACTOR, clampScale, computeFitCamera, gestureCamera, panBy, screenToWorld, worldToScreen, zoomAt } from './camera2d'
 
 describe('computeFitCamera', () => {
   it('centers on the bounds midpoint and picks the tighter of the two axis scales', () => {
@@ -98,5 +89,34 @@ describe('panBy', () => {
   it('leaves scale untouched', () => {
     const camera = { scale: 3.5, centerX: 1, centerY: 1 }
     expect(panBy(camera, 10, -10).scale).toBe(3.5)
+  })
+})
+
+describe('gestureCamera', () => {
+  const start = { scale: 2, centerX: 10, centerY: 5 }
+  const W = 800
+  const H = 600
+
+  it('a one-finger drag pans: the point under the finger follows it', () => {
+    const under = screenToWorld(start, W, H, 300, 200)
+    const next = gestureCamera(start, W, H, [300, 200], [360, 150], 1, 1)
+    expect(next.scale).toBe(2)
+    const after = screenToWorld(next, W, H, 360, 150)
+    expect(after[0]).toBeCloseTo(under[0])
+    expect(after[1]).toBeCloseTo(under[1])
+  })
+
+  it('a pinch zooms about the fingers and keeps the point between them in place', () => {
+    const under = screenToWorld(start, W, H, 500, 400)
+    const next = gestureCamera(start, W, H, [500, 400], [520, 380], 1.5, 1)
+    expect(next.scale).toBeCloseTo(3)
+    const after = screenToWorld(next, W, H, 520, 380)
+    expect(after[0]).toBeCloseTo(under[0])
+    expect(after[1]).toBeCloseTo(under[1])
+  })
+
+  it('keeps the zoom within the limits', () => {
+    expect(gestureCamera(start, W, H, [400, 300], [400, 300], 1000, 1).scale).toBe(20)
+    expect(gestureCamera(start, W, H, [400, 300], [400, 300], 0.0001, 1).scale).toBe(0.2)
   })
 })

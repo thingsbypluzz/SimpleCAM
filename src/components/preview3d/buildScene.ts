@@ -1,26 +1,16 @@
 import * as THREE from 'three'
 import { getFixedColors, getPaletteAccents, hexToThreeColor, type PaletteId } from '../../config/palettes'
 import { resolvePoints } from '../../lib/positioning'
-import { circleOutlineOptions, circleOutlineRadiusAndDirection, onLineCircleEdges } from '../../lib/outlineCircle'
-import { buildHelixCircleToolpath, holeCircleOptions } from '../../lib/helix'
-import { buildStandardCircleToolpath } from '../../lib/standardHole'
+import { circleOutlineRadiusAndDirection, onLineCircleEdges } from '../../lib/outlineCircle'
+import { holeCircleOptions } from '../../lib/helix'
 import { onLineRectDimensions, rectCorners, rectToolDimensions } from '../../lib/outlineRectangleGeometry'
-import {
-  buildRectRampToolpath,
-  buildRectStandardToolpath,
-  outlineDirectionForOffsetMode,
-  rectOutlineOptions,
-} from '../../lib/outlineRectangle'
+import { outlineDirectionForOffsetMode } from '../../lib/outlineRectangle'
 import { surfaceNominalBounds, surfaceToolBounds, type SurfaceBounds } from '../../lib/surfaceGeometry'
-import { buildSurfaceToolpath } from '../../lib/surface'
-import { buildFacingToolpath } from '../../lib/facing'
-import { buildTextToolpath } from '../../lib/text'
 import { layoutText } from '../../lib/textLayout'
-import { buildLobedToolpath } from '../../lib/outlineLobed'
 import { lobedUnionLoop, loopBounds, translateLoop, type LoopBounds } from '../../lib/outlineLobedGeometry'
 import { facingBlockCorners, facingStripCorners, facingViewBounds, type FacingBounds } from '../../lib/facingGeometry'
-import { buildPocketToolpath } from '../../lib/pocket'
 import { movePoints, type MoveKind, type Toolpath } from '../../lib/toolpath'
+import { operationToolpaths } from '../../lib/previewPaths'
 import { pocketCenter } from '../../lib/pocketGeometry'
 import { DIMMED_OVERLAY_OPACITY, stockSheetRect } from '../preview/drawToolpath'
 import { stockModel, type StockModel } from '../../lib/stockModel'
@@ -600,7 +590,7 @@ function buildHolesPatternObjects(
   showToolpath: boolean,
 ): THREE.Object3D[] {
   const { points, params } = pattern
-  const { geometry, feeds, method } = params
+  const { geometry, feeds } = params
   const objects: THREE.Object3D[] = []
 
   objects.push(...buildOffsetVectorObjects(geometry.offsetX, geometry.offsetY, theme, arrowSize))
@@ -619,8 +609,7 @@ function buildHolesPatternObjects(
   // Start Z, every turn/pass/tab exactly as the G-code has it — plus the
   // retract to Safe Z assembleProgram() appends after each hole.
   if (showToolpath) {
-    for (const p of points) {
-      const toolpath = method === 'helix' ? buildHelixCircleToolpath(p.x, p.y, opts) : buildStandardCircleToolpath(p.x, p.y, opts)
+    for (const toolpath of operationToolpaths(params)) {
       objects.push(...toolpathLines3D(toolpath, theme, span, feeds.safeZ))
     }
   }
@@ -641,7 +630,7 @@ function buildOutlineLobedPatternObjects(
   const { outline, feeds } = params
   const objects: THREE.Object3D[] = []
   objects.push(...buildOffsetVectorObjects(outline.offsetX, outline.offsetY, theme, arrowSize))
-  if (showToolpath) objects.push(...toolpathLines3D(buildLobedToolpath(params), theme, span, feeds.safeZ))
+  if (showToolpath) objects.push(...toolpathLines3D(operationToolpaths(params)[0], theme, span, feeds.safeZ))
   return objects
 }
 
@@ -652,7 +641,7 @@ function buildOutlineCirclePatternObjects(
   arrowSize: number,
   showToolpath: boolean,
 ): THREE.Object3D[] {
-  const { center, params } = pattern
+  const { params } = pattern
   const { outline, feeds } = params
   const objects: THREE.Object3D[] = []
 
@@ -660,9 +649,7 @@ function buildOutlineCirclePatternObjects(
 
   // Engine move list (BL-61), same as Hole(s).
   if (showToolpath) {
-    const opts = circleOutlineOptions(params)
-    const build = outline.method === 'helix' ? buildHelixCircleToolpath : buildStandardCircleToolpath
-    objects.push(...toolpathLines3D(build(center.x, center.y, opts), theme, span, feeds.safeZ))
+    objects.push(...toolpathLines3D(operationToolpaths(params)[0], theme, span, feeds.safeZ))
   }
 
   return objects
@@ -744,9 +731,7 @@ function buildOutlineRectPatternObjects(
 
   // Engine move list (BL-61), same as every other operation.
   if (showToolpath) {
-    const opts = rectOutlineOptions(params)
-    const build = outline.method === 'ramp' ? buildRectRampToolpath : buildRectStandardToolpath
-    objects.push(...toolpathLines3D(build(outline.offsetX, outline.offsetY, opts), theme, span, feeds.safeZ))
+    objects.push(...toolpathLines3D(operationToolpaths(params)[0], theme, span, feeds.safeZ))
   }
 
   return objects
@@ -811,7 +796,7 @@ function buildSurfacePatternObjects(
 
   // The whole path — entry rapid, Z transitions, raster, final retract —
   // straight from the engine's move list (lib/surface.ts).
-  if (showToolpath) objects.push(...toolpathLines3D(buildSurfaceToolpath(params), theme, span, feeds.safeZ))
+  if (showToolpath) objects.push(...toolpathLines3D(operationToolpaths(params)[0], theme, span, feeds.safeZ))
 
   return objects
 }
@@ -865,7 +850,7 @@ function buildFacingPatternObjects(
     objects.push(stripEdges)
   }
 
-  if (showToolpath) objects.push(...toolpathLines3D(buildFacingToolpath(params), theme, span, feeds.safeZ))
+  if (showToolpath) objects.push(...toolpathLines3D(operationToolpaths(params)[0], theme, span, feeds.safeZ))
 
   return objects
 }
@@ -915,7 +900,7 @@ function buildTextPatternObjects(
     geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3))
     objects.push(new THREE.LineSegments(geometry, new THREE.LineBasicMaterial({ color: theme.stockEdge })))
   }
-  if (showToolpath) objects.push(...toolpathLines3D(buildTextToolpath(params), theme, span, feeds.safeZ))
+  if (showToolpath) objects.push(...toolpathLines3D(operationToolpaths(params)[0], theme, span, feeds.safeZ))
   return objects
 }
 
@@ -935,7 +920,7 @@ function buildPocketPatternObjects(
   if (showToolpath) {
     // Entry rapid, Z entry, every level's clearing moves and the final
     // retract — straight from the engine's move list (lib/pocket.ts).
-    objects.push(...toolpathLines3D(buildPocketToolpath(params), theme, span, feeds.safeZ))
+    objects.push(...toolpathLines3D(operationToolpaths(params)[0], theme, span, feeds.safeZ))
   }
 
   return objects
