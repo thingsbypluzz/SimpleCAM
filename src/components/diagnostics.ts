@@ -113,6 +113,7 @@ export function collectDiagnostics(simple3DPreview: boolean): DiagnosticRow[] {
         ? `${Math.round(viewport.width)} × ${Math.round(viewport.height)} px, zoom ${viewport.scale.toFixed(2)}`
         : 'not reported',
     },
+    { label: 'Page', value: `${root.scrollWidth} × ${root.scrollHeight} px` },
     { label: 'Screen', value: `${window.screen.width} × ${window.screen.height} px` },
     { label: 'Layout', value: layout },
     {

@@ -49,14 +49,19 @@
   dostaje zwykły `onChange` — zatwierdzanie i walidacja działają jak przy
   klawiaturze fizycznej. Logika klawiszy: `lib/keypadInput.ts`
   (`applyKey()`): klawiatura edytuje tylko koniec tekstu; pierwszy klawisz
-  po wejściu w pole zaczyna liczbę od nowa (tekst jest zaznaczony), a
+  po wejściu w pole zaczyna liczbę od nowa (bez zaznaczania tekstu —
+  zaznaczenie wywołuje na Androidzie systemowy pasek Cut / Copy), a
   dotknięcie pola, które już jest w edycji, przechodzi w dopisywanie.
 - Klawisze działają na `pointerdown` z `preventDefault` — nie zabierają
   fokusu polu. Done i klawisz chowania robią `blur()` (to zatwierdza
   wartość); dotknięcie poza klawiaturą i poza polami liczbowymi też ją
   zamyka. Poprzednie / następne pole — po widocznych polach `data-keypad`
   w tym samym oknie dialogowym albo na stronie.
-- Klawiatura jest `fixed` na dole (nad oknami pełnoekranowymi) i ustawia
+- Klawiatura jest `fixed`, przypięta do dołu widocznego obszaru
+  (`top: var(--app-h)` i przesunięcie o własną wysokość — nie `bottom: 0`,
+  bo Firefox na Androidzie potrafi podać obszar układu wyższy niż ekran;
+  z tego samego powodu okna pełnoekranowe mają wysokość `--app-h`, a nie
+  `inset-0`), nad oknami pełnoekranowymi, i ustawia
   `--keypad-h` — dolny padding korzenia aplikacji i okien pełnoekranowych,
   więc treść się skraca i przewija, a edytowane pole jest dosuwane na
   środek. W układzie wąskim dolny pasek widoków znika na czas pisania

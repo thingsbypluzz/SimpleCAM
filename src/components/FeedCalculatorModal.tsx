@@ -268,7 +268,7 @@ export function FeedCalculatorModal({ params, machine, settings, toolDiameters, 
     <div
       className={
         fullScreen
-          ? 'fixed inset-0 z-50 flex flex-col bg-bg pb-[var(--keypad-h,0px)]'
+          ? 'fixed inset-x-0 top-0 z-50 flex h-[var(--app-h,100dvh)] flex-col bg-bg pb-[var(--keypad-h,0px)]'
           : 'fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm'
       }
       onClick={fullScreen ? undefined : onClose}

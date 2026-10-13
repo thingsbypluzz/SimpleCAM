@@ -7,6 +7,25 @@ zgodne z [SemVer](https://semver.org/). Ten plik pozostaje głównym, czytelnym
 thingsbypluzz/SimpleCAM), ale to infrastruktura pod izolację pracy
 (branch/worktree per zadanie), nie zamiennik tego changeloga.
 
+## [0.55.1] — 2026-10-13
+
+### Naprawiono
+
+- **Klawiatura numeryczna nie pojawiała się w Firefoksie na Androidzie.**
+  Dotknięcie pola robiło na nią miejsce, ale sama klawiatura lądowała pod
+  ekranem: Firefox podawał obszar układu wyższy niż widoczna część strony
+  (1291 px przy widocznych 944), a klawiatura była przypięta do jego dołu.
+  Klawiatura, Settings i Feedrate Calculator na cały ekran są teraz
+  przypięte do widocznej wysokości (`--app-h`), a strona na dotyku nie ma
+  własnego przewijania. Pole po dotknięciu nie zaznacza już swojej
+  wartości — zaznaczenie wywoływało systemowy pasek Cut / Copy, który
+  zasłaniał sąsiednie pola; pierwsza cyfra nadal zastępuje starą wartość.
+
+### Zmieniono
+
+- **Diagnostics** (Settings → About) pokazuje też rozmiar treści strony
+  (wiersz „Page”) — widać po nim, czy coś wystaje poza ekran.
+
 ## [0.55.0] — 2026-10-13
 
 ### Dodano

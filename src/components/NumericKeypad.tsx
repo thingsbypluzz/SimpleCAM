@@ -58,8 +58,9 @@ export function KeypadProvider({ children }: { children: ReactNode }) {
   const attach = useCallback((input: HTMLInputElement) => {
     if (targetRef.current === input) return
     targetRef.current = input
+    // No `select()` to show that typing replaces the value: on Android it
+    // brings up the browser's cut / copy bar over the neighbouring fields.
     replaceRef.current = true
-    input.select()
     setTarget(input)
   }, [])
 
@@ -165,11 +166,14 @@ export function KeypadProvider({ children }: { children: ReactNode }) {
     <KeypadContext.Provider value={api}>
       {children}
       {api.open && target && (
+        // Anchored to the bottom of the visible area (`--app-h`), not of the
+        // layout viewport: Firefox on Android can report a layout viewport
+        // taller than the screen, and `bottom-0` then lands below it.
         <div
           ref={keypadRef}
           role="group"
           aria-label="Numeric keypad"
-          className="fixed inset-x-0 bottom-0 z-[60] touch-manipulation border-t border-border bg-code-bg shadow-xl"
+          className="fixed inset-x-0 top-[var(--app-h,100dvh)] z-[60] -translate-y-full touch-manipulation border-t border-border bg-code-bg shadow-xl"
         >
           <div className="flex items-center gap-2 border-b border-border px-3 py-1.5">
             <button

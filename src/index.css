@@ -37,6 +37,11 @@ body {
     font-size: 16px;
   }
 
+  html,
+  body {
+    overflow: hidden;
+  }
+
   body {
     overscroll-behavior: none;
   }

@@ -1013,6 +1013,45 @@ Waga z review w nawiasie kwadratowym.
   doczytywana jako fallback — cały kod sceny musiałby działać na dwóch
   wersjach biblioteki, a wydajność Mali-400 jest niewiadomą; przełącznik
   „use WebGL 1” w Settings kosztuje tyle samo.
+- **`BL-119`** *(Otwarty)* 🔴 — **Wysyłanie G-code prosto na kontroler
+  (MKS DLC32 V2.1).** Zgłoszone 2026-10-13: tablet przy maszynie, więc
+  plik powinien trafiać na kontroler bez przenoszenia karty. Rozpoznanie z
+  lektury kodu firmware
+  ([makerbase-mks/MKS-DLC32-FIRMWARE](https://github.com/makerbase-mks/MKS-DLC32-FIRMWARE),
+  fork Grbl_Esp32 z serwerem ESP3D) — **nic nie sprawdzone na sprzęcie**.
+  - **Co umie kontroler:** punkt dostępowy `MKS_DLC`, adres `192.168.4.1`,
+    HTTP na porcie 80; `POST /upload` (multipart) wgrywa plik na kartę SD
+    i nadpisuje istniejący; `GET /command?commandText=[ESP220]/plik.gcode`
+    uruchamia program, `[ESP210]` listuje kartę; logowanie domyślnie
+    wyłączone. Tylko HTTP i bez nagłówków CORS.
+  - **Dlaczego nie wprost ze strony z hostingu:** strona wczytana po
+    HTTPS nie może wysłać żądania na `http://192.168.4.1` (mixed content)
+    — na tablecie (WebView Chrome 138, Firefox 157) bez wyjątku; bez CORS
+    nie odczyta też odpowiedzi; a aplikacja musiałaby przetrwać
+    przełączenie WiFi bez odświeżenia.
+  - **Droga A — OnlyPaths serwowane z karty SD kontrolera** (pod
+    `http://192.168.4.1/SD/onlypaths/index.html`): to samo pochodzenie co
+    API, więc obie blokady znikają i całość działa bez internetu. Wymaga
+    builda ze ścieżkami względnymi, bez fontu Google z sieci i bez
+    kompresji gzip (gałąź SD nie wysyła `Content-Encoding`) oraz
+    przycisku „Send to machine” w Kroku 4 (upload, opcjonalnie start).
+  - **Droga B — dopisanie do interfejsu kontrolera** (pomysł z
+    2026-10-13): interfejs ESP3D-WebUI to jeden plik `index.html.gz` w
+    pamięci kontrolera, wymienialny bez przebudowy firmware. Warianty:
+    link / zakładka w nim otwierająca OnlyPaths z karty SD (mała zmiana,
+    reszta jak w drodze A) albo OnlyPaths wbudowane w ten plik (fork
+    interfejsu, limit pamięci flash). Do ustalenia: która wersja
+    interfejsu jest na płycie, ile wolnej pamięci SPIFFS, czy MKS
+    publikuje źródła swojego wariantu.
+  - **Droga C — bez zmian w kodzie:** Download, przełączenie na WiFi
+    kontrolera, wgranie pliku przez jego własny interfejs.
+  - **Do sprawdzenia na sprzęcie przed decyzją:** czy pod
+    `http://192.168.4.1` jest interfejs ESP3D (a nie FluidNC — inne
+    endpointy), czas ładowania ok. 1,4 MB z ESP32, czy serwowanie z karty
+    nie koliduje z programem biegnącym z tej samej karty.
+  - Niesprawdzone: Chrome 142+ ma podobno uprawnienie Local Network
+    Access zwalniające z blokady mixed content dla adresów prywatnych —
+    źródło wtórne, nie dotyczy Firefoksa ani WebView na tablecie.
 - **`BL-61`** *(Zrealizowany, 2026-09-27)* 🔴 **[Low, kosztowne w czasie]**
   — **Podglądy duplikują geometrię silnika** — jedna lista ruchów (jak
   Adaptive) dla G-code i podglądu 3D, po jednej operacji na raz. Etapy 1–2
