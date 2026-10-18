@@ -6,6 +6,8 @@ import { SURFACE_SHAPE_LIST } from '../../config/surfaceMeta'
 import { POCKET_SHAPE_LIST } from '../../config/pocketMeta'
 import { FACING_SIDE_LIST } from '../../config/facingMeta'
 import { TEXT_LAYOUT_LIST } from '../../config/textMeta'
+import { isOutlineShapeInSimple, isPocketShapeInSimple, isTextLayoutInSimple } from '../../lib/simpleMode'
+import { useSimpleMode } from '../uiModeContext'
 
 interface Step1PositioningProps {
   params: WizardParams
@@ -80,6 +82,8 @@ function OptionButton({
 
 export function Step1Positioning({ params, onChange }: Step1PositioningProps) {
   const { geometry, outline, surface, pocket, facing, text, operation } = params
+  // BL-103: Simple leaves out the shapes and layouts it doesn't offer.
+  const simple = useSimpleMode()
 
   return (
     <div className="flex flex-col gap-2">
@@ -104,7 +108,7 @@ export function Step1Positioning({ params, onChange }: Step1PositioningProps) {
         isActive={operation === 'outline'}
         onActivate={() => onChange({ operation: 'outline' })}
       >
-        {OUTLINE_SHAPE_LIST.map((opt) => (
+        {OUTLINE_SHAPE_LIST.filter((opt) => !simple || isOutlineShapeInSimple(opt.value)).map((opt) => (
           <OptionButton
             key={opt.value}
             isSelected={operation === 'outline' && outline.shape === opt.value}
@@ -136,7 +140,7 @@ export function Step1Positioning({ params, onChange }: Step1PositioningProps) {
         isActive={operation === 'pocket'}
         onActivate={() => onChange({ operation: 'pocket' })}
       >
-        {POCKET_SHAPE_LIST.map((opt) => (
+        {POCKET_SHAPE_LIST.filter((opt) => !simple || isPocketShapeInSimple(opt.value)).map((opt) => (
           <OptionButton
             key={opt.value}
             isSelected={operation === 'pocket' && pocket.shape === opt.value}
@@ -169,7 +173,7 @@ export function Step1Positioning({ params, onChange }: Step1PositioningProps) {
       </OperationBlock>
 
       <OperationBlock title="Text" isActive={operation === 'text'} onActivate={() => onChange({ operation: 'text' })}>
-        {TEXT_LAYOUT_LIST.map((opt) => (
+        {TEXT_LAYOUT_LIST.filter((opt) => !simple || isTextLayoutInSimple(opt.value)).map((opt) => (
           <OptionButton
             key={opt.value}
             isSelected={operation === 'text' && text.layout === opt.value}

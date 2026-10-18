@@ -18,6 +18,7 @@ import { PickHeader } from './PickHeader'
 import { TextToggle } from './TextToggle'
 import { FACING_CUT_DIRECTION_OPTIONS, FACING_ORIGIN_ACROSS_OPTIONS, FACING_ORIGIN_ALONG_OPTIONS } from './toggleOptions'
 import { useNumberField } from './useNumberField'
+import { useSimpleMode } from '../uiModeContext'
 
 interface Step2GeometryFacingProps {
   params: WizardParams
@@ -59,6 +60,9 @@ export function Step2GeometryFacing({ params, onChange, machine, toolDiameters, 
   const alongX = facing.side === 'bottom' || facing.side === 'top'
   const stepoverValid = isFacingStepoverValid(facing)
   const passLimitInvalid = stepoverValid && !isFacingPassCountWithinLimit(params)
+  // BL-103: Simple hides Origin Across (Raw), Direction (Climb) and Lead
+  // (half the tool diameter). The emptied cells keep the rows' widths.
+  const simple = useSimpleMode()
   const passCount = stepoverValid && facing.removal > 0 && !passLimitInvalid ? facingPassEdges(facing).length : null
 
   return (
@@ -109,10 +113,14 @@ export function Step2GeometryFacing({ params, onChange, machine, toolDiameters, 
           <span className="text-sm font-medium text-value">Origin Along</span>
           <TextToggle options={FACING_ORIGIN_ALONG_OPTIONS} value={facing.originAlong} onChange={(v) => updateFacing({ originAlong: v })} />
         </div>
-        <div className="flex min-w-0 flex-1 flex-col gap-1">
-          <span className="text-sm font-medium text-value">Origin Across</span>
-          <TextToggle options={FACING_ORIGIN_ACROSS_OPTIONS} value={facing.originAcross} onChange={(v) => updateFacing({ originAcross: v })} />
-        </div>
+        {simple ? (
+          <div className="min-w-0 flex-1" />
+        ) : (
+          <div className="flex min-w-0 flex-1 flex-col gap-1">
+            <span className="text-sm font-medium text-value">Origin Across</span>
+            <TextToggle options={FACING_ORIGIN_ACROSS_OPTIONS} value={facing.originAcross} onChange={(v) => updateFacing({ originAcross: v })} />
+          </div>
+        )}
       </div>
 
       <div className="flex flex-col gap-4">
@@ -176,18 +184,22 @@ export function Step2GeometryFacing({ params, onChange, machine, toolDiameters, 
         )}
       </div>
 
-      <div className="flex flex-col gap-1">
-        <span className="text-sm font-medium text-value">Direction</span>
-        <TextToggle options={FACING_CUT_DIRECTION_OPTIONS} value={facing.cutDirection} onChange={(v) => updateFacing({ cutDirection: v })} />
-      </div>
+      {!simple && (
+        <div className="flex flex-col gap-1">
+          <span className="text-sm font-medium text-value">Direction</span>
+          <TextToggle options={FACING_CUT_DIRECTION_OPTIONS} value={facing.cutDirection} onChange={(v) => updateFacing({ cutDirection: v })} />
+        </div>
+      )}
 
       <div className="flex flex-col gap-4">
         <div className="flex gap-4">
-          <div className="min-w-0 flex-1">
-            <FieldRow label="Lead [mm]" hint="Extra distance beyond each end of the side, on top of the tool radius — the tool goes down and turns around there, clear of the corners.">
-              <NumberInput type="number" step="0.5" min="0" className={inputClass} aria-invalid={!isFacingLeadValid(facing)} {...leadField} />
-            </FieldRow>
-          </div>
+          {!simple && (
+            <div className="min-w-0 flex-1">
+              <FieldRow label="Lead [mm]" hint="Extra distance beyond each end of the side, on top of the tool radius — the tool goes down and turns around there, clear of the corners.">
+                <NumberInput type="number" step="0.5" min="0" className={inputClass} aria-invalid={!isFacingLeadValid(facing)} {...leadField} />
+              </FieldRow>
+            </div>
+          )}
           <div className="min-w-0 flex-1">
             <FieldRow label="Clearance [mm]" hint="How far the tool backs away from the raw edge before it returns to the start of the side. The return is a G1 at Linking Feed (Step 3), never a rapid.">
               <NumberInput
@@ -200,6 +212,7 @@ export function Step2GeometryFacing({ params, onChange, machine, toolDiameters, 
               />
             </FieldRow>
           </div>
+          {simple && <div className="min-w-0 flex-1" />}
         </div>
         {!isFacingLeadValid(facing) && <p className="text-sm text-status-error">Lead can't be negative.</p>}
         {!isFacingClearanceValid(facing) && <p className="text-sm text-status-error">Clearance must be greater than 0.</p>}

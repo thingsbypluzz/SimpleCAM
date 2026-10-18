@@ -33,6 +33,7 @@ import {
   type VbitAngleOption,
 } from './toggleOptions'
 import { useNumberField } from './useNumberField'
+import { useSimpleMode } from '../uiModeContext'
 
 interface Step2GeometryTextProps {
   params: WizardParams
@@ -89,6 +90,9 @@ export function Step2GeometryText({ params, onChange, machine, toolDiameters }: 
   const limitInvalid = !isTextWithinLimits(params)
   const groove = textGrooveWidth(text)
   const font = textFontMeta(text.fontId)
+  // BL-103: Simple hides Letter Spacing, Line Spacing, Mirror and V Angle
+  // (all at their defaults) — and On Circle, in Step 1.
+  const simple = useSimpleMode()
 
   return (
     <div className="flex flex-col gap-6">
@@ -142,19 +146,21 @@ export function Step2GeometryText({ params, onChange, machine, toolDiameters }: 
               <NumberInput type="number" step="0.5" min="0" className={inputClass} aria-invalid={!(text.height > 0)} {...heightField} />
             </FieldRow>
           </div>
-          <div className="min-w-0 flex-1">
-            <FieldRow label="Spacing [%]" hint="Letter Spacing — extra space between letters, as a share of the Height. 0 is the font's own spacing.">
-              <NumberInput
-                type="number"
-                step="1"
-                min={MIN_LETTER_SPACING_PERCENT}
-                max={MAX_LETTER_SPACING_PERCENT}
-                className={inputClass}
-                aria-invalid={spacingInvalid}
-                {...letterSpacingField}
-              />
-            </FieldRow>
-          </div>
+          {!simple && (
+            <div className="min-w-0 flex-1">
+              <FieldRow label="Spacing [%]" hint="Letter Spacing — extra space between letters, as a share of the Height. 0 is the font's own spacing.">
+                <NumberInput
+                  type="number"
+                  step="1"
+                  min={MIN_LETTER_SPACING_PERCENT}
+                  max={MAX_LETTER_SPACING_PERCENT}
+                  className={inputClass}
+                  aria-invalid={spacingInvalid}
+                  {...letterSpacingField}
+                />
+              </FieldRow>
+            </div>
+          )}
           <div className="min-w-0 flex-1">
             <FieldRow label="Width [mm]">
               <input type="text" readOnly disabled value={layout.fontReady ? fmt(round2(layout.width)) : '—'} className={`${inputClass} cursor-not-allowed opacity-70`} />
@@ -198,15 +204,18 @@ export function Step2GeometryText({ params, onChange, machine, toolDiameters }: 
       ) : (
         <div className="flex flex-col gap-4">
           <div className="flex items-end gap-4">
-            <div className="min-w-0 flex-1">
-              <FieldRow label="Line Spacing [×]" hint="Distance between the baselines of two lines, as a multiple of the Height.">
-                <NumberInput type="number" step="0.1" min="0" className={inputClass} aria-invalid={!(text.lineSpacing > 0)} {...lineSpacingField} />
-              </FieldRow>
-            </div>
+            {!simple && (
+              <div className="min-w-0 flex-1">
+                <FieldRow label="Line Spacing [×]" hint="Distance between the baselines of two lines, as a multiple of the Height.">
+                  <NumberInput type="number" step="0.1" min="0" className={inputClass} aria-invalid={!(text.lineSpacing > 0)} {...lineSpacingField} />
+                </FieldRow>
+              </div>
+            )}
             <div className="flex min-w-0 flex-1 flex-col gap-1">
               <span className="text-sm font-medium text-value">Align</span>
               <TextToggle options={TEXT_ALIGN_OPTIONS} value={text.align} onChange={(v) => updateText({ align: v })} />
             </div>
+            {simple && <div className="min-w-0 flex-1" />}
           </div>
           <div className="flex gap-4">
             <div className="flex min-w-0 flex-1 flex-col gap-1">
@@ -225,9 +234,11 @@ export function Step2GeometryText({ params, onChange, machine, toolDiameters }: 
       )}
       {sizeInvalid && <p className="text-sm text-status-error">Height, depth{isCircle ? ', diameter' : ' and line spacing'} must be greater than 0.</p>}
 
-      <Checkbox checked={text.mirror} onChange={(checked) => updateText({ mirror: checked })} label="Mirror">
-        <HintPopover text="Writes the text mirrored — for engraving the back of a clear sheet, to be read from the front." />
-      </Checkbox>
+      {!simple && (
+        <Checkbox checked={text.mirror} onChange={(checked) => updateText({ mirror: checked })} label="Mirror">
+          <HintPopover text="Writes the text mirrored — for engraving the back of a clear sheet, to be read from the front." />
+        </Checkbox>
+      )}
 
       <div className="flex flex-col gap-4">
         <div className="flex items-end gap-4">
@@ -251,7 +262,7 @@ export function Step2GeometryText({ params, onChange, machine, toolDiameters }: 
             </FieldRow>
           </div>
           <div className="min-w-0 flex-1">
-            {text.bit === 'vbit' && (
+            {text.bit === 'vbit' && !simple && (
               <div className="flex flex-col gap-1">
                 <span className="flex items-center gap-1.5 text-sm font-medium text-value">
                   V Angle

@@ -7,6 +7,7 @@ import { OPERATION_RULES } from '../../lib/validation'
 import { FieldRow, inputClass } from './FieldRow'
 import { NumberInput } from './NumberInput'
 import { useNumberField } from './useNumberField'
+import { useSimpleMode } from '../uiModeContext'
 
 interface ToolChipLoadProps {
   params: WizardParams
@@ -36,6 +37,8 @@ export function ToolChipLoad({ params, machine, flutes, onFlutesChange, children
   )
   const typedFlutes = Number(flutesField.value)
   const showError = flutesField.value !== '' && !isValidFluteCount(typedFlutes)
+  // BL-103: Simple shows the Tool Diameter alone.
+  if (useSimpleMode()) return <>{children}</>
   return (
     <div className="flex flex-col gap-1">
       {/* items-end: the inputs share one line even if a label wraps (BL-90). */}

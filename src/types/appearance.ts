@@ -11,6 +11,9 @@ import type { ThemeId } from './theme'
 // actual pixel heights in preview3d/buildScene.ts's GRID_LABEL_SIZE_PX.
 export type Grid3DLabelSize = 'small' | 'medium' | 'large'
 
+// BL-103: Simple hides the fields a beginner doesn't need (lib/simpleMode.ts).
+export type UiMode = 'simple' | 'advanced'
+
 export interface AppearanceSettings {
   theme: ThemeId
   palette: PaletteId
@@ -29,6 +32,7 @@ export interface AppearanceSettings {
   // where the full one would run. A device without WebGL 2 gets it either
   // way.
   simple3DPreview: boolean
+  uiMode: UiMode
 }
 
 export const DEFAULT_APPEARANCE_SETTINGS: AppearanceSettings = {
@@ -39,4 +43,7 @@ export const DEFAULT_APPEARANCE_SETTINGS: AppearanceSettings = {
   stockEdges3DEnabled: true,
   cutShapeEnabled: true,
   simple3DPreview: false,
+  // A new user starts in Simple; someone who already has saved data starts
+  // in Advanced (see loadAppearanceSettings()).
+  uiMode: 'simple',
 }

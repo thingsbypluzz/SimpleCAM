@@ -631,3 +631,42 @@ export function LobedCircleOutlineIcon({ className }: IconProps) {
     </svg>
   )
 }
+
+// BL-103: the Simple / Advanced Mode switch in the Header — a rubber duck
+// and an eagle's head. Drawn finer than the rest (stroke 1, details 0.8) and
+// meant to be shown at 24 px, where one unit is one pixel.
+const fine = { ...base, strokeWidth: 1 }
+
+export function DuckIcon({ className }: IconProps) {
+  return (
+    <svg {...fine} className={className}>
+      <circle cx="9" cy="7" r="4.4" />
+      <path d="M4.8 6.3C3.6 5.9 2 6.2 1 7.3c1.2.5 2.6.6 3.7.3" />
+      <path d="M4.7 7.6C3.6 8.1 2.4 8.3 1.6 8.1c1 1 2.3 1.2 3.4.7" />
+      <circle cx="8.3" cy="5.8" r="1.05" />
+      <circle cx="8.1" cy="5.9" r="0.5" fill="currentColor" stroke="none" />
+      <path d="M9.4 2.7c.3-1 1.3-1.5 2.3-1.3M9.6 2.8c.8-.4 1.7-.2 2.1.4" strokeWidth="0.8" />
+      <path d="M6.4 10.6C2.6 11.6 1.2 15.4 2.8 18.6c1.6 3 5.6 4 10 4 5.6 0 9.6-2.8 10-8l.2-5c-1.6 2-4 3-6.6 2.8-1.6-.1-2.8-.8-3.6-1.6" />
+      <path d="M8.6 15.4c1.6 3.6 7 4 10 .2-2.2.6-4-.1-5-1.6-1 1.6-3 2.2-5 1.4Z" />
+      <path d="M11.2 16.4c1.8 1.2 4.2 1.2 6-.2M20.6 11.8l1.3-1M21.6 13l1.2-.6M5 20.4c1 .6 2.2 1 3.4 1.2" strokeWidth="0.8" />
+    </svg>
+  )
+}
+
+export function EagleIcon({ className }: IconProps) {
+  return (
+    <svg {...fine} className={className}>
+      <path d="M2.2 21C1.6 16 1.6 11.6 3 8.8 4.6 5.8 7.6 4.6 11 4.5l3.2.1c.8.1 1.4.5 1.8 1.2" />
+      <path d="M16 5.8c3.4-.2 5.8 1.8 6 5.2.1 1.4-.3 2.6-1 3.2.1-1.4-.4-2.3-1.4-2.4l-3.2.1-3.6-.1" />
+      <path d="M13.8 11.8c-1.2 1.6-1 4.2.6 6.8l-1.8-.4-.4 2.2-1.8-1.2-1 2.2-1.6-1.6-1.4 2-1.6-1.6-2.6 1.8" />
+      <path d="M15.8 5.8c.8 1.8.6 4-.6 6" />
+      <path d="M6.8 8.8c2.2-1.4 5-1.8 7.2-1.2l.8 1.2" />
+      <circle cx="11.2" cy="9.4" r="1.05" strokeWidth="0.8" />
+      <circle cx="11.4" cy="9.5" r="0.5" fill="currentColor" stroke="none" />
+      <path
+        d="M14 11.8c2.2-.9 4.4-1 6.4-.2M17.4 8.1c.5 0 .9.3 1 .7M3.6 11.4c1 .2 1.8.9 2.2 1.8M4.4 14.8c1 .2 1.8.9 2.2 1.8M7.6 12.6c.9.2 1.5.8 1.8 1.6M5.2 7.6c.8 0 1.6.4 2 1"
+        strokeWidth="0.8"
+      />
+    </svg>
+  )
+}

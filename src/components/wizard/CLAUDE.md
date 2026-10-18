@@ -67,6 +67,19 @@
   30° | 60° | 90°; zapisany kąt spoza trójki nie zaznacza żadnego) → Depth + Line
   Width (odczyt) → Offset. Bez metody, mostków i wiersza Flutes / fz.
   Błąd pod polem, którego dotyczy.
+- **Simple Mode** (`useSimpleMode()`, reguły w `lib/simpleMode.ts`):
+  Krok 1 pomija Lobed Circle, Donut, Rectangle / Circle Lightened i Text On
+  Circle (`is*InSimple()`). Krok 2: `ToolChipLoad` pokazuje samo Tool
+  Diameter (bez Flutes / fz); `RampAngleFields` nic — poza błędem limitu
+  obrotów, który mały helix nadal może trafić (z radą „Standard”); Surface
+  bez wiersza Z-Transition; Pocket bez wiersza Method (zawsze Spiral), bez
+  Ramp Length (Stepover % + mm zostają), Z-Transition i Finishing Pass;
+  Facing bez Origin Across, Direction i Lead (puste komórki trzymają
+  szerokość wierszy, Clearance zostaje); Text bez Spacing %, Line Spacing,
+  Mirror i V Angle. Krok 3 bez Spindle (z pokrętłem routera), przycisku
+  Feedrate Calculator, Linking Feed (Facing) i Start Z — ich komunikaty
+  błędów zostają (schowane pola mają wartości, przy których się nie
+  pojawiają).
 - **Błędne pola:** ten sam warunek, który pokazuje tekst błędu
   (`<p className="text-sm text-status-error">`), ustawia `aria-invalid`
   na polach, których dotyczy — przy relacji kilku pól na wszystkich

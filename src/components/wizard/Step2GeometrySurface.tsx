@@ -23,6 +23,7 @@ import { SurfaceMethodPicker } from './SurfaceMethodPicker'
 import { TextToggle } from './TextToggle'
 import { RASTER_DIRECTION_OPTIONS, Z_TRANSITION_MODE_OPTIONS } from './toggleOptions'
 import { useNumberField } from './useNumberField'
+import { useSimpleMode } from '../uiModeContext'
 
 interface Step2GeometrySurfaceProps {
   params: WizardParams
@@ -63,6 +64,8 @@ export function Step2GeometrySurface({ params, onChange, machine, toolDiameters,
   const helixRadiusInvalid = surface.zTransitionMode === 'helix' && !isSurfaceHelixRadiusValid(surface)
   const rampInvalid = !isSurfaceRampAngleValid(surface)
   const entryLimitInvalid = !isSurfaceEntryHelixWithinLimit(params)
+  // BL-103: Simple always plunges — no Z-Transition row.
+  const simple = useSimpleMode()
 
   return (
     <div className="flex flex-col gap-6">
@@ -159,64 +162,66 @@ export function Step2GeometrySurface({ params, onChange, machine, toolDiameters,
         )}
       </div>
 
-      <div className="flex flex-col gap-4">
-        {/* Z-Transition + Helix Radius + Ramp Angle on one row, same as
-            Pocket; the helix fields leave their cells empty in Plunge mode. */}
-        <div className="flex gap-4">
-          <div className="flex min-w-0 flex-1 flex-col gap-1">
-            <span className="text-sm font-medium text-value">Z-Transition</span>
-            <TextToggle options={Z_TRANSITION_MODE_OPTIONS} value={surface.zTransitionMode} onChange={(v) => updateSurface({ zTransitionMode: v })} />
+      {!simple && (
+        <div className="flex flex-col gap-4">
+          {/* Z-Transition + Helix Radius + Ramp Angle on one row, same as
+              Pocket; the helix fields leave their cells empty in Plunge mode. */}
+          <div className="flex gap-4">
+            <div className="flex min-w-0 flex-1 flex-col gap-1">
+              <span className="text-sm font-medium text-value">Z-Transition</span>
+              <TextToggle options={Z_TRANSITION_MODE_OPTIONS} value={surface.zTransitionMode} onChange={(v) => updateSurface({ zTransitionMode: v })} />
+            </div>
+            <div className="min-w-0 flex-1">
+              {surface.zTransitionMode === 'helix' && (
+                <FieldRow label="Helix R. [mm]">
+                  <NumberInput
+                    type="number"
+                    step="0.1"
+                    min="0"
+                    className={inputClass}
+                    aria-invalid={helixRadiusInvalid || entryLimitInvalid}
+                    {...helixRadiusField}
+                  />
+                </FieldRow>
+              )}
+            </div>
+            <div className="min-w-0 flex-1">
+              {surface.zTransitionMode === 'helix' && (
+                <FieldRow
+                  label="Ramp [°]"
+                  hint="Ramp Angle — how steeply the entry helix descends. Independent of Stepdown, so a deep pass still enters gently — typical 1–3°. Every level after the first starts just above the previous floor, so only the new depth is ramped."
+                >
+                  <NumberInput
+                    type="number"
+                    step="0.5"
+                    min={MIN_RAMP_ANGLE_DEG}
+                    max={MAX_RAMP_ANGLE_DEG}
+                    className={inputClass}
+                    aria-invalid={rampInvalid || entryLimitInvalid}
+                    {...rampAngleField}
+                  />
+                </FieldRow>
+              )}
+            </div>
           </div>
-          <div className="min-w-0 flex-1">
-            {surface.zTransitionMode === 'helix' && (
-              <FieldRow label="Helix R. [mm]">
-                <NumberInput
-                  type="number"
-                  step="0.1"
-                  min="0"
-                  className={inputClass}
-                  aria-invalid={helixRadiusInvalid || entryLimitInvalid}
-                  {...helixRadiusField}
-                />
-              </FieldRow>
-            )}
-          </div>
-          <div className="min-w-0 flex-1">
-            {surface.zTransitionMode === 'helix' && (
-              <FieldRow
-                label="Ramp [°]"
-                hint="Ramp Angle — how steeply the entry helix descends. Independent of Stepdown, so a deep pass still enters gently — typical 1–3°. Every level after the first starts just above the previous floor, so only the new depth is ramped."
-              >
-                <NumberInput
-                  type="number"
-                  step="0.5"
-                  min={MIN_RAMP_ANGLE_DEG}
-                  max={MAX_RAMP_ANGLE_DEG}
-                  className={inputClass}
-                  aria-invalid={rampInvalid || entryLimitInvalid}
-                  {...rampAngleField}
-                />
-              </FieldRow>
-            )}
-          </div>
+          {helixRadiusInvalid && (
+            <p className="text-sm text-status-error">
+              Helix radius must be greater than 0 and can't exceed the stepover ({fmt(surfaceStepoverMm(surface))}mm).
+            </p>
+          )}
+          {rampInvalid && (
+            <p className="text-sm text-status-error">
+              Ramp angle must be between {MIN_RAMP_ANGLE_DEG}° and {MAX_RAMP_ANGLE_DEG}°.
+            </p>
+          )}
+          {entryLimitInvalid && (
+            <p className="text-sm text-status-error">
+              Too many helix turns per level — the entry would be cut short by its safety limit. Raise the Ramp Angle or
+              Helix Radius.
+            </p>
+          )}
         </div>
-        {helixRadiusInvalid && (
-          <p className="text-sm text-status-error">
-            Helix radius must be greater than 0 and can't exceed the stepover ({fmt(surfaceStepoverMm(surface))}mm).
-          </p>
-        )}
-        {rampInvalid && (
-          <p className="text-sm text-status-error">
-            Ramp angle must be between {MIN_RAMP_ANGLE_DEG}° and {MAX_RAMP_ANGLE_DEG}°.
-          </p>
-        )}
-        {entryLimitInvalid && (
-          <p className="text-sm text-status-error">
-            Too many helix turns per level — the entry would be cut short by its safety limit. Raise the Ramp Angle or
-            Helix Radius.
-          </p>
-        )}
-      </div>
+      )}
 
       <div className="border-t border-border pt-4">
         <span className="mb-2 block text-sm font-medium text-value">Offset</span>

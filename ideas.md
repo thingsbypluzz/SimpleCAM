@@ -790,7 +790,8 @@ Waga z review w nawiasie kwadratowym.
   się w przewężeniach). Wariant bez pustych przejazdów (wybieranie samego
   „księżyca” wypustki) świadomie poza zakresem — pierścienie odsuwane od
   wspólnego konturu rozpadają się na osobne obszary.
-- **`BL-103`** *(Otwarty)* 🔴 — **Przełącznik Simple / Advanced Mode.**
+- **`BL-103`** *(W trakcie)* 🔴 — **Przełącznik Simple / Advanced Mode.**
+  Wdrożone w v0.57.0 (2026-10-18); zostaje w trakcie do testów na maszynie.
   Zgłoszone 2026-10-06, propozycja pól do schowania 2026-10-07. Sesja
   `/grill-me` 2026-10-18 (punkt wyjścia: analiza kodu subagentem) —
   ustalenia gotowe do implementacji:

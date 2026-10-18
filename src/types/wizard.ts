@@ -339,7 +339,8 @@ export const DEFAULT_WIZARD_PARAMS: WizardParams = {
     rasterDirection: 'x',
     stepoverPercent: 40,
     zTransitionMode: 'plunge',
-    helixRadius: 1,
+    // BL-103: D/4 for the default tool (lib/simpleMode.ts).
+    helixRadius: 0.79,
     rampAngleDeg: 2,
   },
   pocket: {
@@ -356,7 +357,8 @@ export const DEFAULT_WIZARD_PARAMS: WizardParams = {
     stepoverPercent: 40,
     rampLengthFactor: 3,
     zTransitionMode: 'plunge',
-    helixRadius: 1,
+    // BL-103: D/4 for the default tool (lib/simpleMode.ts).
+    helixRadius: 0.79,
     optimalLoadPercent: 10,
     rampAngleDeg: 2,
     cutDirection: 'climb',
@@ -385,7 +387,8 @@ export const DEFAULT_WIZARD_PARAMS: WizardParams = {
     offsetY: 0,
     stepover: 0.5,
     cutDirection: 'climb',
-    lead: 1,
+    // BL-103: D/2 for the default tool (lib/simpleMode.ts).
+    lead: 1.59,
     clearance: 2,
     linkingFeed: 800,
   },
