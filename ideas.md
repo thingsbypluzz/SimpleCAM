@@ -791,37 +791,71 @@ Waga z review w nawiasie kwadratowym.
   „księżyca” wypustki) świadomie poza zakresem — pierścienie odsuwane od
   wspólnego konturu rozpadają się na osobne obszary.
 - **`BL-103`** *(Otwarty)* 🔴 — **Przełącznik Simple / Advanced Mode.**
-  Zgłoszone 2026-10-06 — **sesja `/grill-me` obowiązkowa**. Przełącznik w
-  prawym górnym rogu (Header); w Simple Mode część dzisiejszych opcji
-  jest schowana. Do przegadania: które pola i funkcje znikają w Simple
-  (per operacja i per krok — np. Ramp Angle, Lead/Clearance, Linking
-  Feed, Tab Start, Offset, Start Z, Feedrate Calculator, Overlay/Edit
-  Mode, sekcje Settings); jakie wartości mają schowane pola (domyślne
-  czy ostatnio ustawione — i co z presetem zapisanym w Advanced z
-  wartością inną niż domyślna); czy Simple chowa też całe operacje,
-  kształty albo metody; tryb domyślny dla nowego użytkownika; gdzie żyje
-  wybór (`simplecam.appearance` czy osobny klucz); walidacja schowanego
-  pola z błędem (jak go pokazać); oznaczenie w UI, że coś jest ukryte;
-  miejsce przełącznika w Header obok dark/light i Settings oraz Artifact
-  Interface Anatomy.
-  **Propozycja użytkownika, co schować w Simple (2026-10-07) — punkt
-  wyjścia do `/grill-me`:**
-  - *Wspólne dla Hole(s), Outline, Surface, Pocket.* Krok 2: Flutes i fz.
-    Krok 3: Spindle, ustawienia routera (pokrętło), przycisk Feedrate
-    Calculator.
-  - *Hole(s).* Wzorce: pokaż wszystkie (w notatce wymienione Single Hole,
-    Rectangular Grid, N-Holes — do potwierdzenia, czy Grid Centered i
-    Custom List też zostają). Krok 2: dodatkowo Pitch.
-  - *Outline.* Kształty: zostają prostokąty i Circle, Lobed Circle
-    schowany. Krok 2: dodatkowo Pitch.
-  - *Surface.* Krok 2: dodatkowo Stepover; przy Helix schować Helix
-    Radius i przyjąć wartość domyślną zależną od średnicy freza.
-  - *Pocket.* Kształty: schowane Donut, Rectangle Lightened, Circle
-    Lightened. Krok 2: schowana metoda Adaptive, Stepover, Ramp Length
-    (przyjąć domyślną), Helix Radius (jak w Surface — domyślna od freza),
-    Finishing Pass.
-  - *Nie wymienione:* Facing, Tabs, Offset, Ramp Angle, Start Z, Linking
-    Feed, Overlay/edycja presetów, Settings.
+  Zgłoszone 2026-10-06, propozycja pól do schowania 2026-10-07. Sesja
+  `/grill-me` 2026-10-18 (punkt wyjścia: analiza kodu subagentem) —
+  ustalenia gotowe do implementacji:
+  - **Zasada nadrzędna:** w Simple schowane pola mają **zawsze** wartości
+    domyślne. Reset przy przełączeniu na Simple i przy każdym wczytaniu
+    presetu, projektu albo szablonu w Simple (slot się nie zmienia —
+    zmienia się kopia w wizardzie). Dzięki temu to, co widać, w pełni
+    opisuje G-code, a schowane pole nigdy nie blokuje Generate.
+  - **Powrót do Advanced:** reset jest trwały — zostają wartości domyślne
+    (stare odzyskuje ponowne wczytanie presetu).
+  - **Edycja presetu w Simple:** dostępna; reset zapisuje się do
+    edytowanego slotu (także przy uzbrojeniu ołówkiem presetu z Advanced).
+    Overlay dostępny bez zmian (tylko pokazuje).
+  - **Schowany kształt / metoda → najbliższy widoczny, z zachowaniem
+    wymiarów:** Adaptive → Spiral; Lobed Circle → Circle (ta sama średnica
+    główna); Donut → Pocket Circle (bez wyspy); Rectangle Lightened →
+    Rectangle; Circle Lightened → Circle; Text On Circle → Straight z
+    Origin center/middle w środku okręgu, kąt 0°. Pozycja i głębokość
+    zostają.
+  - **Wartości domyślne liczone na bieżąco z widocznych pól** (w Simple
+    przeliczane przy każdej zmianie); te same reguły zastępują dzisiejsze
+    stałe jako wartości startowe w Advanced, ale w Advanced nie idą za
+    zmianą freza. Reguły: Helix Radius = D/4, przycięty do limitów
+    walidacji (Pocket: rozmiar ściany, Surface: stepover w mm); Facing Lead
+    = D/2; Linking Feed = Feedrate XY. Stałe: Ramp Length 3, Finishing Pass
+    wyłączony, Ramp Angle 2°, Z-Transition Plunge, Start Z domyślny,
+    Facing Direction Climb, Origin Across Raw, Text bez Mirror, Spacing i
+    V Angle domyślne.
+  - **Chowane w Simple:**
+    - wszystkie operacje: Flutes i fz (Krok 2), Spindle, pokrętło routera,
+      Feedrate Calculator i „Apply Stepdown 1.5×D” (Krok 3), Pitch (odczyt),
+      Ramp Angle, Z-Transition, Start Z, Linking Feed;
+    - Outline: kształt Lobed Circle;
+    - Surface: Helix Radius;
+    - Pocket: kształty Donut, Rectangle Lightened, Circle Lightened; metoda
+      Adaptive (z nią „Apply chip thinning”); Ramp Length, Helix Radius,
+      Finishing Pass (i Finish Feed w Kroku 3);
+    - Facing: Lead, Direction, Origin Across;
+    - Text: Letter / Line Spacing, Mirror, układ On Circle, V Angle;
+    - Settings: Feed Tables, limity kalkulatora w Machine (Min/Max RPM,
+      Max Feed, Rigidity, Router) — tylko ukryte, bez resetu (ustawienia
+      maszyny, nie presetu; Spindle Speed w Machine zostaje jako jedyne
+      miejsce na obroty).
+  - **Zostają widoczne:** Stepover (Surface i Pocket — schowany blokowałby
+    Generate limitem linii/ścieżki), wszystkie wzorce i metody Hole(s)
+    (także Grid Centered, Custom List, Standard, Drill z Retract mode i
+    Retract mm), mostki, Offset, Safe Z, G2/G3, Facing Clearance, Text Bit,
+    sekcje Controller i Tabs w Settings.
+  - **Bez oznaczenia schowanych pól**; przełącznik w Header sam mówi, w
+    jakim trybie jesteś.
+  - **Tryb domyślny:** Simple dla nowego użytkownika (brak
+    `simplecam.storage`), Advanced dla kogoś, kto ma już zapisane dane.
+  - **Zapis:** pole w `simplecam.appearance` (Reset All Settings przywraca
+    domyślny tryb).
+  - **Przełącznik:** dwuczęściowy w Header obok dark/light i Settings,
+    kaczka (Simple) | orzeł (Advanced), wybrany podświetlony, `aria-pressed`
+    na obu połówkach. Ikony w stylu kreskowym, ok. 26 px w przycisku 36 px
+    (24 px w połówkach), kreska 1 px, detale 0,8 px — wzory w Artifakcie
+    „OnlyPaths Mode Icons”
+    (`https://claude.ai/artifact/NVA299oyLpdry2tCGv959T`).
+  - **Do sprawdzenia przy implementacji:** czy przełącznik (ok. 90 px na
+    dotyku) mieści się w pierwszym wierszu Header w układzie wąskim; Krok 2
+    i 3 nie mają rejestru pól, więc chowanie pól to warunki w JSX (wiersze
+    mieszane: Stepover + Ramp Length, Z-Transition + Helix R. + Ramp);
+    aktualizacja Interface Anatomy (nowy przycisk w Header).
 - **`BL-104`** *(Zrealizowany, 2026-10-07)* 🟢 — **Settings → About: link
   do kanału na Instagramie.** Przy „Envisioned by ThingsByPluzz” link
   „@thingsbypluzz on Instagram” (`https://www.instagram.com/thingsbypluzz/`),
