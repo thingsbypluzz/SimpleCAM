@@ -7,6 +7,45 @@ zgodne z [SemVer](https://semver.org/). Ten plik pozostaje głównym, czytelnym
 thingsbypluzz/SimpleCAM), ale to infrastruktura pod izolację pracy
 (branch/worktree per zadanie), nie zamiennik tego changeloga.
 
+## [0.57.0] — 2026-10-18
+
+### Dodano
+
+- **Simple / Advanced Mode** (`BL-103`). Przełącznik w Header obok
+  dark/light i Settings: kaczka (Simple) | orzeł (Advanced). Simple chowa
+  to, czego początkujący nie potrzebuje:
+  - wszędzie: Flutes i fz, Spindle (z pokrętłem routera — obroty zostają w
+    Settings → Machine), przycisk Feedrate Calculator, Ramp Angle i Pitch,
+    Z-Transition, Start Z, Linking Feed;
+  - kształty Lobed Circle, Donut, Rectangle / Circle Lightened, układ Text
+    On Circle i metodę Pocket Adaptive;
+  - Pocket: Ramp Length i Finishing Pass; Facing: Origin Across, Direction
+    i Lead; Text: Letter / Line Spacing, Mirror i V Angle;
+  - Settings: Feed Tables oraz Min/Max RPM, Max Feed, Rigidity i Router w
+    Machine.
+  Stepover, wszystkie wzorce i metody Hole(s), mostki, Offset i Safe Z
+  zostają widoczne.
+- **Zasada Simple:** schowane pole ma zawsze wartość domyślną, więc to, co
+  widać, w pełni opisuje G-code, a schowane pole nigdy nie blokuje
+  Generate. Wartości są przywracane przy przełączeniu na Simple, przy każdej
+  zmianie parametrów i każdym wczytaniu presetu; powrót do Advanced ich nie
+  odtwarza, a edycja presetu w Simple zapisuje je do slotu. Schowany kształt
+  albo metoda przechodzi na najbliższy widoczny z zachowaniem wymiarów
+  (Adaptive → Spiral, Lobed Circle i Circle Lightened → Circle, Donut →
+  Pocket Circle, Rectangle Lightened → Rectangle Centered, Text On Circle →
+  Straight w środku okręgu). Presety w Overlay i pliki projektu się nie
+  zmieniają.
+- Nowy użytkownik startuje w Simple, ktoś z zapisanymi presetami — w
+  Advanced. Wybór zapisuje się w `simplecam.appearance`; Reset All Settings
+  wraca do Simple.
+
+### Zmieniono
+
+- Wartości startowe zależne od freza (dla domyślnego 3,175 mm): Helix
+  Radius w Surface i Pocket 0,79 mm (D/4, wcześniej 1 mm), Facing Lead
+  1,59 mm (D/2, wcześniej 1 mm). Te same reguły liczą te pola w Simple na
+  bieżąco; zapisane presety bez zmian.
+
 ## [0.56.1] — 2026-10-18
 
 ### Usunięto

@@ -69,6 +69,25 @@
 - Pola tekstowe (napis w Text, nazwa projektu, Custom List) zostają przy
   klawiaturze systemowej.
 
+## Simple / Advanced Mode (`uiModeContext.ts`)
+
+- `App.tsx` trzyma tryb w `appearance.uiMode` i podaje go przez
+  `SimpleModeContext`; kroki wizarda i Settings czytają `useSimpleMode()`
+  i chowają swoje pola (lista w `src/components/wizard/CLAUDE.md`). Wartości
+  schowanych pól pilnuje `App.tsx` (`simplifyParams()` w `updateParams()`,
+  przy wczytaniu i uzbrojeniu presetu i w `handleSaveAppearance()` przy
+  przejściu na Simple — wtedy też przemontowanie Kroków 2/3), nie
+  komponenty.
+- Przełącznik w Header (`modeSwitch` w `App.tsx`, wspólny dla trzech
+  układów): dwie połówki `DuckIcon` | `EagleIcon` (ikony 24 px, kreska 1 i
+  detale 0,8 — cieńsze od reszty, wzory w Artifakcie „OnlyPaths Mode
+  Icons”), wybrana na tokenach akcentu, `aria-pressed` na obu. Na dotyku i w
+  układach średnim / wąskim połówki 44 px.
+- `appearance` zapisuje się przy każdej zmianie i przy starcie, więc tryb
+  wybrany nowemu użytkownikowi zostaje (`loadAppearanceSettings()`: brak
+  klucza i brak presetów = Simple, brak klucza przy zapisanych presetach
+  albo zapis bez `uiMode` = Advanced). Reset All Settings wraca do Simple.
+
 ## Settings Modal (`SettingsModal.tsx`)
 
 - Okno 920×640 px. Nakładka `bg-black/50 backdrop-blur-sm`; podgląd 3D wstrzymany
@@ -89,6 +108,10 @@
   Marlinie podpowiedź, że `S` bywa PWM 0–255. Min/Max RPM, Max Feed,
   Rigidity czyta tylko Feedrate Calculator. Domyślnie
   `DEFAULT_MACHINE_SETTINGS` (5000/5000/1000 mm, bez realnych limitów).
+  W Simple Mode Machine pokazuje tylko skoki osi, Spindle Speed (jedyne
+  miejsce na obroty, bo Krok 3 go chowa) i Spin-up Dwell; Min/Max RPM, Max
+  Feed, Rigidity i Router są ukryte (bez resetu), a z Settings Nav znika
+  Feed Tables.
 - **Controller** — sterowanie: G-Code Dialect (natychmiast, z opisem, co
   dialekt zmienia w programie) i Start/End G-Code (textarea, commit
   `onBlur`). Sekcja to tylko podział w UI — pola należą do

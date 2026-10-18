@@ -10,6 +10,7 @@ import { fmt } from '../../lib/format'
 import { FieldRow, inputClass } from './FieldRow'
 import { NumberInput } from './NumberInput'
 import { useNumberField } from './useNumberField'
+import { useSimpleMode } from '../uiModeContext'
 
 interface RampAngleFieldsProps {
   params: WizardParams
@@ -23,10 +24,21 @@ interface RampAngleFieldsProps {
 // options builder via rampDescent(), so it is exactly what the toolpath uses.
 export function RampAngleFields({ params, rampAngleDeg, onChange }: RampAngleFieldsProps) {
   const rampAngleField = useNumberField(rampAngleDeg, onChange)
+  const simple = useSimpleMode()
   const descent = rampDescent(params)
   if (descent === null) return null
   const angleInvalid = !isRampAngleValid(params)
   const turnLimitInvalid = !isRampTurnCountWithinLimit(params)
+  // BL-103: Simple hides Ramp Angle and Pitch (the angle stays at its
+  // default) — only the turn limit, which a tiny helix can still hit, shows.
+  if (simple) {
+    return turnLimitInvalid ? (
+      <p className="text-sm text-status-error">
+        Too many {descent.unit}s — the {descent.unit === 'turn' ? 'helix' : 'ramp'} would be cut short by its safety
+        limit. Use the Standard method.
+      </p>
+    ) : null
+  }
 
   return (
     <div className="flex flex-col gap-4">

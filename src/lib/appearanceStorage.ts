@@ -1,10 +1,12 @@
 import { PALETTE_LIST, type PaletteId } from '../config/palettes'
-import { DEFAULT_APPEARANCE_SETTINGS, type AppearanceSettings, type Grid3DLabelSize } from '../types/appearance'
+import { DEFAULT_APPEARANCE_SETTINGS, type AppearanceSettings, type Grid3DLabelSize, type UiMode } from '../types/appearance'
 import { THEME_LIST, type ThemeId } from '../types/theme'
 
 // Separate localStorage key from simplecam.machine — see types/appearance.ts
 // for why.
 const APPEARANCE_STORAGE_KEY = 'simplecam.appearance'
+// lib/storage.ts's key — its presence means the app has been used before.
+const PRESETS_STORAGE_KEY = 'simplecam.storage'
 
 function isPaletteId(value: unknown): value is PaletteId {
   return typeof value === 'string' && PALETTE_LIST.some((p) => p.id === value)
@@ -18,10 +20,19 @@ function isGrid3DLabelSize(value: unknown): value is Grid3DLabelSize {
   return value === 'small' || value === 'medium' || value === 'large'
 }
 
+function isUiMode(value: unknown): value is UiMode {
+  return value === 'simple' || value === 'advanced'
+}
+
 export function loadAppearanceSettings(): AppearanceSettings {
   try {
     const raw = localStorage.getItem(APPEARANCE_STORAGE_KEY)
-    if (!raw) return DEFAULT_APPEARANCE_SETTINGS
+    // BL-103: Simple for a new user, Advanced for someone who already has
+    // presets or appearance settings from before the mode existed.
+    if (!raw) {
+      const returning = localStorage.getItem(PRESETS_STORAGE_KEY) !== null
+      return returning ? { ...DEFAULT_APPEARANCE_SETTINGS, uiMode: 'advanced' } : DEFAULT_APPEARANCE_SETTINGS
+    }
     const parsed = JSON.parse(raw) as Partial<AppearanceSettings>
     // A theme/palette id from an older/corrupted save that no longer
     // matches a known one falls back to the default rather than reaching a
@@ -45,6 +56,7 @@ export function loadAppearanceSettings(): AppearanceSettings {
         typeof parsed.cutShapeEnabled === 'boolean' ? parsed.cutShapeEnabled : DEFAULT_APPEARANCE_SETTINGS.cutShapeEnabled,
       simple3DPreview:
         typeof parsed.simple3DPreview === 'boolean' ? parsed.simple3DPreview : DEFAULT_APPEARANCE_SETTINGS.simple3DPreview,
+      uiMode: isUiMode(parsed.uiMode) ? parsed.uiMode : 'advanced',
     }
   } catch (err) {
     console.warn('OnlyPaths: could not read appearance settings from localStorage', err)

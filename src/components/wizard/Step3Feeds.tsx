@@ -30,6 +30,7 @@ import { FieldRow, inputClass } from './FieldRow'
 import { InfoNote } from './InfoNote'
 import { NumberInput } from './NumberInput'
 import { useNumberField } from './useNumberField'
+import { useSimpleMode } from '../uiModeContext'
 
 interface Step3FeedsProps {
   params: WizardParams
@@ -52,6 +53,9 @@ export function Step3Feeds({ params, onChange, machine, stepdownLabel, onOpenCal
   const isPocketAdaptive = params.operation === 'pocket' && pocket.method === 'adaptive'
   const isPocketFinishing = params.operation === 'pocket' && pocket.finishingEnabled
   const showFeedrateXY = usesFeedrateXY(params)
+  // BL-103: Simple hides Spindle (set in Settings → Machine), the Feedrate
+  // Calculator, Linking Feed and Start Z — the last two hold their defaults.
+  const simple = useSimpleMode()
 
   const updateFeeds = (patch: Partial<WizardParams['feeds']>) =>
     onChange({ feeds: { ...feeds, ...patch } })
@@ -89,29 +93,31 @@ export function Step3Feeds({ params, onChange, machine, stepdownLabel, onOpenCal
     <div className="flex flex-col gap-4">
       {/* Spindle (narrow) with the router's dial beside it — the same
           widget as the Feedrate Calculator, suggested position highlighted. */}
-      <div className="flex items-end gap-4">
-        <div className={dial ? 'w-36 shrink-0' : 'min-w-0 flex-1'}>
-          <FieldRow
-            label="Spindle [RPM]"
-            hint={`Global — the same value as Settings → Machine, shared by every preset. Emitted as S only when "Start spindle" is on in Step 4.${
-              machine.dialect === 'marlin' ? ' On Marlin, S is often PWM 0–255 or a percentage — set what your firmware expects.' : ''
-            }`}
-          >
-            <NumberInput type="number" step="100" min="0" className={inputClass} {...spindleField} />
-          </FieldRow>
-        </div>
-        {dial && machine.router && (
-          <div className="flex min-w-0 flex-1 flex-col gap-1">
-            <span
-              className="truncate text-xs text-muted"
-              title={`${dial.label} dial${dial.approximate ? ' (estimated between the ends)' : ''}: position ${dial.position} ≈ ${dial.rpm} RPM`}
+      {!simple && (
+        <div className="flex items-end gap-4">
+          <div className={dial ? 'w-36 shrink-0' : 'min-w-0 flex-1'}>
+            <FieldRow
+              label="Spindle [RPM]"
+              hint={`Global — the same value as Settings → Machine, shared by every preset. Emitted as S only when "Start spindle" is on in Step 4.${
+                machine.dialect === 'marlin' ? ' On Marlin, S is often PWM 0–255 or a percentage — set what your firmware expects.' : ''
+              }`}
             >
-              {dial.label} dial{dial.approximate ? ' (est.)' : ''}
-            </span>
-            <RouterDial dial={ROUTERS[machine.router].dial} position={dial.position} />
+              <NumberInput type="number" step="100" min="0" className={inputClass} {...spindleField} />
+            </FieldRow>
           </div>
-        )}
-      </div>
+          {dial && machine.router && (
+            <div className="flex min-w-0 flex-1 flex-col gap-1">
+              <span
+                className="truncate text-xs text-muted"
+                title={`${dial.label} dial${dial.approximate ? ' (estimated between the ends)' : ''}: position ${dial.position} ≈ ${dial.rpm} RPM`}
+              >
+                {dial.label} dial{dial.approximate ? ' (est.)' : ''}
+              </span>
+              <RouterDial dial={ROUTERS[machine.router].dial} position={dial.position} />
+            </div>
+          )}
+        </div>
+      )}
       {/* Hole(s) Drill only moves up and down: no Feedrate XY, and no
           Feedrate Calculator (its model is for cutting sideways). */}
       {showFeedrateXY && (
@@ -127,7 +133,7 @@ export function Step3Feeds({ params, onChange, machine, stepdownLabel, onOpenCal
             <div className="min-w-0 flex-1">
               <NumberInput type="number" step="1" className={inputClass} aria-invalid={!isFeedrateXYValid(feeds)} {...feedrateXYField} />
             </div>
-            {OPERATION_META[params.operation].feedCalculator !== false && (
+            {!simple && OPERATION_META[params.operation].feedCalculator !== false && (
               <button
                 type="button"
                 onClick={onOpenCalculator}
@@ -153,7 +159,7 @@ export function Step3Feeds({ params, onChange, machine, stepdownLabel, onOpenCal
       {isPocketAdaptive && !isPocketLinkingFeedValid(pocket) && (
         <p className="text-sm text-status-error">Linking Feed must be greater than 0.</p>
       )}
-      {isFacing && (
+      {isFacing && !simple && (
         <FieldRow
           label="Linking Feed [mm/min]"
           hint="Feed for the moves beside the material — backing away after each pass and returning to the start of the side. Always G1 (never a rapid below Safe Z); can safely be higher than Feedrate XY."
@@ -226,16 +232,18 @@ export function Step3Feeds({ params, onChange, machine, stepdownLabel, onOpenCal
           {pocket.toolDiameter}–{pocket.toolDiameter * 2} mm). Apply sets {suggestedAdaptiveStepdown(pocket)} mm (1.5×).
         </InfoNote>
       )}
-      <FieldRow label="Start Z [mm]">
-        <NumberInput
-          type="number"
-          step="0.1"
-          min="0"
-          className={inputClass}
-          aria-invalid={!isStartZValid(feeds) || !isStartZAboveCut(params)}
-          {...startZField}
-        />
-      </FieldRow>
+      {!simple && (
+        <FieldRow label="Start Z [mm]">
+          <NumberInput
+            type="number"
+            step="0.1"
+            min="0"
+            className={inputClass}
+            aria-invalid={!isStartZValid(feeds) || !isStartZAboveCut(params)}
+            {...startZField}
+          />
+        </FieldRow>
+      )}
       {!isStartZValid(feeds) && (
         <p className="text-sm text-status-error">
           Start Z must not exceed Safe Z.

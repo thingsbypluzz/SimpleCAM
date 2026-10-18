@@ -8,6 +8,7 @@ import { DEFAULT_TOOL_DIAMETER_OPTIONS, type ToolDiameterOption } from '../types
 import { formatToolDiameterLabel } from '../lib/toolDiameterOptions'
 import { isToolDiameterEntryValid, isValidTabCount, MAX_TOOL_DIAMETER_COUNT } from '../lib/validation'
 import { MaterialNotes, MaterialTable, RouterTable } from './FeedTables'
+import { useSimpleMode } from './uiModeContext'
 import { Checkbox } from './wizard/Checkbox'
 import { inputClass } from './wizard/FieldRow'
 import { NumberInput } from './wizard/NumberInput'
@@ -153,6 +154,13 @@ export function SettingsModal({
   // Feed Tables: which machine rigidity the material table is shown for —
   // a view switch only, starting on the machine's own setting.
   const [tablesRigidity, setTablesRigidity] = useState<Rigidity>(machine.rigidity)
+  // BL-103: Simple has no Feedrate Calculator, so it hides what only the
+  // calculator reads — Feed Tables and Machine's Min/Max RPM, Max Feed,
+  // Rigidity and Router. Hidden only: they're machine settings, not reset.
+  const simple = useSimpleMode()
+  const sections = simple ? SECTIONS.filter((section) => section.id !== 'feedTables') : SECTIONS
+  const spindleFields = simple ? SPINDLE_FIELDS.filter((field) => field.key === 'spindleSpeed') : SPINDLE_FIELDS
+  const motionFields = simple ? MOTION_FIELDS.filter((field) => field.key === 'dwellSeconds') : MOTION_FIELDS
   // Local text per field so an in-progress edit (e.g. typing "400" one
   // digit at a time) never round-trips through a half-valid number — only
   // committed to machine settings (and localStorage) on blur. Shared by
@@ -395,7 +403,7 @@ export function SettingsModal({
               Settings
             </span>
           )}
-          {SECTIONS.map((section) => (
+          {sections.map((section) => (
             <button
               key={section.id}
               type="button"
@@ -453,42 +461,48 @@ export function SettingsModal({
               </p>
 
               <div className="flex flex-col gap-4 border-t border-border pt-4">
-                <div className="flex gap-4">{SPINDLE_FIELDS.map(numericField)}</div>
+                <div className="flex gap-4">{spindleFields.map(numericField)}</div>
                 <div className="flex gap-4">
-                  {MOTION_FIELDS.map(numericField)}
-                  <label className="flex min-w-0 flex-1 flex-col gap-1">
-                    <span className="text-sm font-medium text-value">Rigidity</span>
-                    <select
-                      className={inputClass}
-                      value={machine.rigidity}
-                      onChange={(e) => handleRigidityChange(e.target.value as Rigidity)}
-                    >
-                      {RIGIDITY_OPTIONS.map((opt) => (
-                        <option key={opt.value} value={opt.value}>
-                          {opt.label}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
+                  {motionFields.map(numericField)}
+                  {!simple && (
+                    <label className="flex min-w-0 flex-1 flex-col gap-1">
+                      <span className="text-sm font-medium text-value">Rigidity</span>
+                      <select
+                        className={inputClass}
+                        value={machine.rigidity}
+                        onChange={(e) => handleRigidityChange(e.target.value as Rigidity)}
+                      >
+                        {RIGIDITY_OPTIONS.map((opt) => (
+                          <option key={opt.value} value={opt.value}>
+                            {opt.label}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                  )}
                 </div>
-                <label className="flex flex-col gap-1">
-                  <span className="text-sm font-medium text-value">Router (speed dial)</span>
-                  <select className={inputClass} value={machine.router ?? ''} onChange={(e) => handleRouterChange(e.target.value)}>
-                    <option value="">None — spindle speed set by S</option>
-                    {ROUTER_IDS.map((id) => (
-                      <option key={id} value={id}>
-                        {ROUTERS[id].label}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-                {router && (
-                  <p className="text-sm text-muted">
-                    Dial {router.dial.map((rpm, i) => `${i + 1} ≈ ${rpm}`).join(', ')} RPM
-                    {router.approximate ? ' (only the range is published — positions in between are estimated)' : ''}.
-                    A router ignores S in the G-code: the Feedrate Calculator shows which dial position to set.
-                    Choosing it also set Min/Max RPM to the dial's range.
-                  </p>
+                {!simple && (
+                  <>
+                    <label className="flex flex-col gap-1">
+                      <span className="text-sm font-medium text-value">Router (speed dial)</span>
+                      <select className={inputClass} value={machine.router ?? ''} onChange={(e) => handleRouterChange(e.target.value)}>
+                        <option value="">None — spindle speed set by S</option>
+                        {ROUTER_IDS.map((id) => (
+                          <option key={id} value={id}>
+                            {ROUTERS[id].label}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                    {router && (
+                      <p className="text-sm text-muted">
+                        Dial {router.dial.map((rpm, i) => `${i + 1} ≈ ${rpm}`).join(', ')} RPM
+                        {router.approximate ? ' (only the range is published — positions in between are estimated)' : ''}.
+                        A router ignores S in the G-code: the Feedrate Calculator shows which dial position to set.
+                        Choosing it also set Min/Max RPM to the dial's range.
+                      </p>
+                    )}
+                  </>
                 )}
                 <p className="text-sm text-muted">
                   Used when Step 4's "Start spindle" is checked: <code className="font-mono text-xs">M3 S
@@ -496,11 +510,13 @@ export function SettingsModal({
                   {machine.dialect === 'marlin' &&
                     ' On Marlin, S is often PWM 0–255 or a percentage (depends on CUTTER_POWER_UNIT) — set it to what your firmware expects.'}
                 </p>
-                <p className="text-sm text-muted">
-                  Min/Max RPM, Max Feed and Rigidity are only used by the Feedrate Calculator (Step 3): its
-                  suggested RPM stays within the spindle's range, a feed above Max Feed lowers the RPM first, and
-                  Rigidity scales the chip load it suggests, and the stepdown of wide cuts (not Adaptive). The defaults mean no limit.
-                </p>
+                {!simple && (
+                  <p className="text-sm text-muted">
+                    Min/Max RPM, Max Feed and Rigidity are only used by the Feedrate Calculator (Step 3): its
+                    suggested RPM stays within the spindle's range, a feed above Max Feed lowers the RPM first, and
+                    Rigidity scales the chip load it suggests, and the stepdown of wide cuts (not Adaptive). The defaults mean no limit.
+                  </p>
+                )}
               </div>
             </>
           )}

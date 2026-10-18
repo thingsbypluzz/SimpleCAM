@@ -163,11 +163,26 @@ być wierny.
   kontur obok ciągłego obrysu nominalnego) — wyłącznik w Settings →
   Appearance.
 - **Header:** Preset Bar `[1]…[7]` i oko Overlay (we wspólnej ramce), obok
-  — poza ramką — nazwa projektu, Load i Save projektu; dark/light (dark
-  domyślny niezależnie od systemu), Settings. W układzie średnim i wąskim
+  — poza ramką — nazwa projektu, Load i Save projektu; przełącznik Simple |
+  Advanced (kaczka | orzeł), dark/light (dark domyślny niezależnie od
+  systemu), Settings. W układzie średnim i wąskim
   nazwa projektu jest jednym przyciskiem w prawym górnym rogu, który
   rozwija menu z Load i Save (`ProjectMenu`); w wąskim Preset Bar ma
   własny, drugi wiersz Header.
+- **Simple / Advanced Mode** (`appearance.uiMode`, przełącznik w Header):
+  Simple chowa pola i funkcje, których początkujący nie potrzebuje (Flutes /
+  fz, Spindle i kalkulator w Kroku 3, Ramp Angle / Pitch, Z-Transition,
+  Start Z, Linking Feed, część pól Pocket / Facing / Text, kształty Lobed
+  Circle, Donut, Lightened, Text On Circle, metodę Adaptive, w Settings
+  Feed Tables i limity kalkulatora). **Zasada:** w Simple schowane pole ma
+  zawsze wartość domyślną (część liczona z widocznych pól) — reset przy
+  przełączeniu na Simple, przy każdej zmianie parametrów i każdym
+  wczytaniu presetu; trwały (powrót do Advanced zostawia domyślne), w
+  edycji presetu zapisywany do slotu; schowany kształt / metoda przechodzi
+  na najbliższy widoczny z zachowaniem wymiarów. Sloty w Overlay i pliki
+  projektu się nie zmieniają. Nowy użytkownik startuje w Simple, ktoś z
+  zapisanymi danymi w Advanced. Reguły: `lib/simpleMode.ts`; co chowa który
+  komponent: `src/components/wizard/CLAUDE.md`, `src/components/CLAUDE.md`.
 - **Projekt** (`lib/projectFile.ts`, `simplecam.project`): siedem slotów
   presetów jako jeden plik JSON (`onlypaths-<nazwa>-<data>.json`) — bez
   ustawień maszyny, narzędzi i wyglądu; każdy preset tylko z sekcją
@@ -278,6 +293,7 @@ src/
     SettingsModal.tsx, FeedCalculatorModal.tsx, ErrorBoundary.tsx,
     ProjectNameModal.tsx, useModalFocus.ts, icons.tsx,
     DiagnosticsBlock.tsx, diagnostics.ts (Settings → About),
+    uiModeContext.ts (Simple Mode dla kroków i Settings),
     useViewport.ts (układ, dotyk), PresetBar.tsx, ProjectMenu.tsx,
     NumericKeypad.tsx, keypadContext.ts                                  → CLAUDE.md
     wizard/            Step1Positioning, Step2Geometry(+Holes/Outline/Surface/Pocket/Facing),
@@ -303,6 +319,7 @@ src/
     stockModel.ts        model materiału dla obu podglądów
     storage.ts, *Storage.ts, presetLabel.ts, toolDiameterOptions.ts, overlayParams.ts
     keypadInput.ts       co klawisz klawiatury numerycznej robi z tekstem pola
+    simpleMode.ts        Simple Mode — wartości domyślne schowanych pól, mapowanie kształtów
     previewPaths.ts      listy ruchów silników dla podglądów 3D (jedna dyspozycja)
     projectFile.ts       plik projektu (zestaw presetów) — budowanie, parsowanie, odcisk
     download.ts          plik do pobrania (jedyny efekt uboczny)

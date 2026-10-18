@@ -28,6 +28,8 @@ import {
   SpindleIcon,
   OpenFileIcon,
   SaveFileIcon,
+  DuckIcon,
+  EagleIcon,
   PlungeIcon,
   StartZIcon,
   StepdownIcon,
@@ -74,7 +76,9 @@ import {
 import { loadAppearanceSettings, saveAppearanceSettings } from './lib/appearanceStorage'
 import { loadMachineSettings, saveMachineSettings } from './lib/machineStorage'
 import { loadToolDiameterOptions, saveToolDiameterOptions } from './lib/toolDiameterStorage'
-import { DEFAULT_APPEARANCE_SETTINGS } from './types/appearance'
+import { DEFAULT_APPEARANCE_SETTINGS, type UiMode } from './types/appearance'
+import { isSimplified, simplifyParams } from './lib/simpleMode'
+import { SimpleModeContext } from './components/uiModeContext'
 import { DEFAULT_MACHINE_SETTINGS } from './types/machine'
 import { DEFAULT_TOOL_DIAMETER_OPTIONS } from './types/toolDiameters'
 import {
@@ -207,9 +211,15 @@ function useChromeTheme(themeId: ThemeId) {
 }
 
 function App() {
+  const [appearance, setAppearance] = useState(loadAppearanceSettings)
+  // BL-103: in Simple Mode every hidden field holds its default — applied
+  // to every change of the parameters, every preset load and the switch to
+  // Simple (lib/simpleMode.ts).
+  const simpleMode = appearance.uiMode === 'simple'
+  const fitToMode = (p: WizardParams) => (simpleMode ? simplifyParams(p) : p)
   const [initial] = useState(loadInitialState)
   const [activeStep, setActiveStep] = useState(initial.activeStep)
-  const [params, setParams] = useState<WizardParams>(initial.params)
+  const [params, setParams] = useState<WizardParams>(() => fitToMode(initial.params))
   const [showRestoredBanner, setShowRestoredBanner] = useState(initial.restored)
   const [presetSlots, setPresetSlots] = useState(loadPresetSlots)
   // BL-112: the project the preset slots belong to — its name and the
@@ -218,8 +228,10 @@ function App() {
   const [isProjectNameOpen, setIsProjectNameOpen] = useState(false)
   const projectFileInputRef = useRef<HTMLInputElement>(null)
   const [isDark, setIsDark] = useDarkMode()
-  const [appearance, setAppearance] = useState(loadAppearanceSettings)
   useChromeTheme(appearance.theme)
+  // Saved at once, so the mode picked for a new user (Simple) sticks — on
+  // the next visit the saved presets would otherwise mark them as returning.
+  useEffect(() => saveAppearanceSettings(appearance), [appearance])
   const [generatedGCode, setGeneratedGCode] = useState<string[] | null>(null)
   // The full 3D preview needs WebGL 2. Without it (an older GPU), or when
   // its renderer fails to start for any other reason, the 3D tab shows the
@@ -272,7 +284,7 @@ function App() {
   // Download must not act on G-code that no longer matches the current
   // parameters.
   const updateParams = (patch: Partial<WizardParams>) => {
-    setParams((prev) => ({ ...prev, ...patch }))
+    setParams((prev) => fitToMode({ ...prev, ...patch }))
     setGeneratedGCode(null)
     setShowRestoredBanner(false)
   }
@@ -467,8 +479,18 @@ function App() {
   }
 
   const handleSaveAppearance = (next: AppearanceSettings) => {
-    saveAppearanceSettings(next)
+    if (next.uiMode === 'simple' && !simpleMode && !isSimplified(params)) {
+      // Switching to Simple resets the fields it hides (for good — switching
+      // back keeps the defaults). Remounts Steps 2/3 like a preset load.
+      setParams(simplifyParams(params))
+      setParamsLoadGeneration((n) => n + 1)
+      setGeneratedGCode(null)
+    }
     setAppearance(next)
+  }
+
+  const handleSetUiMode = (uiMode: UiMode) => {
+    if (uiMode !== appearance.uiMode) handleSaveAppearance({ ...appearance, uiMode })
   }
 
   // Unlike machine settings (dialect/header/footer), this list never feeds
@@ -493,8 +515,7 @@ function App() {
   const handleResetAllSettings = () => {
     clearAllSlots()
     setPresetSlots({})
-    saveAppearanceSettings(DEFAULT_APPEARANCE_SETTINGS)
-    setAppearance(DEFAULT_APPEARANCE_SETTINGS)
+    handleSaveAppearance(DEFAULT_APPEARANCE_SETTINGS)
     saveToolDiameterOptions(DEFAULT_TOOL_DIAMETER_OPTIONS)
     setToolDiameters(DEFAULT_TOOL_DIAMETER_OPTIONS)
     saveMachineSettings(DEFAULT_MACHINE_SETTINGS)
@@ -537,7 +558,7 @@ function App() {
   const handleLoadPreset = (id: PresetSlotId) => {
     const preset = presetSlots[id]
     if (!preset || overlayEnabled || editingSlot) return
-    setParams(preset)
+    setParams(fitToMode(preset))
     setParamsLoadGeneration((n) => n + 1)
     setGeneratedGCode(null)
     setShowRestoredBanner(false)
@@ -558,7 +579,7 @@ function App() {
       setEditingSlot(null)
       return
     }
-    setParams(preset)
+    setParams(fitToMode(preset))
     setParamsLoadGeneration((n) => n + 1)
     setGeneratedGCode(null)
     setShowRestoredBanner(false)
@@ -661,8 +682,37 @@ function App() {
   )
 
   const headerButtonClass = `flex ${compact ? 'h-11 w-11' : 'h-9 w-9'} shrink-0 items-center justify-center rounded-md border border-border text-value hover:bg-border/40`
+  // BL-103: Simple | Advanced — a duck and an eagle, the picked one lit.
+  const modeHalfClass = `flex ${compact ? 'h-11 w-11' : 'h-9 w-9'} items-center justify-center transition`
+  const modeSwitch = (
+    <div role="group" aria-label="Interface mode" className="flex shrink-0 overflow-hidden rounded-md border border-border">
+      {(
+        [
+          { mode: 'simple', label: 'Simple Mode', title: 'Simple Mode — only the settings you need', Icon: DuckIcon },
+          { mode: 'advanced', label: 'Advanced Mode', title: 'Advanced Mode — every setting', Icon: EagleIcon },
+        ] as const
+      ).map(({ mode, label, title, Icon }, i) => (
+        <button
+          key={mode}
+          type="button"
+          onClick={() => handleSetUiMode(mode)}
+          aria-label={label}
+          aria-pressed={appearance.uiMode === mode}
+          title={title}
+          className={[
+            modeHalfClass,
+            i > 0 ? 'border-l border-border' : '',
+            appearance.uiMode === mode ? 'bg-accent-bg text-accent-fg' : 'text-muted hover:bg-border/40',
+          ].join(' ')}
+        >
+          <Icon className="h-6 w-6" />
+        </button>
+      ))}
+    </div>
+  )
   const headerButtons = (
     <>
+      {modeSwitch}
       <button
         type="button"
         onClick={() => setIsDark((d) => !d)}
@@ -963,6 +1013,7 @@ function App() {
   )
 
   return (
+    <SimpleModeContext.Provider value={simpleMode}>
     <div className="relative flex h-[var(--app-h,100dvh)] flex-col bg-bg pb-[var(--keypad-h,0px)] text-fg shadow-[var(--frame-glow)]">
       {layout === 'wide' && (
         <header className="grid grid-cols-[1fr_auto_1fr] items-center gap-4 border-b border-border px-6 py-4">
@@ -1298,6 +1349,7 @@ function App() {
         }}
       />
     </div>
+    </SimpleModeContext.Provider>
   )
 }
 

@@ -637,7 +637,9 @@ symulacji materiału.
 - `simplecam.project` (`projectStorage.ts`): `{ name, fingerprint }`
   bieżącego projektu; brak klucza = "Untitled".
 - Osobne klucze: `simplecam.machine` (`machineStorage.ts`, każde pole
-  sprawdzane), `simplecam.appearance` (`appearanceStorage.ts`),
+  sprawdzane), `simplecam.appearance` (`appearanceStorage.ts`; `uiMode`
+  bez zapisu = Simple dla nowego użytkownika, Advanced przy istniejącym
+  `simplecam.storage` albo zapisie sprzed tego pola),
   `simplecam.toolDiameters` (`toolDiameterStorage.ts`, całość z fallbackiem),
   `simplecam.feedCalc` (`feedCalcStorage.ts`: materiał, liczba ostrzy
   całkowita 1–6, Carbide/HSS). Błędy I/O — cichy fallback + `console.warn`.
@@ -673,6 +675,32 @@ Surface/Pocket Spiral/Facing — stepover, Adaptive — Optimal Load.
 Sugerowana szerokość przycięta do `OPERATION_META[op].maxCalcWidthPercent()`
 (Facing: naddatek — szerszego cięcia nie ma z czego wziąć).
 `effectiveChipLoad()` — rzeczywiste fz w Kroku 2.
+
+## Simple Mode (`simpleMode.ts`)
+
+- `simplifyParams(params)` — zasada Simple: każde schowane pole ma wartość
+  domyślną (`DEFAULT_WIZARD_PARAMS`), a schowany kształt / metoda
+  przechodzi na najbliższy widoczny z zachowaniem wymiarów i pozycji:
+  Lobed Circle → Circle ⌀ `lobeMainDiameter` (Ramp → Helix), Donut i Circle
+  Lightened → Pocket Circle, Rectangle Lightened → Rectangle Centered (oba
+  mają origin w środku), Adaptive → Spiral, Text On Circle → Straight z
+  Origin center / middle w środku okręgu i kątem 0°. Stałe: Ramp Angle,
+  Z-Transition Plunge, Ramp Length, Finishing Pass wyłączony, Start Z,
+  Facing Climb / Raw, Text bez Mirror, Spacing i V Angle domyślne.
+  Idempotentna; parametry, które przechodzą walidację, przechodzą ją też
+  po uproszczeniu (test właściwościowy w `simpleMode.test.ts`).
+- Wartości zależne od widocznych pól — te same reguły dają wartości
+  startowe w `DEFAULT_WIZARD_PARAMS` (dla domyślnego freza 3,175 mm), ale
+  w Advanced nie idą za zmianą freza: `defaultSurfaceHelixRadius()` /
+  `defaultPocketHelixRadius()` = D/4 w dół do 0,01, przycięte do limitów
+  walidacji (stepover w mm; `pocketMaxHelixRadius()`), `defaultFacingLead()`
+  = D/2, Linking Feed = Feedrate XY.
+- `isSimplified()` — czy uproszczenie niczego nie zmienia (przełączenie
+  na Simple unieważnia G-code tylko wtedy). `is*InSimple()` — kształty,
+  układy i metody, które Simple oferuje.
+- Sekcje innych operacji też są upraszczane (preset w przeglądarce trzyma
+  wszystkie); parametry kształtów schowanych (Lobes, Lightened, wyspa
+  Donut) zostają w danych nieużywane.
 
 ## Model materiału dla podglądów (`stockModel.ts`)
 
