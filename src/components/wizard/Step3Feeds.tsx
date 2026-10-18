@@ -18,6 +18,7 @@ import {
   isStepdownValid,
   MAX_PASSES,
   suggestedAdaptiveStepdown,
+  usesFeedrateXY,
 } from '../../lib/validation'
 import { isFeedChipThinningCompensated } from '../../lib/pocketAdaptiveMath'
 import { fmt } from '../../lib/format'
@@ -50,6 +51,7 @@ export function Step3Feeds({ params, onChange, machine, stepdownLabel, onOpenCal
   const isFacing = params.operation === 'facing'
   const isPocketAdaptive = params.operation === 'pocket' && pocket.method === 'adaptive'
   const isPocketFinishing = params.operation === 'pocket' && pocket.finishingEnabled
+  const showFeedrateXY = usesFeedrateXY(params)
 
   const updateFeeds = (patch: Partial<WizardParams['feeds']>) =>
     onChange({ feeds: { ...feeds, ...patch } })
@@ -110,32 +112,36 @@ export function Step3Feeds({ params, onChange, machine, stepdownLabel, onOpenCal
           </div>
         )}
       </div>
-      <FieldRow
-        label="Feedrate XY [mm/min]"
-        annotation={
-          isPocketAdaptive && isFeedChipThinningCompensated(feeds.feedrateXY, pocket.chipThinningBaseFeed, pocket.optimalLoadPercent) ? (
-            <span className="text-status-success">(chip thinning applied)</span>
-          ) : undefined
-        }
-      >
-        <div className="flex items-center gap-2">
-          <div className="min-w-0 flex-1">
-            <NumberInput type="number" step="1" className={inputClass} aria-invalid={!isFeedrateXYValid(feeds)} {...feedrateXYField} />
+      {/* Hole(s) Drill only moves up and down: no Feedrate XY, and no
+          Feedrate Calculator (its model is for cutting sideways). */}
+      {showFeedrateXY && (
+        <FieldRow
+          label="Feedrate XY [mm/min]"
+          annotation={
+            isPocketAdaptive && isFeedChipThinningCompensated(feeds.feedrateXY, pocket.chipThinningBaseFeed, pocket.optimalLoadPercent) ? (
+              <span className="text-status-success">(chip thinning applied)</span>
+            ) : undefined
+          }
+        >
+          <div className="flex items-center gap-2">
+            <div className="min-w-0 flex-1">
+              <NumberInput type="number" step="1" className={inputClass} aria-invalid={!isFeedrateXYValid(feeds)} {...feedrateXYField} />
+            </div>
+            {OPERATION_META[params.operation].feedCalculator !== false && (
+              <button
+                type="button"
+                onClick={onOpenCalculator}
+                aria-label="Feedrate Calculator"
+                title="Feedrate Calculator"
+                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md border border-border text-value hover:bg-border/40"
+              >
+                <CalculatorIcon className="h-4 w-4" />
+              </button>
+            )}
           </div>
-          {OPERATION_META[params.operation].feedCalculator !== false && (
-            <button
-              type="button"
-              onClick={onOpenCalculator}
-              aria-label="Feedrate Calculator"
-              title="Feedrate Calculator"
-              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md border border-border text-value hover:bg-border/40"
-            >
-              <CalculatorIcon className="h-4 w-4" />
-            </button>
-          )}
-        </div>
-      </FieldRow>
-      {!isFeedrateXYValid(feeds) && <p className="text-sm text-status-error">Feedrate XY must be greater than 0.</p>}
+        </FieldRow>
+      )}
+      {showFeedrateXY && !isFeedrateXYValid(feeds) && <p className="text-sm text-status-error">Feedrate XY must be greater than 0.</p>}
       {isPocketAdaptive && (
         <FieldRow
           label="Linking Feed [mm/min]"

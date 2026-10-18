@@ -1,5 +1,6 @@
 import * as THREE from 'three'
 import { getFixedColors, getPaletteAccents, hexToThreeColor, type PaletteId } from '../../config/palettes'
+import { holeGeometry } from '../../lib/drill'
 import { resolvePoints } from '../../lib/positioning'
 import { circleOutlineRadiusAndDirection, onLineCircleEdges } from '../../lib/outlineCircle'
 import { holeCircleOptions } from '../../lib/helix'
@@ -404,7 +405,7 @@ function resolvePattern(params: WizardParams): ResolvedPattern {
     return { kind: 'outlineRect', params, nominalCorners, toolCorners }
   }
 
-  const { geometry } = params
+  const geometry = holeGeometry(params)
   const points = resolvePoints(geometry)
   const holeRadius = geometry.holeDiameter / 2
   // Guarded against a tool larger than the hole (allowed until Etap 5

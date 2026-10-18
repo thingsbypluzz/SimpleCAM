@@ -26,6 +26,8 @@ const base: GeometryParams = {
   tabWidth: 3,
   tabCount: 4,
   rampAngleDeg: 2,
+  drillRetractMode: 'full',
+  drillRetract: 0.5,
 }
 
 // cos/sin at non-trivial angles (e.g. 90°) leave floating-point epsilon

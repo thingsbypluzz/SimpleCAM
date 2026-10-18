@@ -1,4 +1,8 @@
-export type MethodType = 'helix' | 'standard'
+export type MethodType = 'helix' | 'standard' | 'drill'
+
+// Hole(s) Drill (BL-120): what the drill does after each peck — back out to
+// Start Z to clear the chips, or back off a little to break the chip.
+export type DrillRetractMode = 'full' | 'chipBreak'
 
 export type PositioningMode = 'single' | 'grid' | 'gridCentered' | 'circle' | 'custom'
 
@@ -83,6 +87,11 @@ export interface GeometryParams {
   tabWidth: number
   tabCount: number
   rampAngleDeg: number // Helix method only — caps the helix pitch below Stepdown (BL-80)
+  // Drill method only (BL-120).
+  drillRetractMode: DrillRetractMode
+  // mm: the chip-break back-off, or with a full retract the gap above the
+  // last peck's bottom where the rapid back down stops.
+  drillRetract: number
 }
 
 export interface OutlineParams {
@@ -291,6 +300,8 @@ export const DEFAULT_WIZARD_PARAMS: WizardParams = {
     tabWidth: 3,
     tabCount: 3,
     rampAngleDeg: 2,
+    drillRetractMode: 'full',
+    drillRetract: 0.5,
   },
   outline: {
     shape: 'rectCornered',

@@ -1077,6 +1077,36 @@ Waga z review w nawiasie kwadratowym.
   - Niesprawdzone: Chrome 142+ ma podobno uprawnienie Local Network
     Access zwalniające z blokady mixed content dla adresów prywatnych —
     źródło wtórne, nie dotyczy Firefoksa ani WebView na tablecie.
+- **`BL-120`** *(Zrealizowany, 2026-10-18)* 🟠 — **Hole(s): metoda Drill (wiercenie
+  wiertłem).** Zgłoszone 2026-10-18: zwykłe wiercenie — otwór ma średnicę
+  wiertła, wiertło wchodzi w osi z krokiem i wycofaniem. Wdrożone w
+  v0.56.0 zgodnie z ustaleniami poniżej (pełny opis: `CHANGELOG.md`).
+  **Do sprawdzenia na maszynie:** zachowanie Full Retract i Chip Break na
+  prawdziwym wiertle. Ustalone w `/grill-me` (2026-10-18):
+  - **Miejsce:** trzecia metoda w Hole(s) obok Helix i Standard — wszystkie
+    wzorce (Single, Grid, N on Circle, Custom List) bez zmian.
+  - **Wycofanie:** przełącznik Full Retract (po każdym kroku wyjście na
+    Start Z, szybki powrót nad dno poprzedniego kroku) / Chip Break
+    (krótkie cofnięcie łamiące wiór); domyślnie Full Retract. Wiercenie
+    bez kroków = krok ≥ głębokość.
+  - **Krok:** Stepdown z Kroku 3, przy wierceniu z etykietą „Peck Depth
+    [mm]”.
+  - **Retract [mm]:** jedno pole w Kroku 2, domyślnie 0,5 — przy Chip
+    Break wielkość cofnięcia, przy Full Retract zapas nad dnem przy
+    powrocie.
+  - **Depth:** głębokość czubka wiertła, jak w innych metodach (dno zawsze
+    `-totalDepth`); hint o zapasie przy otworach przelotowych.
+  - **G-code:** ruchy G0/G1, bez cykli G81/G83/G73 (GRBL 1.1 i Marlin ich
+    nie mają — wspólny podzbiór dialektów).
+  - **Krok 3:** Spindle, Plunge Rate (posuw wiercenia), Peck Depth, Start
+    Z, Safe Z; Feedrate XY i Feedrate Calculator ukryte.
+  - **Wiertło:** średnica z listy Tool Diam. (Settings → Tool Diameters);
+    Hole Diameter, Flutes / fz i mostki przy wierceniu znikają.
+  - **Podgląd:** otwór o średnicy wiertła w modelu materiału, przy Bottom
+    = Closed płaskie dno.
+  - **Odrzucone / odłożone:** nowy pattern (powielałby wzorce), postój na
+    dnie (G82), Depth jako pełna średnica (stożek czubka), stożkowe dno w
+    podglądzie, osobna lista wierteł, kalkulator dla wiercenia.
 - **`BL-61`** *(Zrealizowany, 2026-09-27)* 🔴 **[Low, kosztowne w czasie]**
   — **Podglądy duplikują geometrię silnika** — jedna lista ruchów (jak
   Adaptive) dla G-code i podglądu 3D, po jednej operacji na raz. Etapy 1–2

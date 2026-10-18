@@ -8,6 +8,7 @@ import type { MachineSettings } from '../types/machine'
 import type { MethodType, OperationType, OutlineMethod, PocketMethodType, SurfaceMethodType, WizardParams } from '../types/wizard'
 import { FACING_METHOD, FACING_SIDE_META, facingLabel, facingLines, facingSideIcon, facingSlug, facingSummary } from './facingMeta'
 import { METHOD_LIST, METHOD_META } from './methodMeta'
+import { holeGeometry } from '../lib/drill'
 import { TEXT_LAYOUT_META, TEXT_METHOD, textBitLabel, textLabel, textLayoutIcon, textLayoutLines, textSlug, textSummary } from './textMeta'
 import {
   activeOutlineMethodMeta,
@@ -190,21 +191,23 @@ export const OPERATION_META: Record<OperationType, OperationMeta> = {
       {
         Icon: DiameterIcon,
         label: 'HOLE',
-        value: `${p.geometry.holeDiameter}`,
+        value: `${holeGeometry(p).holeDiameter}`,
         unit: 'mm',
-        title: `Hole Diameter: ${p.geometry.holeDiameter} mm`,
+        title: `Hole Diameter: ${holeGeometry(p).holeDiameter} mm`,
       },
       depthStat(p.geometry.totalDepth),
-      ...tabsStat(p.geometry.tabsEnabled),
+      ...tabsStat(holeGeometry(p).tabsEnabled),
     ],
     geometryTitle: (p) =>
-      `Tool ⌀${p.geometry.toolDiameter}mm, Hole ⌀${p.geometry.holeDiameter}mm, Depth ${p.geometry.totalDepth}mm${withOffset(p.geometry)} — Method: ${METHOD_META[p.method].title}`,
+      `Tool ⌀${p.geometry.toolDiameter}mm, Hole ⌀${holeGeometry(p).holeDiameter}mm, Depth ${p.geometry.totalDepth}mm${withOffset(p.geometry)} — Method: ${METHOD_META[p.method].title}`,
     generate: (p, machine) => METHOD_META[p.method].generate(p, machine),
     filenameSlug: (p) => patternSlug(p.geometry),
-    presetLabel: (p) => `${patternLabel(p.geometry)} • ${METHOD_META[p.method].shortLabel} • ⌀${p.geometry.holeDiameter}mm`,
+    presetLabel: (p) => `${patternLabel(p.geometry)} • ${METHOD_META[p.method].shortLabel} • ⌀${holeGeometry(p).holeDiameter}mm`,
     toolDiameter: (p) => p.geometry.toolDiameter,
     methodValue: (p) => p.method,
-    calcMethods: () => methodOptions(METHOD_LIST),
+    // Drill has no Feedrate Calculator (Step 3 hides Feedrate XY and the
+    // calculator with it), so the calculator cannot switch to it either.
+    calcMethods: () => methodOptions(METHOD_LIST.filter((m) => m.value !== 'drill')),
     withCalc: (p, c) => ({
       method: c.method as MethodType,
       geometry: { ...p.geometry, toolDiameter: c.toolDiameter, rampAngleDeg: c.rampAngleDeg ?? p.geometry.rampAngleDeg },

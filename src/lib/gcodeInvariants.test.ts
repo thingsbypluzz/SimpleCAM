@@ -26,6 +26,7 @@ import {
 import { cellWallDistance, isLightenedShape, lightenedCells } from './pocketLightened'
 import { pocketStockToLeave } from './pocketGeometry'
 import { arcRadiusMismatches } from './gcodeTestUtils'
+import { generateDrill } from './drill'
 import { generateHelix } from './helix'
 import { forcedLinearReason } from './interpolation'
 import { generateOutline } from './outline'
@@ -295,6 +296,9 @@ const SUITES: Suite[] = [
   { name: 'Pocket Donut Adaptive', samples: 25, build: randomPocketDonutAdaptive, generate: generatePocketAdaptive },
   { name: 'Pocket Lightened', samples: 30, build: randomPocketLightened, generate: generatePocketSpiral },
   { name: 'Pocket Lightened Adaptive', samples: 10, build: randomPocketLightenedAdaptive, generate: generatePocketAdaptive },
+  // Appended, not next to the other Hole(s) suites: each suite's seed
+  // follows its position, and inserting would reshuffle every later one.
+  { name: 'Hole(s) Drill', samples: 60, build: (r) => randomHoles(r, 'drill'), generate: generateDrill },
 ]
 
 describe('G-code invariants for every valid parameter set (BL-62)', () => {

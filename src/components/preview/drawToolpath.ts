@@ -1,4 +1,5 @@
 import { getFixedColors, getPaletteAccents, type PaletteId } from '../../config/palettes'
+import { holeGeometry } from '../../lib/drill'
 import { resolvePoints } from '../../lib/positioning'
 import { computeTabRanges, type TabRange } from '../../lib/tabs'
 import { circleOutlineOptions, circleOutlineRadiusAndDirection, onLineCircleEdges } from '../../lib/outlineCircle'
@@ -502,7 +503,7 @@ function resolvePattern(params: WizardParams): ResolvedPattern {
     return { kind: 'outlineRect', params, nominalCorners, toolCorners, sideTabRanges }
   }
 
-  const { geometry } = params
+  const geometry = holeGeometry(params)
   const points = resolvePoints(geometry)
   const holeRadius = geometry.holeDiameter / 2
   // Guarded against a tool larger than the hole (allowed until Etap 5
@@ -679,7 +680,7 @@ function drawHolesGeometry(
   showToolpath: boolean,
 ) {
   const { points, holeRadius, toolPathRadius, params } = pattern
-  const { geometry } = params
+  const geometry = holeGeometry(params)
 
   // Rapid traverse between holes, through each hole's actual descent-start
   // XY (center + toolPathRadius on +X) — matches the real G-code

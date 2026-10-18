@@ -82,6 +82,7 @@ import {
   feedsWarnings,
   isWizardParamsValid,
   machineFitWarnings,
+  usesFeedrateXY,
 } from './lib/validation'
 import type { AppearanceSettings } from './types/appearance'
 import type { ThemeId } from './types/theme'
@@ -156,7 +157,10 @@ function collapsedStepTitle(stepId: number, params: WizardParams): string {
     case 2:
       return `Geometry — ${OPERATION_META[params.operation].geometryTitle(params)}`
     case 3:
-      return `Feeds & Speeds — Feed ${params.feeds.feedrateXY} mm/min, Stepdown ${params.feeds.stepdown} mm`
+      // Hole(s) Drill only moves up and down — its feed is the Plunge Rate.
+      return usesFeedrateXY(params)
+        ? `Feeds & Speeds — Feed ${params.feeds.feedrateXY} mm/min, Stepdown ${params.feeds.stepdown} mm`
+        : `Feeds & Speeds — Plunge ${params.feeds.plungeRate} mm/min, Peck ${params.feeds.stepdown} mm`
     default:
       return 'G-Code'
   }
@@ -780,7 +784,12 @@ function App() {
   const stepRailItems: StepRailItem[] = [
     { id: 1, label: 'Operation', detail: operationMeta.label, title: collapsedStepTitle(1, params) },
     { id: 2, label: 'Geometry', detail: activeMethodDisplay.shortLabel, title: collapsedStepTitle(2, params) },
-    { id: 3, label: 'Feeds', detail: `${params.feeds.feedrateXY} mm/min`, title: collapsedStepTitle(3, params) },
+    {
+      id: 3,
+      label: 'Feeds',
+      detail: `${usesFeedrateXY(params) ? params.feeds.feedrateXY : params.feeds.plungeRate} mm/min`,
+      title: collapsedStepTitle(3, params),
+    },
     {
       id: 4,
       label: 'G-code',
@@ -1128,13 +1137,15 @@ function App() {
                         unit={spindleDial ? undefined : 'RPM'}
                         title={`Spindle Speed: ${machine.spindleSpeed} RPM${spindleDial ? ` — ${spindleDial.label} dial ${spindleDial.position} (≈ ${spindleDial.rpm} RPM)` : ''} (global, Settings → Machine)`}
                       />
-                      <MiniStat
-                        icon={<FeedIcon className="h-8 w-8" />}
-                        label="FEED"
-                        value={`${params.feeds.feedrateXY}`}
-                        unit="mm/min"
-                        title={`Feedrate XY: ${params.feeds.feedrateXY} mm/min`}
-                      />
+                      {usesFeedrateXY(params) && (
+                        <MiniStat
+                          icon={<FeedIcon className="h-8 w-8" />}
+                          label="FEED"
+                          value={`${params.feeds.feedrateXY}`}
+                          unit="mm/min"
+                          title={`Feedrate XY: ${params.feeds.feedrateXY} mm/min`}
+                        />
+                      )}
                       <MiniStat
                         icon={<PlungeIcon className="h-8 w-8" />}
                         label="PLUNGE"

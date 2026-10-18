@@ -9,7 +9,7 @@
   `withCalc`, opcjonalnie `maxCalcWidthPercent` — sufit sugerowanej
   szerokości). Nowa operacja nie przejdzie typecheck bez wypełnienia.
   `OPERATION_LIST` — operacje w kolejności Kroku 1.
-- Metody: `methodMeta.ts` (Hole(s): Helix/Standard), `surfaceMethodMeta.ts`,
+- Metody: `methodMeta.ts` (Hole(s): Helix/Standard/Drill), `surfaceMethodMeta.ts`,
   `pocketMethodMeta.ts` (`POCKET_METHOD_LIST`) — płaskie rejestry z
   `generate`; Outline przez `outlineMeta.ts` + `lib/outline.ts`
   (metody ograniczone per kształt).

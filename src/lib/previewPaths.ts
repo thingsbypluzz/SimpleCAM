@@ -1,4 +1,5 @@
 import type { WizardParams } from '../types/wizard'
+import { buildDrillToolpath, drillOptions } from './drill'
 import { buildFacingToolpath } from './facing'
 import { buildHelixCircleToolpath, holeCircleOptions } from './helix'
 import { circleOutlineOptions } from './outlineCircle'
@@ -18,6 +19,10 @@ import { movePoints, type MoveKind, type Point3D, type Toolpath } from './toolpa
 export function operationToolpaths(params: WizardParams): Toolpath[] {
   switch (params.operation) {
     case 'holes': {
+      if (params.method === 'drill') {
+        const opts = drillOptions(params)
+        return resolvePoints(params.geometry).map((p) => buildDrillToolpath(p.x, p.y, opts))
+      }
       const opts = holeCircleOptions(params)
       const build = params.method === 'helix' ? buildHelixCircleToolpath : buildStandardCircleToolpath
       return resolvePoints(params.geometry).map((p) => build(p.x, p.y, opts))
