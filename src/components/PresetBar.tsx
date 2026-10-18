@@ -27,9 +27,6 @@ interface PresetBarProps {
   onToggleOverlaySlot: (id: PresetSlotId) => void
   onEditSlot: (id: PresetSlotId) => void
   onToggleOverlay: () => void
-  // The Header's own "stop editing" button — absent while it is hidden
-  // (BL-115).
-  onStopEditing?: () => void
 }
 
 // Preset Bar: slots [1]…[7] and the Overlay eye.
@@ -45,7 +42,6 @@ export function PresetBar({
   onToggleOverlaySlot,
   onEditSlot,
   onToggleOverlay,
-  onStopEditing,
 }: PresetBarProps) {
   const overlayEnabled = overlaySlots.size > 0
   const active = overlayEnabled || editingSlot !== null
@@ -283,26 +279,6 @@ export function PresetBar({
       >
         <EyeIcon className="h-5 w-5" />
       </button>
-      {onStopEditing && (
-        <button
-          type="button"
-          onClick={onStopEditing}
-          disabled={!editingSlot}
-          aria-label="Stop editing the preset"
-          aria-pressed={editingSlot !== null}
-          title={
-            editingSlot
-              ? `Editing preset [${editingSlot}] — click to stop auto-saving`
-              : 'Not editing — use the pencil on a preset to edit it'
-          }
-          className={[
-            'flex h-11 w-11 items-center justify-center rounded-md border transition',
-            editingSlot ? 'border-2 border-edit bg-edit-bg text-edit-fg shadow-[var(--glow-edit)]' : 'border-border text-value opacity-50',
-          ].join(' ')}
-        >
-          <PencilIcon className="h-5 w-5" />
-        </button>
-      )}
       {showHint && (
         <div
           role="status"

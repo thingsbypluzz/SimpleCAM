@@ -208,9 +208,8 @@ być wierny.
   rozbraja); każda poprawna zmiana zapisuje się od razu do slotu (tylko
   gdy `isWizardParamsValid`); napis "Auto-save Mode Enabled" (kolor błędu
   przy niepoprawnych parametrach). Edycję kończy ołówek na edytowanym
-  slocie; osobny przycisk ołówka w Header jest ukryty
-  (`SHOW_EDIT_BUTTON` w `App.tsx`, próba przed decyzją o usunięciu —
-  `BL-115`). Stan tylko w pamięci; edycja nie blokuje Generate.
+  slocie (Header nie ma osobnego przycisku). Stan tylko w pamięci; edycja
+  nie blokuje Generate.
 - **Overlay + edycja naraz:** niezależne — edycja nie dokłada presetu do
   nakładki. Edytowany preset jest rysowany z żywych parametrów wizarda
   jako żywy wzorzec (także gdy ma ptaszek); jego krawędzie są w

@@ -7,6 +7,28 @@ zgodne z [SemVer](https://semver.org/). Ten plik pozostaje głównym, czytelnym
 thingsbypluzz/SimpleCAM), ale to infrastruktura pod izolację pracy
 (branch/worktree per zadanie), nie zamiennik tego changeloga.
 
+## [0.56.1] — 2026-10-18
+
+### Usunięto
+
+- **Przycisk ołówka w Header** (`BL-115`). Od v0.50.0 był ukryty na próbę
+  (`SHOW_EDIT_BUTTON = false` w `App.tsx`); po próbie nie był potrzebny,
+  więc zniknął z kodu razem ze stałą i propem `onStopEditing` w
+  `PresetBar`. Edycję presetu włącza i kończy ołówek na slocie.
+  Na wypadek powrotu — co przycisk robił:
+  - stał w Preset Bar zaraz za okiem Overlay, kwadrat 44 × 44 px z ikoną
+    `PencilIcon`;
+  - tylko **kończył** edycję (`setEditingSlot(null)`) — nie włączał jej i
+    nie wybierał slotu;
+  - przy trwającej edycji: ramka 2 px w kolorze edycji (`border-edit`,
+    `bg-edit-bg`, `text-edit-fg`, poświata `--glow-edit`),
+    `aria-pressed="true"`, podpowiedź „Editing preset [N] — click to stop
+    auto-saving”;
+  - bez edycji: wyszarzony (`opacity-50`) i nieaktywny (`disabled`),
+    podpowiedź „Not editing — use the pencil on a preset to edit it”;
+  - `aria-label` „Stop editing the preset”.
+  Ostatni stan kodu z przyciskiem: commit `ab4a0dd` (v0.56.0).
+
 ## [0.56.0] — 2026-10-18
 
 ### Dodano

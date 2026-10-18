@@ -206,10 +206,6 @@ function useChromeTheme(themeId: ThemeId) {
   }, [themeId])
 }
 
-// BL-115: the Header's "stop editing" pencil button — hidden on trial. The
-// pencil badge on the edited preset slot ends editing just the same.
-const SHOW_EDIT_BUTTON: boolean = false
-
 function App() {
   const [initial] = useState(loadInitialState)
   const [activeStep, setActiveStep] = useState(initial.activeStep)
@@ -649,7 +645,6 @@ function App() {
       onToggleOverlaySlot={handleToggleOverlaySlot}
       onEditSlot={handleEditSlot}
       onToggleOverlay={handleToggleOverlay}
-      onStopEditing={SHOW_EDIT_BUTTON ? () => setEditingSlot(null) : undefined}
     />
   )
 

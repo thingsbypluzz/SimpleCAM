@@ -997,16 +997,13 @@ Waga z review w nawiasie kwadratowym.
   rysuje się obok presetów; wyłącznik w Settings dla osób pracujących na
   pojedynczych operacjach; relacja z `BL-112` (wczytanie zestawu) i
   `BL-113` (szablony — Overlay po wczytaniu).
-- **`BL-115`** *(Otwarty)* 🟢 — **Decyzja: usunąć na stałe przycisk
+- **`BL-115`** *(Zrealizowany, 2026-10-18)* 🟢 — **Usunięty przycisk
   ołówka z Header.** Zgłoszone 2026-10-07. Po `BL-107` edycję presetu
   włącza i wyłącza ołówek na slocie; osobny przycisk w Header tylko ją
-  kończył. Od v0.50.0 jest **ukryty na próbę** (`SHOW_EDIT_BUTTON = false`
-  w `App.tsx`, kod zostawiony) — użytkownik chce popracować bez niego i
-  sprawdzić, czy czegoś brakuje. Do decyzji po próbie: usunąć na stałe
-  (przycisk, stała, ikona w tym miejscu, opisy w `CLAUDE.md`) albo
-  przywrócić. Do sprawdzenia przy usuwaniu: czy bez przycisku widać, że
-  trwa edycja (zostają napis „Auto-save Mode Enabled”, ramka i ołówek na
-  slocie) i jak zakończyć edycję z klawiatury.
+  kończył. Od v0.50.0 był ukryty na próbę, w v0.56.1 usunięty z kodu po
+  próbie, w której niczego nie brakowało. Edycję nadal widać po napisie
+  „Auto-save Mode Enabled”, ramce i ołówku na slocie. Opis tego, co
+  przycisk robił (na wypadek powrotu) — `CHANGELOG.md`, wpis `[0.56.1]`.
 - **`BL-116`** *(Zrealizowany, 2026-10-08)* 🟢 — **Wyróżnienie
   edytowanego presetu w podglądzie.** Zgłoszone 2026-10-07: przy edycji
   presetu w Overlay trudno było wskazać, który element się zmienia. Po
