@@ -44,7 +44,8 @@ bez logowania, bez backendu, bez CAD-a.
 
 Sześć operacji (`WizardParams.operation`):
 
-- **Hole(s)** — okrągłe otwory; metody Helix / Standard Hole × wzorce
+- **Hole(s)** — okrągłe otwory; metody Helix / Standard Hole / Drill
+  (wiercenie wiertłem z krokiem i wycofaniem, otwór o średnicy wiertła) × wzorce
   Single / Rectangular Grid / Grid Centered (siatka Columns × Rows w
   zadanym rozstawie, domyślnie 2 × 2) / N-Holes on Circle / Custom List;
   opcjonalne mostki.

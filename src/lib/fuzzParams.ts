@@ -2,7 +2,7 @@
 // WizardParams per operation for property tests — gcodeInvariants.test.ts,
 // and one-off equivalence checks when refactoring an engine (BL-61).
 import { DEFAULT_MACHINE_SETTINGS, type Dialect, type MachineSettings } from '../types/machine'
-import { DEFAULT_WIZARD_PARAMS, type Point2D, type WizardParams } from '../types/wizard'
+import { DEFAULT_WIZARD_PARAMS, type MethodType, type Point2D, type WizardParams } from '../types/wizard'
 import { formatCustomPoints } from './customPoints'
 import { pocketMaxHelixRadius } from './validation'
 
@@ -74,7 +74,7 @@ function randomTabs(rng: Rng, totalDepth: number) {
   }
 }
 
-export function randomHoles(rng: Rng, method: 'helix' | 'standard'): WizardParams {
+export function randomHoles(rng: Rng, method: MethodType): WizardParams {
   const toolDiameter = rng.pick(TOOLS)
   const totalDepth = rng.range(0.5, 15, 1)
   const positioning = rng.pick(['single', 'grid', 'gridCentered', 'circle', 'custom'] as const)
@@ -106,6 +106,8 @@ export function randomHoles(rng: Rng, method: 'helix' | 'standard'): WizardParam
       offsetY: rng.range(-20, 20, 1),
       rampAngleDeg: rng.range(1, 15, 1),
       ...randomTabs(rng, totalDepth),
+      drillRetractMode: rng.pick(['full', 'chipBreak'] as const),
+      drillRetract: rng.range(0.1, 3, 1),
     },
   }
 }

@@ -1,8 +1,10 @@
 import type { WizardParams } from '../../types/wizard'
 import type { MachineSettings } from '../../types/machine'
 import { parseCustomPointsText } from '../../lib/customPoints'
+import { holeGeometry } from '../../lib/drill'
 import {
   isCircleHoleCountValid,
+  isDrillRetractValid,
   isHolesSizeValid,
   isTabCountValid,
   isTabHeightValid,
@@ -22,7 +24,7 @@ import { FieldRow, inputClass } from './FieldRow'
 import { gridCounts } from '../../lib/positioning'
 import { HintPopover } from './HintPopover'
 import { TextToggle } from './TextToggle'
-import { HOLE_BOTTOM_OPTIONS } from './toggleOptions'
+import { DRILL_RETRACT_OPTIONS, HOLE_BOTTOM_OPTIONS } from './toggleOptions'
 import { MethodPicker } from './MethodPicker'
 import { NumberInput } from './NumberInput'
 import { PickHeader } from './PickHeader'
@@ -45,9 +47,13 @@ interface Step2GeometryHolesProps {
 // Hole Count + Diameter + Depth, then Hole Diameter + Start Angle; Custom:
 // the list, then Hole Diameter + Depth; Single: just that pair, BL-93)
 // -> Tool Diameter -> Method -> Ramp + Pitch (Helix only, BL-80) -> Tabs ->
-// Offset X/Y.
+// Offset X/Y. Drill (BL-120): no Hole Diameter (the hole is as wide as the
+// drill), Drill Diameter without Flutes / fz, Retract + Retract mm in place
+// of Ramp, no Tabs.
 export function Step2GeometryHoles({ params, onChange, machine, toolDiameters, flutes, onFlutesChange }: Step2GeometryHolesProps) {
   const { geometry } = params
+  const isDrill = params.method === 'drill'
+  const cutGeometry = holeGeometry(params)
 
   const updateGeometry = (patch: Partial<WizardParams['geometry']>) =>
     onChange({ geometry: { ...geometry, ...patch } })
@@ -86,6 +92,7 @@ export function Step2GeometryHoles({ params, onChange, machine, toolDiameters, f
   const tabHeightField = useNumberField(geometry.tabHeight, (v) => updateGeometry({ tabHeight: v }))
   const tabWidthField = useNumberField(geometry.tabWidth, (v) => updateGeometry({ tabWidth: v }))
   const tabCountField = useNumberField(geometry.tabCount, (v) => updateGeometry({ tabCount: v }))
+  const drillRetractField = useNumberField(geometry.drillRetract, (v) => updateGeometry({ drillRetract: v }))
 
   // BL-66: the same conditions that show the errors below also mark the
   // fields they concern (aria-invalid -> error styling in inputClass).
@@ -94,8 +101,9 @@ export function Step2GeometryHoles({ params, onChange, machine, toolDiameters, f
   const gridShape = gridCounts(geometry)
   const gridHoleCount = gridShape.columns * gridShape.rows
   const customPointsInvalid = customParse.invalidLines.length > 0 || customParse.points.length === 0
-  const sizeInvalid = !isHolesSizeValid(geometry)
-  const toolInvalid = !isToolDiameterValid(geometry)
+  const sizeInvalid = !isHolesSizeValid(cutGeometry)
+  const toolInvalid = !isDrill && !isToolDiameterValid(geometry)
+  const drillRetractInvalid = !isDrillRetractValid(params)
   const tabHeightInvalid = !isTabHeightValid(geometry)
   const tabWidthInvalid = !isTabWidthValid(geometry)
   const tabCountInvalid = !isTabCountValid(geometry)
@@ -125,7 +133,7 @@ export function Step2GeometryHoles({ params, onChange, machine, toolDiameters, f
           min="0"
           max={machine.travelZ}
           className={inputClass}
-          aria-invalid={!(geometry.totalDepth > 0) || (geometry.tabsEnabled && geometry.tabHeight >= geometry.totalDepth)}
+          aria-invalid={!(geometry.totalDepth > 0) || (cutGeometry.tabsEnabled && geometry.tabHeight >= geometry.totalDepth)}
           {...totalDepthField}
         />
       </FieldRow>
@@ -140,6 +148,20 @@ export function Step2GeometryHoles({ params, onChange, machine, toolDiameters, f
       </span>
       <TextToggle options={HOLE_BOTTOM_OPTIONS} value={geometry.holeBottom} onChange={(v) => updateGeometry({ holeBottom: v })} />
     </div>
+  )
+  const toolSelect = (
+    <select
+      className={inputClass}
+      aria-invalid={toolInvalid}
+      value={geometry.toolDiameter}
+      onChange={(e) => updateGeometry({ toolDiameter: Number(e.target.value) })}
+    >
+      {resolveToolDiameterSelectOptions(toolDiameters, geometry.toolDiameter).map((opt) => (
+        <option key={opt.value} value={opt.value}>
+          {opt.label}
+        </option>
+      ))}
+    </select>
   )
   const sizeError = sizeInvalid && <p className="text-sm text-status-error">Dimensions and depth must be greater than 0.</p>
 
@@ -215,9 +237,11 @@ export function Step2GeometryHoles({ params, onChange, machine, toolDiameters, f
             </p>
           )}
           <div className="flex items-end gap-4">
-            <div className="min-w-0 flex-1">
-              <FieldRow label="Hole Diameter [mm]">{holeDiameterInput}</FieldRow>
-            </div>
+            {!isDrill && (
+              <div className="min-w-0 flex-1">
+                <FieldRow label="Hole Diameter [mm]">{holeDiameterInput}</FieldRow>
+              </div>
+            )}
             {bottomCell}
           </div>
           {sizeError}
@@ -260,9 +284,11 @@ export function Step2GeometryHoles({ params, onChange, machine, toolDiameters, f
             </p>
           )}
           <div className="flex items-end gap-4">
-            <div className="min-w-0 flex-1">
-              <FieldRow label="Hole Diameter [mm]">{holeDiameterInput}</FieldRow>
-            </div>
+            {!isDrill && (
+              <div className="min-w-0 flex-1">
+                <FieldRow label="Hole Diameter [mm]">{holeDiameterInput}</FieldRow>
+              </div>
+            )}
             <div className="min-w-0 flex-1">
               <FieldRow label="Start Angle [deg]">
                 <NumberInput type="number" step="1" className={inputClass} {...circleStartAngleField} />
@@ -300,9 +326,11 @@ export function Step2GeometryHoles({ params, onChange, machine, toolDiameters, f
       {!isGrid && !isCircle && (
         <div className="flex flex-col gap-4">
           <div className="flex items-end gap-4">
-            <div className="min-w-0 flex-1">
-              <FieldRow label="Hole Diameter [mm]">{holeDiameterInput}</FieldRow>
-            </div>
+            {!isDrill && (
+              <div className="min-w-0 flex-1">
+                <FieldRow label="Hole Diameter [mm]">{holeDiameterInput}</FieldRow>
+              </div>
+            )}
             {depthCell}
             {bottomCell}
           </div>
@@ -311,22 +339,15 @@ export function Step2GeometryHoles({ params, onChange, machine, toolDiameters, f
       )}
 
       <div className="flex flex-col gap-4">
-        <ToolChipLoad params={params} machine={machine} flutes={flutes} onFlutesChange={onFlutesChange}>
-          <FieldRow label="Tool Diam. [mm]">
-            <select
-              className={inputClass}
-              aria-invalid={toolInvalid}
-              value={geometry.toolDiameter}
-              onChange={(e) => updateGeometry({ toolDiameter: Number(e.target.value) })}
-            >
-              {resolveToolDiameterSelectOptions(toolDiameters, geometry.toolDiameter).map((opt) => (
-                <option key={opt.value} value={opt.value}>
-                  {opt.label}
-                </option>
-              ))}
-            </select>
-          </FieldRow>
-        </ToolChipLoad>
+        {isDrill ? (
+          // The drill's flutes and chip load would describe cutting
+          // sideways (Feedrate XY), which a drill never does.
+          <FieldRow label="Drill Diam. [mm]">{toolSelect}</FieldRow>
+        ) : (
+          <ToolChipLoad params={params} machine={machine} flutes={flutes} onFlutesChange={onFlutesChange}>
+            <FieldRow label="Tool Diam. [mm]">{toolSelect}</FieldRow>
+          </ToolChipLoad>
+        )}
         {toolInvalid && (
           <p className="text-sm text-status-error">
             Tool diameter must be smaller than the hole diameter.
@@ -341,80 +362,117 @@ export function Step2GeometryHoles({ params, onChange, machine, toolDiameters, f
 
       <RampAngleFields params={params} rampAngleDeg={geometry.rampAngleDeg} onChange={(v) => updateGeometry({ rampAngleDeg: v })} />
 
-      <div className="border-t border-border pt-4">
-        <Checkbox
-          checked={geometry.tabsEnabled}
-          onChange={(enabled) => {
-            // Checking the box always seeds height/width/count fresh
-            // from Settings > Tabs's "Default Tab Settings" — including
-            // on a re-check after unchecking, which does mean a custom
-            // edit made before unchecking is lost, not remembered. Kept
-            // deliberately simple: there's no clean way to tell "user
-            // customized this in-session" from "just showing whatever
-            // was last seeded" without new state to track it, and a
-            // predictable "always starts from your default" beats a
-            // half-remembered one.
-            updateGeometry(
-              enabled
-                ? {
-                    tabsEnabled: true,
-                    tabHeight: machine.defaultTabHeight,
-                    tabWidth: machine.defaultTabWidth,
-                    tabCount: machine.defaultTabCount,
-                  }
-                : { tabsEnabled: false },
-            )
-          }}
-          label="Enable Tabs"
-          className="mb-2 text-sm font-medium text-value"
-        >
-          <HintPopover text="Small uncut bridges near the bottom of the cut, so a through-hole's center plug stays attached to the stock instead of dropping free. Forces G1 interpolation (see Step 4)." />
-        </Checkbox>
-        {geometry.tabsEnabled && (
-          <div className="flex flex-col gap-4">
-            <div className="flex gap-4">
-              <div className="min-w-0 flex-1">
-                <FieldRow label="Height [mm]">
-                  <NumberInput type="number" step="0.1" min="0" className={inputClass} aria-invalid={tabHeightInvalid} {...tabHeightField} />
-                </FieldRow>
-              </div>
-              <div className="min-w-0 flex-1">
-                <FieldRow label="Width [mm]">
-                  <NumberInput type="number" step="0.1" min="0" className={inputClass} aria-invalid={tabWidthInvalid} {...tabWidthField} />
-                </FieldRow>
-              </div>
-              <div className="min-w-0 flex-1">
-                <FieldRow label="Tab Count">
-                  <NumberInput
-                    type="number"
-                    step="1"
-                    min="1"
-                    max={MAX_TAB_COUNT}
-                    className={inputClass}
-                    aria-invalid={tabCountInvalid || tabWidthInvalid}
-                    {...tabCountField}
-                  />
-                </FieldRow>
-              </div>
+      {isDrill && (
+        <div className="flex flex-col gap-1">
+          <div className="flex items-end gap-4">
+            <div className="flex shrink-0 flex-col gap-1">
+              <span className="text-sm font-medium text-value">Retract</span>
+              <TextToggle
+                options={DRILL_RETRACT_OPTIONS}
+                value={geometry.drillRetractMode}
+                onChange={(v) => updateGeometry({ drillRetractMode: v })}
+              />
             </div>
-            {tabHeightInvalid && (
-              <p className="text-sm text-status-error">
-                Tab height must be greater than 0 and less than Depth.
-              </p>
-            )}
-            {tabWidthInvalid && (
-              <p className="text-sm text-status-error">
-                Tab count × width can't reach the toolpath's full circumference.
-              </p>
-            )}
-            {tabCountInvalid && (
-              <p className="text-sm text-status-error">
-                Tab count must be a whole number from 1 to {MAX_TAB_COUNT}.
-              </p>
-            )}
+            <div className="min-w-0 flex-1">
+              <FieldRow
+                label="Retract [mm]"
+                hint="Chip Break: how far the drill backs off after each peck. Full Retract: after backing out to Start Z, the drill rapids back down to this far above the last peck's bottom and drills on from there. The Peck Depth is in Step 3."
+              >
+                <NumberInput
+                  type="number"
+                  step="0.1"
+                  min="0"
+                  className={inputClass}
+                  aria-invalid={drillRetractInvalid}
+                  {...drillRetractField}
+                />
+              </FieldRow>
+            </div>
           </div>
-        )}
-      </div>
+          {drillRetractInvalid && <p className="text-sm text-status-error">Retract must be greater than 0.</p>}
+          {/* The method's tooltip says it too, but touch has no tooltips. */}
+          <p className="text-sm text-muted">
+            Depth is to the drill tip — for a through hole add the tip length (about 0.3 × the drill diameter).
+          </p>
+        </div>
+      )}
+
+      {!isDrill && (
+        <div className="border-t border-border pt-4">
+          <Checkbox
+            checked={geometry.tabsEnabled}
+            onChange={(enabled) => {
+              // Checking the box always seeds height/width/count fresh
+              // from Settings > Tabs's "Default Tab Settings" — including
+              // on a re-check after unchecking, which does mean a custom
+              // edit made before unchecking is lost, not remembered. Kept
+              // deliberately simple: there's no clean way to tell "user
+              // customized this in-session" from "just showing whatever
+              // was last seeded" without new state to track it, and a
+              // predictable "always starts from your default" beats a
+              // half-remembered one.
+              updateGeometry(
+                enabled
+                  ? {
+                      tabsEnabled: true,
+                      tabHeight: machine.defaultTabHeight,
+                      tabWidth: machine.defaultTabWidth,
+                      tabCount: machine.defaultTabCount,
+                    }
+                  : { tabsEnabled: false },
+              )
+            }}
+            label="Enable Tabs"
+            className="mb-2 text-sm font-medium text-value"
+          >
+            <HintPopover text="Small uncut bridges near the bottom of the cut, so a through-hole's center plug stays attached to the stock instead of dropping free. Forces G1 interpolation (see Step 4)." />
+          </Checkbox>
+          {geometry.tabsEnabled && (
+            <div className="flex flex-col gap-4">
+              <div className="flex gap-4">
+                <div className="min-w-0 flex-1">
+                  <FieldRow label="Height [mm]">
+                    <NumberInput type="number" step="0.1" min="0" className={inputClass} aria-invalid={tabHeightInvalid} {...tabHeightField} />
+                  </FieldRow>
+                </div>
+                <div className="min-w-0 flex-1">
+                  <FieldRow label="Width [mm]">
+                    <NumberInput type="number" step="0.1" min="0" className={inputClass} aria-invalid={tabWidthInvalid} {...tabWidthField} />
+                  </FieldRow>
+                </div>
+                <div className="min-w-0 flex-1">
+                  <FieldRow label="Tab Count">
+                    <NumberInput
+                      type="number"
+                      step="1"
+                      min="1"
+                      max={MAX_TAB_COUNT}
+                      className={inputClass}
+                      aria-invalid={tabCountInvalid || tabWidthInvalid}
+                      {...tabCountField}
+                    />
+                  </FieldRow>
+                </div>
+              </div>
+              {tabHeightInvalid && (
+                <p className="text-sm text-status-error">
+                  Tab height must be greater than 0 and less than Depth.
+                </p>
+              )}
+              {tabWidthInvalid && (
+                <p className="text-sm text-status-error">
+                  Tab count × width can't reach the toolpath's full circumference.
+                </p>
+              )}
+              {tabCountInvalid && (
+                <p className="text-sm text-status-error">
+                  Tab count must be a whole number from 1 to {MAX_TAB_COUNT}.
+                </p>
+              )}
+            </div>
+          )}
+        </div>
+      )}
 
       <div className="border-t border-border pt-4">
         <span className="mb-2 block text-sm font-medium text-value">

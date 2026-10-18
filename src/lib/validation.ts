@@ -15,6 +15,7 @@ import type { ToolDiameterOption } from '../types/toolDiameters'
 import type { Engagement } from './feedCalc'
 import { gridCounts, MAX_CIRCLE_HOLE_COUNT, MAX_GRID_COUNT, MAX_GRID_HOLES, resolvePoints } from './positioning'
 import { parseCustomPointsText } from './customPoints'
+import { holeGeometry } from './drill'
 import { rectToolDimensions } from './outlineRectangleGeometry'
 import { circleOutlineOptions, circleOutlineRadiusAndDirection } from './outlineCircle'
 import { rectOutlineOptions } from './outlineRectangle'
@@ -103,6 +104,19 @@ export function isFeedrateXYValid(feeds: FeedsParams): boolean {
 
 export function isPlungeRateValid(feeds: FeedsParams): boolean {
   return feeds.plungeRate > 0
+}
+
+// Hole(s) Drill (BL-120): the drill only ever moves up and down, so
+// Feedrate XY never reaches the G-code — Step 3 hides it and Generate does
+// not check it.
+export function usesFeedrateXY(params: WizardParams): boolean {
+  return OPERATION_RULES[params.operation].usesFeedrateXY(params)
+}
+
+// Drill's Retract (the chip-break back-off, or the gap above the last
+// peck's bottom after a full retract) must move the drill at all.
+export function isDrillRetractValid(params: WizardParams): boolean {
+  return params.method !== 'drill' || params.geometry.drillRetract > 0
 }
 
 // BL-46: non-blocking by design — a negative Start Z is a legitimate way
@@ -940,7 +954,7 @@ export function isWizardParamsValid(params: WizardParams): boolean {
     isStepdownValid(params.feeds) &&
     isStartZValid(params.feeds) &&
     isSafeZValid(params.feeds) &&
-    isFeedrateXYValid(params.feeds) &&
+    (!usesFeedrateXY(params) || isFeedrateXYValid(params.feeds)) &&
     isPlungeRateValid(params.feeds) &&
     isStartZAboveCut(params) &&
     isPassCountWithinLimit(params)
@@ -970,6 +984,8 @@ interface OperationRules {
   // How the tool meets the material with the current method and width —
   // the Feedrate Calculator's model and Step 2's live chip load (BL-68).
   engagement: (params: WizardParams) => Engagement
+  // Whether Feedrate XY drives any move (not with Hole(s) Drill).
+  usesFeedrateXY: (params: WizardParams) => boolean
 }
 
 // Text (OP-4) validators. `fontReady` is false while the font file is
@@ -1028,24 +1044,28 @@ export function textFootprint(text: TextParams): { x: number; y: number } {
 export const OPERATION_RULES: Record<OperationType, OperationRules> = {
   holes: {
     totalDepth: (p) => p.geometry.totalDepth,
-    tabs: (p) => p.geometry,
+    // holeGeometry(): with Drill the hole is as wide as the drill (no
+    // tool-vs-hole check) and has no tabs.
+    tabs: (p) => holeGeometry(p),
     isValid: (p) =>
-      isToolDiameterValid(p.geometry) &&
-      isHolesSizeValid(p.geometry) &&
+      (p.method === 'drill' || isToolDiameterValid(p.geometry)) &&
+      isHolesSizeValid(holeGeometry(p)) &&
       isCircleHoleCountValid(p.geometry) &&
       isGridCountValid(p.geometry) &&
       isCustomPointsValid(p.geometry) &&
-      isTabHeightValid(p.geometry) &&
-      isTabWidthValid(p.geometry) &&
-      isTabCountValid(p.geometry) &&
+      isTabHeightValid(holeGeometry(p)) &&
+      isTabWidthValid(holeGeometry(p)) &&
+      isTabCountValid(holeGeometry(p)) &&
+      isDrillRetractValid(p) &&
       isRampAngleValid(p) &&
       isRampTurnCountWithinLimit(p),
-    footprint: (p) => patternSpan(p.geometry),
+    footprint: (p) => patternSpan(holeGeometry(p)),
     zSpan: (p) => zSpan(p.geometry, p.feeds),
     rampDescent: holesRampDescent,
     descentAngleDeg: (p) => rampDescentAngleDeg(holesRampDescent(p)),
     rampPathLength: (p) => holesRampDescent(p)?.pathLength ?? null,
     engagement: () => ({ kind: 'slot' }),
+    usesFeedrateXY: (p) => p.method !== 'drill',
   },
   outline: {
     totalDepth: (p) => p.outline.totalDepth,
@@ -1067,6 +1087,7 @@ export const OPERATION_RULES: Record<OperationType, OperationRules> = {
     descentAngleDeg: (p) => rampDescentAngleDeg(outlineRampDescent(p)),
     rampPathLength: (p) => outlineRampDescent(p)?.pathLength ?? null,
     engagement: () => ({ kind: 'slot' }),
+    usesFeedrateXY: () => true,
   },
   surface: {
     totalDepth: (p) => p.surface.totalDepth,
@@ -1085,6 +1106,7 @@ export const OPERATION_RULES: Record<OperationType, OperationRules> = {
     descentAngleDeg: (p) => (p.surface.zTransitionMode === 'helix' ? p.surface.rampAngleDeg : null),
     rampPathLength: (p) => (p.surface.zTransitionMode === 'helix' ? 2 * Math.PI * p.surface.helixRadius : null),
     engagement: (p) => ({ kind: 'stepover', percent: p.surface.stepoverPercent }),
+    usesFeedrateXY: () => true,
   },
   pocket: {
     totalDepth: (p) => p.pocket.totalDepth,
@@ -1119,6 +1141,7 @@ export const OPERATION_RULES: Record<OperationType, OperationRules> = {
       p.pocket.method === 'adaptive'
         ? { kind: 'optimalLoad', percent: p.pocket.optimalLoadPercent }
         : { kind: 'stepover', percent: p.pocket.stepoverPercent },
+    usesFeedrateXY: () => true,
   },
   facing: {
     totalDepth: (p) => p.facing.totalDepth,
@@ -1137,6 +1160,7 @@ export const OPERATION_RULES: Record<OperationType, OperationRules> = {
     descentAngleDeg: () => null,
     rampPathLength: () => null,
     engagement: (p) => ({ kind: 'stepover', percent: facingStepoverPercent(p.facing) }),
+    usesFeedrateXY: () => true,
   },
   text: {
     totalDepth: (p) => p.text.totalDepth,
@@ -1155,5 +1179,6 @@ export const OPERATION_RULES: Record<OperationType, OperationRules> = {
     // The tool cuts a groove its own width (the Feedrate Calculator is not
     // offered for Text).
     engagement: () => ({ kind: 'slot' }),
+    usesFeedrateXY: () => true,
   },
 }

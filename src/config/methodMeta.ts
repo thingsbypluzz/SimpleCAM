@@ -1,5 +1,6 @@
 import type { ComponentType } from 'react'
-import { HelixIcon, StandardHoleIcon } from '../components/icons'
+import { DrillIcon, HelixIcon, StandardHoleIcon } from '../components/icons'
+import { generateDrill } from '../lib/drill'
 import { generateHelix } from '../lib/helix'
 import { generateStandardHole } from '../lib/standardHole'
 import type { MachineSettings } from '../types/machine'
@@ -45,6 +46,19 @@ export const METHOD_META: Record<MethodType, MethodMeta> = {
       shortLabel: 'STEP',
     },
   },
+  drill: {
+    value: 'drill',
+    title: 'Drill',
+    shortLabel: 'Drill',
+    description:
+      'Pecking with a drill bit — straight down at the hole center by Peck Depth, back off, repeat to Depth. The hole is as wide as the drill. Depth is to the drill tip: for a through hole add the tip length (about 0.3 × the diameter for a 118° drill).',
+    Icon: DrillIcon,
+    generate: generateDrill,
+    stepdown: {
+      fieldLabel: 'Peck Depth [mm]',
+      shortLabel: 'PECK',
+    },
+  },
 }
 
-export const METHOD_LIST: MethodMeta[] = [METHOD_META.helix, METHOD_META.standard]
+export const METHOD_LIST: MethodMeta[] = [METHOD_META.helix, METHOD_META.standard, METHOD_META.drill]

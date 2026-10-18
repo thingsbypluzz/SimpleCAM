@@ -27,6 +27,13 @@
   `geometry.holeBottom`, tylko wygląd otworu w podglądach, podpowiedź
   mówi, że G-code się nie zmienia) →
   Tool Diameter → Method → Ramp + Pitch (tylko Helix) → Tabs → Offset.
+  Przy metodzie **Drill**: bez Hole Diameter (otwór ma średnicę wiertła),
+  „Drill Diam. [mm]” bez Flutes / fz, po Method wiersz **Retract: Full
+  Retract | Chip Break** + Retract [mm] (z Hint Button) i notka, że Depth
+  liczy się do czubka wiertła; bez Tabs. W Kroku 3 przy Drill nie ma
+  Feedrate XY ani kalkulatora (`usesFeedrateXY()`), Stepdown ma etykietę
+  „Peck Depth [mm]” (`METHOD_META.drill.stepdown`), a podsumowania Kroku 3
+  pokazują Plunge zamiast Feed.
   Outline: wymiary + Depth → (Lobed Circle: grupa Lobes — Count + Pitch
   Diameter, potem Lobe Diameter + Start) → Offset Mode (Lobed Circle: na
   prawo od niego toggle Lobes: Add | Subtract) → Tool Diameter →

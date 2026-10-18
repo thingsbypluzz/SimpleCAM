@@ -5,6 +5,7 @@ import { lobedCutLoop, lobedNominalLoop, lobedOnLineEdges, loopPolygon, translat
 import { onLineRectDimensions, rectCorners, rectToolDimensions } from './outlineRectangleGeometry'
 import { pocketCenter, pocketRectWallHalfDims } from './pocketGeometry'
 import { cellLoop, isLightenedShape, lightenedCells } from './pocketLightened'
+import { holeGeometry } from './drill'
 import { resolvePoints } from './positioning'
 
 // A closed outline in CNC (x, y) — a circle or a polygon.
@@ -297,7 +298,7 @@ function stockFeatures(params: WizardParams, grid: number, cutShape: boolean): S
       part: false,
     }
   }
-  const { geometry } = params
+  const geometry = holeGeometry(params)
   const radius = geometry.holeDiameter / 2
   return {
     islands: [],

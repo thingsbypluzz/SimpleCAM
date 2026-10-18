@@ -41,6 +41,18 @@ export function StandardHoleIcon({ className }: IconProps) {
   )
 }
 
+// Hole(s) Drill (BL-120): a twist drill above its hole.
+export function DrillIcon({ className }: IconProps) {
+  return (
+    <svg {...base} className={className}>
+      <path d="M10 2.5h4v10l-2 3.5-2-3.5v-10Z" />
+      <path d="M10 6l4 2M10 9.5l4 2" />
+      <path d="M6.5 19.5h11" />
+      <path d="M9 21.5h6" />
+    </svg>
+  )
+}
+
 export function BitIcon({ className }: IconProps) {
   return (
     <svg {...base} className={className}>

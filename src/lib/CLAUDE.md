@@ -53,7 +53,7 @@ Budowniczowie: `buildHelixCircleToolpath()`/`buildStandardCircleToolpath()`
 `buildPocketToolpath()`. Każdy startuje nad punktem wejścia na Safe Z i
 zaczyna od `zTo('rapid', startZ)`; końcowy retrakt robi `assembleProgram()`.
 
-## Hole(s) (`positioning.ts`, `helix.ts`, `standardHole.ts`, `tabs.ts`)
+## Hole(s) (`positioning.ts`, `helix.ts`, `standardHole.ts`, `drill.ts`, `tabs.ts`)
 
 - **Pozycjonowanie** (`resolvePoints()`): Single (0,0), Grid, Grid
   Centered, N-Holes on Circle (0° = +X, CCW; liczba przycięta do
@@ -82,6 +82,23 @@ zaczyna od `zTo('rapid', startZ)`; końcowy retrakt robi `assembleProgram()`.
   zawsze CCW (pod M3 wewnątrz otworu = climb). Opcje w
   `CircleToolpathOptions` (`holeCircleOptions()`), `appendFullTurn()`,
   G-code przez `circleToolpathGcode()`.
+- **Drill** (`drill.ts`): wiertło w środku otworu, w dół krokami po
+  Stepdown (w UI „Peck Depth”) od Start Z do `-totalDepth`, same `G0 Z` /
+  `G1 Z` (bez cykli G81/G83/G73 — GRBL i Marlin ich nie mają). Po każdym
+  kroku poza ostatnim, wg `geometry.drillRetractMode`: **Full Retract** —
+  `G0` na Start Z, potem `G0` na `drillRetract` nad dno poprzedniego
+  kroku; **Chip Break** — `G0` o `drillRetract` w górę. Cofnięcie nigdy
+  powyżej Start Z; krok ≥ głębokość = jedno wejście. Posuw = Plunge Rate;
+  Feedrate XY nie trafia do G-code (`usesFeedrateXY()` w walidacji —
+  Krok 3 go chowa, Generate go nie sprawdza). `buildDrillToolpath()`,
+  `drillOptions()`, `generateDrill()`.
+- **`holeGeometry(params)`** (`drill.ts`) — geometria, którą preset
+  faktycznie tnie: przy Drill średnica otworu = średnica wiertła i bez
+  mostków (zapisane Hole Diameter i mostki zostają w presecie dla innych
+  metod). Czytają ją walidacja, footprint, model materiału, oba podglądy
+  i etykiety w `operationMeta.ts` — nie `params.geometry` wprost.
+  Drill pomija `isToolDiameterValid()`; `isDrillRetractValid()` — Retract
+  > 0.
 - **Interpolacja:** przełącznik G2/G3 vs G1 w Kroku 4; mostki wymuszają G1
   dla całego programu (zapisana wartość nietknięta, tylko ignorowana).
   `interpolation.ts::forcedLinearReason()` — powód blokady (prostokąt
@@ -580,7 +597,7 @@ symulacji materiału.
 
 - `operationToolpaths(params)` — listy ruchów silnika dla zestawu
   parametrów: jedna na operację, dla Hole(s) jedna na otwór w kolejności
-  obróbki. Jedyne miejsce, które wybiera budowniczego ścieżki dla
+  obróbki (Drill — `buildDrillToolpath()`). Jedyne miejsce, które wybiera budowniczego ścieżki dla
   podglądów 3D (pełnego i uproszczonego).
 - `previewPolylines(params)` — to samo jako łamane (`Float32Array` x, y, z)
   pogrupowane po rodzaju ruchu, z łukami próbkowanymi przez `movePoints()`,

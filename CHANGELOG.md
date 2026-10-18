@@ -7,6 +7,36 @@ zgodne z [SemVer](https://semver.org/). Ten plik pozostaje głównym, czytelnym
 thingsbypluzz/SimpleCAM), ale to infrastruktura pod izolację pracy
 (branch/worktree per zadanie), nie zamiennik tego changeloga.
 
+## [0.56.0] — 2026-10-18
+
+### Dodano
+
+- **Hole(s): metoda Drill — wiercenie wiertłem** (`BL-120`). Trzecia
+  metoda obok Helix i Standard, działa z każdym wzorcem (Single, Grid,
+  N-Holes on Circle, Custom List). Wiertło wchodzi w osi otworu krokami
+  po Peck Depth (Stepdown z Kroku 3 pod nową etykietą) i po każdym kroku
+  się cofa:
+  - **Full Retract** (domyślnie) — wyjście na Start Z, żeby wyrzucić
+    wióry, i szybki powrót tuż nad dno poprzedniego kroku;
+  - **Chip Break** — krótkie cofnięcie, które łamie wiór; szybsze, ale
+    wióry zostają w otworze.
+  Odległość cofnięcia (albo zapas nad dnem przy Full Retract) ustawia
+  nowe pole Retract [mm] w Kroku 2, domyślnie 0,5 mm. Krok równy
+  głębokości lub większy daje jedno wejście bez kroków.
+  - Otwór ma średnicę wiertła, więc przy Drill znikają Hole Diameter,
+    mostki oraz Flutes / fz; Tool Diam. nazywa się Drill Diam. i bierze
+    średnice z tej samej listy Settings → Tool Diameters.
+  - Krok 3 nie pokazuje Feedrate XY ani Feedrate Calculator — wiertło
+    porusza się tylko w pionie, z posuwem Plunge Rate; podsumowania Kroku
+    3 pokazują Plunge zamiast Feed.
+  - Depth to głębokość czubka wiertła, jak w innych metodach; notka w
+    Kroku 2 przypomina o zapasie przy otworach przelotowych.
+  - G-code to zwykłe ruchy G0/G1 — GRBL i Marlin nie mają cykli wiercenia
+    (G81/G83/G73), więc cykl jest rozpisany ruch po ruchu.
+  - Podglądy rysują otwór o średnicy wiertła w tym samym modelu
+    materiału (przy Bottom = Closed z płaskim dnem), a ścieżkę jako
+    pionowe ruchy w środku otworu.
+
 ## [0.55.1] — 2026-10-13
 
 ### Naprawiono

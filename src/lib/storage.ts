@@ -2,6 +2,7 @@ import {
   DEFAULT_WIZARD_PARAMS,
   type CutDirection,
   type GeometryParams,
+  type DrillRetractMode,
   type HoleBottom,
   type InterpolationMode,
   type LobeMode,
@@ -62,7 +63,7 @@ function isOperationType(value: unknown): value is OperationType {
 }
 
 function isMethodType(value: unknown): value is MethodType {
-  return value === 'helix' || value === 'standard'
+  return value === 'helix' || value === 'standard' || value === 'drill'
 }
 
 // Single localStorage key holding every slot — one JSON blob, one read/write
@@ -159,6 +160,7 @@ function mergeSection<T extends object>(
 const GEOMETRY_GUARDS: Partial<Record<keyof GeometryParams, FieldGuard>> = {
   positioning: oneOf<PositioningMode>(['single', 'grid', 'gridCentered', 'circle', 'custom']),
   holeBottom: oneOf<HoleBottom>(['open', 'closed']),
+  drillRetractMode: oneOf<DrillRetractMode>(['full', 'chipBreak']),
   customPoints: isPointList,
 }
 
