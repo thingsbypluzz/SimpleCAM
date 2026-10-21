@@ -8,6 +8,7 @@ import { appendSectorAdaptiveLevel, planDonutAdaptive, planSectorAdaptive } from
 import { appendCellFinish, appendPocketFinish, pocketFinishMoves } from './pocketFinish'
 import { cellInscribed, isLightenedShape, lightenedCells, type LightCell } from './pocketLightened'
 import { appendCellSpiral } from './pocketCellSpiral'
+import { buildPocketContourToolpath, isPocketContour } from './pocketContour'
 import { appendCellAdaptiveLevel, planCellAdaptive } from './pocketCellAdaptive'
 import { engagementAngleFor } from './pocketAdaptiveMath'
 import { computeDepthPasses } from './depthPasses'
@@ -107,6 +108,9 @@ const LEVEL_CLEAR: Record<Exclude<PocketMethodType, 'adaptive'>, (pocket: Wizard
 export function buildPocketToolpath(params: WizardParams, method = params.pocket.method): Toolpath {
   const { pocket, feeds } = params
   const center = pocketCenter(pocket)
+
+  // Lightened with Bottom Open (BL-82): each cell's contour only.
+  if (isPocketContour(pocket)) return buildPocketContourToolpath(params)
 
   // Donut Adaptive (BL-110): its own entry and level loop.
   if (pocket.shape === 'donut' && method === 'adaptive') {

@@ -404,7 +404,7 @@ zaczyna od `zTo('rapid', startZ)`; końcowy retrakt robi `assembleProgram()`.
 - Walidacja: `isPocketLightParamsValid()` (N, M całkowite 1–20, Spokes
   3–24, Rib > 0, 0 ≤ Hub < Diameter),
   `isPocketLightCellsValid()` (każda komórka istnieje i
-  `lightCellRoughReach()` > 0), Helix Radius ≤ najmniejszy zasięg
+  `lightCellRoughReach()` > 0 — przy konturze bez Stock to Leave), Helix Radius ≤ najmniejszy zasięg
   (`pocketMinWallExtent()`), limity: pierścienie per komórka i **łączna**
   liczba obrotów helixa wejścia we wszystkich komórkach ≤ `MAX_PASSES`
   (`entryHelixTurnCount()`).
@@ -412,6 +412,47 @@ zaczyna od `zTo('rapid', startZ)`; końcowy retrakt robi `assembleProgram()`.
   — nominalne (`pocketVoids()`, ostre narożniki) albo po frezie, z
   narożnikami zaokrąglonymi promieniem freza; ściany i dna z tego samego
   modelu.
+
+### Kontur komórek — Bottom Open (`pocketContour.ts`)
+
+- `isPocketContour()` — `pocket.bottomOpen` przy kształcie Lightened
+  (inne kształty ignorują pole). Użytkownik deklaruje przelot: zamiast
+  wybierać komórkę, frez jedzie po jej konturze (Inside, d = promień
+  freza), środek wypada, trzymany mostkami. Zapisane Spiral / Adaptive,
+  Stepover, Z-Transition, Finishing zostają w presecie nieużywane.
+- Kontur: `cellLoopSides(cell, r)` (`pocketLightened.ts`) — pętla jako
+  boki (trójkąt: 3 krawędzie; wycinek: łuk zewnętrzny, bok przy szprysze,
+  łuk przy piaście albo wierzchołek, drugi bok). `cellContour()` obraca ją
+  tak, by startowała w narożniku na początku najdłuższego boku; CCW
+  (climb pod M3), zawsze G1. `null`, gdy frez się nie mieści.
+- **Mostki** (`pocket.tabsEnabled/tabHeight/tabWidth/tabCount`): Tab
+  Count na komórkę; `tabsPerSide()` — każdy kolejny mostek na bok z
+  największą długością na mostek (długość / (mostki + 1)), remis — wcześniejszy
+  bok. Na boku z m mostkami środki w (k + ½)/m długości (jak Outline
+  Rectangle), więc narożnik — i start okrążenia — nigdy nie wpada w
+  mostek, dopóki m × Tab Width < długość boku.
+- **Metody** (`contourMethod`): **Standard** — zejście pionowe o Stepdown
+  + płaskie okrążenie; **Ramp** — okrążenie schodzi o
+  `cappedRampPitch(obwód komórki, Stepdown, Ramp Angle)` proporcjonalnie
+  do długości, płaskie okrążenie na dnie. Z mostkami jak Outline: rampa do
+  góry pasa mostków, niżej płaskie przejścia co Stepdown z omijaniem
+  mostków (podniesienie / zejście pionowe). Ramp Angle — wspólne pole
+  Pocket.
+- Silnik (`buildPocketContourToolpath()`, wołany z `buildPocketToolpath()`):
+  komórki w kolejności `lightenedCells()`, każda do pełnej głębokości,
+  między nimi Safe Z i rapid do startu następnej.
+- Walidacja (`isPocketContourValid()` w `validation.ts`): rozmiar,
+  parametry komórek, `lightCellRoughReach()` = promień wpisany − r (bez
+  Stock to Leave), `isPocketTabHeightValid/CountValid/WidthValid()`
+  (`pocketContourTabsFit()` — bok po boku, błąd zamiast cichego
+  zmniejszania), Ramp Angle i limit okrążeń przez `rampDescent()` —
+  `pocketRampDescent()` z obwodu **najkrótszego** konturu
+  (`shortestContourLength()`). `OPERATION_RULES.pocket.tabs()` zwraca
+  mostki tylko przy konturze, więc działają `minStartZ()` i wymuszenie G1
+  (`forcedLinearReason()` → tabs). Zaangażowanie dla kalkulatora:
+  szczelina.
+- Model materiału: komórki jako pustki na wylot, bez dna (mostki
+  pomijane). `simplifyParams()` przywraca domyślne pola konturu.
 
 ### Adaptive (`pocketAdaptive.ts`, `pocketAdaptiveMath.ts`)
 

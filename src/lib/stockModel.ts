@@ -5,6 +5,7 @@ import { lobedCutLoop, lobedNominalLoop, lobedOnLineEdges, loopPolygon, translat
 import { onLineRectDimensions, rectCorners, rectToolDimensions } from './outlineRectangleGeometry'
 import { pocketCenter, pocketRectWallHalfDims } from './pocketGeometry'
 import { cellLoop, isLightenedShape, lightenedCells } from './pocketLightened'
+import { isPocketContour } from './pocketContour'
 import { holeGeometry } from './drill'
 import { resolvePoints } from './positioning'
 
@@ -238,11 +239,14 @@ function stockFeatures(params: WizardParams, grid: number, cutShape: boolean): S
         part: false,
       }
     }
+    // Bottom Open (BL-82): the cells go right through, no floor (tabs are
+    // ignored, like everywhere in the model).
+    const floor = !isPocketContour(params.pocket)
     return {
       islands: [],
       voids: (cutShape ? pocketCutVoids(params.pocket) : pocketVoids(params.pocket))
         .filter((v) => !isDegenerate(v))
-        .map((v) => ({ region: [ring(v)], depth, floor: true })),
+        .map((v) => ({ region: [ring(v)], depth, floor })),
       part: false,
     }
   }

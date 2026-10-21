@@ -63,7 +63,8 @@ Sześć operacji (`WizardParams.operation`):
   zewnątrz albo Adaptive dookoła pierścienia). Kieszenie odciążające
   **Rectangle Lightened** (X-grid N×M / Triangles N×M) i **Circle
   Lightened** (szprychy, piasta) — każda komórka osobna kieszeń, Spiral
-  albo Adaptive.
+  albo Adaptive; przy **Bottom Open** (przelot) tylko kontur każdej komórki
+  (Ramp / Standard, mostki na komórkę) — środek wypada.
 - **Facing** — obróbka jednego boku detalu (Bottom / Top / Left / Right
   Side): frez jedzie bokiem wzdłuż krawędzi, wchodzi i wychodzi w
   powietrzu, zbiera zadany naddatek dosuwami bocznymi co Stepover, poziom
@@ -156,8 +157,8 @@ być wierny.
   dotyczy Overlay (żywy wzorzec ukryty) ani zakładki G-Code.
 - **Materiał w podglądach** — jeden model (`lib/stockModel.ts`) dla
   żywego wzorca i dla wszystkich presetów w Overlay; 2D i 3D rysują tę samą
-  geometrię. Pustki (otwór, Outline Inside, pas On-line) wycięte na wylot,
-  Pocket ma dno na swojej głębokości; otwór Hole(s) z przełącznikiem
+  geometrię. Pustki (otwór, Outline Inside, pas On-line, komórki Pocket z
+  Bottom Open) wycięte na wylot, Pocket ma dno na swojej głębokości; otwór Hole(s) z przełącznikiem
   Bottom = Closed też dostaje dno (tylko wygląd, G-code bez zmian). Bazą jest arkusz materiału, a gdy
   któryś preset to Outline Outside — suma wysp (część), z której wycinane
   są pustki pozostałych presetów. Surface, Facing i Text poza modelem:
@@ -315,7 +316,7 @@ src/
     helix.ts, standardHole.ts, tabs.ts     Hole(s) i Outline Circle, mostki
     outline.ts, outlineCircle.ts, outlineRectangle*.ts, outlineLobed*.ts   Outline
     surface*.ts                            Surface
-    pocket*.ts                             Pocket (Spiral, Adaptive, Lightened, wejście Z)
+    pocket*.ts                             Pocket (Spiral, Adaptive, Lightened, kontur Bottom Open, wejście Z)
     facing*.ts                             Facing
     text.ts, textLayout.ts, textFont.ts    Text (silnik, układ napisu, parser fontów SVG)
     depthPasses.ts, interpolation.ts, format.ts

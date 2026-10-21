@@ -75,6 +75,13 @@ function simplifyPocket(pocket: PocketParams, feedrateXY: number): PocketParams 
     finishingEnabled: false,
     stockToLeave: D.pocket.stockToLeave,
     finishFeed: D.pocket.finishFeed,
+    // Bottom Open (BL-82) belongs to the Lightened shapes Simple hides.
+    bottomOpen: D.pocket.bottomOpen,
+    contourMethod: D.pocket.contourMethod,
+    tabsEnabled: D.pocket.tabsEnabled,
+    tabHeight: D.pocket.tabHeight,
+    tabWidth: D.pocket.tabWidth,
+    tabCount: D.pocket.tabCount,
   }
   return { ...next, helixRadius: defaultPocketHelixRadius(next) }
 }

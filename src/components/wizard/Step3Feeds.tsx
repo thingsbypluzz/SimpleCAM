@@ -31,6 +31,7 @@ import { InfoNote } from './InfoNote'
 import { NumberInput } from './NumberInput'
 import { useNumberField } from './useNumberField'
 import { useSimpleMode } from '../uiModeContext'
+import { isPocketContour } from '../../lib/pocketContour'
 
 interface Step3FeedsProps {
   params: WizardParams
@@ -50,8 +51,11 @@ interface Step3FeedsProps {
 export function Step3Feeds({ params, onChange, machine, stepdownLabel, onOpenCalculator, onSaveMachine }: Step3FeedsProps) {
   const { feeds, pocket, facing } = params
   const isFacing = params.operation === 'facing'
-  const isPocketAdaptive = params.operation === 'pocket' && pocket.method === 'adaptive'
-  const isPocketFinishing = params.operation === 'pocket' && pocket.finishingEnabled
+  // Bottom Open (BL-82): the contour has neither linking moves nor a
+  // finishing lap.
+  const pocketContour = isPocketContour(pocket)
+  const isPocketAdaptive = params.operation === 'pocket' && !pocketContour && pocket.method === 'adaptive'
+  const isPocketFinishing = params.operation === 'pocket' && !pocketContour && pocket.finishingEnabled
   const showFeedrateXY = usesFeedrateXY(params)
   // BL-103: Simple hides Spindle (set in Settings → Machine), the Feedrate
   // Calculator, Linking Feed and Start Z — the last two hold their defaults.

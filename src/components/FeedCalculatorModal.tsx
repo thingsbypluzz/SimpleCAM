@@ -16,6 +16,7 @@ import { isValidFluteCount, MAX_FLUTES, type FeedCalcSettings } from '../lib/fee
 import { fmt } from '../lib/format'
 import { resolveToolDiameterSelectOptions } from '../lib/toolDiameterOptions'
 import { engagementAngleFor } from '../lib/pocketAdaptiveMath'
+import { isPocketContour } from '../lib/pocketContour'
 import {
   MAX_RECOMMENDED_DESCENT_DEG,
   MAX_RECOMMENDED_TURNS_PER_STEPDOWN,
@@ -121,7 +122,8 @@ export function FeedCalculatorModal({ params, machine, settings, toolDiameters, 
   // Pocket Finishing Pass (BL-78): Stock to Leave from the material table,
   // and the finish feed for the stock in effect (suggested when taken,
   // otherwise the current one) — like the width above.
-  const isFinishing = params.operation === 'pocket' && draft.pocket.finishingEnabled
+  // Not with Bottom Open (BL-82): the contour has no finishing lap.
+  const isFinishing = params.operation === 'pocket' && draft.pocket.finishingEnabled && !isPocketContour(draft.pocket)
   const suggestedStock = suggestedFinishStock(material, toolDiameter)
   const stockInEffect = isFinishing ? (checks.finishStock ? suggestedStock : draft.pocket.stockToLeave) : null
 

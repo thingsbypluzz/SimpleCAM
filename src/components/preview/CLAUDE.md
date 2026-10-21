@@ -32,7 +32,10 @@
   obrócony o kąt startu przejścia (Tab Start). Lobed Circle
   (`drawOutlineLobedGeometry()`): krawędzie materiału (obrys nominalny
   albo dwie krawędzie On-line) i pętla ścieżki z tych samych próbek i
-  zakresów mostków, których używa silnik.
+  zakresów mostków, których używa silnik. Pocket z Bottom Open
+  (`drawContourLoops()`): kontur każdej komórki z `pocketContours()`, ciągły
+  z mostkami przerywanymi, kropka w punkcie startu okrążenia; z listy ruchów
+  (`drawToolpathMoves(…, skipCuts)`) tylko przejazdy między komórkami.
 - `camera2d.ts` — czysta matematyka kamery (`Camera2D = { scale, centerX,
   centerY }`): `computeFitCamera()`, `zoomAt()`, `panBy()`, `gestureCamera()`,
   `worldToScreen()`/`screenToWorld()`, `clampScale()`.

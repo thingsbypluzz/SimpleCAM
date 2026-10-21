@@ -547,13 +547,88 @@ faktycznym.
   tylko dla metod z helixem albo rampą (także Adaptive), przy małym
   promieniu kąt podniesiony do limitu 10 obrotów na Stepdown (najwyżej
   10°). Pełny opis: `CHANGELOG.md`, `[0.39.0]`.
-- **`BL-82`** *(Otwarty)* 🟠 — **Outline po trójkącie / wycinku
-  (przelotowe okna).** Z sesji `/grill-me` `OP-6` (2026-09-30): Lightening
+- **`BL-82`** *(W trakcie — wdrożone w v0.59.0, do sprawdzenia na maszynie)* 🟠 — **Kontur komórek Lightened przy przelocie
+  (Pocket, Bottom Open).** *Pierwotnie: „Outline po trójkącie / wycinku
+  (przelotowe okna)”.* Z sesji `/grill-me` `OP-6` (2026-09-30): Lightening
   Pocket zawsze wybiera całą komórkę, a przy cięciu na wylot
   oszczędniejszy byłby sam kontur Inside po trójkącie/wycinku (środek
   wypada, potrzebne mostki). Nowe kształty Outline reużywające geometrię
   komórek `OP-6` (te same układy X-grid/Triangles/Spokes), albo tryb
   „Contour only” w kształtach Lightened. Do ustalenia po etapie 1 `OP-6`.
+
+  **Ustalenia z rozmowy (2026-10-21):**
+  - Miejsce: **Pocket, nie Outline** — odciążenie to jedna cecha detalu, a
+    wybór „zbierać komórkę czy wyciąć kontur” zależy tylko od tego, czy
+    kieszeń idzie na przelot; rozbijanie jej na dwie operacje byłoby
+    sztuczne. Nazwy kształtów bez zmian (sprawa wtórna).
+  - Przełącznik **Bottom Open: On | Off** (domyślnie Off) w kształtach
+    Lightened. On = użytkownik deklaruje przelot — aplikacja nie zna
+    grubości materiału, więc to jedyne źródło tej wiedzy (bez ostrzeżeń o
+    „niepełnej głębokości”). Przy On metoda przechodzi na **Contour**:
+    frez jedzie po konturze każdej komórki (Inside), do wyboru **Standard
+    albo Ramp** (jak w Outline) zamiast Spiral / Adaptive.
+  - Zakres: tylko Rectangle Lightened i Circle Lightened (prostokąt i
+    okrąg mają Outline Inside).
+  - W Hole(s) Bottom Open zmienia tylko podgląd, tu także G-code — do
+    powiedzenia w hincie przy przełączniku.
+
+  **Wdrożone w v0.59.0** (opis: `CHANGELOG.md`, mechanizm:
+  `src/lib/CLAUDE.md` → „Kontur komórek — Bottom Open”). Odstępstwo od
+  ustaleń poniżej: m mostków na boku stoi w (k + ½)/m jego długości (jak
+  Outline Rectangle), nie w k/(m + 1) — tylko wtedy warunek walidacji „m ×
+  Tab Width < długość boku” gwarantuje, że mostki nie zachodzą na siebie
+  ani na narożnik. Przykład z sesji „N = 6 → po dwa na boku” był błędny:
+  reguła daje 3 / 2 / 1 (40/3 ≈ 13,3 > 25/2).
+
+  **Ustalenia z `/grill-me` (2026-10-21):**
+  - **Mostki** włączają się same przy Bottom Open = On (da się je
+    wyłączyć). Tab Count = łączna liczba mostków **na komórkę**. Rozkład
+    po bokach konturu ścieżki (proste i łuki): każdy kolejny mostek na bok
+    z największą długością na mostek (długość / (mostki na nim + 1)), na
+    boku równo (1 — środek, 2 — 1/3 i 2/3…); pierwszy więc na środku
+    najdłuższego boku, nigdy w narożniku; remis — stała kolejność boków.
+    Domyślne N / wysokość / szerokość z Settings → Tabs (wpisywane, gdy
+    mostki były wyłączone — jak checkbox w Outline).
+  - **Wejście i metody** jak Outline Rectangle: start okrążenia w
+    narożniku na początku najdłuższego boku; **Standard** — zejście
+    pionowe o Stepdown + płaskie okrążenie; **Ramp** — okrążenie schodzi
+    o min(Stepdown, obwód × tan(Ramp Angle)) rozłożone na boki
+    proporcjonalnie do długości, płaskie okrążenie na dnie; z mostkami
+    spirala do góry pasa mostków, niżej płaskie przejścia co Stepdown z
+    omijaniem mostków. Ramp Angle — istniejące pole Pocket (2°).
+    Domyślnie **Ramp**.
+  - **Kierunek** zawsze CCW (climb), bez przełącznika. Komórki wężem
+    (`lightenedCellsOrNull()`), **komórka po komórce** do pełnej
+    głębokości, między nimi Safe Z.
+  - **Pola przy On** — Krok 2: Bottom Open w wierszu Total Depth, Method
+    **Ramp | Standard** zamiast Spiral | Adaptive + Direction, Ramp [°] +
+    Pitch przy Ramp, Enable Tabs + Height / Width / Count. Chowane:
+    Stepover z Engagement, Ramp Length, Optimal Load, Direction,
+    Z-Transition, Helix Radius, Finishing Pass. Krok 3 chowa Linking Feed
+    i Finish Feed. Schowane pola zostają w presecie (Off przywraca
+    poprzednią kieszeń).
+  - **Bez Finishing** przy konturze.
+  - **Walidacja** (blokuje Generate): promień okręgu wpisanego komórki >
+    promień freza; na boku z m mostkami m × Tab Width < długość boku
+    ścieżki (błąd zamiast cichego zmniejszania liczby mostków); 0 < Tab
+    Height < Total Depth, Tab Count całkowite 1–20; Ramp — limit obrotów
+    i ostrzeżenie o kącie jak Outline.
+  - **Feedrate Calculator:** zaangażowanie = szczelina (Stepdown D ×
+    `ap.slot`); bez wierszy Stepover / Optimal Load / Linking / Finish;
+    Ramp Angle przy Ramp, limit obrotów z obwodu najkrótszego konturu.
+  - **Podgląd:** komórki jako pustki na wylot bez dna (kształt po frezie
+    jak dziś), mostki w modelu materiału pomijane; 3D z listy ruchów; 2D
+    — mostki linią przerywaną (`TAB_DASH`) na krawędzi komórki.
+  - **Dane:** `pocket.bottomOpen` (false), `pocket.contourMethod`
+    (`'ramp' | 'standard'`, `'ramp'`), `pocket.tabsEnabled` / `tabHeight`
+    / `tabWidth` / `tabCount`; stare presety i projekty → domyślne, bez
+    podbijania formatu. Inny kształt Pocket — Bottom Open ignorowany (jak
+    Hole Diameter przy Drill). Mostki wymuszają G1
+    (`forcedLinearReason()` → tabs). `simplifyParams()` zeruje
+    `bottomOpen`. `presetLabel()` — dopisek „Contour”.
+  - Reużycie: `cellLoop(cell, r)` (`lib/pocketLightened.ts`), mostki i
+    rampa po pętli jak `appendTabbedLap()` (`outlineLobed.ts`) / `rampLap`
+    (`outlineRectangle.ts`).
 - **`BL-83`** *(Zrealizowany, 2026-10-01)* 🔴 — **Adaptive dla kształtów Lightened (etap 2
   `OP-6`).** Etap 1 wybiera komórki tylko metodą Spiral (offset). Adaptive
   liczy stałe zaangażowanie analitycznie wyłącznie dla okręgu i

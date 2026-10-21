@@ -61,6 +61,8 @@ import {
 import { cellAdaptiveExceedsLimits, planCellAdaptive } from './pocketCellAdaptive'
 import { planDonutAdaptive, planSectorAdaptive, sectorAdaptiveExceedsLimits } from './pocketSectorAdaptive'
 import { adaptiveExceedsLimits } from './pocketAdaptive'
+import { isPocketContour, pocketContourTabsFit, shortestContourLength } from './pocketContour'
+import { cappedRampPitch } from './rampPitch'
 
 // Strict (BL-49): a tool exactly as wide as the hole leaves a zero-radius
 // toolpath — `G2/G3 … I0 J0` arcs, or in G1 mode a vertical plunge at
@@ -142,7 +144,8 @@ export function activeTotalDepth(params: WizardParams): number {
 // floor, or — with tabs on — the top of the tab band, since the tabbed
 // passes step down from there (a Start Z already inside the band made them
 // step down from Start Z instead and overshoot the floor, found by the
-// BL-62 invariant test). Holes and Outline are the only operations with tabs.
+// BL-62 invariant test). Holes, Outline and Pocket's Bottom Open contour
+// (BL-82) are the only ones with tabs.
 export function minStartZ(params: WizardParams): number {
   const floor = -activeTotalDepth(params)
   const tabs = OPERATION_RULES[params.operation].tabs(params)
@@ -434,6 +437,8 @@ export function isPocketLightParamsValid(pocket: PocketParams): boolean {
 // How far a cell's center lies inside its roughing wall (tool radius plus
 // Stock to Leave in from the cell's edge) — the room its rings grow into.
 export function lightCellRoughReach(pocket: PocketParams, cell: LightCell): number {
+  // Bottom Open (BL-82): only the contour is cut — the tool just has to fit.
+  if (isPocketContour(pocket)) return cellInscribed(cell).radius - pocket.toolDiameter / 2
   return cellInscribed(cell).radius - pocket.toolDiameter / 2 - pocketStockToLeave(pocket)
 }
 
@@ -815,7 +820,7 @@ export function isPocketLinkingFeedValid(pocket: PocketParams): boolean {
 // below one tool diameter leaves Adaptive's main benefit — deep, light
 // passes — unused.
 export function isPocketHelixRadiusSmall(pocket: PocketParams): boolean {
-  return pocket.method === 'adaptive' && pocket.helixRadius > 0 && pocket.helixRadius < pocket.toolDiameter * 0.25
+  return !isPocketContour(pocket) && pocket.method === 'adaptive' && pocket.helixRadius > 0 && pocket.helixRadius < pocket.toolDiameter * 0.25
 }
 
 // What the Step 3 hint's Apply button sets Stepdown to — mid-range of the
@@ -825,7 +830,7 @@ export function suggestedAdaptiveStepdown(pocket: PocketParams): number {
 }
 
 export function isAdaptiveStepdownShallow(pocket: PocketParams, stepdown: number): boolean {
-  return pocket.method === 'adaptive' && stepdown > 0 && stepdown < pocket.toolDiameter
+  return !isPocketContour(pocket) && pocket.method === 'adaptive' && stepdown > 0 && stepdown < pocket.toolDiameter
 }
 
 // The roughing wall's nearest distance from the pocket's own center —
@@ -966,6 +971,49 @@ export function isWizardParamsValid(params: WizardParams): boolean {
 // OperationType, so a new operation doesn't type-check until it fills in
 // every entry. UI-side counterparts (labels, icons, generate) live in
 // config/operationMeta.ts; this one stays free of React/config imports.
+// Bottom Open (BL-82) contour tabs — same rules as Outline's, with Tab
+// Count per cell and the width checked side by side (pocketContourTabsFit()).
+export function isPocketTabHeightValid(pocket: PocketParams): boolean {
+  return !isPocketContour(pocket) || !pocket.tabsEnabled || (pocket.tabHeight > 0 && pocket.tabHeight < pocket.totalDepth)
+}
+
+export function isPocketTabCountValid(pocket: PocketParams): boolean {
+  return !isPocketContour(pocket) || !pocket.tabsEnabled || isValidTabCount(pocket.tabCount)
+}
+
+export function isPocketTabWidthValid(pocket: PocketParams): boolean {
+  if (!isPocketContour(pocket) || !pocket.tabsEnabled) return true
+  return pocket.tabWidth > 0 && isValidTabCount(pocket.tabCount) && pocketContourTabsFit(pocket)
+}
+
+// The contour Ramp of the shortest cell — the steepest one.
+function pocketRampDescent(params: WizardParams): RampDescent | null {
+  const { pocket, feeds } = params
+  if (!isPocketContour(pocket) || pocket.contourMethod !== 'ramp') return null
+  const pathLength = shortestContourLength(pocket)
+  return {
+    unit: 'lap',
+    pathLength,
+    pitch: cappedRampPitch(pathLength, feeds.stepdown, pocket.rampAngleDeg),
+    stepdown: feeds.stepdown,
+    depth: descentFromStartZ(params),
+    rampAngleDeg: pocket.rampAngleDeg,
+  }
+}
+
+function isPocketContourValid(p: WizardParams): boolean {
+  return (
+    isPocketSizeValid(p.pocket) &&
+    isPocketLightParamsValid(p.pocket) &&
+    isPocketLightCellsValid(p.pocket) &&
+    isPocketTabHeightValid(p.pocket) &&
+    isPocketTabCountValid(p.pocket) &&
+    isPocketTabWidthValid(p.pocket) &&
+    isRampAngleValid(p) &&
+    isRampTurnCountWithinLimit(p)
+  )
+}
+
 interface OperationRules {
   totalDepth: (params: WizardParams) => number
   // The operation's tab settings, or null for operations without tabs.
@@ -1110,9 +1158,11 @@ export const OPERATION_RULES: Record<OperationType, OperationRules> = {
   },
   pocket: {
     totalDepth: (p) => p.pocket.totalDepth,
-    tabs: () => null,
+    tabs: (p) => (isPocketContour(p.pocket) ? p.pocket : null),
     isValid: (p) =>
-      isPocketToolDiameterValid(p.pocket) &&
+      isPocketContour(p.pocket)
+        ? isPocketContourValid(p)
+        : isPocketToolDiameterValid(p.pocket) &&
       isPocketSizeValid(p.pocket) &&
       isPocketStepoverValid(p.pocket) &&
       isPocketRampLengthValid(p.pocket) &&
@@ -1127,18 +1177,28 @@ export const OPERATION_RULES: Record<OperationType, OperationRules> = {
       isPocketToolpathWithinLimits(p),
     footprint: (p) => pocketFootprint(p.pocket),
     zSpan: (p) => pocketZSpan(p.pocket, p.feeds),
-    rampDescent: () => null,
-    descentAngleDeg: (p) => (effectivePocketZTransitionMode(p.pocket) === 'helix' ? p.pocket.rampAngleDeg : null),
+    rampDescent: pocketRampDescent,
+    descentAngleDeg: (p) =>
+      isPocketContour(p.pocket)
+        ? rampDescentAngleDeg(pocketRampDescent(p))
+        : effectivePocketZTransitionMode(p.pocket) === 'helix'
+          ? p.pocket.rampAngleDeg
+          : null,
     rampPathLength: (p) =>
-      effectivePocketZTransitionMode(p.pocket) !== 'helix'
+      isPocketContour(p.pocket)
+        ? (pocketRampDescent(p)?.pathLength ?? null)
+        : effectivePocketZTransitionMode(p.pocket) !== 'helix'
         ? null
         : 2 *
           Math.PI *
           (p.pocket.shape === 'donut' && p.pocket.method !== 'adaptive'
             ? Math.max(0, pocketRoughDonutWalls(p.pocket).inner)
             : p.pocket.helixRadius),
+    // Bottom Open: the contour is a slot, like Outline.
     engagement: (p) =>
-      p.pocket.method === 'adaptive'
+      isPocketContour(p.pocket)
+        ? { kind: 'slot' }
+        : p.pocket.method === 'adaptive'
         ? { kind: 'optimalLoad', percent: p.pocket.optimalLoadPercent }
         : { kind: 'stepover', percent: p.pocket.stepoverPercent },
     usesFeedrateXY: () => true,

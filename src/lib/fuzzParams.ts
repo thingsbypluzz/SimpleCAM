@@ -340,3 +340,20 @@ export function randomPocketLightenedAdaptive(rng: Rng): WizardParams {
   const helixRadius = Number((Math.max(0, pocketMaxHelixRadius(pocket)) * rng.range(0.3, 1, 2)).toFixed(3))
   return { ...base, pocket: { ...pocket, helixRadius } }
 }
+
+// Lightened with Bottom Open (BL-82): each cell's contour, Ramp or Standard,
+// tabs on about half the samples (sizes kept small so most fit their sides).
+export function randomPocketContour(rng: Rng): WizardParams {
+  const base = randomPocketLightened(rng)
+  const tabsEnabled = rng.pick([false, true])
+  const pocket = {
+    ...base.pocket,
+    bottomOpen: true,
+    contourMethod: rng.pick(['ramp', 'standard'] as const),
+    tabsEnabled,
+    tabHeight: Number((base.pocket.totalDepth * rng.range(0.1, 0.9, 2)).toFixed(2)),
+    tabWidth: rng.range(0.5, 4, 1),
+    tabCount: rng.int(1, 4),
+  }
+  return { ...base, pocket }
+}

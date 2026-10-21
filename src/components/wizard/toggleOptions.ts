@@ -94,6 +94,12 @@ export const HOLE_BOTTOM_OPTIONS: readonly TextToggleOption<HoleBottom>[] = [
   { value: 'closed', label: 'Off', title: 'Drawn with a floor at its Depth' },
 ]
 
+// Pocket Lightened (BL-82): Bottom Open cuts each cell's contour only.
+export const POCKET_BOTTOM_OPTIONS: readonly TextToggleOption<'open' | 'closed'>[] = [
+  { value: 'open', label: 'On', title: "Cut through: each cell's contour only, the middle drops out" },
+  { value: 'closed', label: 'Off', title: 'Clear each cell down to its Depth' },
+]
+
 // Hole(s) Drill (BL-120).
 export const DRILL_RETRACT_OPTIONS: readonly TextToggleOption<DrillRetractMode>[] = [
   { value: 'full', label: 'Full Retract', title: 'After each peck the drill backs out to Start Z, clearing the chips' },

@@ -54,7 +54,16 @@
   Optimal Load albo Stepover + Ramp Length (Spiral, pod wierszem odczyt
   Engagement) → Z-Transition + Helix Radius + Ramp Angle
   (jeden wiersz) → Finishing Pass + Stock to Leave (jeden wiersz) →
-  Offset. Facing: Length + Remove + Depth → Origin Along + Origin Across →
+  Offset. Lightened ma w wierszu Depth przełącznik **Bottom Open: On |
+  Off** (`POCKET_BOTTOM_OPTIONS`; na telefonie w osobnym wierszu); przy On
+  (kontur komórek, `isPocketContour()`): Method to **Ramp | Standard**
+  konturu (`PocketMethodPicker` przełącza listę, pisze `contourMethod`),
+  pod nim `RampAngleFields` (Ramp [°] + Pitch, tylko Ramp), zamiast
+  Stepover / Optimal Load, Z-Transition i Finishing — Enable Tabs z
+  Height / Width / „Per Cell” (błąd, gdy mostki nie mieszczą się na
+  bokach). Włączenie Bottom Open włącza mostki z rozmiarami z Settings →
+  Tabs, tylko gdy były wyłączone. Krok 3 chowa wtedy Linking Feed i Finish
+  Feed. Facing: Length + Remove + Depth → Origin Along + Origin Across →
   Tool Diameter → Stepover mm + % (oba edytowalne, zapisywane mm; przy
   etykiecie liczba przejść) → Direction → Lead + Clearance → Offset.
   Text (`Step2GeometryText.tsx`): pole tekstu (własny szkic, zatwierdzany

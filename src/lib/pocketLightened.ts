@@ -210,41 +210,53 @@ function sectorInradius(c: SectorCell): { center: Point2D; radius: number } {
   return { center: { x: c.origin.x + rho * Math.cos(bis), y: c.origin.y + rho * Math.sin(bis) }, radius: Math.max(0, radius) }
 }
 
-function sectorLoop(c: SectorCell, d: number): Point2D[] {
+// The loop at distance d as its sides, in loop order, each side's last point
+// the next one's first: the outer arc, the side along the second spoke, the
+// hub arc (when the loop reaches it) and the side along the first spoke.
+// Null when degenerate (d at or past the inradius).
+function sectorSides(c: SectorCell, d: number): Point2D[][] | null {
   const rIn = c.rIn + d
   const rOut = c.rOut - d
   const s = c.s + d
   const at = (r: number, a: number) => ({ x: c.origin.x + r * Math.cos(a), y: c.origin.y + r * Math.sin(a) })
   const apex = sectorApexRadius(c, s)
   const bis = (c.a0 + c.a1) / 2
-  if (!(rOut > Math.max(rIn, apex))) {
-    // Degenerate (d at or past the inradius): the center.
-    return [sectorInradius(c).center]
-  }
-  const pts: Point2D[] = []
+  if (!(rOut > Math.max(rIn, apex))) return null
   const arc = (r: number, from: number, to: number) => {
+    const pts: Point2D[] = []
     const steps = Math.max(1, Math.ceil(Math.abs(to - from) / ARC_STEP))
     for (let k = 0; k <= steps; k++) pts.push(at(r, from + ((to - from) * k) / steps))
+    return pts
   }
   // Outer arc from the first spoke's side to the second's.
-  arc(rOut, c.a0 + Math.asin(s / rOut), c.a1 - Math.asin(s / rOut))
-  if (apex >= rIn) {
-    pts.push(at(apex, bis))
-  } else {
-    // The hub arc is concave from inside the cell: chords between points on
-    // radius rIn would dip into the hub. Vertices go on the circumscribed
-    // radius instead, so every chord stays at or outside rIn.
-    let r = rIn
-    for (let i = 0; i < 3; i++) {
-      const span = 2 * Math.asin(Math.min(1, s / r))
-      const sweep = c.a1 - c.a0 - span
-      const steps = Math.max(1, Math.ceil(sweep / ARC_STEP))
-      r = rIn / Math.cos(sweep / steps / 2)
-    }
-    if (r <= apex) pts.push(at(apex, bis))
-    else arc(r, c.a1 - Math.asin(s / r), c.a0 + Math.asin(s / r))
+  const outer = arc(rOut, c.a0 + Math.asin(s / rOut), c.a1 - Math.asin(s / rOut))
+  const first = outer[0]
+  const last = outer[outer.length - 1]
+  const toApex = () => {
+    const p = at(apex, bis)
+    return [outer, [last, p], [p, first]]
   }
-  return pts
+  if (apex >= rIn) return toApex()
+  // The hub arc is concave from inside the cell: chords between points on
+  // radius rIn would dip into the hub. Vertices go on the circumscribed
+  // radius instead, so every chord stays at or outside rIn.
+  let r = rIn
+  for (let i = 0; i < 3; i++) {
+    const span = 2 * Math.asin(Math.min(1, s / r))
+    const sweep = c.a1 - c.a0 - span
+    const steps = Math.max(1, Math.ceil(sweep / ARC_STEP))
+    r = rIn / Math.cos(sweep / steps / 2)
+  }
+  if (r <= apex) return toApex()
+  const hub = arc(r, c.a1 - Math.asin(s / r), c.a0 + Math.asin(s / r))
+  return [outer, [last, hub[0]], hub, [hub[hub.length - 1], first]]
+}
+
+function sectorLoop(c: SectorCell, d: number): Point2D[] {
+  const sides = sectorSides(c, d)
+  // Degenerate: the center.
+  if (!sides) return [sectorInradius(c).center]
+  return sides.flatMap((side) => side.slice(0, -1))
 }
 
 // ---------------------------------------------------------------------------
@@ -264,6 +276,17 @@ export function cellLoop(cell: LightCell, d: number): Point2D[] {
   const k = radius > 0 ? Math.max(0, 1 - d / radius) : 0
   if (k === 0) return [center]
   return cell.vertices.map((v) => ({ x: center.x + (v.x - center.x) * k, y: center.y + (v.y - center.y) * k }))
+}
+
+// The loop at distance d as its sides (BL-82: tabs go on sides, laps start
+// at a corner): polylines in loop order, each one's last point the next
+// one's first — a triangle's three edges, a sector's arcs and spoke sides.
+// Null at or past the inradius.
+export function cellLoopSides(cell: LightCell, d: number): Point2D[][] | null {
+  if (cell.kind === 'sector') return sectorSides(cell, d)
+  const loop = cellLoop(cell, d)
+  if (loop.length < 3) return null
+  return loop.map((p, i) => [p, loop[(i + 1) % loop.length]])
 }
 
 // Signed distance from `p` to the cell's nominal boundary: positive

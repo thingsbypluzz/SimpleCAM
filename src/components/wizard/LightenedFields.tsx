@@ -1,6 +1,7 @@
 import type { LightLayout, WizardParams } from '../../types/wizard'
 import { isPocketLightCellsValid } from '../../lib/validation'
 import { MAX_LIGHT_COUNT, MAX_SPOKES, MIN_LIGHT_COUNT, MIN_SPOKES } from '../../lib/pocketLightened'
+import { isPocketContour } from '../../lib/pocketContour'
 import { FieldRow, inputClass } from './FieldRow'
 import { NumberInput } from './NumberInput'
 import { TextToggle, type TextToggleOption } from './TextToggle'
@@ -153,7 +154,7 @@ export function LightenedFields({ params, onChange }: LightenedFieldsProps) {
       {ribInvalid && <p className="text-sm text-status-error">Rib Width must be greater than 0.</p>}
       {cellsInvalid && (
         <p className="text-sm text-status-error">
-          A cell is too small for the tool{pocket.finishingEnabled ? ' plus Stock to Leave' : ''} — use fewer cells, thinner
+          A cell is too small for the tool{pocket.finishingEnabled && !isPocketContour(pocket) ? ' plus Stock to Leave' : ''} — use fewer cells, thinner
           ribs, a {isCircle ? 'smaller hub, ' : ''}larger area or a smaller tool.
         </p>
       )}
