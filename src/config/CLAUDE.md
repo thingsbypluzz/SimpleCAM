@@ -10,8 +10,10 @@
   szerokości). Nowa operacja nie przejdzie typecheck bez wypełnienia.
   `OPERATION_LIST` — operacje w kolejności Kroku 1.
 - Metody: `methodMeta.ts` (Hole(s): Helix/Standard/Drill), `surfaceMethodMeta.ts`,
-  `pocketMethodMeta.ts` (`POCKET_METHOD_LIST`) — płaskie rejestry z
-  `generate`; Outline przez `outlineMeta.ts` + `lib/outline.ts`
+  `pocketMethodMeta.ts` (`POCKET_METHOD_LIST`; przy Bottom Open
+  `POCKET_CONTOUR_METHOD_LIST` — Ramp / Standard konturu, bez `generate`,
+  i `activePocketMethodMeta()` — metoda, którą Pocket faktycznie tnie) —
+  płaskie rejestry z `generate`; Outline przez `outlineMeta.ts` + `lib/outline.ts`
   (metody ograniczone per kształt).
 - Wzorce/kształty: `positioningMeta.ts` (`POSITIONING_META`, ikony, linie
   i podsumowanie Kroku 1, `patternLabel()`, `patternSlug()` — rozpoznają

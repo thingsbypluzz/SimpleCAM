@@ -13,6 +13,7 @@ import {
   type OutlineParams,
   type OutlineShape,
   type OutputOptions,
+  type PocketContourMethod,
   type PocketMethodType,
   type PocketParams,
   type PocketShape,
@@ -191,6 +192,7 @@ const POCKET_GUARDS: Partial<Record<keyof PocketParams, FieldGuard>> = {
   method: oneOf<PocketMethodType>(['spiral', 'adaptive']),
   zTransitionMode: Z_TRANSITION_MODES,
   cutDirection: oneOf<CutDirection>(['conventional', 'climb']),
+  contourMethod: oneOf<PocketContourMethod>(['ramp', 'standard']),
   chipThinningBaseFeed: (value) => value === null || isFiniteNumber(value),
 }
 

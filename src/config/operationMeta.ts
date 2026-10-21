@@ -5,10 +5,11 @@ import { generateFacing } from '../lib/facing'
 import { generateText } from '../lib/text'
 import { generateOutline } from '../lib/outline'
 import type { MachineSettings } from '../types/machine'
-import type { MethodType, OperationType, OutlineMethod, PocketMethodType, SurfaceMethodType, WizardParams } from '../types/wizard'
+import type { MethodType, OperationType, OutlineMethod, PocketContourMethod, PocketMethodType, SurfaceMethodType, WizardParams } from '../types/wizard'
 import { FACING_METHOD, FACING_SIDE_META, facingLabel, facingLines, facingSideIcon, facingSlug, facingSummary } from './facingMeta'
 import { METHOD_LIST, METHOD_META } from './methodMeta'
 import { holeGeometry } from '../lib/drill'
+import { isPocketContour } from '../lib/pocketContour'
 import { TEXT_LAYOUT_META, TEXT_METHOD, textBitLabel, textLabel, textLayoutIcon, textLayoutLines, textSlug, textSummary } from './textMeta'
 import {
   activeOutlineMethodMeta,
@@ -22,7 +23,7 @@ import {
   outlineShapeSlug,
   outlineSummary,
 } from './outlineMeta'
-import { POCKET_METHOD_LIST, POCKET_METHOD_META } from './pocketMethodMeta'
+import { activePocketMethodMeta, POCKET_CONTOUR_METHOD_LIST, POCKET_METHOD_LIST, POCKET_METHOD_META } from './pocketMethodMeta'
 import { POCKET_SHAPE_META, pocketShapeIcon, pocketShapeLabel, pocketShapeLines, pocketShapeSlug, pocketSummary } from './pocketMeta'
 import { patternLabel, patternSlug, POSITIONING_META, positioningIcon, positioningLines, positioningSummary } from './positioningMeta'
 import { SURFACE_METHOD_LIST, SURFACE_METHOD_META } from './surfaceMethodMeta'
@@ -294,7 +295,7 @@ export const OPERATION_META: Record<OperationType, OperationMeta> = {
     pickLines: (p) => pocketShapeLines(p.pocket),
     pickSummary: (p) => pocketSummary(p.pocket),
     pick: (p) => POCKET_SHAPE_META[p.pocket.shape],
-    method: (p) => POCKET_METHOD_META[p.pocket.method],
+    method: (p) => activePocketMethodMeta(p.pocket),
     geometryStats: (p) => [
       sizeStat(
         pocketShapeIcon(p.pocket.shape),
@@ -304,16 +305,28 @@ export const OPERATION_META: Record<OperationType, OperationMeta> = {
       ...offsetStat(p.pocket),
       bitStat(p.pocket.toolDiameter),
       depthStat(p.pocket.totalDepth),
+      ...tabsStat(isPocketContour(p.pocket) && p.pocket.tabsEnabled),
     ],
     geometryTitle: (p) =>
-      `Tool ⌀${p.pocket.toolDiameter}mm, ${POCKET_SHAPE_META[p.pocket.shape].title} ${roundSize(p.pocket)}mm, Depth ${p.pocket.totalDepth}mm${withOffset(p.pocket)} — Method: ${POCKET_METHOD_META[p.pocket.method].title}`,
+      `Tool ⌀${p.pocket.toolDiameter}mm, ${POCKET_SHAPE_META[p.pocket.shape].title} ${roundSize(p.pocket)}mm, Depth ${p.pocket.totalDepth}mm${withOffset(p.pocket)} — Method: ${activePocketMethodMeta(p.pocket).title}`,
     generate: (p, machine) => POCKET_METHOD_META[p.pocket.method].generate(p, machine),
     filenameSlug: (p) => pocketShapeSlug(p.pocket),
-    presetLabel: (p) => `${pocketShapeLabel(p.pocket)} • ${POCKET_METHOD_META[p.pocket.method].shortLabel}`,
+    presetLabel: (p) => `${pocketShapeLabel(p.pocket)} • ${activePocketMethodMeta(p.pocket).shortLabel}`,
     toolDiameter: (p) => p.pocket.toolDiameter,
-    methodValue: (p) => p.pocket.method,
-    calcMethods: () => methodOptions(POCKET_METHOD_LIST),
+    methodValue: (p) => activePocketMethodMeta(p.pocket).value,
+    // Bottom Open (BL-82): the contour's own two methods.
+    calcMethods: (p) => methodOptions(isPocketContour(p.pocket) ? POCKET_CONTOUR_METHOD_LIST : POCKET_METHOD_LIST),
     withCalc: (p, c) => {
+      if (isPocketContour(p.pocket)) {
+        return {
+          pocket: {
+            ...p.pocket,
+            contourMethod: c.method as PocketContourMethod,
+            toolDiameter: c.toolDiameter,
+            rampAngleDeg: c.rampAngleDeg ?? p.pocket.rampAngleDeg,
+          },
+        }
+      }
       const method = c.method as PocketMethodType
       const pocket = { ...p.pocket, method, toolDiameter: c.toolDiameter }
       if (method === 'adaptive') {

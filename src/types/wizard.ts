@@ -45,6 +45,11 @@ export type LightLayout = 'xgrid' | 'triangles'
 // Both valid for every shape — see CLAUDE.md's Pocket design notes.
 export type PocketMethodType = 'spiral' | 'adaptive'
 
+// Lightened shapes with Bottom Open (BL-82): how each cell's contour goes
+// down — a ramp along the whole contour or a straight plunge per level, as
+// in Outline.
+export type PocketContourMethod = 'ramp' | 'standard'
+
 // Pocket Adaptive only. Under M3 (spindle CW seen from above), climb = CCW
 // for an internal cut (uncut material on the right of travel), conventional
 // = CW. Every other Pocket method is fixed to CCW, i.e. climb — so the
@@ -178,6 +183,17 @@ export interface PocketParams {
   spokeCount: number // Circle Lightened
   hubDiameter: number // mm, Circle Lightened center hub (0 = spokes meet)
   spokeStartAngle: number // deg, first spoke's axis, 0 = +X, CCW
+  // Lightened shapes only (BL-82): the cells go right through the stock, so
+  // only each cell's contour is cut (Inside, held by tabs) and its middle
+  // drops out. The Spiral/Adaptive settings stay stored, unused.
+  bottomOpen: boolean
+  contourMethod: PocketContourMethod
+  // Tabs of the contour: tabCount per cell, spread over its sides by
+  // length (lib/pocketContour.ts).
+  tabsEnabled: boolean
+  tabHeight: number
+  tabWidth: number
+  tabCount: number
 }
 
 // Facing (OP-7): which side of the part is milled. Bottom/Top run along X,
@@ -374,6 +390,12 @@ export const DEFAULT_WIZARD_PARAMS: WizardParams = {
     spokeCount: 5,
     hubDiameter: 16,
     spokeStartAngle: 90,
+    bottomOpen: false,
+    contourMethod: 'ramp',
+    tabsEnabled: false,
+    tabHeight: 1,
+    tabWidth: 3,
+    tabCount: 3,
   },
   facing: {
     side: 'bottom',

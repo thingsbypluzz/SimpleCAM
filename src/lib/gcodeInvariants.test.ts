@@ -19,6 +19,7 @@ import {
   randomPocketDonutAdaptive,
   randomPocketLightened,
   randomPocketLightenedAdaptive,
+  randomPocketContour,
   randomFacing,
   randomSurface,
   type Rng,
@@ -52,6 +53,7 @@ import { generateSurfaceUnidirectional, generateSurfaceZigzag } from './surface'
 import { surfaceToolBounds } from './surfaceGeometry'
 import { movePoints, type Point3D } from './toolpath'
 import { activeTotalDepth, isWizardParamsValid } from './validation'
+import { isPocketContour } from './pocketContour'
 
 // The app's tsconfig has no Node types; vitest runs under Node regardless.
 const env = (globalThis as { process?: { env: Record<string, string | undefined> } }).process?.env ?? {}
@@ -227,6 +229,8 @@ function containmentProblems(params: WizardParams, below: TracedPoint[]): string
 function pocketFinishProblems(params: WizardParams): string[] {
   if (params.operation !== 'pocket') return []
   const { pocket } = params
+  // Bottom Open (BL-82): only the contour, no roughing wall or finishing lap.
+  if (isPocketContour(pocket)) return []
   const c = pocketCenter(pocket)
   const isCircle = pocket.shape === 'circle'
   const lightened = isLightenedShape(pocket.shape)
@@ -296,6 +300,7 @@ const SUITES: Suite[] = [
   { name: 'Pocket Donut Adaptive', samples: 25, build: randomPocketDonutAdaptive, generate: generatePocketAdaptive },
   { name: 'Pocket Lightened', samples: 30, build: randomPocketLightened, generate: generatePocketSpiral },
   { name: 'Pocket Lightened Adaptive', samples: 10, build: randomPocketLightenedAdaptive, generate: generatePocketAdaptive },
+  { name: 'Pocket Lightened Contour', samples: 30, build: randomPocketContour, generate: generatePocketSpiral },
   // Appended, not next to the other Hole(s) suites: each suite's seed
   // follows its position, and inserting would reshuffle every later one.
   { name: 'Hole(s) Drill', samples: 60, build: (r) => randomHoles(r, 'drill'), generate: generateDrill },

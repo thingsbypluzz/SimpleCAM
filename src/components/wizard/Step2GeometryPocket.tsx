@@ -15,7 +15,11 @@ import {
   isPocketStockToLeaveValid,
   isPocketToolDiameterValid,
   isPocketToolpathWithinLimits,
+  isPocketTabCountValid,
+  isPocketTabHeightValid,
+  isPocketTabWidthValid,
   MAX_RAMP_ANGLE_DEG,
+  MAX_TAB_COUNT,
   pocketMaxHelixRadius,
   MIN_RAMP_ANGLE_DEG,
 } from '../../lib/validation'
@@ -45,10 +49,12 @@ import { PocketMethodPicker } from './PocketMethodPicker'
 import { useSimpleMode } from '../uiModeContext'
 import { PhoneLabel } from '../PhoneLabel'
 import { TextToggle } from './TextToggle'
-import { CUT_DIRECTION_OPTIONS, Z_TRANSITION_MODE_OPTIONS } from './toggleOptions'
+import { CUT_DIRECTION_OPTIONS, POCKET_BOTTOM_OPTIONS, Z_TRANSITION_MODE_OPTIONS } from './toggleOptions'
 import { useNumberField } from './useNumberField'
 import { LightenedFields } from './LightenedFields'
 import { isLightenedShape } from '../../lib/pocketLightened'
+import { isPocketContour } from '../../lib/pocketContour'
+import { RampAngleFields } from './RampAngleFields'
 
 interface Step2GeometryPocketProps {
   params: WizardParams
@@ -76,6 +82,12 @@ const round4 = (n: number) => Math.round(n * 10000) / 10000
 // as Surface: Pocket doesn't cut through, nothing to bridge. No Offset
 // Mode picker either (unlike Outline) — Pocket is always an inside
 // cut, there's no other physically meaningful mode.
+//
+// Lightened shapes add Bottom Open (BL-82) next to Depth: On cuts only each
+// cell's contour (through the stock, held by tabs) — Method becomes the
+// contour's Ramp / Standard (+ Ramp Angle and Pitch), Enable Tabs (Tab
+// Count per cell) replaces Stepover / Optimal Load, Z-Transition and
+// Finishing Pass, which stay stored for when it goes Off again.
 export function Step2GeometryPocket({ params, onChange, machine, toolDiameters, flutes, onFlutesChange }: Step2GeometryPocketProps) {
   const { pocket } = params
 
@@ -103,12 +115,19 @@ export function Step2GeometryPocket({ params, onChange, machine, toolDiameters, 
   )
   const rampAngleField = useNumberField(pocket.rampAngleDeg, (v) => updatePocket({ rampAngleDeg: v }))
   const stockToLeaveField = useNumberField(pocket.stockToLeave, (v) => updatePocket({ stockToLeave: v }))
+  const tabHeightField = useNumberField(pocket.tabHeight, (v) => updatePocket({ tabHeight: v }))
+  const tabWidthField = useNumberField(pocket.tabWidth, (v) => updatePocket({ tabWidth: v }))
+  const tabCountField = useNumberField(pocket.tabCount, (v) => updatePocket({ tabCount: v }))
 
   const isDonut = pocket.shape === 'donut'
   const isRect = pocket.shape !== 'circle' && pocket.shape !== 'circleLightened' && !isDonut
   const isLightened = isLightenedShape(pocket.shape)
   const cellsInvalid = !isPocketLightCellsValid(pocket)
-  const isAdaptive = pocket.method === 'adaptive'
+  const contour = isPocketContour(pocket)
+  const isAdaptive = !contour && pocket.method === 'adaptive'
+  const tabHeightInvalid = !isPocketTabHeightValid(pocket)
+  const tabWidthInvalid = !isPocketTabWidthValid(pocket)
+  const tabCountInvalid = !isPocketTabCountValid(pocket)
   const zMode = effectivePocketZTransitionMode(pocket)
   const loadValid = isPocketOptimalLoadValid(pocket)
   const thinning = chipThinningFactor(pocket.optimalLoadPercent)
@@ -126,7 +145,7 @@ export function Step2GeometryPocket({ params, onChange, machine, toolDiameters, 
   const heightInvalid = !(pocket.height > 0) || (toolInvalid && !widthIsShorter)
   const diameterInvalid = !(pocket.diameter > 0) || toolInvalid
   const islandInvalid = !isPocketIslandValid(pocket) || (isDonut && toolInvalid)
-  const depthInvalid = !(pocket.totalDepth > 0)
+  const depthInvalid = !(pocket.totalDepth > 0) || (contour && pocket.tabsEnabled && pocket.tabHeight >= pocket.totalDepth)
   const stepoverInvalid = !isPocketStepoverValid(pocket)
   const rampLengthInvalid = !isPocketRampLengthValid(pocket)
   const spiralEngagement = spiralRampEngagementDeg(pocket)
@@ -138,6 +157,39 @@ export function Step2GeometryPocket({ params, onChange, machine, toolDiameters, 
   // pass — no Method, Ramp Length, Z-Transition or Finishing Pass rows.
   const simple = useSimpleMode()
 
+  // BL-82: turning it On also turns the tabs on (every cell drops out
+  // otherwise) — with the Settings → Tabs sizes when they were off, so
+  // flipping Bottom Open keeps a Tab Count already entered.
+  const bottomCell = isLightened && (
+    <div className="flex shrink-0 flex-col gap-1 phone:basis-full">
+      <span className="flex items-center gap-1.5 text-sm font-medium text-value">
+        Bottom Open
+        <HintPopover text="On when the cells go right through the stock: only each cell's contour is cut and its middle drops out, held by tabs — faster than clearing it. Unlike Hole(s), this changes the G-code, not only the previews." />
+      </span>
+      <TextToggle
+        options={POCKET_BOTTOM_OPTIONS}
+        value={pocket.bottomOpen ? 'open' : 'closed'}
+        onChange={(v) =>
+          updatePocket(
+            v === 'open'
+              ? {
+                  bottomOpen: true,
+                  ...(pocket.tabsEnabled
+                    ? {}
+                    : {
+                        tabsEnabled: true,
+                        tabHeight: machine.defaultTabHeight,
+                        tabWidth: machine.defaultTabWidth,
+                        tabCount: machine.defaultTabCount,
+                      }),
+                }
+              : { bottomOpen: false },
+          )
+        }
+      />
+    </div>
+  )
+
   return (
     <div className="flex flex-col gap-6">
       <PickHeader params={params} />
@@ -145,7 +197,7 @@ export function Step2GeometryPocket({ params, onChange, machine, toolDiameters, 
       <div className="flex flex-col gap-4">
         {isRect ? (
           // Rectangle: Width + Height + Depth on one row (BL-93).
-          <div className="flex items-end gap-4">
+          <div className="flex flex-wrap items-end gap-4">
             <div className="min-w-0 flex-1">
               <FieldRow label="Width [mm]">
                 <NumberInput
@@ -185,10 +237,11 @@ export function Step2GeometryPocket({ params, onChange, machine, toolDiameters, 
                 />
               </FieldRow>
             </div>
+            {bottomCell}
           </div>
         ) : (
           // Circle: Diameter + Depth on one row, like Hole(s).
-          <div className="flex gap-4">
+          <div className="flex flex-wrap items-end gap-4">
             <div className="min-w-0 flex-1">
               <FieldRow label="Diameter [mm]">
                 <NumberInput
@@ -233,6 +286,7 @@ export function Step2GeometryPocket({ params, onChange, machine, toolDiameters, 
                 />
               </FieldRow>
             </div>
+            {bottomCell}
           </div>
         )}
         {!isPocketSizeValid(pocket) && (
@@ -291,7 +345,11 @@ export function Step2GeometryPocket({ params, onChange, machine, toolDiameters, 
         </div>
       )}
 
-      {isAdaptive ? (
+      {contour && (
+        <RampAngleFields params={params} rampAngleDeg={pocket.rampAngleDeg} onChange={(v) => updatePocket({ rampAngleDeg: v })} />
+      )}
+
+      {contour ? null : isAdaptive ? (
         <div className="flex flex-col gap-4">
           <div className="flex gap-4">
             <div className="min-w-0 flex-1">
@@ -438,7 +496,7 @@ export function Step2GeometryPocket({ params, onChange, machine, toolDiameters, 
       </div>
       )}
 
-      {!simple && (
+      {!simple && !contour && (
         <div className="flex flex-col gap-4">
           {/* Z-Transition + Helix Radius + Ramp Angle on one row; the helix
               fields leave their cells empty in Plunge mode. On a phone the
@@ -524,7 +582,70 @@ export function Step2GeometryPocket({ params, onChange, machine, toolDiameters, 
         </div>
       )}
 
-      {!simple && (
+      {contour && (
+        <div className="border-t border-border pt-4">
+          <Checkbox
+            checked={pocket.tabsEnabled}
+            onChange={(enabled) =>
+              updatePocket(
+                enabled
+                  ? {
+                      tabsEnabled: true,
+                      tabHeight: machine.defaultTabHeight,
+                      tabWidth: machine.defaultTabWidth,
+                      tabCount: machine.defaultTabCount,
+                    }
+                  : { tabsEnabled: false },
+              )
+            }
+            label="Enable Tabs"
+            className="mb-2 text-sm font-medium text-value"
+          >
+            <HintPopover text="Small uncut bridges near the bottom of each cell's contour, so the middle stays attached instead of dropping free under the tool. Tab Count is per cell: the first goes in the middle of the longest side, each next one on the side with the most length per tab — never in a corner. Forces G1 interpolation." />
+          </Checkbox>
+          {pocket.tabsEnabled && (
+            <div className="flex flex-col gap-4">
+              <div className="flex gap-4">
+                <div className="min-w-0 flex-1">
+                  <FieldRow label="Height [mm]">
+                    <NumberInput type="number" step="0.1" min="0" className={inputClass} aria-invalid={tabHeightInvalid} {...tabHeightField} />
+                  </FieldRow>
+                </div>
+                <div className="min-w-0 flex-1">
+                  <FieldRow label="Width [mm]">
+                    <NumberInput type="number" step="0.1" min="0" className={inputClass} aria-invalid={tabWidthInvalid} {...tabWidthField} />
+                  </FieldRow>
+                </div>
+                <div className="min-w-0 flex-1">
+                  <FieldRow label="Per Cell">
+                    <NumberInput
+                      type="number"
+                      step="1"
+                      min="1"
+                      max={MAX_TAB_COUNT}
+                      className={inputClass}
+                      aria-invalid={tabCountInvalid || tabWidthInvalid}
+                      {...tabCountField}
+                    />
+                  </FieldRow>
+                </div>
+              </div>
+              {tabHeightInvalid && <p className="text-sm text-status-error">Tab height must be greater than 0 and less than Depth.</p>}
+              {tabWidthInvalid && !tabCountInvalid && (
+                <p className="text-sm text-status-error">
+                  The tabs don't fit on a cell's sides — a side with N tabs needs N × width less than its length. Use fewer
+                  or narrower tabs.
+                </p>
+              )}
+              {tabCountInvalid && (
+                <p className="text-sm text-status-error">Tab count must be a whole number from 1 to {MAX_TAB_COUNT}.</p>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+
+      {!simple && !contour && (
         <div className="flex flex-col gap-4 border-t border-border pt-4">
           {/* Checkbox and Stock to Leave on one row — the checkbox sits on the
               input's line (h-[38px] = inputClass height). */}

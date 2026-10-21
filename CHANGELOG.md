@@ -7,6 +7,34 @@ zgodne z [SemVer](https://semver.org/). Ten plik pozostaje głównym, czytelnym
 thingsbypluzz/SimpleCAM), ale to infrastruktura pod izolację pracy
 (branch/worktree per zadanie), nie zamiennik tego changeloga.
 
+## [0.59.0] — 2026-10-21
+
+### Dodano
+
+- **Pocket Lightened: Bottom Open** (`BL-82`). Gdy kieszenie odciążające
+  idą na przelot, nie trzeba wybierać całej komórki — przełącznik **Bottom
+  Open: On | Off** (domyślnie Off) w wierszu Depth kształtów Rectangle /
+  Circle Lightened. Przy On frez jedzie tylko po konturze każdej komórki
+  (Inside, CCW), a jej środek wypada:
+  - Method **Ramp** (domyślnie; zejście po całym konturze pod Ramp Angle,
+    najwyżej Stepdown na okrążenie) albo **Standard** (zejście pionowe +
+    płaskie okrążenie) — jak w Outline; start okrążenia w narożniku
+    najdłuższego boku;
+  - **mostki** włączają się same (rozmiary z Settings → Tabs, gdy były
+    wyłączone). Tab Count jest na komórkę: pierwszy mostek na środku
+    najdłuższego boku, każdy kolejny na boku z największą długością na
+    mostek, nigdy w narożniku. Mostki, które nie mieszczą się na boku, to
+    błąd — liczba nie jest zmniejszana po cichu;
+  - komórka po komórce do pełnej głębokości;
+  - Stepover / Optimal Load, Z-Transition, Finishing Pass, Linking i
+    Finish Feed są wtedy schowane, ale zostają w presecie — Off przywraca
+    poprzednią kieszeń;
+  - podglądy: komórki wycięte na wylot, w 2D mostki linią przerywaną na
+    konturze; Feedrate Calculator liczy kontur jak szczelinę; etykieta
+    presetu „Contour Ramp” / „Contour Standard”.
+  Inaczej niż w Hole(s), gdzie Bottom Open zmienia tylko podgląd, tu
+  zmienia G-code.
+
 ## [0.58.3] — 2026-10-21
 
 ### Zmieniono

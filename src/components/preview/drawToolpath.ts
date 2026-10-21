@@ -33,6 +33,7 @@ import type { MultiPolygon } from 'polygon-clipping'
 import type { Point2D, PocketMethodType, PocketShape, WizardParams } from '../../types/wizard'
 import type { ThemeId } from '../../types/theme'
 import { cellInscribed, isLightenedShape, lightenedCells } from '../../lib/pocketLightened'
+import { isPocketContour, pocketContours, type CellContour } from '../../lib/pocketContour'
 import { type Camera2D, type DataBounds, worldToScreen } from './camera2d'
 
 interface Theme {
@@ -360,6 +361,9 @@ function drawToolpathMoves(
   toPx: (x: number, y: number) => [number, number],
   toolpath: Toolpath,
   theme: Theme,
+  // Bottom Open (BL-82): the cuts are drawn by drawContourLoops() instead,
+  // with the tabs dashed — only the moves between them come from here.
+  skipCuts = false,
 ) {
   let current = toolpath.start
   let i = 0
@@ -379,7 +383,7 @@ function drawToolpathMoves(
       current = moves[i].to
       i++
     }
-    if (kind === 'plunge') continue
+    if (kind === 'plunge' || (skipCuts && kind === 'cut')) continue
     ctx.lineWidth = kind === 'rapid' ? 1 : 1.5
     ctx.strokeStyle = kind === 'cut' ? theme.toolpath : kind === 'link' ? theme.linking : theme.rapid
     ctx.setLineDash(kind === 'cut' ? [] : kind === 'link' ? LINK_DASH : RAPID_DASH)
@@ -1100,6 +1104,48 @@ function drawTextGeometry(
   drawOffsetVector(ctx, toPx, params.text.offsetX, params.text.offsetY, theme, arrowSize)
 }
 
+// Bottom Open (BL-82): every cell's contour as the engine cuts it, solid
+// with the tab stretches dashed (TAB_DASH, like Outline's tabs), and a dot
+// where each lap starts.
+function drawContourLoops(
+  ctx: CanvasRenderingContext2D,
+  toPx: (x: number, y: number) => [number, number],
+  contours: CellContour[],
+  theme: Theme,
+) {
+  ctx.strokeStyle = theme.toolpath
+  ctx.lineWidth = 1.5
+  for (const c of contours) {
+    const n = c.points.length
+    const at = (s: number): Point2D => {
+      let i = 0
+      while (i + 1 < n && c.positions[i + 1] < s) i++
+      const a = c.points[i]
+      const b = c.points[(i + 1) % n]
+      const next = i + 1 < n ? c.positions[i + 1] : c.length
+      const span = next - c.positions[i]
+      const t = span > 0 ? Math.min(1, Math.max(0, (s - c.positions[i]) / span)) : 0
+      return { x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t }
+    }
+    const positions = [...new Set([...c.positions, c.length, ...c.tabs.flatMap((r) => [r.start, r.end])])].sort((x, y) => x - y)
+    const inTabAt = (s: number) => c.tabs.some((r) => s > r.start && s < r.end)
+    let i = 1
+    while (i < positions.length) {
+      const dashed = inTabAt((positions[i - 1] + positions[i]) / 2)
+      ctx.beginPath()
+      ctx.moveTo(...toPx(at(positions[i - 1]).x, at(positions[i - 1]).y))
+      while (i < positions.length && inTabAt((positions[i - 1] + positions[i]) / 2) === dashed) {
+        const p = i === positions.length - 1 ? c.points[0] : at(positions[i])
+        ctx.lineTo(...toPx(p.x, p.y))
+        i++
+      }
+      ctx.setLineDash(dashed ? TAB_DASH : [])
+      ctx.stroke()
+    }
+    ctx.setLineDash([])
+  }
+}
+
 // Pocket: nominal boundary (stroke — its floor is filled by the stock
 // model, drawToolpath()) + toolpath — the engine's own move list for every method (BL-61), so the
 // Helix entry, ring-to-ring ramps, laps and raster chain are exactly what
@@ -1163,11 +1209,18 @@ function drawPocketGeometry(
   }
 
   if (showToolpath) {
-    drawToolpathMoves(ctx, toPx, toolpath, theme)
+    const contours = isPocketContour(params.pocket) ? pocketContours(params.pocket) : null
+    drawToolpathMoves(ctx, toPx, toolpath, theme, contours !== null)
+    if (contours) drawContourLoops(ctx, toPx, contours, theme)
 
     // Entry point marker — the pocket's own center (see CLAUDE.md's Pocket
-    // design notes: entry is always centered), or every cell's center.
-    const entries = lightened ? lightenedCells(params.pocket).map((c) => toPx(cellInscribed(c).center.x, cellInscribed(c).center.y)) : [[cx, cy]]
+    // design notes: entry is always centered), every cell's center, or
+    // (Bottom Open) where every cell's lap starts.
+    const entries = contours
+      ? contours.map((c) => toPx(c.points[0].x, c.points[0].y))
+      : lightened
+        ? lightenedCells(params.pocket).map((c) => toPx(cellInscribed(c).center.x, cellInscribed(c).center.y))
+        : [[cx, cy]]
     ctx.fillStyle = theme.toolpath
     for (const [ex, ey] of entries) {
       ctx.beginPath()
