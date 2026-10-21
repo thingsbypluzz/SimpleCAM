@@ -11,4 +11,4 @@ export const previewTopBarClass = `absolute top-3 left-3 flex flex-wrap items-ce
 export const previewBottomBarClass = `absolute right-3 bottom-3 flex flex-wrap items-center justify-end gap-1.5 pointer-coarse:bottom-0 pointer-coarse:border-t ${BAR_TOUCH}`
 
 export const previewButtonClass =
-  'rounded-md border border-field-border bg-field-bg/90 px-2.5 py-1 text-xs font-medium text-value shadow-sm hover:bg-field-bg pointer-coarse:h-12 pointer-coarse:rounded-lg pointer-coarse:bg-field-bg pointer-coarse:px-1 pointer-coarse:text-sm pointer-coarse:font-semibold'
+  'rounded-md border border-field-border bg-field-bg/90 px-2.5 py-1 text-xs font-medium text-value shadow-sm hover:bg-field-bg pointer-coarse:h-12 pointer-coarse:rounded-lg pointer-coarse:bg-field-bg pointer-coarse:px-1 pointer-coarse:text-sm pointer-coarse:font-semibold phone:text-xs phone:leading-tight'

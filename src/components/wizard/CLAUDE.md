@@ -23,7 +23,7 @@
   Hole Diameter; N-Holes: Hole Count + Diameter +
   Depth, potem Hole Diameter + Start Angle; Custom List: lista, potem Hole
   Diameter + Depth; Single: sama ta para; na prawo od Hole Diameter, w
-  tym samym wierszu, przełącznik **Bottom: Open | Closed** —
+  tym samym wierszu, przełącznik **Bottom Open: On | Off** —
   `geometry.holeBottom`, tylko wygląd otworu w podglądach, podpowiedź
   mówi, że G-code się nie zmienia) →
   Tool Diameter → Method → Ramp + Pitch (tylko Helix) → Tabs → Offset.
@@ -127,7 +127,11 @@
 - Pickery metod (`MethodPicker`, `OutlineMethodPicker`,
   `SurfaceMethodPicker`, `PocketMethodPicker`, `OffsetModePicker`) i
   `TextToggle.tsx` (opcje w `toggleOptions.ts`) — każdy przycisk z
-  `aria-pressed`; stan nigdy tylko kolorem.
+  `aria-pressed`; stan nigdy tylko kolorem. Z-Transition (Surface,
+  Pocket): na telefonie przełącznik w osobnym wierszu z etykietą „Entry”,
+  Helix R. + Ramp pod nim (puste komórki znikają); przy Adaptive widać
+  tylko Helix. Na telefonie Facing nie pokazuje liczby przejść przy Stepover, a Pocket
+  Method + Direction zawija się do drugiej linii.
 - **Pola liczbowe** (`useNumberField.ts` + `NumberInput.tsx`): wyświetlany
   tekst oddzielony od zatwierdzonej wartości (pole da się wyczyścić).
   Wpisywana liczba jest zatwierdzana (`onCommit`) przy wyjściu z pola, po
@@ -144,14 +148,15 @@
   (Optimal Load % ↔ mm, Facing Stepover mm ↔ %). `onAdjust(delta)` dla
   przycisków góra/dół (przytrzymanie powtarza krok: pierwszy od razu, po
   400 ms co 75 ms, do puszczenia albo zjechania z przycisku —
-  `useHoldRepeat()` w `NumberInput.tsx`, zawsze najnowszy `onAdjust` przez
-  ref),
+  `useHoldRepeat()` w `useHoldRepeat.ts`, zawsze najnowszy `onAdjust`
+  przez ref — ten sam hook obsługuje − / + klawiatury numerycznej),
   `roundToStepPrecision()` (1/100 mm). Tekst nie śledzi wartości z
   zewnątrz — wczytanie presetu podbija `paramsLoadGeneration` (`key` Kroków
   2/3) w `App.tsx`. `NumberInput` chowa natywny spinner, dwa przyciski obok
   siebie, tokeny motywu. Na dotyku `NumberInput` jest polem tekstowym bez
   przycisków góra/dół, obsługiwanym przez własną klawiaturę numeryczną
-  (`src/components/CLAUDE.md`).
+  (`src/components/CLAUDE.md`); krok pola zostaje w atrybucie `step` dla
+  jej − / +.
 - **Krok 3:** pierwszy wiersz Spindle [RPM] — edytuje
   `machine.spindleSpeed` z Settings → Machine przez `handleSaveMachine()`
   (tylko wartość > 0); przy wybranym routerze pole jest wąskie, a obok
@@ -177,8 +182,10 @@
   (`aria-expanded`), domyślnie rozwinięte, stan per `id` w pamięci modułu
   (tylko sesja, przetrwa zmianę kroku); opcjonalny `action` (Apply)
   widoczny także po zwinięciu.
-- `FieldRow.tsx` (`label`/`hint`/`annotation`, `inputClass`),
-  `HintPopover.tsx` (portal do `document.body`, `position: fixed`, clamp do
+- `FieldRow.tsx` (`label`/`hint`/`annotation`, `inputClass`; jednostka na
+  końcu etykiety — „[mm]”, „[°]” — cieńsza i przygaszona; `shortLabel` —
+  etykieta na telefonie, np. „Tool D [mm]”),
+  `HintPopover.tsx` (na dotyku szerszy i większą czcionką; portal do `document.body`, `position: fixed`, clamp do
   viewportu — omija `overflow-y-auto` panelu; zamyka się na klik poza,
   Escape, scroll; jeden otwarty naraz).
 - Adaptive w Kroku 2: Apply chip thinning (wpisuje Feed XY do Kroku 3 bez

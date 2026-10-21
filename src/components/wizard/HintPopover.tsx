@@ -100,7 +100,7 @@ export function HintPopover({ text }: HintPopoverProps) {
             role="group"
             aria-label={text}
             style={{ top: position.top, left: position.left }}
-            className="fixed z-50 w-56 rounded-md border border-border bg-field-bg p-2 text-xs text-muted shadow-lg"
+            className="fixed z-50 w-56 rounded-md border border-border bg-field-bg p-2 text-xs text-muted shadow-lg pointer-coarse:w-72 pointer-coarse:p-3 pointer-coarse:text-sm"
           >
             {text}
           </div>,

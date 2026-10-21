@@ -9,6 +9,9 @@
 @source not "./fonts";
 
 @custom-variant dark (&:where(.dark, .dark *));
+/* BL-8: a phone held portrait — the narrow layout below this width packs
+   the Header and the step rail tighter. */
+@custom-variant phone (@media (max-width: 479px));
 
 /* Native controls (buttons, scrollbars, selects) follow the app's own
    dark / light switch, never the system's preference: a device set to light
@@ -35,6 +38,12 @@ body {
   select,
   textarea {
     font-size: 16px;
+  }
+
+  /* Safari ignores min-height on a native select — the fixed height keeps
+     a drop-down as tall as the number fields beside it (pointer-coarse:min-h-11). */
+  select {
+    height: 2.75rem;
   }
 
   html,

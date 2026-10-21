@@ -7,6 +7,48 @@ zgodne z [SemVer](https://semver.org/). Ten plik pozostaje głównym, czytelnym
 thingsbypluzz/SimpleCAM), ale to infrastruktura pod izolację pracy
 (branch/worktree per zadanie), nie zamiennik tego changeloga.
 
+## [0.58.0] — 2026-10-18
+
+### Dodano
+
+- **Telefon w pionie** (`BL-8`). Poniżej 480 px szerokości (wariant
+  `phone:`) układ wąski jest ciaśniej upakowany, bo na iPhonie o szerokości
+  375 px pierwszy wiersz Header i Preset Bar wychodziły poza ekran:
+  - logo skrócone do „OP” w tych samych kolorach;
+  - przełącznik Simple / Advanced znika z Header — zostaje w Settings;
+  - sloty Preset Bar i oko Overlay 36 px z odstępem 4 px (mieszczą się w
+    360 px), bez napisów trybów obok — stan pokazują znaczki na slotach;
+  - w pasku kroków Krok 4 pokazuje sam znaczek stanu, bez „not generated”;
+  - panel kroku z mniejszym marginesem po bokach;
+  - przyciski podglądu mniejszą czcionką i krótsze: Iso, Solid /
+    Transparent, Hide / Show Labels;
+  - Z-Transition (Surface, Pocket) w osobnym wierszu z etykietą „Entry”,
+    Helix R. i Ramp pod nim — wcześniej przyciski wjeżdżały na te pola;
+  - Tool Diam. jako „Tool D [mm]” (Drill: „Drill D [mm]”), bez liczby
+    przejść przy Stepover w Facing.
+- Jednostka w etykiecie pola („[mm]”, „[°]”…) cieńszą, przygaszoną
+  czcionką — nazwa czyta się pierwsza.
+- Podpowiedzi pod znakiem zapytania na dotyku szersze i większą czcionką.
+- Na dotyku listy rozwijane (np. Tool Diameter) mają tę samą wysokość co
+  pola liczbowe obok — Safari ignorował dla nich minimalną wysokość.
+- Pocket Adaptive: Z-Transition pokazuje tylko Helix (jedyne możliwe
+  wejście) zamiast wyszarzonej pary Plunge / Helix.
+- Hole(s): przełącznik **Bottom Open: On | Off** zamiast „Bottom: Open |
+  Closed” — krótsze przyciski mieszczą się obok Hole Diameter.
+- **Settings → Appearance → Interface Mode** — ten sam wybór Simple /
+  Advanced co kaczka i orzeł w Header (na telefonie jedyny).
+- **Klawiatura numeryczna: − / + przy nazwie pola.** Zmieniają wartość
+  o krok pola (przytrzymanie powtarza, jak przyciski pola na komputerze),
+  licząc od tego, co widać w polu — także od liczby jeszcze
+  niezatwierdzonej. Przejście do poprzedniego / następnego pola zostało
+  jako mniejsze ‹ › na lewo od nazwy — dawne ˄ ˅ wyglądały na zmianę
+  wartości, a skakały między polami.
+
+### Naprawiono
+
+- Pocket: wiersz Method + Direction zawija się do drugiej linii, gdy brakuje
+  miejsca, zamiast wychodzić za krawędź panelu.
+
 ## [0.57.0] — 2026-10-18
 
 ### Dodano

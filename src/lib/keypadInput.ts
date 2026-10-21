@@ -16,3 +16,16 @@ export function applyKey(text: string, key: KeypadKey, replace: boolean): string
   }
   return base + key
 }
+
+// The − / + buttons beside the field's name: the text on screen moved by
+// `delta` (the field's step), so a number typed and not yet committed is
+// stepped from too. Rounded to the step's decimals (at least 1/100, the
+// precision of the desktop buttons) against floating-point noise. Null
+// when the text is not a number yet ("", "-") — the buttons then do
+// nothing.
+export function stepText(text: string, delta: number): string | null {
+  if (text.trim() === '' || !Number.isFinite(Number(text))) return null
+  const decimals = Math.max(2, (String(Math.abs(delta)).split('.')[1] ?? '').length)
+  const scale = 10 ** decimals
+  return String(Math.round((Number(text) + delta) * scale) / scale)
+}

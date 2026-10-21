@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { PaletteId } from '../../config/palettes'
+import { PhoneLabel } from '../PhoneLabel'
 import type { ThemeId } from '../../types/theme'
 import type { WizardParams } from '../../types/wizard'
 import { previewBottomBarClass, previewButtonClass, previewTopBarClass } from '../preview/previewToolbar'
@@ -37,9 +38,9 @@ export interface SavedLiteView {
   fitKey: string
 }
 
-const VIEW_BUTTONS: { name: LiteViewName; label: string }[] = [
+const VIEW_BUTTONS: { name: LiteViewName; label: string; short?: string }[] = [
   { name: 'top', label: 'Top' },
-  { name: 'isometric', label: 'Isometric' },
+  { name: 'isometric', label: 'Isometric', short: 'Iso' },
   { name: 'front', label: 'Front' },
   { name: 'side', label: 'Side' },
 ]
@@ -276,7 +277,7 @@ export function LitePreview3D({
         <div className="flex flex-wrap items-center justify-end gap-1.5 pointer-coarse:contents">
           {VIEW_BUTTONS.map((view) => (
             <button key={view.name} type="button" onClick={() => fit(LITE_VIEWS[view.name])} className={previewButtonClass}>
-              {view.label}
+              {view.short ? <PhoneLabel full={view.label} short={view.short} /> : view.label}
             </button>
           ))}
         </div>

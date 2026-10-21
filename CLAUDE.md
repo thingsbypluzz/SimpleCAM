@@ -121,8 +121,12 @@ być wierny.
   otwartym krokiem pasek czterech kroków (`StepRail`), wizard obok
   podglądu; **wąski** (< 900 px, tablet pionowo) — jeden widok naraz,
   przełączany dolnym paskiem Setup / 2D / 3D / G-code (Setup = pasek
-  kroków + otwarty krok, bez osobnych Preview Tabs). Telefon nie jest
-  jeszcze wspierany.
+  kroków + otwarty krok, bez osobnych Preview Tabs). **Telefon w pionie**
+  (< 480 px, wariant `phone:` w `src/index.css`) dostaje układ wąski
+  ciaśniej: logo „OP”, bez przełącznika Simple / Advanced w Header (tylko
+  w Settings → Appearance), mniejsze sloty Preset Bar bez napisów trybów,
+  Krok 4 w pasku kroków sam znaczek. Telefon w poziomie bez osobnego
+  układu.
 - **Zachowania dotykowe idą za wskaźnikiem, nie za szerokością**
   (`useCoarsePointer()` — `pointer: coarse`): własna klawiatura numeryczna
   dla pól liczbowych, Preset Bar z przytrzymaniem, większe cele dotyku

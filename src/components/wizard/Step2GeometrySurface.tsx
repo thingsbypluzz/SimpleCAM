@@ -24,6 +24,7 @@ import { TextToggle } from './TextToggle'
 import { RASTER_DIRECTION_OPTIONS, Z_TRANSITION_MODE_OPTIONS } from './toggleOptions'
 import { useNumberField } from './useNumberField'
 import { useSimpleMode } from '../uiModeContext'
+import { PhoneLabel } from '../PhoneLabel'
 
 interface Step2GeometrySurfaceProps {
   params: WizardParams
@@ -103,7 +104,7 @@ export function Step2GeometrySurface({ params, onChange, machine, toolDiameters,
 
       <div className="flex flex-col gap-4">
         <ToolChipLoad params={params} machine={machine} flutes={flutes} onFlutesChange={onFlutesChange}>
-          <FieldRow label="Tool Diam. [mm]">
+          <FieldRow label="Tool Diam. [mm]" shortLabel="Tool D [mm]">
             <select
               className={inputClass}
               value={surface.toolDiameter}
@@ -165,13 +166,16 @@ export function Step2GeometrySurface({ params, onChange, machine, toolDiameters,
       {!simple && (
         <div className="flex flex-col gap-4">
           {/* Z-Transition + Helix Radius + Ramp Angle on one row, same as
-              Pocket; the helix fields leave their cells empty in Plunge mode. */}
-          <div className="flex gap-4">
-            <div className="flex min-w-0 flex-1 flex-col gap-1">
-              <span className="text-sm font-medium text-value">Z-Transition</span>
+              Pocket; the helix fields leave their cells empty in Plunge mode.
+              On a phone the toggle takes a row of its own ("Entry"). */}
+          <div className="flex flex-wrap gap-4">
+            <div className="flex min-w-0 flex-1 flex-col gap-1 phone:basis-full">
+              <span className="text-sm font-medium text-value">
+                <PhoneLabel full="Z-Transition" short="Entry" />
+              </span>
               <TextToggle options={Z_TRANSITION_MODE_OPTIONS} value={surface.zTransitionMode} onChange={(v) => updateSurface({ zTransitionMode: v })} />
             </div>
-            <div className="min-w-0 flex-1">
+            <div className={`min-w-0 flex-1 ${surface.zTransitionMode === 'helix' ? '' : 'phone:hidden'}`}>
               {surface.zTransitionMode === 'helix' && (
                 <FieldRow label="Helix R. [mm]">
                   <NumberInput
@@ -185,7 +189,7 @@ export function Step2GeometrySurface({ params, onChange, machine, toolDiameters,
                 </FieldRow>
               )}
             </div>
-            <div className="min-w-0 flex-1">
+            <div className={`min-w-0 flex-1 ${surface.zTransitionMode === 'helix' ? '' : 'phone:hidden'}`}>
               {surface.zTransitionMode === 'helix' && (
                 <FieldRow
                   label="Ramp [°]"

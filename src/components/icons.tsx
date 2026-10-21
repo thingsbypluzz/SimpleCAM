@@ -240,6 +240,23 @@ export function ChevronDownIcon({ className }: IconProps) {
   )
 }
 
+// The numeric keypad's previous / next field buttons (NumericKeypad.tsx).
+export function ChevronLeftIcon({ className }: IconProps) {
+  return (
+    <svg {...base} className={className}>
+      <path d="M15 5l-7 7 7 7" />
+    </svg>
+  )
+}
+
+export function ChevronRightIcon({ className }: IconProps) {
+  return (
+    <svg {...base} className={className}>
+      <path d="M9 5l7 7-7 7" />
+    </svg>
+  )
+}
+
 // Disclosure triangle for collapsible notes (InfoNote) — points right,
 // rotated 90° by the caller when expanded.
 export function DisclosureIcon({ className }: IconProps) {

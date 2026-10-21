@@ -8,10 +8,11 @@ import {
   type PointerEvent,
   type ReactNode,
 } from 'react'
-import { applyKey, type KeypadKey } from '../lib/keypadInput'
-import { ChevronDownIcon, ChevronUpIcon } from './icons'
+import { applyKey, stepText, type KeypadKey } from '../lib/keypadInput'
+import { ChevronLeftIcon, ChevronRightIcon } from './icons'
 import { KEYPAD_FIELD_SELECTOR, KeypadContext, type KeypadApi } from './keypadContext'
 import { useCoarsePointer } from './useViewport'
+import { useHoldRepeat } from './wizard/useHoldRepeat'
 
 // BL-8: the app's own numeric keypad for touch devices. Nearly every field
 // is a number, and a system keyboard cannot be made to show just digits
@@ -130,6 +131,17 @@ export function KeypadProvider({ children }: { children: ReactNode }) {
     replaceRef.current = false
   }
 
+  // − / +: the field's text moved by its step, through the same change
+  // event as a key (so it commits like typing does). Holding repeats.
+  const adjust = (sign: number) => {
+    const input = targetRef.current
+    if (!input || !input.isConnected) return
+    const step = Number(input.step)
+    const next = stepText(input.value, sign * (Number.isFinite(step) && step > 0 ? step : 1))
+    if (next !== null) setFieldText(input, next)
+  }
+  const holdHandlers = useHoldRepeat(adjust)
+
   const move = (delta: number) => {
     const input = targetRef.current
     if (!input) return
@@ -159,8 +171,23 @@ export function KeypadProvider({ children }: { children: ReactNode }) {
     'flex h-14 items-center justify-center rounded-lg border border-field-border bg-field-bg text-2xl font-medium text-fg select-none active:bg-accent-bg'
   const sideKeyClass =
     'flex h-14 items-center justify-center rounded-lg border border-border bg-bg text-2xl font-medium text-value select-none active:bg-accent-bg'
-  const barButtonClass =
-    'flex h-11 w-11 shrink-0 items-center justify-center rounded-md border border-field-border text-value disabled:opacity-40'
+  const navButtonClass =
+    'flex h-11 w-8 shrink-0 items-center justify-center rounded-md text-muted disabled:opacity-30'
+  const stepButtonClass =
+    'flex h-11 w-12 shrink-0 items-center justify-center rounded-md border border-field-border text-2xl text-value select-none active:bg-accent-bg'
+  // A step button keeps the field's focus like every other key.
+  const stepHandlers = (sign: number) => {
+    const hold = holdHandlers(sign)
+    return {
+      ...hold,
+      onPointerDown: (e: PointerEvent<HTMLButtonElement>) => {
+        e.preventDefault()
+        hold.onPointerDown(e)
+      },
+      onMouseDown: (e: { preventDefault: () => void }) => e.preventDefault(),
+      tabIndex: -1,
+    }
+  }
 
   return (
     <KeypadContext.Provider value={api}>
@@ -175,29 +202,37 @@ export function KeypadProvider({ children }: { children: ReactNode }) {
           aria-label="Numeric keypad"
           className="fixed inset-x-0 top-[var(--app-h,100dvh)] z-[60] -translate-y-full touch-manipulation border-t border-border bg-code-bg shadow-xl"
         >
-          <div className="flex items-center gap-2 border-b border-border px-3 py-1.5">
-            <button
-              type="button"
-              aria-label="Previous field"
-              disabled={index <= 0}
-              className={barButtonClass}
-              {...keyHandlers(() => move(-1))}
-            >
-              <ChevronUpIcon className="h-5 w-5" />
+          <div className="flex items-center gap-2 border-b border-border px-3 py-1.5 phone:gap-1.5 phone:px-2">
+            <div className="flex shrink-0">
+              <button
+                type="button"
+                aria-label="Previous field"
+                disabled={index <= 0}
+                className={navButtonClass}
+                {...keyHandlers(() => move(-1))}
+              >
+                <ChevronLeftIcon className="h-5 w-5" />
+              </button>
+              <button
+                type="button"
+                aria-label="Next field"
+                disabled={index < 0 || index >= fields.length - 1}
+                className={navButtonClass}
+                {...keyHandlers(() => move(1))}
+              >
+                <ChevronRightIcon className="h-5 w-5" />
+              </button>
+            </div>
+            <span className="min-w-0 flex-1 truncate px-1 text-sm text-value">{fieldLabel(target)}</span>
+            <button type="button" aria-label="Decrease" className={stepButtonClass} {...stepHandlers(-1)}>
+              −
+            </button>
+            <button type="button" aria-label="Increase" className={stepButtonClass} {...stepHandlers(1)}>
+              +
             </button>
             <button
               type="button"
-              aria-label="Next field"
-              disabled={index < 0 || index >= fields.length - 1}
-              className={barButtonClass}
-              {...keyHandlers(() => move(1))}
-            >
-              <ChevronDownIcon className="h-5 w-5" />
-            </button>
-            <span className="min-w-0 flex-1 truncate px-2 text-sm text-value">{fieldLabel(target)}</span>
-            <button
-              type="button"
-              className="flex h-11 shrink-0 items-center rounded-md bg-btn-bg px-6 text-base font-semibold text-btn-fg shadow-[var(--glow-btn)]"
+              className="flex h-11 shrink-0 items-center rounded-md bg-btn-bg px-6 text-base font-semibold text-btn-fg shadow-[var(--glow-btn)] phone:px-4"
               {...keyHandlers(close)}
             >
               Done

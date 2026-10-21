@@ -626,13 +626,14 @@ function App() {
   // is the pointer. The pieces below are shared by all three.
   const compact = layout !== 'wide'
 
+  // On a phone the wordmark shortens to "OP", in the same two colors.
   const wordmark = (
-    <h1 className="text-xl font-semibold">
+    <h1 className="text-xl font-semibold" aria-label="OnlyPaths">
       <span className="text-wordmark-only" style={{ textShadow: 'var(--wordmark-only-glow)' }}>
-        Only
+        O<span className="phone:hidden">nly</span>
       </span>
       <span className="text-wordmark-paths" style={{ textShadow: 'var(--wordmark-paths-glow)' }}>
-        Paths
+        P<span className="phone:hidden">aths</span>
       </span>
     </h1>
   )
@@ -683,9 +684,10 @@ function App() {
 
   const headerButtonClass = `flex ${compact ? 'h-11 w-11' : 'h-9 w-9'} shrink-0 items-center justify-center rounded-md border border-border text-value hover:bg-border/40`
   // BL-103: Simple | Advanced — a duck and an eagle, the picked one lit.
+  // Not on a phone (no room): there it's in Settings → Appearance only.
   const modeHalfClass = `flex ${compact ? 'h-11 w-11' : 'h-9 w-9'} items-center justify-center transition`
   const modeSwitch = (
-    <div role="group" aria-label="Interface mode" className="flex shrink-0 overflow-hidden rounded-md border border-border">
+    <div role="group" aria-label="Interface mode" className="flex shrink-0 overflow-hidden rounded-md border border-border phone:hidden">
       {(
         [
           { mode: 'simple', label: 'Simple Mode', title: 'Simple Mode — only the settings you need', Icon: DuckIcon },
@@ -843,7 +845,8 @@ function App() {
           <span className={`flex h-3.5 w-3.5 shrink-0 items-center justify-center rounded-full ${step4BadgeInfo.colorClassName}`}>
             <step4BadgeInfo.Icon className="h-2.5 w-2.5" />
           </span>
-          {generatedGCode ? 'generated' : 'not generated'}
+          {/* A phone keeps only the badge. */}
+          <span className="truncate phone:hidden">{generatedGCode ? 'generated' : 'not generated'}</span>
         </>
       ),
       title: step4BadgeInfo.title,
@@ -853,7 +856,7 @@ function App() {
   const railWizard = (
     <>
       <StepRail items={stepRailItems} activeStep={activeStep} onSelect={setActiveStep} />
-      <div className="flex min-h-0 flex-1 flex-col overflow-y-auto p-5">
+      <div className="flex min-h-0 flex-1 flex-col overflow-y-auto p-5 phone:px-3 phone:py-4">
         {renderStepPanel(STEP_META.find((step) => step.id === activeStep) ?? STEP_META[0])}
       </div>
     </>

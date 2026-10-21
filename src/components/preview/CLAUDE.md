@@ -71,6 +71,8 @@
   3D): myszą — małe przyciski w narożnikach; na dotyku
   (`pointer-coarse:`) dwa paski na całą szerokość, górny i dolny, z
   przyciskami wysokości slotu Preset Bar dzielącymi szerokość po równo.
+  Na telefonie (`phone:`) mniejsza czcionka i krótsze napisy
+  (`PhoneLabel`): Iso, Solid / Transparent, Hide / Show Labels.
   Paski leżą na podglądzie (nie zmieniają rozmiaru kanwy), więc banery
   „Preview mode” / „Fix the highlighted fields…” w `App.tsx` schodzą na
   dotyku pod górny pasek.

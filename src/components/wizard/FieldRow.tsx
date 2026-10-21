@@ -3,6 +3,8 @@ import { HintPopover } from './HintPopover'
 
 interface FieldRowProps {
   label: string
+  // BL-8: what a phone shows instead, e.g. "Tool D [mm]".
+  shortLabel?: string
   hint?: string
   // Short status note shown inline after the label (e.g. "chip thinning
   // applied") — smaller and lighter than the label itself.
@@ -10,11 +12,35 @@ interface FieldRowProps {
   children: ReactNode
 }
 
-export function FieldRow({ label, hint, annotation, children }: FieldRowProps) {
+// The unit at the end of a label ("[mm]", "[°]") in a lighter weight, so
+// the name reads first.
+function LabelText({ text }: { text: string }) {
+  const match = /^(.*?)(\s*\[[^\]]*\])$/.exec(text)
+  if (!match) return text
+  return (
+    <>
+      {match[1]}
+      <span className="font-normal text-muted">{match[2]}</span>
+    </>
+  )
+}
+
+export function FieldRow({ label, shortLabel, hint, annotation, children }: FieldRowProps) {
   return (
     <label className="flex flex-col gap-1">
       <span className="text-sm font-medium text-value">
-        {label}
+        {shortLabel ? (
+          <>
+            <span className="phone:hidden">
+              <LabelText text={label} />
+            </span>
+            <span className="hidden phone:inline">
+              <LabelText text={shortLabel} />
+            </span>
+          </>
+        ) : (
+          <LabelText text={label} />
+        )}
         {annotation && <span className="ml-1.5 text-xs font-normal">{annotation}</span>}
       </span>
       <div className="flex items-center gap-2">

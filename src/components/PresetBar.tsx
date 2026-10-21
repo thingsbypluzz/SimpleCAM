@@ -98,7 +98,7 @@ export function PresetBar({
     <div
       ref={rootRef}
       className={[
-        'relative flex items-center gap-2 rounded-lg border transition-colors',
+        'relative flex items-center gap-2 rounded-lg border transition-colors phone:gap-1',
         layout === 'narrow' ? 'w-full border-transparent' : 'px-2 py-2',
         layout !== 'narrow' && (active ? 'border-border' : 'border-transparent'),
       ]
@@ -120,12 +120,12 @@ export function PresetBar({
         const isEditingSlot = editingSlot === id
         const isJustLoaded = canLoad && justLoadedSlot === id
         const baseClassName = !preset
-          ? 'flex h-11 w-11 cursor-default items-center justify-center rounded-md border border-empty-border text-xs font-semibold text-empty-fg'
+          ? 'flex h-11 w-11 phone:h-9 phone:w-9 cursor-default items-center justify-center rounded-md border border-empty-border text-xs font-semibold text-empty-fg'
           : isEditingSlot
-            ? 'flex h-11 w-11 items-center justify-center rounded-md border-2 border-edit text-edit-fg shadow-[var(--glow-edit)]'
+            ? 'flex h-11 w-11 phone:h-9 phone:w-9 items-center justify-center rounded-md border-2 border-edit text-edit-fg shadow-[var(--glow-edit)]'
             : isOverlaySelected
-              ? 'flex h-11 w-11 items-center justify-center rounded-md border-2 border-accent text-accent-fg shadow-[var(--glow-accent)]'
-              : `flex h-11 w-11 items-center justify-center rounded-md border border-accent-border text-accent-fg shadow-[var(--glow-accent)]${canLoad ? ' hover:bg-accent-bg' : ''}`
+              ? 'flex h-11 w-11 phone:h-9 phone:w-9 items-center justify-center rounded-md border-2 border-accent text-accent-fg shadow-[var(--glow-accent)]'
+              : `flex h-11 w-11 phone:h-9 phone:w-9 items-center justify-center rounded-md border border-accent-border text-accent-fg shadow-[var(--glow-accent)]${canLoad ? ' hover:bg-accent-bg' : ''}`
         // The two corner badges (BL-107): an empty ring on hover/focus,
         // filled while on — so the state never rests on color alone.
         const badgeBase =
@@ -171,7 +171,7 @@ export function PresetBar({
                 : {})}
               className={`${baseClassName}${preset && !canLoad ? ' cursor-default' : ''} touch-manipulation transition-shadow duration-700 select-none${isJustLoaded ? ' ring-2 ring-accent ring-offset-2 ring-offset-bg' : ''}${menuSlot === id ? ' ring-2 ring-fg/40' : ''}`}
             >
-              {PresetIcon ? <PresetIcon className="h-7 w-7" /> : id}
+              {PresetIcon ? <PresetIcon className="h-7 w-7 phone:h-6 phone:w-6" /> : id}
             </button>
             {preset && !touch && (
               <button
@@ -253,8 +253,10 @@ export function PresetBar({
           </div>
         )
       })}
+      {/* A phone has no room for the mode labels — the slot badges show the
+          same state. */}
       {layout === 'narrow' && (
-        <div className="flex min-w-0 flex-1 flex-col items-end gap-0.5 text-xs font-semibold">{active && labels}</div>
+        <div className="flex min-w-0 flex-1 flex-col items-end gap-0.5 text-xs font-semibold phone:hidden">{active && labels}</div>
       )}
       {/* BL-107: the eye shows whether anything is overlaid and switches it
           off; unlit, it shows every saved preset at once. Picking happens
@@ -270,7 +272,7 @@ export function PresetBar({
             : 'Overlay preview: off — click to show all saved presets (or use the checkmark on a preset)'
         }
         className={[
-          'flex h-11 w-11 shrink-0 items-center justify-center rounded-md border transition',
+          'flex h-11 w-11 phone:h-9 phone:w-9 shrink-0 items-center justify-center rounded-md border transition',
           layout === 'wide' ? 'ml-11' : layout === 'medium' ? 'ml-2' : '',
           overlayEnabled
             ? 'border-2 border-accent bg-accent-bg text-accent-fg shadow-[var(--glow-accent)]'

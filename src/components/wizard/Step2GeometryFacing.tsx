@@ -125,7 +125,7 @@ export function Step2GeometryFacing({ params, onChange, machine, toolDiameters, 
 
       <div className="flex flex-col gap-4">
         <ToolChipLoad params={params} machine={machine} flutes={flutes} onFlutesChange={onFlutesChange}>
-          <FieldRow label="Tool Diam. [mm]">
+          <FieldRow label="Tool Diam. [mm]" shortLabel="Tool D [mm]">
             <select
               className={inputClass}
               value={facing.toolDiameter}
@@ -146,7 +146,7 @@ export function Step2GeometryFacing({ params, onChange, machine, toolDiameters, 
           <div className="min-w-0 flex-1">
             <FieldRow
               label="Stepover [mm]"
-              annotation={passCount !== null ? <span className="text-muted">({passCount} {passCount === 1 ? 'pass' : 'passes'})</span> : undefined}
+              annotation={passCount !== null ? <span className="text-muted phone:hidden">({passCount} {passCount === 1 ? 'pass' : 'passes'})</span> : undefined}
             >
               <NumberInput
                 type="number"
