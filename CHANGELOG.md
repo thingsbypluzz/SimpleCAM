@@ -7,6 +7,15 @@ zgodne z [SemVer](https://semver.org/). Ten plik pozostaje głównym, czytelnym
 thingsbypluzz/SimpleCAM), ale to infrastruktura pod izolację pracy
 (branch/worktree per zadanie), nie zamiennik tego changeloga.
 
+## [0.58.3] — 2026-10-21
+
+### Zmieniono
+
+- **Okno nazwy projektu na cały ekran** (`BL-8`) — na dotyku i w układach
+  średnim / wąskim, jak Settings i Feedrate Calculator. W górnym pasku
+  Back, tytuł i Save file, pole nazwy tuż pod nim: klawiatura systemowa,
+  która wyskakuje przy polu, nie zasłania już przycisków.
+
 ## [0.58.2] — 2026-10-21
 
 ### Zmieniono

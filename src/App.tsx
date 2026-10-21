@@ -1330,6 +1330,7 @@ function App() {
           presetCount={presetCount}
           onSave={handleSaveProject}
           onClose={() => setIsProjectNameOpen(false)}
+          fullScreen={fullScreenModals}
         />
       )}
 

@@ -131,8 +131,8 @@ być wierny.
 - **Zachowania dotykowe idą za wskaźnikiem, nie za szerokością**
   (`useCoarsePointer()` — `pointer: coarse`): własna klawiatura numeryczna
   dla pól liczbowych, Preset Bar z przytrzymaniem, większe cele dotyku
-  (wariant `pointer-coarse:`), tekst pól 16 px. Settings i Feedrate
-  Calculator zajmują cały ekran na dotyku **albo** w układzie średnim /
+  (wariant `pointer-coarse:`), tekst pól 16 px. Settings, Feedrate
+  Calculator i okno nazwy projektu zajmują cały ekran na dotyku **albo** w układzie średnim /
   wąskim. Szczegóły: `src/components/CLAUDE.md`.
 - **Pionowy akordeon** 4 kroków (układ szeroki): Wizard Section zajmuje
   42% okna (od 660 do 760 px), aktywny krok bierze to, co zostaje po
