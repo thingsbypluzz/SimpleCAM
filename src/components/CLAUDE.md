@@ -206,7 +206,10 @@
   dało się wczytać ponownie), **Save project** (`SaveFileIcon`;
   nieaktywny bez presetów) — otwiera `ProjectNameModal`: pole nazwy z
   podpowiedzianą nazwą bieżącego projektu, podgląd nazwy pliku, Enter
-  zapisuje, Escape zamyka (`useModalFocus`).
+  zapisuje, Escape zamyka (`useModalFocus`). Na dotyku i w układach
+  średnim / wąskim (`fullScreen`, jak Settings i Feedrate Calculator) cały
+  ekran: w górnym pasku Back, tytuł i Save file, pole nazwy tuż pod nim —
+  przyciski nie mogą trafić pod klawiaturę systemową.
 - Błąd pliku — `window.alert()` z `PROJECT_ERROR_MESSAGE`; zastąpienie
   zajętych slotów — `window.confirm()`.
 - Ramka z nazwą: tokeny `--edit`, `max-w-40` z obcięciem, pełna nazwa w

@@ -73,7 +73,8 @@ faktycznym.
   otwory/kontury.
 - **`BL-8`** *(W trakcie — laptop i tablet wdrożone w v0.54.0–v0.55.1 i
   sprawdzone na tablecie z Androidem, telefon w pionie w v0.58.0; zostaje
-  iPad i drobne cele dotyku — Checkbox, przyciski Kroku 4)* — **Responsywny UI na małych ekranach.** Dziś layout zakłada
+  przyciski Kroku 4 jako cele dotyku, Firefox na Androidzie; iPad
+  zaparkowany)* — **Responsywny UI na małych ekranach.** Dziś layout zakłada
   desktop: dwukolumnowy układ (Wizard Section + Preview Section obok
   siebie), gęste pola liczbowe w parach X/Y w jednej linii, Preview
   Viewport 3D z absolutnie pozycjonowanymi przyciskami widoku. Dotyka
@@ -123,7 +124,7 @@ faktycznym.
   zaczynać od bloku Diagnostics.
 
   **Zostaje:**
-  - iPad (Safari), niesprawdzony: czy klawisze nie zabierają fokusu polu,
+  - *(zaparkowane 2026-10-21 — brak dostępu do iPada)* iPad (Safari), niesprawdzony: czy klawisze nie zabierają fokusu polu,
     czy klawiatura systemowa pól tekstowych nie zasłania dołu,
     przytrzymanie slotu, obrót ekranu przy otwartej klawiaturze,
     klawiatura pływająca i dzielona, podłączona klawiatura fizyczna;
@@ -134,12 +135,16 @@ faktycznym.
     zastąpi wartość~~ *(rozwiązane w v0.58.2, decyzja 2026-10-21)*:
     klawiatura zawsze dopisuje, nową liczbę zaczyna klawisz C w miejscu
     dawnego klawisza chowania (dublował Done);
-  - okno nazwy projektu zostało zwykłym oknem (nie pełny ekran);
-  - małe cele dotyku, których nie powiększono: Checkbox, przyciski
-    Kroku 4 (Hint Button powiększony w v0.58.2 — ikona wielkości
-    etykiety, pole dotyku 40 px);
-  - Feedrate Calculator w układzie wąskim ma pola wejściowe w jednej
-    kolumnie (makieta: dwie);
+  - ~~okno nazwy projektu zostało zwykłym oknem (nie pełny ekran)~~
+    *(zrobione w v0.58.3, 2026-10-21: cały ekran jak Settings, Back i
+    Save file w górnym pasku)*;
+  - małe cele dotyku, których nie powiększono: przyciski Kroku 4 (Hint
+    Button powiększony w v0.58.2 — ikona wielkości etykiety, pole dotyku
+    40 px; Checkbox odrzucony 2026-10-21 — dotknąć można całego wiersza z
+    napisem);
+  - ~~Feedrate Calculator w układzie wąskim ma pola wejściowe w jednej
+    kolumnie (makieta: dwie)~~ *(odrzucone 2026-10-21 — użytkownik: jedna
+    kolumna wygląda dobrze)*;
   - ~~**klawiatura numeryczna — przyciski ˄ ˅**~~ *(zrobione w v0.58.0,
     do sprawdzenia na telefonie)* (decyzja użytkownika, 2026-10-19,
     wariant 3): dziś przechodzą do poprzedniego
