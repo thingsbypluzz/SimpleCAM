@@ -7,6 +7,18 @@ zgodne z [SemVer](https://semver.org/). Ten plik pozostaje głównym, czytelnym
 thingsbypluzz/SimpleCAM), ale to infrastruktura pod izolację pracy
 (branch/worktree per zadanie), nie zamiennik tego changeloga.
 
+## [0.58.2] — 2026-10-21
+
+### Zmieniono
+
+- **Klawiatura numeryczna zawsze dopisuje** (`BL-8`). Wejście w pole nie
+  kasuje już wartości przy pierwszym klawiszu — nie było widać, w którym
+  trybie się jest, i łatwo było stracić liczbę. ⌫ zdejmuje ostatni znak,
+  nową liczbę zaczyna nowy klawisz **C** (Clear) w prawym dolnym rogu, w
+  miejscu klawisza chowania klawiatury, który robił to samo co Done.
+- Na dotyku znak zapytania przy polach (Hint Button) wielkości etykiety i z
+  polem dotyku 40 px — układ wiersza bez zmian.
+
 ## [0.58.1] — 2026-10-21
 
 ### Dodano

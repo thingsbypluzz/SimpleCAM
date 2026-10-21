@@ -73,7 +73,7 @@ faktycznym.
   otwory/kontury.
 - **`BL-8`** *(W trakcie — laptop i tablet wdrożone w v0.54.0–v0.55.1 i
   sprawdzone na tablecie z Androidem, telefon w pionie w v0.58.0; zostaje
-  iPad i drobne cele dotyku)* — **Responsywny UI na małych ekranach.** Dziś layout zakłada
+  iPad i drobne cele dotyku — Checkbox, przyciski Kroku 4)* — **Responsywny UI na małych ekranach.** Dziś layout zakłada
   desktop: dwukolumnowy układ (Wizard Section + Preview Section obok
   siebie), gęste pola liczbowe w parach X/Y w jednej linii, Preview
   Viewport 3D z absolutnie pozycjonowanymi przyciskami widoku. Dotyka
@@ -130,12 +130,14 @@ faktycznym.
   - niewyjaśnione: Firefox na Androidzie podaje obszar układu wyższy niż
     ekran (1291 px przy widocznych 944) — obejście działa, przyczyna
     nieznana (wiersz „Page” w Diagnostics);
-  - pole liczbowe po dotknięciu nie pokazuje już, że pierwsza cyfra
-    zastąpi wartość (zaznaczenie usunięte z powodu paska Cut / Copy) —
-    do oceny, czy potrzebny inny sygnał;
+  - ~~pole liczbowe po dotknięciu nie pokazuje już, że pierwsza cyfra
+    zastąpi wartość~~ *(rozwiązane w v0.58.2, decyzja 2026-10-21)*:
+    klawiatura zawsze dopisuje, nową liczbę zaczyna klawisz C w miejscu
+    dawnego klawisza chowania (dublował Done);
   - okno nazwy projektu zostało zwykłym oknem (nie pełny ekran);
-  - małe cele dotyku, których nie powiększono: Hint Button, Checkbox,
-    przyciski Kroku 4;
+  - małe cele dotyku, których nie powiększono: Checkbox, przyciski
+    Kroku 4 (Hint Button powiększony w v0.58.2 — ikona wielkości
+    etykiety, pole dotyku 40 px);
   - Feedrate Calculator w układzie wąskim ma pola wejściowe w jednej
     kolumnie (makieta: dwie);
   - ~~**klawiatura numeryczna — przyciski ˄ ˅**~~ *(zrobione w v0.58.0,

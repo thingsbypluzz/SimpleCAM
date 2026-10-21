@@ -190,7 +190,7 @@
 - `FieldRow.tsx` (`label`/`hint`/`annotation`, `inputClass`; jednostka na
   końcu etykiety — „[mm]”, „[°]” — cieńsza i przygaszona; `shortLabel` —
   etykieta na telefonie, np. „Tool D [mm]”),
-  `HintPopover.tsx` (na dotyku szerszy i większą czcionką; portal do `document.body`, `position: fixed`, clamp do
+  `HintPopover.tsx` (na dotyku szerszy i większą czcionką, a znak zapytania wielkości etykiety w polu dotyku 40 px — ujemny margines zostawia mu w wierszu dawne 20 px; portal do `document.body`, `position: fixed`, clamp do
   viewportu — omija `overflow-y-auto` panelu; zamyka się na klik poza,
   Escape, scroll; jeden otwarty naraz).
 - Adaptive w Kroku 2: Apply chip thinning (wpisuje Feed XY do Kroku 3 bez

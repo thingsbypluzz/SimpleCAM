@@ -82,9 +82,12 @@ export function HintPopover({ text }: HintPopoverProps) {
         aria-expanded={open}
         aria-controls={open ? popoverId : undefined}
         aria-label={`Hint: ${text}`}
-        className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-muted hover:text-fg"
+        // On touch the icon grows to the label's size and the button to a
+        // 40 px target; the negative margin keeps it taking the same 20 px
+        // in the row.
+        className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-muted hover:text-fg pointer-coarse:-m-2.5 pointer-coarse:h-10 pointer-coarse:w-10"
       >
-        <HintIcon className="h-4 w-4" />
+        <HintIcon className="h-4 w-4 pointer-coarse:h-5 pointer-coarse:w-5" />
       </button>
       {open &&
         position &&

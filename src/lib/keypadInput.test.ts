@@ -3,38 +3,41 @@ import { applyKey, stepText } from './keypadInput'
 
 describe('applyKey', () => {
   it('extends the text with a digit', () => {
-    expect(applyKey('47', '1', false)).toBe('471')
-    expect(applyKey('', '0', false)).toBe('0')
+    expect(applyKey('47', '1')).toBe('471')
+    expect(applyKey('', '0')).toBe('0')
   })
 
-  it('starts a new number on the first key after entering a field', () => {
-    expect(applyKey('47.1', '5', true)).toBe('5')
-    expect(applyKey('47.1', '.', true)).toBe('0.')
-    expect(applyKey('47.1', 'back', true)).toBe('')
+  it('keeps the value when a field is entered — the first key extends it', () => {
+    expect(applyKey('12.5', '6')).toBe('12.56')
+    expect(applyKey('12.5', 'back')).toBe('12.')
+  })
+
+  it('clears the field', () => {
+    expect(applyKey('47.1', 'clear')).toBe('')
+    expect(applyKey('', 'clear')).toBe('')
   })
 
   it('accepts one decimal point', () => {
-    expect(applyKey('47', '.', false)).toBe('47.')
-    expect(applyKey('47.', '.', false)).toBe('47.')
-    expect(applyKey('4.7', '.', false)).toBe('4.7')
-    expect(applyKey('', '.', false)).toBe('0.')
-    expect(applyKey('-', '.', false)).toBe('-0.')
+    expect(applyKey('47', '.')).toBe('47.')
+    expect(applyKey('47.', '.')).toBe('47.')
+    expect(applyKey('4.7', '.')).toBe('4.7')
+    expect(applyKey('', '.')).toBe('0.')
+    expect(applyKey('-', '.')).toBe('-0.')
   })
 
   it('deletes the last character', () => {
-    expect(applyKey('47.1', 'back', false)).toBe('47.')
-    expect(applyKey('', 'back', false)).toBe('')
+    expect(applyKey('47.1', 'back')).toBe('47.')
+    expect(applyKey('', 'back')).toBe('')
   })
 
-  it('flips the sign of what is there, also right after entering a field', () => {
-    expect(applyKey('12', 'sign', false)).toBe('-12')
-    expect(applyKey('-12', 'sign', false)).toBe('12')
-    expect(applyKey('12', 'sign', true)).toBe('-12')
-    expect(applyKey('', 'sign', false)).toBe('-')
+  it('flips the sign of what is there', () => {
+    expect(applyKey('12', 'sign')).toBe('-12')
+    expect(applyKey('-12', 'sign')).toBe('12')
+    expect(applyKey('', 'sign')).toBe('-')
   })
 
   it('builds numbers the fields can parse', () => {
-    const typed = (['sign', '1', '2', '.', '5'] as const).reduce((text, key) => applyKey(text, key, false), '')
+    const typed = (['sign', '1', '2', '.', '5'] as const).reduce((text, key) => applyKey(text, key), '')
     expect(Number(typed)).toBe(-12.5)
   })
 })
