@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react'
 import { previewBottomBarClass, previewButtonClass, previewTopBarClass } from '../preview/previewToolbar'
+import { PhoneLabel } from '../PhoneLabel'
 import * as THREE from 'three'
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js'
 import type { PaletteId } from '../../config/palettes'
@@ -70,9 +71,9 @@ export interface Saved3DView {
   fitKey: string
 }
 
-const PRESET_BUTTONS: { name: ViewPresetName; label: string }[] = [
+const PRESET_BUTTONS: { name: ViewPresetName; label: string; short?: string }[] = [
   { name: 'top', label: 'Top' },
-  { name: 'isometric', label: 'Isometric' },
+  { name: 'isometric', label: 'Isometric', short: 'Iso' },
   { name: 'front', label: 'Front' },
   { name: 'side', label: 'Side' },
 ]
@@ -394,13 +395,13 @@ export function Scene3D({
           {stockVisible ? 'Hide Stock' : 'Show Stock'}
         </button>
         <button type="button" onClick={onToggleStockSolid} className={buttonClass}>
-          {stockSolid ? 'Transparent Stock' : 'Solid Stock'}
+          {stockSolid ? <PhoneLabel full="Transparent Stock" short="Transparent" /> : <PhoneLabel full="Solid Stock" short="Solid" />}
         </button>
         <button type="button" onClick={onToggleToolpathVisible} className={buttonClass}>
           {toolpathVisible ? 'Hide Toolpath' : 'Show Toolpath'}
         </button>
         <button type="button" onClick={onToggleGridLabels} className={buttonClass}>
-          {gridLabelsEnabled ? 'Hide Grid Labels' : 'Show Grid Labels'}
+          {gridLabelsEnabled ? <PhoneLabel full="Hide Grid Labels" short="Hide Labels" /> : <PhoneLabel full="Show Grid Labels" short="Show Labels" />}
         </button>
       </div>
       <div className={previewBottomBarClass}>
@@ -416,7 +417,7 @@ export function Scene3D({
               onClick={() => handlePreset(preset.name)}
               className={buttonClass}
             >
-              {preset.label}
+              {preset.short ? <PhoneLabel full={preset.label} short={preset.short} /> : preset.label}
             </button>
           ))}
         </div>

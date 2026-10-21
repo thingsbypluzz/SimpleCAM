@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { applyKey } from './keypadInput'
+import { applyKey, stepText } from './keypadInput'
 
 describe('applyKey', () => {
   it('extends the text with a digit', () => {
@@ -36,5 +36,28 @@ describe('applyKey', () => {
   it('builds numbers the fields can parse', () => {
     const typed = (['sign', '1', '2', '.', '5'] as const).reduce((text, key) => applyKey(text, key, false), '')
     expect(Number(typed)).toBe(-12.5)
+  })
+})
+
+describe('stepText', () => {
+  it('moves the number by the step, both ways', () => {
+    expect(stepText('10', 1)).toBe('11')
+    expect(stepText('10', -0.5)).toBe('9.5')
+    expect(stepText('0', -1)).toBe('-1')
+  })
+
+  it('steps from a number still being typed', () => {
+    expect(stepText('4.', 0.1)).toBe('4.1')
+    expect(stepText('-2', 1)).toBe('-1')
+  })
+
+  it('rounds away floating-point noise, keeping the step’s decimals', () => {
+    expect(stepText('0.2', 0.1)).toBe('0.3')
+    expect(stepText('0.1', 0.005)).toBe('0.105')
+  })
+
+  it('does nothing while the text is not a number', () => {
+    expect(stepText('', 1)).toBeNull()
+    expect(stepText('-', 1)).toBeNull()
   })
 })

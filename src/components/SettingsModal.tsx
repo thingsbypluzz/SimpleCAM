@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { getPaletteAccents, PALETTE_LIST } from '../config/palettes'
 import type { Dialect, MachineSettings, Rigidity } from '../types/machine'
-import type { AppearanceSettings, Grid3DLabelSize } from '../types/appearance'
+import type { AppearanceSettings, Grid3DLabelSize, UiMode } from '../types/appearance'
 import { THEME_LIST } from '../types/theme'
 import { isRouterId, ROUTER_IDS, ROUTERS } from '../config/routers'
 import { DEFAULT_TOOL_DIAMETER_OPTIONS, type ToolDiameterOption } from '../types/toolDiameters'
@@ -12,7 +12,7 @@ import { useSimpleMode } from './uiModeContext'
 import { Checkbox } from './wizard/Checkbox'
 import { inputClass } from './wizard/FieldRow'
 import { NumberInput } from './wizard/NumberInput'
-import { TextToggle } from './wizard/TextToggle'
+import { TextToggle, type TextToggleOption } from './wizard/TextToggle'
 import { roundToStepPrecision } from './wizard/useNumberField'
 import { useModalFocus } from './useModalFocus'
 import { DiagnosticsBlock } from './DiagnosticsBlock'
@@ -69,6 +69,11 @@ const SECTIONS: { id: SectionId; label: string }[] = [
   { id: 'privacy', label: 'Privacy' },
   { id: 'reset', label: 'Reset' },
   { id: 'about', label: 'About' },
+]
+
+const UI_MODE_OPTIONS: readonly TextToggleOption<UiMode>[] = [
+  { value: 'simple', label: 'Simple' },
+  { value: 'advanced', label: 'Advanced' },
 ]
 
 const FIELDS: { key: TravelField; label: string }[] = [
@@ -804,7 +809,18 @@ export function SettingsModal({
                 Appearance
               </h2>
 
+              {/* BL-103: the same switch as the Header's duck and eagle — the
+                  only one on a phone. */}
               <div className="flex flex-col gap-2">
+                <span className="text-sm font-medium text-value">Interface Mode</span>
+                <TextToggle options={UI_MODE_OPTIONS} value={appearance.uiMode} onChange={(uiMode) => onSaveAppearance({ ...appearance, uiMode })} />
+                <p className="text-sm text-muted">
+                  Simple shows only the settings needed to get a job done; every hidden one stays at its default, so
+                  switching to Simple resets them. Advanced shows everything.
+                </p>
+              </div>
+
+              <div className="flex flex-col gap-2 border-t border-border pt-4">
                 <span className="text-sm font-medium text-value">Theme</span>
                 <div className="flex flex-wrap gap-3">
                   {THEME_LIST.map((theme) => {

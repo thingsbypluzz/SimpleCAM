@@ -43,6 +43,7 @@ import { NumberInput } from './NumberInput'
 import { PickHeader } from './PickHeader'
 import { PocketMethodPicker } from './PocketMethodPicker'
 import { useSimpleMode } from '../uiModeContext'
+import { PhoneLabel } from '../PhoneLabel'
 import { TextToggle } from './TextToggle'
 import { CUT_DIRECTION_OPTIONS, Z_TRANSITION_MODE_OPTIONS } from './toggleOptions'
 import { useNumberField } from './useNumberField'
@@ -247,7 +248,7 @@ export function Step2GeometryPocket({ params, onChange, machine, toolDiameters, 
 
       <div className="flex flex-col gap-4">
         <ToolChipLoad params={params} machine={machine} flutes={flutes} onFlutesChange={onFlutesChange}>
-          <FieldRow label="Tool Diam. [mm]">
+          <FieldRow label="Tool Diam. [mm]" shortLabel="Tool D [mm]">
             <select
               className={inputClass}
               aria-invalid={toolInvalid || cellsInvalid}
@@ -274,9 +275,9 @@ export function Step2GeometryPocket({ params, onChange, machine, toolDiameters, 
       </div>
 
       {/* Method sizes to its own buttons and the companion toggle starts a
-          clear gap after it, on the same line. */}
+          clear gap after it, on the same line — or on the next, on a phone. */}
       {!simple && (
-        <div className="flex gap-7">
+        <div className="flex flex-wrap gap-x-7 gap-y-4">
           <div className="flex shrink-0 flex-col gap-1">
             <span className="text-sm font-medium text-value">Method</span>
             <PocketMethodPicker params={params} onChange={onChange} />
@@ -440,11 +441,12 @@ export function Step2GeometryPocket({ params, onChange, machine, toolDiameters, 
       {!simple && (
         <div className="flex flex-col gap-4">
           {/* Z-Transition + Helix Radius + Ramp Angle on one row; the helix
-              fields leave their cells empty in Plunge mode. */}
-          <div className="flex gap-4">
-            <div className="flex min-w-0 flex-1 flex-col gap-1">
+              fields leave their cells empty in Plunge mode. On a phone the
+              toggle takes a row of its own ("Entry") and empty cells go. */}
+          <div className="flex flex-wrap gap-4">
+            <div className="flex min-w-0 flex-1 flex-col gap-1 phone:basis-full">
               <span className="flex items-center gap-1.5 text-sm font-medium text-value">
-                Z-Transition
+                <PhoneLabel full="Z-Transition" short="Entry" />
                 {isDonut && !isAdaptive && (
                   <HintPopover text="Donut enters on its first lap, right next to the island: Plunge goes straight down at the lap's start, Helix ramps down along the lap itself at the Ramp Angle." />
                 )}
@@ -452,14 +454,14 @@ export function Step2GeometryPocket({ params, onChange, machine, toolDiameters, 
                   <HintPopover text="Adaptive always enters with a Helix — constant engagement can't grow outward from a plunged hole the size of the tool." />
                 )}
               </span>
+              {/* Adaptive always enters with a Helix — only that one shows. */}
               <TextToggle
-                options={Z_TRANSITION_MODE_OPTIONS}
+                options={isAdaptive ? Z_TRANSITION_MODE_OPTIONS.filter((opt) => opt.value === 'helix') : Z_TRANSITION_MODE_OPTIONS}
                 value={zMode}
-                disabled={isAdaptive}
                 onChange={(v) => updatePocket({ zTransitionMode: v })}
               />
             </div>
-            <div className="min-w-0 flex-1">
+            <div className={`min-w-0 flex-1 ${zMode === 'helix' && !(isDonut && !isAdaptive) ? '' : 'phone:hidden'}`}>
               {zMode === 'helix' && !(isDonut && !isAdaptive) && (
                 <FieldRow label="Helix R. [mm]">
                   <NumberInput
@@ -473,7 +475,7 @@ export function Step2GeometryPocket({ params, onChange, machine, toolDiameters, 
                 </FieldRow>
               )}
             </div>
-            <div className="min-w-0 flex-1">
+            <div className={`min-w-0 flex-1 ${zMode === 'helix' ? '' : 'phone:hidden'}`}>
               {zMode === 'helix' && (
                 <FieldRow
                   label="Ramp [°]"

@@ -88,9 +88,10 @@ export const VBIT_ANGLE_OPTIONS: readonly TextToggleOption<VbitAngleOption>[] = 
 ]
 
 // Hole(s) (BL-111) — previews only.
+// "Bottom Open: On | Off".
 export const HOLE_BOTTOM_OPTIONS: readonly TextToggleOption<HoleBottom>[] = [
-  { value: 'open', label: 'Open', title: 'Drawn cut through the stock' },
-  { value: 'closed', label: 'Closed', title: 'Drawn with a floor at its Depth' },
+  { value: 'open', label: 'On', title: 'Drawn cut through the stock' },
+  { value: 'closed', label: 'Off', title: 'Drawn with a floor at its Depth' },
 ]
 
 // Hole(s) Drill (BL-120).

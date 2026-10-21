@@ -25,7 +25,9 @@
   `App.tsx`. Napisy trybów („Overlay Mode — …”, „Auto-save Mode Enabled”)
   przychodzą jako `labels`: w układzie szerokim wiszą na lewo od ramki, w
   wąskim stoją między slotami a okiem, w średnim rysuje je `App.tsx` w
-  wierszu Preview Tabs.
+  wierszu Preview Tabs. Na telefonie (`phone:`) sloty i oko mają 36 px z
+  odstępem 4 px (siedem slotów i oko mieszczą się w 360 px), a napisy
+  trybów znikają — stan pokazują znaczki na slotach.
 - `touch`: znaczki są wtedy tylko wskaźnikami stanu; przytrzymanie slotu
   (`LONG_PRESS_MS` = 500) otwiera menu (`role="menu"`), a kliknięcie, które
   przychodzi po puszczeniu palca, jest pomijane. Menu zamyka dotknięcie
@@ -55,8 +57,18 @@
 - Klawisze działają na `pointerdown` z `preventDefault` — nie zabierają
   fokusu polu. Done i klawisz chowania robią `blur()` (to zatwierdza
   wartość); dotknięcie poza klawiaturą i poza polami liczbowymi też ją
-  zamyka. Poprzednie / następne pole — po widocznych polach `data-keypad`
-  w tym samym oknie dialogowym albo na stronie.
+  zamyka.
+- Pasek nad klawiszami: ‹ › (małe, bez ramki) — poprzednie / następne
+  pole, po widocznych polach `data-keypad` w tym samym oknie dialogowym
+  albo na stronie; nazwa pola; **− / +** — tekst pola o krok (atrybut
+  `step` pola, bez niego 1) przez `stepText()` z `lib/keypadInput.ts`:
+  liczy od tego, co widać (także od liczby wpisanej i jeszcze
+  niezatwierdzonej), zaokrągla do miejsc po przecinku kroku (co najmniej
+  1/100), przy tekście, który nie jest liczbą, nic nie robi; zmiana idzie
+  tym samym zdarzeniem `input` co klawisz, więc zatwierdza się jak
+  pisanie. Przytrzymanie powtarza krok (`useHoldRepeat()`, jak przyciski
+  pola na komputerze); bez obcinania do `min`/`max`, jak na komputerze.
+  Done na telefonie węższy, żeby nazwa pola się mieściła.
 - Klawiatura jest `fixed`, przypięta do dołu widocznego obszaru
   (`top: var(--app-h)` i przesunięcie o własną wysokość — nie `bottom: 0`,
   bo Firefox na Androidzie potrafi podać obszar układu wyższy niż ekran;
@@ -82,7 +94,9 @@
   układów): dwie połówki `DuckIcon` | `EagleIcon` (ikony 24 px, kreska 1 i
   detale 0,8 — cieńsze od reszty, wzory w Artifakcie „OnlyPaths Mode
   Icons”), wybrana na tokenach akcentu, `aria-pressed` na obu. Na dotyku i w
-  układach średnim / wąskim połówki 44 px.
+  układach średnim / wąskim połówki 44 px; na telefonie (`phone:`) schowany.
+  Ten sam wybór w Settings → Appearance („Interface Mode”, `TextToggle`) —
+  na telefonie jedyny.
 - `appearance` zapisuje się przy każdej zmianie i przy starcie, więc tryb
   wybrany nowemu użytkownikowi zostaje (`loadAppearanceSettings()`: brak
   klucza i brak presetów = Simple, brak klucza przy zapisanych presetach
@@ -121,7 +135,8 @@
   usuń, sufit `MAX_TOOL_DIAMETER_COUNT`, blokada usunięcia ostatniej, Reset
   to Default z potwierdzeniem; wpisy użytkownika z etykietą `"<wartość>
   mm"`; błąd dodania oznacza pole „New diameter” przez `aria-invalid`,
-  poza błędem pełnej listy). **Appearance:** Theme (karty ze swatchami, `aria-pressed`),
+  poza błędem pełnej listy). **Appearance:** Interface Mode (Simple / Advanced — to samo co
+  przełącznik w Header), Theme (karty ze swatchami, `aria-pressed`),
   Preview Color Palette, Cut Shape (checkbox — materiał w podglądach w kształcie
   po frezie, `cutShapeEnabled`), Simple 3D Preview (checkbox — uproszczony podgląd 3D także tam, gdzie
   działa pełny, `simple3DPreview`), Stock Edges 3D (checkbox — obrys krawędzi materiału),
@@ -242,6 +257,8 @@
   ekranu "Reload" i "Reset saved state" (usuwa klucze `simplecam.*` —
   auto-save `"0"` wczytuje się przy każdym starcie, więc błąd z zapisu
   powtarzałby się w nieskończoność).
+- `PhoneLabel.tsx` — napis skracany na telefonie (`phone:`), np. przyciski
+  podglądu 3D.
 - `icons.tsx` — własne ikony SVG; legenda w Artifakcie Interface Anatomy.
   Ikony kształtów Pocket: granica + cieńsza spirala CCW (kwadratowa dla
   Rectangle z kropką originu, Archimedesa dla Circle).

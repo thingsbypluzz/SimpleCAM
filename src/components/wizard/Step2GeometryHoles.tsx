@@ -143,8 +143,8 @@ export function Step2GeometryHoles({ params, onChange, machine, toolDiameters, f
   const bottomCell = (
     <div className="flex min-w-0 flex-1 flex-col gap-1">
       <span className="flex items-center gap-1.5 text-sm font-medium text-value">
-        Bottom
-        <HintPopover text="How the previews draw the hole: Open is cut through the stock, Closed has a floor at its Depth — e.g. a counterbore for a screw head over a deeper, narrower hole (compare them in Overlay). Looks only: the G-code is the same either way." />
+        Bottom Open
+        <HintPopover text="How the previews draw the hole: On is cut through the stock, Off has a floor at its Depth — e.g. a counterbore for a screw head over a deeper, narrower hole (compare them in Overlay). Looks only: the G-code is the same either way." />
       </span>
       <TextToggle options={HOLE_BOTTOM_OPTIONS} value={geometry.holeBottom} onChange={(v) => updateGeometry({ holeBottom: v })} />
     </div>
@@ -342,10 +342,10 @@ export function Step2GeometryHoles({ params, onChange, machine, toolDiameters, f
         {isDrill ? (
           // The drill's flutes and chip load would describe cutting
           // sideways (Feedrate XY), which a drill never does.
-          <FieldRow label="Drill Diam. [mm]">{toolSelect}</FieldRow>
+          <FieldRow label="Drill Diam. [mm]" shortLabel="Drill D [mm]">{toolSelect}</FieldRow>
         ) : (
           <ToolChipLoad params={params} machine={machine} flutes={flutes} onFlutesChange={onFlutesChange}>
-            <FieldRow label="Tool Diam. [mm]">{toolSelect}</FieldRow>
+            <FieldRow label="Tool Diam. [mm]" shortLabel="Tool D [mm]">{toolSelect}</FieldRow>
           </ToolChipLoad>
         )}
         {toolInvalid && (

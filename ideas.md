@@ -72,8 +72,8 @@ faktycznym.
   punktów. Parsowanie formatu, ekstrakcja geometrii, mapowanie na
   otwory/kontury.
 - **`BL-8`** *(W trakcie — laptop i tablet wdrożone w v0.54.0–v0.55.1 i
-  sprawdzone na tablecie z Androidem; zostaje iPad, drobne cele dotyku i
-  telefon)* — **Responsywny UI na małych ekranach.** Dziś layout zakłada
+  sprawdzone na tablecie z Androidem, telefon w pionie w v0.58.0; zostaje
+  iPad i drobne cele dotyku)* — **Responsywny UI na małych ekranach.** Dziś layout zakłada
   desktop: dwukolumnowy układ (Wizard Section + Preview Section obok
   siebie), gęste pola liczbowe w parach X/Y w jednej linii, Preview
   Viewport 3D z absolutnie pozycjonowanymi przyciskami widoku. Dotyka
@@ -106,7 +106,13 @@ faktycznym.
     w 3D);
   - v0.55.0 — uproszczony podgląd 3D bez WebGL 2 (`BL-118`), blok
     Diagnostics w Settings → About, poprawka kolorów w Android WebView;
-  - v0.55.1 — klawiatura numeryczna widoczna w Firefoksie na Androidzie.
+  - v0.55.1 — klawiatura numeryczna widoczna w Firefoksie na Androidzie;
+  - v0.58.0 — telefon w pionie (< 480 px, wariant `phone:`): logo „OP”,
+    Simple / Advanced tylko w Settings, mniejsze sloty Preset Bar,
+    krótsze napisy przycisków podglądu, Z-Transition w osobnym wierszu,
+    „Tool D”, Bottom Open On / Off; sprawdzone na iPhonie (375 × 634);
+    klawiatura numeryczna z − / + przy nazwie pola i mniejszymi ‹ › do
+    nawigacji (decyzja niżej).
 
   **Sprawdzone na urządzeniach (2026-10-13):** stary tablet Samsung Galaxy
   Tab 3 Lite (600 × 1024, układ wąski, Mali-400 bez WebGL 2, LineageOS /
@@ -132,7 +138,14 @@ faktycznym.
     przyciski Kroku 4;
   - Feedrate Calculator w układzie wąskim ma pola wejściowe w jednej
     kolumnie (makieta: dwie);
-  - telefon — osobny układ.
+  - ~~**klawiatura numeryczna — przyciski ˄ ˅**~~ *(zrobione w v0.58.0,
+    do sprawdzenia na telefonie)* (decyzja użytkownika, 2026-10-19,
+    wariant 3): dziś przechodzą do poprzedniego
+    / następnego pola, a intuicyjnie wyglądają na zmianę wartości. W
+    pasku nad klawiaturą obok nazwy pola przyciski **− / +** zmieniające
+    wartość o krok pola (z powtarzaniem po przytrzymaniu, jak na
+    komputerze), a nawigacja między polami zostaje jako mniejsze
+    przyciski **‹ ›**.
 
   **Sugestie (użytkownik, 2026-10-11) — nieuzgodnione:**
   - Przycisk Generate musi jakoś potwierdzić, że wykonał zadanie. Pomysł:
