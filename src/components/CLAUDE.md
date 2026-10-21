@@ -50,12 +50,13 @@
 - Klawisz wpisuje tekst natywnym setterem i zdarzeniem `input`, więc pole
   dostaje zwykły `onChange` — zatwierdzanie i walidacja działają jak przy
   klawiaturze fizycznej. Logika klawiszy: `lib/keypadInput.ts`
-  (`applyKey()`): klawiatura edytuje tylko koniec tekstu; pierwszy klawisz
-  po wejściu w pole zaczyna liczbę od nowa (bez zaznaczania tekstu —
-  zaznaczenie wywołuje na Androidzie systemowy pasek Cut / Copy), a
-  dotknięcie pola, które już jest w edycji, przechodzi w dopisywanie.
+  (`applyKey()`): klawiatura edytuje tylko koniec tekstu i zawsze dopisuje
+  — wejście w pole niczego nie kasuje, ⌫ zdejmuje ostatni znak, nową
+  liczbę zaczyna klawisz **C** (Clear, w prawym dolnym rogu). Bez
+  zaznaczania tekstu — zaznaczenie wywołuje na Androidzie systemowy pasek
+  Cut / Copy.
 - Klawisze działają na `pointerdown` z `preventDefault` — nie zabierają
-  fokusu polu. Done i klawisz chowania robią `blur()` (to zatwierdza
+  fokusu polu. Done robi `blur()` (to zatwierdza
   wartość); dotknięcie poza klawiaturą i poza polami liczbowymi też ją
   zamyka.
 - Pasek nad klawiszami: ‹ › (małe, bez ramki) — poprzednie / następne

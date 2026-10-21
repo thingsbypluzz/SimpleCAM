@@ -98,7 +98,8 @@ Sześć operacji (`WizardParams.operation`):
   rozpiętość wzorca ≤ skok maszyny na osi: twarde `min`/`max` na polach
   (sanity) + miękkie ostrzeżenie w Kroku 4 (`machineFitWarnings()`), które
   nie blokuje Generate i steruje kolorem Badge Kroku 4 (kształt = stan
-  Generate, kolor = dopasowanie do maszyny).
+  Generate, kolor = dopasowanie do maszyny; ten sam znaczek stoi też na
+  prawo od przycisku Generate).
 - **Język UI: angielski.** Rozmowa z użytkownikiem i dokumenty (`CLAUDE.md`,
   `CHANGELOG.md`, `ideas.md`) — po polsku.
 - Hosting: statyczny build na `https://onlypaths.pluzz.pl`; lokalnie

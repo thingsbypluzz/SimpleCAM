@@ -164,6 +164,11 @@
   `routerDialHint()`, `config/routers.ts`; ten sam komponent w Feedrate
   Calculator). Step 3 Summary: MiniStat SPINDLE (RPM, a z routerem
   „dial N”).
+- **Krok 4, Generate:** przycisk na całą szerokość pomniejszoną o znaczek
+  po prawej — ten sam co w Step 4 Summary i w nagłówku panelu
+  (`step4Badge()` w `App.tsx`, przekazany jako `generateBadge`): krzyżyk,
+  dopóki G-code nie wygenerowano albo po zmianie parametrów, ptaszek, gdy
+  aktualny; kolor jak w Badge (dopasowanie do maszyny). Wszystkie układy.
 - **Krok 4, sloty presetów `[1]…[7]`:** zapisany slot wygląda jak w Preset
   Bar w Header (ramka akcentu + ikona z `OPERATION_META[op].pickIcon()`),
   pusty ma przerywaną, przygaszoną ramkę z numerem; odstęp `gap-1.5`, żeby
@@ -185,7 +190,7 @@
 - `FieldRow.tsx` (`label`/`hint`/`annotation`, `inputClass`; jednostka na
   końcu etykiety — „[mm]”, „[°]” — cieńsza i przygaszona; `shortLabel` —
   etykieta na telefonie, np. „Tool D [mm]”),
-  `HintPopover.tsx` (na dotyku szerszy i większą czcionką; portal do `document.body`, `position: fixed`, clamp do
+  `HintPopover.tsx` (na dotyku szerszy i większą czcionką, a znak zapytania wielkości etykiety w polu dotyku 40 px — ujemny margines zostawia mu w wierszu dawne 20 px; portal do `document.body`, `position: fixed`, clamp do
   viewportu — omija `overflow-y-auto` panelu; zamyka się na klik poza,
   Escape, scroll; jeden otwarty naraz).
 - Adaptive w Kroku 2: Apply chip thinning (wpisuje Feed XY do Kroku 3 bez

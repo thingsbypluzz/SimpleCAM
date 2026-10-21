@@ -810,6 +810,16 @@ function App() {
             onSaveToPreset={handleSaveToPreset}
             onDeletePreset={handleDeletePreset}
             warnings={step4Warnings}
+            generateBadge={
+              <span
+                className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full ${step4BadgeInfo.colorClassName}`}
+                title={step4BadgeInfo.title}
+                role="img"
+                aria-label={step4BadgeInfo.title}
+              >
+                <step4BadgeInfo.Icon className="h-4 w-4" />
+              </span>
+            }
           />
         </>
       )}

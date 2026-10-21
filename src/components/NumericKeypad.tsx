@@ -53,15 +53,11 @@ export function KeypadProvider({ children }: { children: ReactNode }) {
   const enabled = useCoarsePointer()
   const [target, setTarget] = useState<HTMLInputElement | null>(null)
   const targetRef = useRef<HTMLInputElement | null>(null)
-  const replaceRef = useRef(false)
   const keypadRef = useRef<HTMLDivElement>(null)
 
   const attach = useCallback((input: HTMLInputElement) => {
     if (targetRef.current === input) return
     targetRef.current = input
-    // No `select()` to show that typing replaces the value: on Android it
-    // brings up the browser's cut / copy bar over the neighbouring fields.
-    replaceRef.current = true
     setTarget(input)
   }, [])
 
@@ -95,11 +91,6 @@ export function KeypadProvider({ children }: { children: ReactNode }) {
     const handlePointerDown = (e: globalThis.PointerEvent) => {
       const el = e.target as Element | null
       if (!el || keypadRef.current?.contains(el)) return
-      if (el === targetRef.current) {
-        // A tap into the field being edited: keep typing where it left off.
-        replaceRef.current = false
-        return
-      }
       if (el.closest(KEYPAD_FIELD_SELECTOR)) return
       close()
     }
@@ -127,8 +118,7 @@ export function KeypadProvider({ children }: { children: ReactNode }) {
       return
     }
     if (document.activeElement !== input) input.focus({ preventScroll: true })
-    setFieldText(input, applyKey(input.value, key, replaceRef.current))
-    replaceRef.current = false
+    setFieldText(input, applyKey(input.value, key))
   }
 
   // − / +: the field's text moved by its step, through the same change
@@ -266,20 +256,10 @@ export function KeypadProvider({ children }: { children: ReactNode }) {
             <button type="button" className={`${keyClass} col-span-3`} {...keyHandlers(() => press('0'))}>
               0
             </button>
-            <button type="button" aria-label="Hide keypad" className={sideKeyClass} {...keyHandlers(close)}>
-              <svg
-                viewBox="0 0 26 24"
-                className="h-6 w-6"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="1.7"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                aria-hidden="true"
-              >
-                <rect x="2" y="2" width="22" height="13" rx="2.5" />
-                <path d="M6 6h1M10 6h1M14 6h1M18 6h1M7 11h12M9 19l4 3 4-3" />
-              </svg>
+            {/* Clear, not a second Done: keys only extend the value, so a new
+                number starts here. */}
+            <button type="button" aria-label="Clear" className={sideKeyClass} {...keyHandlers(() => press('clear'))}>
+              C
             </button>
           </div>
         </div>

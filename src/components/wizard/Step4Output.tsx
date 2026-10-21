@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, type ReactNode } from 'react'
 import type { WizardParams } from '../../types/wizard'
 import { buildFilename, downloadTextFile } from '../../lib/download'
 import { forcedLinearReason } from '../../lib/interpolation'
@@ -21,6 +21,10 @@ interface Step4OutputProps {
   // BL-109: the only place a preset is deleted from (asks to confirm).
   onDeletePreset: (id: PresetSlotId) => void
   warnings: string[]
+  // The Step 4 Summary badge (cross / check), repeated right of Generate so
+  // the button's result is visible where it was clicked — by shape, not
+  // only by color.
+  generateBadge: ReactNode
 }
 
 interface CheckboxOption {
@@ -45,6 +49,7 @@ export function Step4Output({
   onSaveToPreset,
   onDeletePreset,
   warnings,
+  generateBadge,
 }: Step4OutputProps) {
   const { output } = params
   const [copied, setCopied] = useState(false)
@@ -126,14 +131,17 @@ export function Step4Output({
         </div>
       )}
 
-      <button
-        type="button"
-        onClick={onGenerate}
-        disabled={!canGenerate}
-        className="rounded-md bg-btn-bg px-4 py-2 text-sm font-medium text-btn-fg shadow-[var(--glow-btn)] hover:bg-btn-bg-hover disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-btn-bg"
-      >
-        Generate
-      </button>
+      <div className="flex items-center gap-3">
+        <button
+          type="button"
+          onClick={onGenerate}
+          disabled={!canGenerate}
+          className="flex-1 rounded-md bg-btn-bg px-4 py-2 text-sm font-medium text-btn-fg shadow-[var(--glow-btn)] hover:bg-btn-bg-hover disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-btn-bg"
+        >
+          Generate
+        </button>
+        {generateBadge}
+      </div>
 
       <div className="flex gap-3">
         <button
