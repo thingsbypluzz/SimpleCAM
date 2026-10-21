@@ -147,12 +147,16 @@ faktycznym.
     komputerze), a nawigacja między polami zostaje jako mniejsze
     przyciski **‹ ›**.
 
-  **Sugestie (użytkownik, 2026-10-11) — nieuzgodnione:**
+  **Sugestie (użytkownik, 2026-10-11):**
   - Przycisk Generate musi jakoś potwierdzić, że wykonał zadanie. Pomysł:
     zasymulować pasek postępu kolorami przycisku — po kliknięciu wypełnia
     się drugim kolorem kluczowym motywu od lewej do prawej i traci ten
     kolor, gdy zmieni się którykolwiek parametr (czyli wypełnienie = „G-code
     jest aktualny”, ten sam stan co `generatedGCode` w `App.tsx`).
+    *Zrobione inaczej w v0.58.1 (decyzja 2026-10-21):* animacja różniłaby
+    stany samym kolorem, więc zamiast niej na prawo od węższego Generate
+    stoi znaczek ze Step 4 Summary (krzyżyk / ptaszek), we wszystkich
+    układach, bez mrugania.
 
   - **Zakres:** laptop i tablet; telefon w osobnym, późniejszym kroku.
   - **Szeroki ekran (~1440):** układ jak dziś, tylko z proporcjonalnym

@@ -7,6 +7,17 @@ zgodne z [SemVer](https://semver.org/). Ten plik pozostaje głównym, czytelnym
 thingsbypluzz/SimpleCAM), ale to infrastruktura pod izolację pracy
 (branch/worktree per zadanie), nie zamiennik tego changeloga.
 
+## [0.58.1] — 2026-10-21
+
+### Dodano
+
+- **Znaczek stanu przy Generate** (`BL-8`). Na prawo od przycisku Generate
+  ten sam znaczek co w Step 4 Summary: krzyżyk, dopóki G-code nie został
+  wygenerowany albo parametry się zmieniły, ptaszek, gdy jest aktualny —
+  wynik kliknięcia widać tam, gdzie się kliknęło, kształtem, nie tylko
+  kolorem. We wszystkich układach. Zamiast pomysłu z animacją wypełnienia
+  przycisku, który różniłby stany samym kolorem.
+
 ## [0.58.0] — 2026-10-18
 
 ### Dodano

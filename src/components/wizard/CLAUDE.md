@@ -164,6 +164,11 @@
   `routerDialHint()`, `config/routers.ts`; ten sam komponent w Feedrate
   Calculator). Step 3 Summary: MiniStat SPINDLE (RPM, a z routerem
   „dial N”).
+- **Krok 4, Generate:** przycisk na całą szerokość pomniejszoną o znaczek
+  po prawej — ten sam co w Step 4 Summary i w nagłówku panelu
+  (`step4Badge()` w `App.tsx`, przekazany jako `generateBadge`): krzyżyk,
+  dopóki G-code nie wygenerowano albo po zmianie parametrów, ptaszek, gdy
+  aktualny; kolor jak w Badge (dopasowanie do maszyny). Wszystkie układy.
 - **Krok 4, sloty presetów `[1]…[7]`:** zapisany slot wygląda jak w Preset
   Bar w Header (ramka akcentu + ikona z `OPERATION_META[op].pickIcon()`),
   pusty ma przerywaną, przygaszoną ramkę z numerem; odstęp `gap-1.5`, żeby
