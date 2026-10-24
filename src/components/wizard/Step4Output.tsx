@@ -20,6 +20,8 @@ interface Step4OutputProps {
   onSaveToPreset: (id: PresetSlotId) => boolean
   // BL-109: the only place a preset is deleted from (asks to confirm).
   onDeletePreset: (id: PresetSlotId) => void
+  // BL-121: every saved preset at once (asks to confirm).
+  onDeleteAllPresets: () => void
   warnings: string[]
   // The Step 4 Summary badge (cross / check), repeated right of Generate so
   // the button's result is visible where it was clicked — by shape, not
@@ -48,6 +50,7 @@ export function Step4Output({
   presetSlots,
   onSaveToPreset,
   onDeletePreset,
+  onDeleteAllPresets,
   warnings,
   generateBadge,
 }: Step4OutputProps) {
@@ -163,9 +166,21 @@ export function Step4Output({
       </div>
 
       <div className="flex flex-col gap-2 border-t border-border pt-4">
-        <span className="text-xs font-medium text-muted">
-          Save current settings as preset — hover a saved one to delete it
-        </span>
+        <div className="flex items-center justify-between gap-2">
+          <span className="text-xs font-medium text-muted">
+            Save current settings as preset — hover a saved one to delete it
+          </span>
+          <button
+            type="button"
+            onClick={onDeleteAllPresets}
+            disabled={!PRESET_SLOT_IDS.some((id) => presetSlots[id])}
+            aria-label="Delete all presets"
+            title="Delete all saved presets"
+            className="shrink-0 rounded-md border border-status-delete-fg px-2 py-0.5 text-xs font-medium text-status-delete-fg hover:bg-status-delete-bg disabled:cursor-not-allowed disabled:opacity-30 disabled:hover:bg-transparent pointer-coarse:px-3 pointer-coarse:py-2"
+          >
+            Delete all
+          </button>
+        </div>
         {/* gap-1.5: seven 44 px slots have to fit the 420 px panel, scrollbar included. */}
         <div className="flex gap-1.5">
           {PRESET_SLOT_IDS.map((id) => {

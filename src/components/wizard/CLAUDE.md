@@ -186,6 +186,11 @@
   „✓”; nadpisanie z potwierdzeniem. Usuwanie tylko tutaj: „×” w prawym
   górnym rogu zapisanego slotu po najechaniu/fokusie, z potwierdzeniem
   (`onDeletePreset`); usunięty preset wypada też z Overlay i z edycji.
+  Nad slotami, na prawo od napisu, **Delete all** (tokeny
+  `status-delete-*`, nieaktywny bez zapisanych presetów) — wszystkie
+  presety po jednym potwierdzeniu (`onDeleteAllPresets` →
+  `replacePresetSlots({})`); Overlay i edycja gasną, auto-save `"0"`,
+  parametry wizarda i nazwa projektu zostają.
 - `Checkbox.tsx` — natywny input `sr-only`, własny box z `CheckIcon`, kolory
   zaznaczenia `selected-*` (jak zaznaczona opcja, nie `--accent`),
   `peer-focus-visible` dla fokusu klawiatury; `<label>` jest `relative`,

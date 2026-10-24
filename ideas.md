@@ -1238,13 +1238,14 @@ Waga z review w nawiasie kwadratowym.
   - **Odrzucone / odłożone:** nowy pattern (powielałby wzorce), postój na
     dnie (G82), Depth jako pełna średnica (stożek czubka), stożkowe dno w
     podglądzie, osobna lista wierteł, kalkulator dla wiercenia.
-- **`BL-121`** *(Otwarty)* 🟢 — **Usuwanie wszystkich presetów naraz.**
+- **`BL-121`** *(Zrealizowany, 2026-10-24)* 🟢 — **Usuwanie wszystkich presetów naraz.**
   Zgłoszone 2026-10-24. Dziś preset usuwa się pojedynczo („×” na slocie w
   Kroku 4, z potwierdzeniem); czyszczenie siedmiu slotów to siedem kliknięć.
-  Przycisk w **Kroku 4** obok zapisu presetów usuwa wszystkie zajęte sloty
-  po jednym potwierdzeniu (nieaktywny, gdy żaden nie jest zajęty). Do
-  ustalenia przy realizacji: co z Overlay i edycją presetu (zapewne
-  wyczyszczone razem ze slotami) oraz z nazwą projektu i kropką zmian.
+  Wdrożone w v0.60.0: przycisk **Delete all** w Kroku 4, na prawo od napisu
+  nad slotami — wszystkie presety po jednym potwierdzeniu, nieaktywny bez
+  zapisanych. Rozstrzygnięte jak przy „×”: Overlay i edycja gasną;
+  auto-save sesji, parametry wizarda i nazwa projektu zostają (kropka zmian
+  się zapala). Pełny opis: `CHANGELOG.md`, `[0.60.0]`.
 - **`BL-61`** *(Zrealizowany, 2026-09-27)* 🔴 **[Low, kosztowne w czasie]**
   — **Podglądy duplikują geometrię silnika** — jedna lista ruchów (jak
   Adaptive) dla G-code i podglądu 3D, po jednej operacji na raz. Etapy 1–2
