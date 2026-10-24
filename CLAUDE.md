@@ -206,7 +206,7 @@ być wierny.
   Generate i wczytywany przy starcie (wizard na Kroku 4 z bannerem
   "Restored from your last session"); sloty `1`–`7` z auto-opisem
   (`presetLabel()`), zapis w Kroku 4 z potwierdzeniem nadpisania, usuwanie
-  też w Kroku 4 („×” po najechaniu na zapisany slot, z potwierdzeniem). Wczytanie presetu nie zmienia aktywnego kroku.
+  też w Kroku 4 („×” po najechaniu na zapisany slot albo Delete all dla wszystkich naraz, z potwierdzeniem). Wczytanie presetu nie zmienia aktywnego kroku.
 - **Preset Bar — znaczki na slotach.** Zajęty slot ma dwa narożne
   znaczki: lewy górny (ptaszek, kolor akcentu) — Overlay, prawy górny
   (ołówek, kolor `--edit`) — edycja. Puste kółko po najechaniu/fokusie,

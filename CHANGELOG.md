@@ -7,6 +7,18 @@ zgodne z [SemVer](https://semver.org/). Ten plik pozostaje głównym, czytelnym
 thingsbypluzz/SimpleCAM), ale to infrastruktura pod izolację pracy
 (branch/worktree per zadanie), nie zamiennik tego changeloga.
 
+## [0.60.0] — 2026-10-24
+
+### Dodano
+
+- **Krok 4: Delete all** (`BL-121`). Przycisk w wierszu nad slotami
+  presetów usuwa wszystkie zapisane presety po jednym potwierdzeniu —
+  wcześniej siedem slotów to było siedem kliknięć „×”. Nieaktywny, gdy
+  żaden slot nie jest zajęty. Usunięte presety wypadają z Overlay i z
+  edycji (jak przy „×”); auto-save sesji, parametry wizarda i nazwa
+  projektu zostają — kropka zmian zapala się, bo sloty różnią się od
+  pliku.
+
 ## [0.59.0] — 2026-10-21
 
 ### Dodano

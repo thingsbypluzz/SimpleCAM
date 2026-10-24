@@ -622,6 +622,19 @@ function App() {
     })
   }
 
+  // BL-121: every preset at once, one confirmation. The auto-save slot "0"
+  // and the wizard's parameters stay; the project name stays too (its dot
+  // lights up, like after any other slot change).
+  const handleDeleteAllPresets = () => {
+    const count = PRESET_SLOT_IDS.filter((id) => presetSlots[id]).length
+    if (count === 0) return
+    if (!window.confirm(`Delete all ${count} saved preset${count === 1 ? '' : 's'}? This cannot be undone.`)) return
+    replacePresetSlots({})
+    setPresetSlots({})
+    setEditingSlot(null)
+    setOverlaySlots(new Set())
+  }
+
   // BL-8: which of the three layouts the window gets, and whether a finger
   // is the pointer. The pieces below are shared by all three.
   const compact = layout !== 'wide'
@@ -809,6 +822,7 @@ function App() {
             presetSlots={presetSlots}
             onSaveToPreset={handleSaveToPreset}
             onDeletePreset={handleDeletePreset}
+            onDeleteAllPresets={handleDeleteAllPresets}
             warnings={step4Warnings}
             generateBadge={
               <span
