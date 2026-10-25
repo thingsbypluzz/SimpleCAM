@@ -211,3 +211,8 @@
   przełączania kroku i bez zabierania fokusu); Krok 3: adnotacja
   "(chip thinning applied)", Linking Feed obok Feedrate XY, Apply Stepdown
   1.5×D. Linking Feed pokazuje się też dla Facing (`facing.linkingFeed`).
+- Pocket, błąd Helix Radius: obok komunikatu Apply Fix — wpisuje
+  największy poprawny promień (`pocketMaxHelixRadius()` w dół do 0,01;
+  D/2, gdy ogranicza frez, nie ściana). Pole ma `syncWhenBlurred`, a
+  przycisk celowo zabiera fokus — inaczej aktywne pole nie pokazałoby
+  nowej wartości.

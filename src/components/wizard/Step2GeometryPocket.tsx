@@ -66,6 +66,8 @@ interface Step2GeometryPocketProps {
 }
 
 const round2 = (n: number) => Math.round(n * 100) / 100
+// Down, so an applied limit never lands a hair above itself.
+const floor2 = (n: number) => Math.floor(n * 100 + 1e-9) / 100
 const round4 = (n: number) => Math.round(n * 10000) / 10000
 
 // Field order (BL-72): shape size fields + Depth (one row) -> Lightened
@@ -100,7 +102,10 @@ export function Step2GeometryPocket({ params, onChange, machine, toolDiameters, 
   const islandField = useNumberField(pocket.islandDiameter, (v) => updatePocket({ islandDiameter: v }))
   const stepoverField = useNumberField(pocket.stepoverPercent, (v) => updatePocket({ stepoverPercent: v }))
   const rampLengthField = useNumberField(pocket.rampLengthFactor, (v) => updatePocket({ rampLengthFactor: v }))
-  const helixRadiusField = useNumberField(pocket.helixRadius, (v) => updatePocket({ helixRadius: v }))
+  // Synced from outside by the Helix Radius error's Apply Fix button.
+  const helixRadiusField = useNumberField(pocket.helixRadius, (v) => updatePocket({ helixRadius: v }), {
+    syncWhenBlurred: true,
+  })
   const offsetXField = useNumberField(pocket.offsetX, (v) => updatePocket({ offsetX: v }))
   const offsetYField = useNumberField(pocket.offsetY, (v) => updatePocket({ offsetY: v }))
   const optimalLoadPercentField = useNumberField(
@@ -151,6 +156,8 @@ export function Step2GeometryPocket({ params, onChange, machine, toolDiameters, 
   const spiralEngagement = spiralRampEngagementDeg(pocket)
   const rampInvalid = !isPocketRampAngleValid(pocket)
   const helixRadiusInvalid = zMode === 'helix' && !isPocketHelixRadiusValid(pocket)
+  // The largest valid radius — D/2 whenever the tool, not a wall, is the limit.
+  const helixRadiusFix = floor2(pocketMaxHelixRadius(pocket))
   const limitInvalid = !isPocketToolpathWithinLimits(params)
   const stockInvalid = !isPocketStockToLeaveValid(pocket)
   // BL-103: Simple is always Spiral with a Plunge entry and no finishing
@@ -558,11 +565,26 @@ export function Step2GeometryPocket({ params, onChange, machine, toolDiameters, 
             </p>
           )}
           {helixRadiusInvalid && (
-            <p className="text-sm text-status-error">
-              Helix radius must be greater than 0 and at most {fmt(round2(pocketMaxHelixRadius(pocket)))} mm — no more than
-              the tool's radius (a wider helix leaves an uncut post in the center) and inside{' '}
-              {isLightened ? "the smallest cell's wall" : isDonut ? 'half the width the ring leaves the tool' : "the pocket's own wall"}.
-            </p>
+            <div className="flex items-start gap-3">
+              <p className="text-sm text-status-error">
+                Helix radius must be greater than 0 and at most {fmt(round2(pocketMaxHelixRadius(pocket)))} mm — no more than
+                the tool's radius (a wider helix leaves an uncut post in the center) and inside{' '}
+                {isLightened ? "the smallest cell's wall" : isDonut ? 'half the width the ring leaves the tool' : "the pocket's own wall"}.
+              </p>
+              {helixRadiusFix > 0 && (
+                <button
+                  type="button"
+                  // Unlike the chip-thinning Apply, focus may move here: the
+                  // Helix Radius field is usually the one in focus, and it
+                  // only shows the applied value once blurred.
+                  onClick={() => updatePocket({ helixRadius: helixRadiusFix })}
+                  aria-label={`Apply fix: set Helix Radius to ${fmt(helixRadiusFix)} mm`}
+                  className="shrink-0 rounded-md border border-border px-2.5 py-1 text-xs font-medium text-muted transition hover:border-field-border hover:text-fg"
+                >
+                  Apply Fix
+                </button>
+              )}
+            </div>
           )}
           {isPocketHelixRadiusSmall(pocket) && isPocketHelixRadiusValid(pocket) && (
             <InfoNote id="pocket-small-helix" title="Small helix radius">

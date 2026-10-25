@@ -42,9 +42,9 @@ Podgląd zakładki 3D bez WebGL: rzut ortogonalny na zwykłej kanwie 2D.
 - **Simulate** (`drawLiteSimulation.ts`): stan z `useSimulation()`; własna
   pętla rAF tylko przy otwartym trybie, przerysowanie całości tylko po
   zmianie zegara. Scena nie ma wtedy ścieżki żywego wzorca — rysuje ją oś
-  czasu: odcinki przejechane w kolorze zmieszanym z tłem (30%), do
+  czasu: odcinki przejechane w kolorze zmieszanym z tłem (20%), do
   przejechania zwykłym, style jak wyżej; przy ruchu widoku przerzedzane do
   `LITE_MOVING_POINT_BUDGET`. Frez — otoczka wypukła rzutowanych obręczy
-  (dół i góra walca, czubek V-bitu), trzonek osobno; półprzezroczysta
+  (dół i góra walca, czubek V-bitu); półprzezroczysta
   plama z obrysem. Wskaźnik w dół / w górę i kółko — `holdForCamera()` /
   `releaseCamera()`. `renderPaused` z `App.tsx` pauzuje.

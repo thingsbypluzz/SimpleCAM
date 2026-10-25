@@ -11,7 +11,7 @@ import { LITE_MOVE_DASH, LITE_MOVING_POINT_BUDGET, type LiteTheme } from './draw
 
 // How much of the toolpath color a travelled stretch keeps — the same mix
 // as the full 3D preview (SIM_DONE_COLOR_SHARE there).
-const DONE_COLOR_SHARE = 0.3
+const DONE_COLOR_SHARE = 0.2
 const TOOL_SAMPLES = 24
 
 // `a` mixed with `b`, `share` of `a` (both #rrggbb).
@@ -134,5 +134,4 @@ export function drawLiteSimulation(
   }
   const bottom = tool.coneHeight > 0 ? [at(point.x, point.y, point.z)] : rim(point.z, tool.radius)
   outline([...bottom, ...rim(point.z + tool.length, tool.radius)])
-  outline([...rim(point.z + tool.length, tool.shankRadius), ...rim(point.z + tool.length + tool.shankLength, tool.shankRadius)])
 }

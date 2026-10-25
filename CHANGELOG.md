@@ -7,6 +7,26 @@ zgodne z [SemVer](https://semver.org/). Ten plik pozostaje głównym, czytelnym
 thingsbypluzz/SimpleCAM), ale to infrastruktura pod izolację pracy
 (branch/worktree per zadanie), nie zamiennik tego changeloga.
 
+## [0.61.1] — 2026-10-25
+
+### Dodano
+
+- **Apply Fix przy błędzie Helix Radius** (Pocket, Krok 2). Obok
+  komunikatu o zbyt dużym (albo zerowym) promieniu helixa stoi przycisk
+  **Apply Fix**, który wpisuje największy poprawny promień — połowę
+  średnicy freza, a gdy ogranicza ściana kieszeni, komórki albo pierścienia —
+  jej limit (w dół do 0,01 mm).
+
+### Zmieniono
+
+- **Simulate — frez bez trzonka.** Wizard nie zna długości części roboczej
+  ani średnicy chwytu, więc frez w symulacji ma średnicę narzędzia na całej
+  długości (głębokość + 25 mm); V-bit — stożek i walec 6 mm.
+- **Simulate — przejechana ścieżka ciemniejsza:** zostaje w niej 20% koloru
+  ścieżki zamiast 30% (pełny i uproszczony podgląd 3D).
+- Test osi czasu Simulate dostał jawny limit czasu (Pocket Adaptive liczy
+  się kilka sekund — domyślne 5 s nie wystarczało przy pełnym zestawie).
+
 ## [0.61.0] — 2026-10-25
 
 ### Dodano

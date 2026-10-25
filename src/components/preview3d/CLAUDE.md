@@ -161,13 +161,13 @@ Adaptive, kropkowane w kolorze `linking` palety). Każdy styl = osobne
   i kolory): na każdy styl `MOVE_STYLE` jedno `LineSegments` z odcinkami
   osi czasu w kolejności przejazdu, w dwóch geometriach na tych samych
   atrybutach — przejechane (kolor zmieszany z tłem, `SIM_DONE_COLOR_SHARE`
-  = 30% koloru) i do przejechania (zwykły); granica to `drawRange` (liczba
+  = 20% koloru) i do przejechania (zwykły); granica to `drawRange` (liczba
   odcinków stylu przed bieżącym — wyszukiwanie binarne), bieżący odcinek
   dzielą dwie dwupunktowe linie. `lineDistance` liczone wzdłuż całej
   ścieżki, więc kreski nie zaczynają się od nowa na każdym odcinku.
   Hide Toolpath chowa linie, frez zostaje.
 - Frez: `MeshBasicMaterial` w kolorze ścieżki, krycie 0.45, bez zapisu
-  głębi; walec (albo stożek V-bitu) + trzonek z `simulationTool()`,
+  głębi; walec (albo stożek V-bitu i walec) z `simulationTool()`,
   czubek w punkcie ścieżki (`toThree()`).
 
 - **Text:** kreski napisu jako jedno `LineSegments` tuż nad powierzchnią
