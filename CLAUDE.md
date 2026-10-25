@@ -282,60 +282,6 @@ Ręczny deploy (bez CI/CD, `BL-4`): `npm run deploy` (build + FTPS) i
 pełny `clearWorkingDir()`** (root zawiera pliki cPanelu). Szczegóły
 (certyfikaty, host, kolejność): `scripts/CLAUDE.md`.
 
-## Struktura katalogów
-
-```
-src/
-  App.tsx              stan wizarda, nawigacja kroków, presety/Overlay/Edit Mode, pamięć widoku
-  main.tsx             wejście (StrictMode, ErrorBoundary)
-  index.css            Tailwind + tokeny motywów
-  types/               wizard.ts (WizardParams, domyślne), machine.ts, theme.ts,
-                       appearance.ts, toolDiameters.ts
-  config/              rejestry: operationMeta, methodMeta, surfaceMethodMeta,
-                       pocketMethodMeta, positioningMeta, outlineMeta, surfaceMeta,
-                       pocketMeta, facingMeta, textMeta; textFonts, palettes, materials,
-                       routers                                             → CLAUDE.md
-  components/
-    SettingsModal.tsx, FeedCalculatorModal.tsx, ErrorBoundary.tsx,
-    ProjectNameModal.tsx, useModalFocus.ts, icons.tsx,
-    DiagnosticsBlock.tsx, diagnostics.ts (Settings → About),
-    uiModeContext.ts (Simple Mode dla kroków i Settings),
-    useViewport.ts (układ, dotyk), PresetBar.tsx, ProjectMenu.tsx,
-    NumericKeypad.tsx, keypadContext.ts                                  → CLAUDE.md
-    wizard/            Step1Positioning, Step2Geometry(+Holes/Outline/Surface/Pocket/Facing),
-                       Step3Feeds, Step4Output, pickery metod, PickHeader, MiniStat, ToolChipLoad,
-                       TextToggle, NumberInput, useNumberField, Checkbox, StepRail,
-                       FieldRow, HintPopover                              → CLAUDE.md
-    preview/           ToolpathCanvas, drawToolpath, camera2d (2D)       → CLAUDE.md
-    preview3d/         Scene3D, buildScene, cameraPresets (3D)            → CLAUDE.md
-    previewLite/       LitePreview3D, drawLiteScene, camera3d (3D bez WebGL) → CLAUDE.md
-  lib/                 silnik G-code (czyste funkcje)                     → CLAUDE.md
-    program.ts           szkielet programu, dialekty
-    toolpath.ts          wspólna lista ruchów i formatter G-code
-    positioning.ts, customPoints.ts        wzorce Hole(s)
-    helix.ts, standardHole.ts, tabs.ts     Hole(s) i Outline Circle, mostki
-    outline.ts, outlineCircle.ts, outlineRectangle*.ts, outlineLobed*.ts   Outline
-    surface*.ts                            Surface
-    pocket*.ts                             Pocket (Spiral, Adaptive, Lightened, kontur Bottom Open, wejście Z)
-    facing*.ts                             Facing
-    text.ts, textLayout.ts, textFont.ts    Text (silnik, układ napisu, parser fontów SVG)
-    depthPasses.ts, interpolation.ts, format.ts
-    validation.ts        OPERATION_RULES, walidacja, ostrzeżenia
-    feedCalc.ts          model Feedrate Calculator
-    stockModel.ts        model materiału dla obu podglądów
-    storage.ts, *Storage.ts, presetLabel.ts, toolDiameterOptions.ts, overlayParams.ts
-    keypadInput.ts       co klawisz klawiatury numerycznej robi z tekstem pola
-    simpleMode.ts        Simple Mode — wartości domyślne schowanych pól, mapowanie kształtów
-    previewPaths.ts      listy ruchów silników dla podglądów 3D (jedna dyspozycja)
-    projectFile.ts       plik projektu (zestaw presetów) — budowanie, parsowanie, odcisk
-    download.ts          plik do pobrania (jedyny efekt uboczny)
-    fuzzParams.ts, gcodeTestUtils.ts, pocketAdaptiveSim.ts   tylko testy
-    *.test.ts            Vitest (w tym gcodeInvariants.test.ts)
-  templates/           wbudowane projekty-szablony (pliki JSON + rejestr index.ts)
-  fonts/               fonty jednoliniowe Text (oryginalne pliki SVG, doczytywane)
-scripts/               deploy.mjs, certs/                                 → CLAUDE.md
-public/                .htaccess, robots.txt, favicon.svg, licenses/ (licencje fontów)
-```
 
 ## `.gitignore` musi wykluczać `.claude/`
 
@@ -345,15 +291,6 @@ skanowania i winduje bundle CSS. Z tego samego powodu `src/index.css` wyklucza
 dokumentację (`@source not` dla `*.md` — `CLAUDE.md`, `CHANGELOG.md`,
 `ideas.md`, specy `design_*.md`), bo pełno w niej nazw klas w prozie.
 
-## Komendy
-
-```bash
-npm run dev       # dev server (Vite)
-npm run build     # tsc -b && vite build
-npm run test      # vitest
-npm run lint      # oxlint
-npm run deploy    # build + wysyłka na hosting
-```
 
 ## Skille do wykorzystania
 
