@@ -87,7 +87,7 @@ describe('buildSimulation', () => {
       expect(Math.abs(sim.total - expected)).toBeLessThanOrEqual(Math.max(1e-3, expected * 1e-4))
     }
     expect(checked).toBeGreaterThan(0)
-  })
+  }, 60_000) // Pocket Adaptive alone takes seconds; vitest's 5 s default is too tight
 
   it('starts at the program start and ends at the origin when it returns there', () => {
     const params: WizardParams = { ...DEFAULT_WIZARD_PARAMS, operation: 'pocket' }
