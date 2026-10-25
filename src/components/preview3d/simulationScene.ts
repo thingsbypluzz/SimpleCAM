@@ -9,8 +9,8 @@ import { MOVE_STYLE, toolpathLineMaterial, toThree, type Theme, type ToolpathLin
 // timeline; every frame only moves the split (draw ranges) and the tool.
 
 // How much of the toolpath color a travelled stretch keeps; the rest is
-// the background — the look of 30% opacity without transparent lines.
-export const SIM_DONE_COLOR_SHARE = 0.3
+// the background — the look of 20% opacity without transparent lines.
+export const SIM_DONE_COLOR_SHARE = 0.2
 const TOOL_OPACITY = 0.45
 
 const STYLES: ToolpathLineStyle[] = ['solid', 'dashed', 'dotted', 'linking']
@@ -64,9 +64,6 @@ function buildToolMesh(tool: SimTool, color: number): THREE.Group {
     body.translate(0, tool.coneHeight + bodyLength / 2, 0)
     group.add(new THREE.Mesh(body, material))
   }
-  const shank = new THREE.CylinderGeometry(tool.shankRadius, tool.shankRadius, tool.shankLength, 24)
-  shank.translate(0, tool.length + tool.shankLength / 2, 0)
-  group.add(new THREE.Mesh(shank, material))
   group.renderOrder = 10
   return group
 }

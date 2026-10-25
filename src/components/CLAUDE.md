@@ -103,8 +103,9 @@
   start, prędkość (`aria-pressed`; bieżąca w kolorze `--edit`, drugim przewodnim motywu) i Close. Na dotyku na całą szerokość
   przy dolnej krawędzi.
 - `simulationTool()` — wymiary freza do narysowania: promień z
-  `OPERATION_META[op].toolDiameter()`, długość = głębokość + 10 mm,
-  trzonek 0,7 promienia; V-bit (Text) — stożek o kącie V Angle i
+  `OPERATION_META[op].toolDiameter()`, ta sama średnica na całej
+  długości (bez trzonka — wizard nie zna długości części roboczej ani
+  średnicy chwytu), długość = głębokość + 25 mm; V-bit (Text) — stożek o kącie V Angle i
   korpusie 6 mm.
 
 ## Simple / Advanced Mode (`uiModeContext.ts`)
