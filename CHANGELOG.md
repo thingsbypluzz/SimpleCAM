@@ -7,6 +7,21 @@ zgodne z [SemVer](https://semver.org/). Ten plik pozostaje głównym, czytelnym
 thingsbypluzz/SimpleCAM), ale to infrastruktura pod izolację pracy
 (branch/worktree per zadanie), nie zamiennik tego changeloga.
 
+## [0.61.2] — 2026-10-25
+
+### Zmieniono
+
+- **Podgląd na telefonie — więcej miejsca na widok.** Na telefonie w
+  pionie paski przycisków podglądu (górny i dolny, 2D i 3D) oraz pasek
+  Simulate są niższe — przyciski 36 px zamiast 48. Przycisk Simulate
+  nazywa się tam **Anim**. Dolny pasek widoków Setup / 2D / 3D / G-code
+  (układ wąski — telefon i tablet w pionie) też niższy: 40 px zamiast 52,
+  na telefonie 36 px.
+- **Simulate — prędkość jednym przyciskiem.** Zamiast pięciu przycisków
+  ×1–×16 jeden, który przy każdym kliknięciu przechodzi do następnej
+  prędkości (po ×16 wraca do ×1); prędkość inna niż ×1 w drugim kolorze
+  przewodnim motywu.
+
 ## [0.61.1] — 2026-10-25
 
 ### Dodano
