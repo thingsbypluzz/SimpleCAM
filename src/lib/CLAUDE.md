@@ -595,7 +595,8 @@ symulacji materiału.
 - `OPERATION_RULES` — rejestr per operacja (walidacja Generate, głębokość,
   mostki, footprint do ostrzeżeń o maszynie, `rampDescent()`/
   `descentAngleDeg()`, `rampPathLength()` i `engagement()` dla Feedrate
-  Calculator).
+  Calculator, `moveFeeds()` — posuw każdego rodzaju ruchu, jak w
+  generatorze, dla osi czasu symulacji).
   `rampDescent()` — helix/rampa Hole(s)/Outline aktywnej metody (`unit`
   turn/lap, długość ścieżki, `pitch`, Stepdown, głębokość, kąt) wprost z
   `holeCircleOptions()`/`circleOutlineOptions()`/`rectOutlineOptions()`;
@@ -640,10 +641,32 @@ symulacji materiału.
   parametrów: jedna na operację, dla Hole(s) jedna na otwór w kolejności
   obróbki (Drill — `buildDrillToolpath()`). Jedyne miejsce, które wybiera budowniczego ścieżki dla
   podglądów 3D (pełnego i uproszczonego).
-- `previewPolylines(params)` — to samo jako łamane (`Float32Array` x, y, z)
-  pogrupowane po rodzaju ruchu, z łukami próbkowanymi przez `movePoints()`,
-  retraktem na Safe Z po każdej ścieżce i przejazdem na Safe Z między
-  otworami — gotowe do narysowania bez biblioteki 3D.
+- `walkProgram(params, visitor)` — cały program punkt po punkcie: każda
+  ścieżka z łukami próbkowanymi przez `movePoints()`, retrakt na Safe Z po
+  każdej i przejazd na Safe Z między otworami (`start()` raz, potem
+  `point(kind, p)`). Jedno przejście dla `previewPolylines()` i osi czasu
+  symulacji.
+- `previewPolylines(params)` — to samo jako łamane (`Float32Array` x, y, z),
+  jedna na ciąg ruchów jednego rodzaju, każda od końca poprzedniej —
+  gotowe do narysowania bez biblioteki 3D.
+
+## Symulacja — oś czasu (`simulation.ts`)
+
+- `buildSimulation(params, rapidFeed)` — program z `walkProgram()` (plus
+  `G0 X0 Y0` na końcu, gdy `output.returnOriginEnd`) jako jedna łamana:
+  `points` (x, y, z na wierzchołek), `times` (sekundy od startu do
+  wierzchołka), `kinds` (rodzaj ruchu na odcinek, indeks w `SIM_KINDS`),
+  `total`. Czas odcinka = długość / posuw jego rodzaju z
+  `OPERATION_RULES[op].moveFeeds()` (te same posuwy, które generator
+  podaje `toolpathToGcode()`); G0 z `rapidFeed`.
+- `simulationRapidFeed(maxFeed)` = `min(Max Feed, SIM_MAX_RAPID_FEED)`
+  (5000 mm/min) — domyślny Max Feed (50 000) znaczy „bez limitu”.
+- `simulationAt(sim, t)` — odcinek (wyszukiwanie binarne po czasie) i
+  punkt na nim; `t` przycięte do programu. `formatSimTime()` — mm:ss,
+  od godziny h:mm:ss.
+- Test (`simulation.test.ts`): dla losowych parametrów każdej operacji
+  (`fuzzParams.ts`, G1) `total` równa się czasowi odczytanemu z
+  wygenerowanego G-code — pilnuje `moveFeeds()` przy każdym generatorze.
 
 ## localStorage (`storage.ts`, `*Storage.ts`)
 

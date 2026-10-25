@@ -41,12 +41,19 @@ describe('previewPolylines', () => {
       geometry: { ...base.geometry, positioning: 'grid', gridCountX: 3, gridCountY: 2 },
     }
     expect(operationToolpaths(params)).toHaveLength(6)
-    const traverses = previewPolylines(params).filter(
-      (l) => l.kind === 'rapid' && l.points.length === 6 && l.points[2] === l.points[5] && l.points[2] === Math.fround(params.feeds.safeZ),
-    )
-    // Five hole-to-hole moves; each stays at Safe Z and goes somewhere.
-    const moving = traverses.filter((l) => l.points[0] !== l.points[3] || l.points[1] !== l.points[4])
-    expect(moving).toHaveLength(5)
+    // Five hole-to-hole moves: rapid steps that stay at Safe Z and go
+    // somewhere in XY (consecutive rapids share one polyline).
+    const safeZ = Math.fround(params.feeds.safeZ)
+    let moving = 0
+    for (const l of previewPolylines(params)) {
+      if (l.kind !== 'rapid') continue
+      for (let i = 3; i < l.points.length; i += 3) {
+        const p = l.points
+        const atSafeZ = p[i - 1] === safeZ && p[i + 2] === safeZ
+        if (atSafeZ && (p[i - 3] !== p[i] || p[i - 2] !== p[i + 1])) moving++
+      }
+    }
+    expect(moving).toBe(5)
   })
 
   it('a continuous path: every polyline starts where the previous one ended', () => {

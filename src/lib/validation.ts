@@ -63,6 +63,7 @@ import { planDonutAdaptive, planSectorAdaptive, sectorAdaptiveExceedsLimits } fr
 import { adaptiveExceedsLimits } from './pocketAdaptive'
 import { isPocketContour, pocketContourTabsFit, shortestContourLength } from './pocketContour'
 import { cappedRampPitch } from './rampPitch'
+import type { GcodeFeeds } from './toolpath'
 
 // Strict (BL-49): a tool exactly as wide as the hole leaves a zero-radius
 // toolpath — `G2/G3 … I0 J0` arcs, or in G1 mode a vertical plunge at
@@ -1034,6 +1035,10 @@ interface OperationRules {
   engagement: (params: WizardParams) => Engagement
   // Whether Feedrate XY drives any move (not with Hole(s) Drill).
   usesFeedrateXY: (params: WizardParams) => boolean
+  // The feed of each move kind — exactly what the operation's generator
+  // hands toolpathToGcode() (BL-100: the simulation's timing, held to the
+  // G-code by simulation.test.ts).
+  moveFeeds: (params: WizardParams) => GcodeFeeds
 }
 
 // Text (OP-4) validators. `fontReady` is false while the font file is
@@ -1114,6 +1119,7 @@ export const OPERATION_RULES: Record<OperationType, OperationRules> = {
     rampPathLength: (p) => holesRampDescent(p)?.pathLength ?? null,
     engagement: () => ({ kind: 'slot' }),
     usesFeedrateXY: (p) => p.method !== 'drill',
+    moveFeeds: (p) => ({ cut: p.method === 'drill' ? p.feeds.plungeRate : p.feeds.feedrateXY, plunge: p.feeds.plungeRate }),
   },
   outline: {
     totalDepth: (p) => p.outline.totalDepth,
@@ -1136,6 +1142,7 @@ export const OPERATION_RULES: Record<OperationType, OperationRules> = {
     rampPathLength: (p) => outlineRampDescent(p)?.pathLength ?? null,
     engagement: () => ({ kind: 'slot' }),
     usesFeedrateXY: () => true,
+    moveFeeds: (p) => ({ cut: p.feeds.feedrateXY, plunge: p.feeds.plungeRate }),
   },
   surface: {
     totalDepth: (p) => p.surface.totalDepth,
@@ -1155,6 +1162,7 @@ export const OPERATION_RULES: Record<OperationType, OperationRules> = {
     rampPathLength: (p) => (p.surface.zTransitionMode === 'helix' ? 2 * Math.PI * p.surface.helixRadius : null),
     engagement: (p) => ({ kind: 'stepover', percent: p.surface.stepoverPercent }),
     usesFeedrateXY: () => true,
+    moveFeeds: (p) => ({ cut: p.feeds.feedrateXY, plunge: p.feeds.plungeRate }),
   },
   pocket: {
     totalDepth: (p) => p.pocket.totalDepth,
@@ -1202,6 +1210,12 @@ export const OPERATION_RULES: Record<OperationType, OperationRules> = {
         ? { kind: 'optimalLoad', percent: p.pocket.optimalLoadPercent }
         : { kind: 'stepover', percent: p.pocket.stepoverPercent },
     usesFeedrateXY: () => true,
+    moveFeeds: (p) => ({
+      cut: p.feeds.feedrateXY,
+      plunge: p.feeds.plungeRate,
+      link: p.pocket.linkingFeed,
+      finish: p.pocket.finishFeed,
+    }),
   },
   facing: {
     totalDepth: (p) => p.facing.totalDepth,
@@ -1221,6 +1235,7 @@ export const OPERATION_RULES: Record<OperationType, OperationRules> = {
     rampPathLength: () => null,
     engagement: (p) => ({ kind: 'stepover', percent: facingStepoverPercent(p.facing) }),
     usesFeedrateXY: () => true,
+    moveFeeds: (p) => ({ cut: p.feeds.feedrateXY, plunge: p.feeds.plungeRate, link: p.facing.linkingFeed }),
   },
   text: {
     totalDepth: (p) => p.text.totalDepth,
@@ -1240,5 +1255,6 @@ export const OPERATION_RULES: Record<OperationType, OperationRules> = {
     // offered for Text).
     engagement: () => ({ kind: 'slot' }),
     usesFeedrateXY: () => true,
+    moveFeeds: (p) => ({ cut: p.feeds.feedrateXY, plunge: p.feeds.plungeRate }),
   },
 }

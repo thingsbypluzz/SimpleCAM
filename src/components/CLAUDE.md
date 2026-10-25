@@ -82,6 +82,31 @@
 - Pola tekstowe (napis w Text, nazwa projektu, Custom List) zostają przy
   klawiaturze systemowej.
 
+## Simulate (`simulation/`)
+
+- `useSimulation()` — stan trybu Simulate dla obu podglądów 3D: oś czasu
+  (`buildSimulation()` z `lib/simulation.ts`, liczona tylko przy otwartym
+  trybie), zegar w refach (czas, Play, prędkość ×1–×16 — `SIM_SPEEDS`),
+  odczyt czasu dla paska jako state najwyżej co 100 ms. Podgląd woła
+  `tick(dt)` ze swojej pętli (krok przycięty do 0,1 s) i `consumeChange()`.
+  Pauza: modal (`renderPaused`), ukryta karta; ruch kamery wstrzymuje
+  zegar bez zmiany Play (`holdForCamera()` / `releaseCamera()`, wznowienie
+  300 ms po końcu gestu). Nowa oś czasu (zmiana parametrów albo Max Feed)
+  — start w pauzie. Tryb dostępny tylko przy widocznej ścieżce żywego
+  wzorca (`enabled`); gdy przestaje być — zamyka się. `SimulationMemory`
+  (`App.tsx`, `createSimulationMemory()`) przenosi tryb, czas i prędkość
+  przez odmontowanie podglądu — przywracane w pauzie tylko dla tego samego
+  obiektu parametrów.
+- `SimulationBar` — pasek w miejscu dolnego rzędu przycisków podglądu, dwa
+  wiersze (mieści się na telefonie): suwak postępu (przeciąganie przewija
+  i pauzuje) z czasem `formatSimTime()`, potem Play / Pause, powrót na
+  start, prędkość (`aria-pressed`; bieżąca w kolorze `--edit`, drugim przewodnim motywu) i Close. Na dotyku na całą szerokość
+  przy dolnej krawędzi.
+- `simulationTool()` — wymiary freza do narysowania: promień z
+  `OPERATION_META[op].toolDiameter()`, długość = głębokość + 10 mm,
+  trzonek 0,7 promienia; V-bit (Text) — stożek o kącie V Angle i
+  korpusie 6 mm.
+
 ## Simple / Advanced Mode (`uiModeContext.ts`)
 
 - `App.tsx` trzyma tryb w `appearance.uiMode` i podaje go przez

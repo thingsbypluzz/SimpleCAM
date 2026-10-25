@@ -70,7 +70,7 @@ export function buildLiteScene(
   }
 }
 
-interface LiteTheme {
+export interface LiteTheme {
   background: string
   grid: string
   axisX: string
@@ -112,7 +112,7 @@ const CORNER_COS = Math.cos((20 * Math.PI) / 180)
 // How the tool's moves are told apart, as in the other previews: cutting
 // solid, rapids dashed, plunges and linking moves dotted.
 const MOVE_ORDER: MoveKind[] = ['rapid', 'link', 'plunge', 'cut', 'finish']
-const MOVE_DASH: Record<MoveKind, number[]> = {
+export const LITE_MOVE_DASH: Record<MoveKind, number[]> = {
   cut: [],
   finish: [],
   rapid: [6, 4],
@@ -123,7 +123,7 @@ const MOVE_DASH: Record<MoveKind, number[]> = {
 // While the view is being moved, at most this many toolpath points are
 // drawn (every n-th one) — a Pocket Adaptive path can hold hundreds of
 // thousands, too many to redraw on every pointer event on a weak device.
-const MOVING_POINT_BUDGET = 12000
+export const LITE_MOVING_POINT_BUDGET = 12000
 
 export function drawLiteScene(
   ctx: CanvasRenderingContext2D,
@@ -233,7 +233,7 @@ export function drawLiteScene(
   axis(theme.axisZ, 0, 0, sheet.step, 'Z')
 
   if (showToolpath) {
-    const stride = moving ? Math.max(1, Math.ceil(scene.pointCount / MOVING_POINT_BUDGET)) : 1
+    const stride = moving ? Math.max(1, Math.ceil(scene.pointCount / LITE_MOVING_POINT_BUDGET)) : 1
     ctx.lineWidth = 1.25
     ctx.lineJoin = 'round'
     for (const kind of MOVE_ORDER) {
@@ -256,7 +256,7 @@ export function drawLiteScene(
         }
       }
       if (!any) continue
-      ctx.setLineDash(MOVE_DASH[kind])
+      ctx.setLineDash(LITE_MOVE_DASH[kind])
       ctx.strokeStyle = kind === 'rapid' ? theme.rapid : kind === 'link' ? theme.linking : theme.toolpath
       ctx.stroke()
     }
