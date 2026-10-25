@@ -360,7 +360,7 @@ export function LitePreview3D({
           title="Play the program move by move"
           className={`${previewButtonClass} disabled:cursor-not-allowed disabled:opacity-40`}
         >
-          Simulate
+          <PhoneLabel full="Simulate" short="Anim" />
         </button>
       </div>
       )}

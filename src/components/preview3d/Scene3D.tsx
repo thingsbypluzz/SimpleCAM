@@ -512,7 +512,7 @@ export function Scene3D({
           title="Play the program move by move"
           className={`${buttonClass} disabled:cursor-not-allowed disabled:opacity-40`}
         >
-          Simulate
+          <PhoneLabel full="Simulate" short="Anim" />
         </button>
       </div>
       )}

@@ -100,8 +100,11 @@
 - `SimulationBar` — pasek w miejscu dolnego rzędu przycisków podglądu, dwa
   wiersze (mieści się na telefonie): suwak postępu (przeciąganie przewija
   i pauzuje) z czasem `formatSimTime()`, potem Play / Pause, powrót na
-  start, prędkość (`aria-pressed`; bieżąca w kolorze `--edit`, drugim przewodnim motywu) i Close. Na dotyku na całą szerokość
-  przy dolnej krawędzi.
+  start, prędkość — jeden przycisk, który przechodzi do następnej z
+  `SIM_SPEEDS` i z ×16 wraca do ×1 (`aria-label` mówi, jaka jest i na
+  jaką przejdzie; inna niż ×1 w kolorze `--edit`, drugim przewodnim
+  motywu) — i Close. Na dotyku na całą szerokość przy dolnej krawędzi; na
+  telefonie niższy, jak paski przycisków podglądu.
 - `simulationTool()` — wymiary freza do narysowania: promień z
   `OPERATION_META[op].toolDiameter()`, ta sama średnica na całej
   długości (bez trzonka — wizard nie zna długości części roboczej ani

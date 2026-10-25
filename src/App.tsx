@@ -1294,9 +1294,10 @@ function App() {
           <div className="flex min-h-0 flex-1 flex-col overflow-hidden">{narrowView === 'setup' ? railWizard : previewViewport}</div>
           {/* One view at a time: the wizard or one of the three previews.
               Gone while the keypad is up — it would only take room from the
-              fields. */}
+              fields. Kept short (on a phone as short as the preview's own
+              button bars) — every pixel it takes comes off the view above. */}
           {!keypad.open && (
-            <nav aria-label="View" className="grid shrink-0 grid-cols-4 gap-2 border-t border-border bg-code-bg px-4 py-2.5">
+            <nav aria-label="View" className="grid shrink-0 grid-cols-4 gap-2 border-t border-border bg-code-bg px-4 py-2 phone:gap-1.5 phone:py-1.5">
               {(
                 [
                   ['setup', 'Setup'],
@@ -1320,7 +1321,7 @@ function App() {
                       setNarrowView('preview')
                     }}
                     className={[
-                      'h-13 rounded-lg text-sm font-semibold transition',
+                      'h-10 rounded-lg text-sm font-semibold transition phone:h-9 phone:rounded-md',
                       pressed
                         ? 'border-2 border-accent bg-accent-bg text-fg shadow-[var(--glow-accent)]'
                         : 'border border-border text-muted',

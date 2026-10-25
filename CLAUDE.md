@@ -153,7 +153,8 @@ być wierny.
   stan sesyjny obu podglądów; w 3D dodatkowo Solid/Transparent Stock (lity,
   oświetlony materiał, który zasłania ścieżkę — też tylko w sesji). **Simulate** (zakładka 3D, pełna i
   uproszczona): odtwarzanie programu ruch po ruchu z frezem jako bryłą —
-  pasek Play / Pause, powrót na start, suwak, prędkość ×1–×16, czas;
+  pasek Play / Pause, powrót na start, suwak, prędkość ×1–×16 (jeden
+  przycisk, kolejne kliknięcia), czas; na telefonie przycisk „Anim”;
   czas z posuwów programu, rapidy z Max Feed (najwyżej 5000 mm/min); tylko
   żywy wzorzec; pauza przy modalu, zmianie zakładki i ukryciu karty, start
   od nowa przy zmianie parametrów, ruch kamery wstrzymuje na czas gestu
