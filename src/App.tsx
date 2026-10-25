@@ -92,6 +92,8 @@ import type { AppearanceSettings } from './types/appearance'
 import type { ThemeId } from './types/theme'
 import type { ToolDiameterOption } from './types/toolDiameters'
 import { DEFAULT_WIZARD_PARAMS, type WizardParams } from './types/wizard'
+import { simulationRapidFeed } from './lib/simulation'
+import { createSimulationMemory } from './components/simulation/useSimulation'
 
 const TOTAL_STEPS = 4
 
@@ -444,6 +446,10 @@ function App() {
   const saved2DViewRef = useRef<Saved2DView | null>(null)
   const saved3DViewRef = useRef<Saved3DView | null>(null)
   const savedLiteViewRef = useRef<SavedLiteView | null>(null)
+  // BL-100: the Simulate mode of the 3D preview (either one) — open,
+  // position, speed — across tab switches. Session-only.
+  const [simulationMemory] = useState(createSimulationMemory)
+  const rapidFeed = simulationRapidFeed(machine.maxFeed)
 
   const handleSaveMachine = (next: typeof machine) => {
     // Unlike travel X/Y/Z (which only affect the soft machineFitWarnings
@@ -970,6 +976,9 @@ function App() {
           cutShapeEnabled={appearance.cutShapeEnabled}
           onToggleStockVisible={() => setStockVisible((v) => !v)}
           onToggleToolpathVisible={() => setToolpathVisible((v) => !v)}
+          renderPaused={isSettingsOpen || isFeedCalcOpen || isProjectNameOpen}
+          rapidFeed={rapidFeed}
+          simulationMemory={simulationMemory}
           note={
             preview3DAvailable
               ? 'Simple 3D preview (Settings → Appearance)'
@@ -1008,6 +1017,8 @@ function App() {
             onToggleStockSolid={() => setStockSolid((v) => !v)}
             renderPaused={isSettingsOpen || isFeedCalcOpen || isProjectNameOpen}
             onUnavailable={() => setPreview3DAvailable(false)}
+            rapidFeed={rapidFeed}
+            simulationMemory={simulationMemory}
             onToggleStockVisible={() => setStockVisible((v) => !v)}
             onToggleToolpathVisible={() => setToolpathVisible((v) => !v)}
             onToggleGridLabels={() =>

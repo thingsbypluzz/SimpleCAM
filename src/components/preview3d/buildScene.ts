@@ -33,7 +33,7 @@ import type { Grid3DLabelSize } from '../../types/appearance'
 // component restores a proper (handedness-preserving) map, so lookAt-derived
 // cameras "just work" without per-preset mirror workarounds. `cameraPresets.ts`
 // is written in terms of this fixed mapping.
-function toThree(x: number, y: number, z: number): THREE.Vector3 {
+export function toThree(x: number, y: number, z: number): THREE.Vector3 {
   return new THREE.Vector3(x, z, -y)
 }
 
@@ -77,7 +77,7 @@ const GRID_LABEL_SIZE_PX: Record<Grid3DLabelSize, number> = {
 
 // Line style per move kind — see "Styl linii ruchu narzędzia w 3D Preview"
 // in CLAUDE.md.
-const MOVE_STYLE: Record<MoveKind, ToolpathLineStyle> = {
+export const MOVE_STYLE: Record<MoveKind, ToolpathLineStyle> = {
   cut: 'solid',
   rapid: 'dashed',
   plunge: 'dotted',
@@ -114,7 +114,7 @@ function toolpathLines3D(toolpath: Toolpath, theme: Theme, span: number, retract
   return buildToolpathLines3D(builder.segments, theme, span)
 }
 
-interface Theme {
+export interface Theme {
   material: number
   materialOpacity: number
   grid: number
@@ -149,7 +149,7 @@ const MATERIAL_OPACITY_DARK = 0.6
 // config/palettes.ts (BL-12). Mirrors preview/drawToolpath.ts's buildTheme,
 // just in Three.js's numeric 0xrrggbb color format instead of CSS hex
 // strings.
-function buildTheme(paletteId: PaletteId, isDark: boolean, themeId: ThemeId): Theme {
+export function buildTheme(paletteId: PaletteId, isDark: boolean, themeId: ThemeId): Theme {
   const fixed = getFixedColors(themeId, isDark)
   const accents = getPaletteAccents(paletteId, isDark, themeId)
   return {
@@ -532,14 +532,14 @@ function buildOffsetVectorObjects(offsetX: number, offsetY: number, theme: Theme
 // an entire line, per its own cumulative distance from computeLineDistances()).
 // 'linking' — Pocket Adaptive's G1 moves through already-cleared area:
 // dotted like 'dotted', but in the palette's own `linking` color.
-type ToolpathLineStyle = 'solid' | 'dashed' | 'dotted' | 'linking'
+export type ToolpathLineStyle = 'solid' | 'dashed' | 'dotted' | 'linking'
 
 interface ToolpathSegment3D {
   style: ToolpathLineStyle
   points: THREE.Vector3[]
 }
 
-function toolpathLineMaterial(style: ToolpathLineStyle, theme: Theme, span: number): THREE.Material {
+export function toolpathLineMaterial(style: ToolpathLineStyle, theme: Theme, span: number): THREE.Material {
   if (style === 'solid') return new THREE.LineBasicMaterial({ color: theme.toolpath })
   // 'dotted' uses a much shorter dash than 'dashed' (and a slightly larger
   // gap) so it reads as discrete dots instead of short dashes.

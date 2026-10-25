@@ -847,7 +847,9 @@ Waga z review w nawiasie kwadratowym.
   koloru), gęstość przy długich ścieżkach (Adaptive, Lightened), 2D i 3D
   czy jedno z nich, stały rozmiar ekranowy w 3D, wyłącznik w podglądzie
   albo w Settings → Appearance, relacja z animacją (`BL-100`).
-- **`BL-100`** *(Otwarty)* 🔴 — **Animacja ścieżki w podglądzie.**
+  Rozstrzygnięte w `/grill-me` `BL-100` (2026-10-25): zostaje osobno —
+  animacja pokazuje kierunek tylko w ruchu i tylko w 3D.
+- **`BL-100`** *(W trakcie — wdrożone w v0.61.0, do sprawdzenia)* 🔴 — **Animacja ścieżki w podglądzie.**
   Zgłoszone 2026-10-06. Odtwarzanie programu ruch po ruchu z wyborem
   prędkości ×1…×16; frez pokazany jako walec o średnicy równej Tool
   Diameter. Źródłem jest lista ruchów silnika (`lib/toolpath.ts`) z jej
@@ -857,6 +859,45 @@ Waga z review w nawiasie kwadratowym.
   (dziś model materiału pokazuje tylko stan końcowy — to osobny, duży
   temat); wysokość walca; zachowanie w Overlay i przy `renderPaused`;
   wydajność przy ścieżkach rzędu setek tysięcy ruchów.
+  **Ustalone w `/grill-me` (2026-10-25):**
+  - **Materiał:** stan końcowy jak dziś — nie ubywa w trakcie (symulacja
+    ubywania to ewentualnie osobna pozycja). Animowany frez i ścieżka.
+  - **Gdzie:** tylko zakładka 3D, w obu wariantach — pełnym (Three.js) i
+    uproszczonym (kanwa); wspólna logika czasu, rysowanie osobno. 2D bez
+    zmian.
+  - **Sterowanie:** przycisk **Simulate** w dolnym rzędzie przycisków 3D
+    włącza tryb animacji — dolny pasek (na dotyku cały) zamienia się w
+    pasek odtwarzania: Play/Pause, powrót na start, suwak postępu
+    (przeciąganie przewija), prędkość, czas bieżący / całość; **Close**
+    wraca. Górny pasek bez zmian.
+  - **Prędkość:** ×1, ×2, ×4, ×8, ×16; domyślnie ×1, pamiętana w sesji.
+    Start w pauzie z frezem w punkcie startu; na końcu stop, Play zaczyna
+    od początku.
+  - **Rapidy (G0):** z Max Feed (Settings → Machine), najwyżej 5000 mm/min
+    — domyślny Max Feed to 50 000 („bez limitu”), a typowy rapid
+    hobbystycznej frezarki GRBL to 3000–5000.
+  - **Frez:** półprzezroczysty walec ⌀ Tool Diameter w kolorze motywu, dół
+    w punkcie ścieżki, wysokość Depth + ok. 10 mm, cieńszy trzonek wyżej;
+    Text z V-bitem — stożek o V Angle; Drill — walec ⌀ wiertła.
+  - **Ścieżka:** do przejechania — zwykły kolor motywu; przejechana —
+    przygaszona (na start kolor zmieszany z tłem 30/70 zamiast
+    przezroczystości, do dostrojenia).
+  - **Zakres:** tylko żywy wzorzec (przy edycji presetu w Overlay —
+    edytowany); same presety w nakładce → Simulate nieaktywny. Animacja
+    presetów Overlay po kolei — `BL-122`.
+  - **Przerwania:** modal (`renderPaused`), przejście na 2D / G-Code,
+    ukryta karta → pauza, pozycja zostaje (sesja). Zmiana parametrów albo
+    wczytanie presetu → start w pauzie z nową ścieżką. Hide Toolpath chowa
+    ścieżkę, frez zostaje.
+  - **Kamera:** obracanie / przesuwanie / zoom wstrzymuje animację na czas
+    ruchu; po puszczeniu (kółko myszy — po krótkiej chwili bez ruchu) gra
+    dalej, jeśli grała. Przyciski widoków i Fit View nie wstrzymują.
+  - **Wydajność:** czas każdego ruchu liczony raz z listy ruchów (te same
+    próbki łuków), pozycja freza wyszukiwaniem binarnym po czasie, podział
+    przejechane / do przejechania przez zakres rysowania, bez przebudowy
+    sceny; uproszczony 3D może zejść z liczbą klatek.
+  - **`BL-99`** zostaje osobno — animacja pokazuje kierunek tylko w ruchu
+    i tylko w 3D.
 - **`BL-101A`** *(Zrealizowany, 2026-10-06)* 🟢 — **Podgląd tabel Feedrate
   Calculator w Settings Modal.** Wydzielone z `BL-101`. Wdrożone: sekcja
   Settings → Feed Tables (po Tool Diameters) z tabelą materiałów, notami
@@ -1246,6 +1287,22 @@ Waga z review w nawiasie kwadratowym.
   zapisanych. Rozstrzygnięte jak przy „×”: Overlay i edycja gasną;
   auto-save sesji, parametry wizarda i nazwa projektu zostają (kropka zmian
   się zapala). Pełny opis: `CHANGELOG.md`, `[0.60.0]`.
+- **`BL-122`** *(Otwarty)* 🔴 — **Łączenie G-code z kilku presetów w jeden
+  program.** Zgłoszone 2026-10-25 (z `/grill-me` `BL-100`). Dziś jeden
+  plik = jedna operacja; detal z kilku operacji (otwory, kieszeń, kontur)
+  to kilka plików uruchamianych po kolei. Kolejkowanie presetów w jeden
+  program i — razem z tym — animacja presetów Overlay po kolei w
+  kolejności `[1]…[7]`. Za trudne na teraz: różne narożniki/originy i
+  narzędzia (zmiana freza w środku programu), kolejność, wspólne Safe Z,
+  nagłówek i stopka raz. Wymaga `/grill-me`.
+- **`BL-123`** *(Otwarty)* 🟢 — **Szacowany czas obróbki widoczny w trakcie
+  programowania.** Zgłoszone 2026-10-25. Po `BL-100` czas całego programu
+  wychodzi prawie za darmo — oś czasu symulacji (`lib/simulation.ts`) liczy
+  go z tej samej listy ruchów co G-code (posuwy jak w programie, rapidy z
+  Max Feed, najwyżej 5000 mm/min). Do ustalenia: gdzie pokazywać (MiniStat
+  w Step 4 Summary, przy Generate, w Kroku 3), podpis, że to szacunek bez
+  przyspieszeń maszyny (dolna granica), czy doliczać dwell rozkręcenia
+  wrzeciona, czy czas także dla presetów (np. tooltip slotu). Po `BL-100`.
 - **`BL-61`** *(Zrealizowany, 2026-09-27)* 🔴 **[Low, kosztowne w czasie]**
   — **Podglądy duplikują geometrię silnika** — jedna lista ruchów (jak
   Adaptive) dla G-code i podglądu 3D, po jednej operacji na raz. Etapy 1–2

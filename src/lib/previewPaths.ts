@@ -48,53 +48,65 @@ export function operationToolpaths(params: WizardParams): Toolpath[] {
   }
 }
 
+export interface ProgramVisitor {
+  // Where the tool is when the program's first toolpath begins.
+  start: (p: Point3D) => void
+  // Each next point, with the kind of the move that reaches it.
+  point: (kind: MoveKind, p: Point3D) => void
+}
+
+// The whole program as the tool moves through it, point by point: every
+// toolpath with its arcs sampled as the G1 output samples them
+// (movePoints()), the retract to Safe Z the program appends after each one,
+// and the rapid at Safe Z from one toolpath to the next (hole to hole).
+// The one walk behind previewPolylines() and the simulation's timeline
+// (lib/simulation.ts), so the two can't drift apart.
+export function walkProgram(params: WizardParams, visit: ProgramVisitor): void {
+  const { safeZ } = params.feeds
+  let current: Point3D | null = null
+  for (const toolpath of operationToolpaths(params)) {
+    if (current) visit.point('rapid', { x: toolpath.start.x, y: toolpath.start.y, z: safeZ })
+    else visit.start(toolpath.start)
+    current = toolpath.start
+    for (const move of toolpath.moves) {
+      for (const p of movePoints(current, move)) visit.point(move.kind, p)
+      current = move.to
+    }
+    current = { x: current.x, y: current.y, z: safeZ }
+    visit.point('rapid', current)
+  }
+}
+
 // A run of consecutive moves of one kind, as points: x, y, z, x, y, z, …
 export interface PreviewPolyline {
   kind: MoveKind
   points: Float32Array
 }
 
-function pushPoint(out: number[], p: Point3D) {
-  out.push(p.x, p.y, p.z)
-}
-
-// Everything the tool does for `params`, as polylines: every toolpath with
-// its arcs sampled as the G1 output samples them (movePoints()), the
-// retract to Safe Z the program appends after each one, and the rapid at
-// Safe Z from one toolpath to the next (hole to hole).
+// Everything the tool does for `params` (walkProgram()), as polylines —
+// one per run of moves of one kind, each starting where the previous ended.
 export function previewPolylines(params: WizardParams): PreviewPolyline[] {
-  const { safeZ } = params.feeds
   const lines: PreviewPolyline[] = []
-  let previousEnd: Point3D | null = null
-
-  for (const toolpath of operationToolpaths(params)) {
-    if (previousEnd) {
-      lines.push({
-        kind: 'rapid',
-        points: new Float32Array([previousEnd.x, previousEnd.y, safeZ, toolpath.start.x, toolpath.start.y, safeZ]),
-      })
-    }
-
-    let current = toolpath.start
-    let kind: MoveKind | null = null
-    let run: number[] = []
-    const flush = () => {
-      if (kind !== null && run.length > 3) lines.push({ kind, points: new Float32Array(run) })
-    }
-    for (const move of toolpath.moves) {
-      if (move.kind !== kind) {
-        flush()
-        kind = move.kind
-        run = []
-        pushPoint(run, current)
-      }
-      for (const p of movePoints(current, move)) pushPoint(run, p)
-      current = move.to
-    }
-    flush()
-
-    lines.push({ kind: 'rapid', points: new Float32Array([current.x, current.y, current.z, current.x, current.y, safeZ]) })
-    previousEnd = current
+  let kind: MoveKind | null = null
+  let run: number[] = []
+  let last: Point3D = { x: 0, y: 0, z: 0 }
+  const flush = () => {
+    if (kind !== null && run.length > 3) lines.push({ kind, points: new Float32Array(run) })
   }
+  walkProgram(params, {
+    start: (p) => {
+      last = p
+    },
+    point: (k, p) => {
+      if (k !== kind) {
+        flush()
+        kind = k
+        run = [last.x, last.y, last.z]
+      }
+      run.push(p.x, p.y, p.z)
+      last = p
+    },
+  })
+  flush()
   return lines
 }

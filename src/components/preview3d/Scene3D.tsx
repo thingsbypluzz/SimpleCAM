@@ -7,8 +7,12 @@ import type { PaletteId } from '../../config/palettes'
 import type { WizardParams } from '../../types/wizard'
 import type { ThemeId } from '../../types/theme'
 import type { Grid3DLabelSize } from '../../types/appearance'
-import { buildToolpathScene, disposeObject3D, rescaleLabelForConstantScreenSize } from './buildScene'
+import { buildTheme, buildToolpathScene, disposeObject3D, rescaleLabelForConstantScreenSize } from './buildScene'
 import { frameCamera, VIEW_PRESETS, type ViewPresetName } from './cameraPresets'
+import { buildSimulationScene, type SimulationScene } from './simulationScene'
+import { SimulationBar } from '../simulation/SimulationBar'
+import { simulationTool } from '../simulation/simTool'
+import { useSimulation, type SimulationMemory } from '../simulation/useSimulation'
 
 interface Scene3DProps {
   params: WizardParams
@@ -55,6 +59,10 @@ interface Scene3DProps {
   // 2D or G-Code tab unmounts this component) — restored on the next mount
   // instead of the default Front framing. Session-only, never persisted.
   viewMemory?: { current: Saved3DView | null }
+  // BL-100: Simulate mode — G0's feed (Max Feed, capped) and the mode's
+  // state kept by App.tsx across unmounts.
+  rapidFeed: number
+  simulationMemory: SimulationMemory
 }
 
 type XYZ = { x: number; y: number; z: number }
@@ -103,6 +111,8 @@ export function Scene3D({
   renderPaused = false,
   onUnavailable,
   viewMemory,
+  rapidFeed,
+  simulationMemory,
 }: Scene3DProps) {
   const containerRef = useRef<HTMLDivElement>(null)
   const sceneRef = useRef<THREE.Scene | null>(null)
@@ -118,6 +128,22 @@ export function Scene3D({
   })
   const renderPausedRef = useRef(renderPaused)
   const needsRenderRef = useRef(true)
+
+  // BL-100: Simulate. The frame loop (set up once) reads the latest
+  // controls through a ref.
+  const simulation = useSimulation({
+    params,
+    rapidFeed,
+    enabled: showActivePattern && activeToolpathVisible,
+    renderPaused,
+    memory: simulationMemory,
+  })
+  const simulationRef = useRef(simulation)
+  useEffect(() => {
+    simulationRef.current = simulation
+  })
+  const simSceneRef = useRef<SimulationScene | null>(null)
+  const simulationOpen = simulation.open
 
   useEffect(() => {
     renderPausedRef.current = renderPaused
@@ -168,6 +194,12 @@ export function Scene3D({
     controls.enableDamping = true
     controls.dampingFactor = 0.08
     controlsRef.current = controls
+    // BL-100: turning, panning or zooming holds the simulation for the
+    // length of the gesture.
+    const holdSimulation = () => simulationRef.current.holdForCamera()
+    const releaseSimulation = () => simulationRef.current.releaseCamera()
+    controls.addEventListener('start', holdSimulation)
+    controls.addEventListener('end', releaseSimulation)
 
     const contentGroup = new THREE.Group()
     scene.add(contentGroup)
@@ -185,8 +217,20 @@ export function Scene3D({
     scene.add(dirLight)
 
     let frameId: number
+    let lastFrame = performance.now()
     const animate = () => {
       frameId = requestAnimationFrame(animate)
+      const now = performance.now()
+      const dt = (now - lastFrame) / 1000
+      lastFrame = now
+      const simScene = simSceneRef.current
+      if (simScene) {
+        const position = simulationRef.current.tick(dt)
+        if (position && simulationRef.current.consumeChange()) {
+          simScene.update(position)
+          needsRenderRef.current = true
+        }
+      }
       if (renderPausedRef.current && !needsRenderRef.current) return
       needsRenderRef.current = false
       controls.update()
@@ -245,6 +289,8 @@ export function Scene3D({
         }
       }
       cancelAnimationFrame(frameId)
+      controls.removeEventListener('start', holdSimulation)
+      controls.removeEventListener('end', releaseSimulation)
       window.removeEventListener('resize', handleResize)
       resizeObserver.disconnect()
       disposeObject3D(contentGroup)
@@ -296,7 +342,8 @@ export function Scene3D({
       stockEdgesEnabled,
       cutShapeEnabled,
       dimOverlay,
-      activeToolpathVisible,
+      // In Simulate the live toolpath is drawn by the simulation instead.
+      activeToolpathVisible && !simulationOpen,
     )
     renderer.setClearColor(background, 1)
     objects.forEach((obj) => contentGroup.add(obj))
@@ -359,10 +406,40 @@ export function Scene3D({
     cutShapeEnabled,
     dimOverlay,
     activeToolpathVisible,
+    simulationOpen,
     fitKey,
     fontEpoch,
     viewMemory,
   ])
+
+  // BL-100: the simulation's lines and tool — rebuilt with the timeline
+  // (new parameters) or the colors; removed when the mode closes.
+  const simTimeline = simulation.sim
+  useEffect(() => {
+    const scene = sceneRef.current
+    const bounds = boundsRef.current
+    if (!scene || !bounds || !simTimeline) return
+    const size = new THREE.Vector3()
+    bounds.getSize(size)
+    const built = buildSimulationScene(
+      simTimeline,
+      simulationTool(params),
+      buildTheme(paletteId, isDark, themeId),
+      Math.max(size.x, size.z, 10),
+    )
+    built.lines.visible = toolpathVisible
+    const position = simulationRef.current.tick(0)
+    if (position) built.update(position)
+    scene.add(built.group)
+    simSceneRef.current = built
+    needsRenderRef.current = true
+    return () => {
+      scene.remove(built.group)
+      disposeObject3D(built.group)
+      if (simSceneRef.current === built) simSceneRef.current = null
+      needsRenderRef.current = true
+    }
+  }, [simTimeline, params, isDark, paletteId, themeId, toolpathVisible])
 
   const handlePreset = (name: ViewPresetName) => {
     const camera = cameraRef.current
@@ -404,6 +481,9 @@ export function Scene3D({
           {gridLabelsEnabled ? <PhoneLabel full="Hide Grid Labels" short="Hide Labels" /> : <PhoneLabel full="Show Grid Labels" short="Show Labels" />}
         </button>
       </div>
+      {simulationOpen ? (
+        <SimulationBar controls={simulation} />
+      ) : (
       <div className={previewBottomBarClass}>
         {/* Two different kinds of action, grouped and separated by a hairline:
             the presets set a specific viewing angle, Fit View keeps whatever
@@ -425,7 +505,17 @@ export function Scene3D({
         <button type="button" onClick={handleFitView} className={buttonClass}>
           Fit View
         </button>
+        <button
+          type="button"
+          onClick={simulation.openMode}
+          disabled={!simulation.enabled}
+          title="Play the program move by move"
+          className={`${buttonClass} disabled:cursor-not-allowed disabled:opacity-40`}
+        >
+          Simulate
+        </button>
       </div>
+      )}
     </div>
   )
 }

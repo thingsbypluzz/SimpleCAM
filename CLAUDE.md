@@ -151,7 +151,13 @@ być wierny.
   parametrów (`useDeferredValue`) i pamięta widok przy przełączaniu
   zakładek (tylko w sesji). Hide/Show Stock i Hide/Show Toolpath — wspólny
   stan sesyjny obu podglądów; w 3D dodatkowo Solid/Transparent Stock (lity,
-  oświetlony materiał, który zasłania ścieżkę — też tylko w sesji). Przy parametrach odrzuconych przez walidację
+  oświetlony materiał, który zasłania ścieżkę — też tylko w sesji). **Simulate** (zakładka 3D, pełna i
+  uproszczona): odtwarzanie programu ruch po ruchu z frezem jako bryłą —
+  pasek Play / Pause, powrót na start, suwak, prędkość ×1–×16, czas;
+  czas z posuwów programu, rapidy z Max Feed (najwyżej 5000 mm/min); tylko
+  żywy wzorzec; pauza przy modalu, zmianie zakładki i ukryciu karty, start
+  od nowa przy zmianie parametrów, ruch kamery wstrzymuje na czas gestu
+  (`src/components/simulation/`, oś czasu `lib/simulation.ts`). Przy parametrach odrzuconych przez walidację
   (`isWizardParamsValid`) podglądy nie rysują ścieżki — zostają materiał i
   kształt, z napisem "Fix the highlighted fields to see the toolpath"; nie
   dotyczy Overlay (żywy wzorzec ukryty) ani zakładki G-Code.
@@ -302,6 +308,7 @@ src/
     uiModeContext.ts (Simple Mode dla kroków i Settings),
     useViewport.ts (układ, dotyk), PresetBar.tsx, ProjectMenu.tsx,
     NumericKeypad.tsx, keypadContext.ts                                  → CLAUDE.md
+    simulation/        Simulate w 3D: useSimulation (zegar, pamięć), SimulationBar, simTool
     wizard/            Step1Positioning, Step2Geometry(+Holes/Outline/Surface/Pocket/Facing),
                        Step3Feeds, Step4Output, pickery metod, PickHeader, MiniStat, ToolChipLoad,
                        TextToggle, NumberInput, useNumberField, Checkbox, StepRail,
@@ -326,7 +333,8 @@ src/
     storage.ts, *Storage.ts, presetLabel.ts, toolDiameterOptions.ts, overlayParams.ts
     keypadInput.ts       co klawisz klawiatury numerycznej robi z tekstem pola
     simpleMode.ts        Simple Mode — wartości domyślne schowanych pól, mapowanie kształtów
-    previewPaths.ts      listy ruchów silników dla podglądów 3D (jedna dyspozycja)
+    previewPaths.ts      listy ruchów silników dla podglądów 3D (jedna dyspozycja), walkProgram
+    simulation.ts        oś czasu Simulate (czas ruchu z posuwów programu)
     projectFile.ts       plik projektu (zestaw presetów) — budowanie, parsowanie, odcisk
     download.ts          plik do pobrania (jedyny efekt uboczny)
     fuzzParams.ts, gcodeTestUtils.ts, pocketAdaptiveSim.ts   tylko testy

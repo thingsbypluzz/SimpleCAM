@@ -687,3 +687,29 @@ export function EagleIcon({ className }: IconProps) {
     </svg>
   )
 }
+
+// BL-100: the Simulate bar's playback buttons.
+export function PlayIcon({ className }: IconProps) {
+  return (
+    <svg {...base} className={className}>
+      <path d="M7 4.5v15l12-7.5z" fill="currentColor" />
+    </svg>
+  )
+}
+
+export function PauseIcon({ className }: IconProps) {
+  return (
+    <svg {...base} className={className}>
+      <path d="M8 5v14M16 5v14" strokeWidth="3" />
+    </svg>
+  )
+}
+
+export function RestartIcon({ className }: IconProps) {
+  return (
+    <svg {...base} className={className}>
+      <path d="M6 5v14" strokeWidth="2.4" />
+      <path d="M19 5v14L9 12z" fill="currentColor" />
+    </svg>
+  )
+}

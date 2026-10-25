@@ -7,6 +7,32 @@ zgodne z [SemVer](https://semver.org/). Ten plik pozostaje głównym, czytelnym
 thingsbypluzz/SimpleCAM), ale to infrastruktura pod izolację pracy
 (branch/worktree per zadanie), nie zamiennik tego changeloga.
 
+## [0.61.0] — 2026-10-25
+
+### Dodano
+
+- **Simulate w podglądzie 3D** (`BL-100`). Przycisk **Simulate** w dolnym
+  rzędzie zakładki 3D (pełnej i uproszczonej) zamienia dolny pasek w pasek
+  odtwarzania: Play / Pause, powrót na start, suwak postępu (przeciąganie
+  przewija), prędkość ×1 / ×2 / ×4 / ×8 / ×16 (bieżąca w drugim kolorze przewodnim motywu) i czas bieżący / całość;
+  Close wraca. Program jedzie ruch po ruchu, frez to półprzezroczysty walec
+  o średnicy freza (z trzonkiem; V-bit w Text — stożek), ścieżka przed
+  frezem w zwykłym kolorze, przejechana przygaszona. Czas wynika z G-code:
+  posuwy jak w programie, rapidy z Max Feed, najwyżej 5000 mm/min (domyślny
+  Max Feed to „bez limitu”). Materiał pokazuje stan końcowy.
+  - Start w pauzie z frezem na początku, na końcu stop; prędkość pamiętana
+    w sesji.
+  - Animuje się żywy wzorzec (w Overlay — edytowany preset); przy samych
+    presetach w nakładce albo niepoprawnych parametrach Simulate jest
+    nieaktywny.
+  - Modal, przejście na 2D / G-Code i ukrycie karty pauzują z zachowaniem
+    pozycji; zmiana parametrów wraca na start w pauzie; obracanie /
+    przesuwanie / zoom widoku wstrzymuje animację na czas gestu.
+  - Oś czasu (`lib/simulation.ts`) powstaje z tego samego przebiegu
+    programu co ścieżki podglądu (`walkProgram()`); test pilnuje, że jej
+    czas równa się czasowi odczytanemu z wygenerowanego G-code dla każdej
+    operacji (nowa reguła `OPERATION_RULES[op].moveFeeds()`).
+
 ## [0.60.0] — 2026-10-24
 
 ### Dodano

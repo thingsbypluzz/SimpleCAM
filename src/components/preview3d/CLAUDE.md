@@ -147,7 +147,28 @@ Adaptive, kropkowane w kolorze `linking` palety). Każdy styl = osobne
   Sprzątanie: `renderer.forceContextLoss()` (limit kontekstów WebGL).
 - Przyciski w podglądzie: Hide/Show Stock, Solid/Transparent Stock (stan
   sesyjny, tylko 3D), Hide/Show Toolpath (stan sesyjny, wspólny z 2D, jak
-  Hide/Show Stock), Hide/Show Grid Labels, presety widoku, Fit View.
+  Hide/Show Stock), Hide/Show Grid Labels, presety widoku, Fit View,
+  Simulate.
+
+## Simulate (`simulationScene.ts`)
+
+- Stan odtwarzania z `useSimulation()` (`src/components/simulation/`),
+  pętla `animate()` woła `tick(dt)` co klatkę i rysuje tylko po zmianie
+  zegara (także przy `renderPaused`). Zdarzenia `start` / `end`
+  `OrbitControls` (także kółko) — `holdForCamera()` / `releaseCamera()`.
+- W trybie animacji `buildToolpathScene()` nie rysuje ścieżki żywego
+  wzorca; `buildSimulationScene()` (osobna grupa, budowana raz na oś czasu
+  i kolory): na każdy styl `MOVE_STYLE` jedno `LineSegments` z odcinkami
+  osi czasu w kolejności przejazdu, w dwóch geometriach na tych samych
+  atrybutach — przejechane (kolor zmieszany z tłem, `SIM_DONE_COLOR_SHARE`
+  = 30% koloru) i do przejechania (zwykły); granica to `drawRange` (liczba
+  odcinków stylu przed bieżącym — wyszukiwanie binarne), bieżący odcinek
+  dzielą dwie dwupunktowe linie. `lineDistance` liczone wzdłuż całej
+  ścieżki, więc kreski nie zaczynają się od nowa na każdym odcinku.
+  Hide Toolpath chowa linie, frez zostaje.
+- Frez: `MeshBasicMaterial` w kolorze ścieżki, krycie 0.45, bez zapisu
+  głębi; walec (albo stożek V-bitu) + trzonek z `simulationTool()`,
+  czubek w punkcie ścieżki (`toThree()`).
 
 - **Text:** kreski napisu jako jedno `LineSegments` tuż nad powierzchnią
   materiału (linia WebGL nie ma szerokości — szerokość rowka pokazuje

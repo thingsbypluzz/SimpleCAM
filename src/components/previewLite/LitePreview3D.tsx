@@ -7,6 +7,11 @@ import { previewBottomBarClass, previewButtonClass, previewTopBarClass } from '.
 import { useCoarsePointer } from '../useViewport'
 import { LITE_VIEWS, fitCamera, orbitBy, panBy, pinchCamera, zoomAt, type LiteCamera, type LiteViewName } from './camera3d'
 import { buildLiteScene, drawLiteScene, liteTheme } from './drawLiteScene'
+import { drawLiteSimulation } from './drawLiteSimulation'
+import { SimulationBar } from '../simulation/SimulationBar'
+import { simulationTool } from '../simulation/simTool'
+import { useSimulation, type SimulationMemory } from '../simulation/useSimulation'
+import type { SimulationPosition } from '../../lib/simulation'
 
 interface LitePreview3DProps {
   params: WizardParams
@@ -30,6 +35,11 @@ interface LitePreview3DProps {
   note: string
   // The last view, kept by App.tsx across unmounts; session-only.
   viewMemory?: { current: SavedLiteView | null }
+  // A modal is open over the preview (pauses Simulate).
+  renderPaused: boolean
+  // BL-100: Simulate mode — G0's feed and the mode's state kept by App.tsx.
+  rapidFeed: number
+  simulationMemory: SimulationMemory
 }
 
 export interface SavedLiteView {
@@ -72,6 +82,9 @@ export function LitePreview3D({
   onToggleToolpathVisible,
   note,
   viewMemory,
+  renderPaused,
+  rapidFeed,
+  simulationMemory,
 }: LitePreview3DProps) {
   const containerRef = useRef<HTMLDivElement>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
@@ -89,11 +102,32 @@ export function LitePreview3D({
   // The touch bars lie over the canvas — Fit View keeps clear of them.
   const fitPadding = useCoarsePointer() ? 84 : 48
 
+  // BL-100: Simulate — while it is open the live toolpath is drawn from
+  // the timeline (drawLiteSimulation()) instead of the scene.
+  const simulation = useSimulation({
+    params,
+    rapidFeed,
+    enabled: showActivePattern && activeToolpathVisible,
+    renderPaused,
+    memory: simulationMemory,
+  })
+  const simulationRef = useRef(simulation)
+  useEffect(() => {
+    simulationRef.current = simulation
+  })
+  const simulationOpen = simulation.open
+  const simTimeline = simulation.sim
+  const simTool = useMemo(() => simulationTool(params), [params])
+  const simPositionRef = useRef<SimulationPosition | null>(null)
+  // The latest full redraw, for the playback loop.
+  const renderRef = useRef<(() => void) | null>(null)
+
   const scene = useMemo(
-    () => buildLiteScene(params, overlayParams, showActivePattern, dimOverlay, activeToolpathVisible, cutShapeEnabled),
+    () =>
+      buildLiteScene(params, overlayParams, showActivePattern, dimOverlay, activeToolpathVisible && !simulationOpen, cutShapeEnabled),
     // fontEpoch: a text has strokes only once its font has loaded.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [params, overlayParams, showActivePattern, dimOverlay, activeToolpathVisible, cutShapeEnabled, fontEpoch],
+    [params, overlayParams, showActivePattern, dimOverlay, activeToolpathVisible, simulationOpen, cutShapeEnabled, fontEpoch],
   )
   const sceneRef = useRef(scene)
   useEffect(() => {
@@ -150,13 +184,39 @@ export function LitePreview3D({
       if (!ctx) return
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
       drawLiteScene(ctx, width, height, camera, scene, theme, stockVisible, toolpathVisible, moving)
+      const position = simPositionRef.current
+      if (simTimeline && position) {
+        drawLiteSimulation(ctx, width, height, camera, simTimeline, position, simTool, theme, toolpathVisible, moving)
+      }
     }
+    simPositionRef.current = simTimeline ? simulationRef.current.tick(0) : null
     render()
+    renderRef.current = render
 
     const resizeObserver = new ResizeObserver(render)
     resizeObserver.observe(container)
     return () => resizeObserver.disconnect()
-  }, [scene, camera, paletteId, isDark, themeId, stockVisible, toolpathVisible, moving])
+  }, [scene, camera, paletteId, isDark, themeId, stockVisible, toolpathVisible, moving, simTimeline, simTool])
+
+  // BL-100: the playback loop — runs only while Simulate is open, redraws
+  // only when the clock moved.
+  useEffect(() => {
+    if (!simTimeline) return
+    let frameId: number
+    let lastFrame = performance.now()
+    const loop = () => {
+      frameId = requestAnimationFrame(loop)
+      const now = performance.now()
+      const position = simulationRef.current.tick((now - lastFrame) / 1000)
+      lastFrame = now
+      if (position && simulationRef.current.consumeChange()) {
+        simPositionRef.current = position
+        renderRef.current?.()
+      }
+    }
+    frameId = requestAnimationFrame(loop)
+    return () => cancelAnimationFrame(frameId)
+  }, [simTimeline])
 
   // Pointer input, as native listeners (the wheel must be cancellable).
   useEffect(() => {
@@ -208,6 +268,8 @@ export function LitePreview3D({
       }
       canvas.setPointerCapture(e.pointerId)
       pointers.set(e.pointerId, [e.clientX, e.clientY])
+      // BL-100: a camera gesture holds the simulation while it lasts.
+      simulationRef.current.holdForCamera()
       restart()
     }
     const handlePointerMove = (e: PointerEvent) => {
@@ -229,10 +291,13 @@ export function LitePreview3D({
     }
     const handlePointerEnd = (e: PointerEvent) => {
       if (!pointers.delete(e.pointerId)) return
+      if (pointers.size === 0) simulationRef.current.releaseCamera()
       restart()
     }
     const handleWheel = (e: WheelEvent) => {
       e.preventDefault()
+      simulationRef.current.holdForCamera()
+      simulationRef.current.releaseCamera()
       const current = cameraRef.current
       if (!current) return
       const rect = size()
@@ -270,9 +335,12 @@ export function LitePreview3D({
           {toolpathVisible ? 'Hide Toolpath' : 'Show Toolpath'}
         </button>
       </div>
-      <p className="pointer-events-none absolute bottom-3 left-3 max-w-[45%] text-[11px] leading-tight text-muted pointer-coarse:bottom-20 pointer-coarse:max-w-none">
+      <p hidden={simulationOpen} className="pointer-events-none absolute bottom-3 left-3 max-w-[45%] text-[11px] leading-tight text-muted pointer-coarse:bottom-20 pointer-coarse:max-w-none">
         {note}
       </p>
+      {simulationOpen ? (
+        <SimulationBar controls={simulation} />
+      ) : (
       <div className={previewBottomBarClass}>
         <div className="flex flex-wrap items-center justify-end gap-1.5 pointer-coarse:contents">
           {VIEW_BUTTONS.map((view) => (
@@ -285,7 +353,17 @@ export function LitePreview3D({
         <button type="button" onClick={() => fit(cameraRef.current ?? LITE_VIEWS.isometric)} className={previewButtonClass}>
           Fit View
         </button>
+        <button
+          type="button"
+          onClick={simulation.openMode}
+          disabled={!simulation.enabled}
+          title="Play the program move by move"
+          className={`${previewButtonClass} disabled:cursor-not-allowed disabled:opacity-40`}
+        >
+          Simulate
+        </button>
       </div>
+      )}
     </div>
   )
 }
