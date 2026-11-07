@@ -1,7 +1,7 @@
 {
   "name": "simplecam",
   "private": true,
-  "version": "0.61.2",
+  "version": "0.62.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -13,6 +13,7 @@
     "test": "vitest"
   },
   "dependencies": {
+    "clipper-lib": "^6.4.2",
     "polygon-clipping": "^0.15.7",
     "react": "^19.2.8",
     "react-dom": "^19.2.8",
@@ -20,6 +21,7 @@
   },
   "devDependencies": {
     "@tailwindcss/vite": "^4.3.3",
+    "@types/clipper-lib": "^6.4.0",
     "@types/node": "^24.13.3",
     "@types/react": "^19.2.17",
     "@types/react-dom": "^19.2.3",

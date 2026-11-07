@@ -30,8 +30,9 @@ interface SettingsModalProps {
   onSaveToolDiameters: (options: ToolDiameterOption[]) => void
   onResetAll: () => void
   // BL-113: replaces the preset slots with a built-in template (App asks
-  // before overwriting occupied ones and closes the modal).
-  onLoadTemplate: (template: ProjectTemplate) => void
+  // before overwriting occupied ones and closes the modal). Without it
+  // (SculptureTool, which has no presets) the Templates section is hidden.
+  onLoadTemplate?: (template: ProjectTemplate) => void
   onClose: () => void
   // BL-8: the whole screen instead of a window.
   fullScreen?: boolean
@@ -163,7 +164,9 @@ export function SettingsModal({
   // calculator reads — Feed Tables and Machine's Min/Max RPM, Max Feed,
   // Rigidity and Router. Hidden only: they're machine settings, not reset.
   const simple = useSimpleMode()
-  const sections = simple ? SECTIONS.filter((section) => section.id !== 'feedTables') : SECTIONS
+  const sections = SECTIONS.filter(
+    (section) => !(simple && section.id === 'feedTables') && !(section.id === 'templates' && !onLoadTemplate),
+  )
   const spindleFields = simple ? SPINDLE_FIELDS.filter((field) => field.key === 'spindleSpeed') : SPINDLE_FIELDS
   const motionFields = simple ? MOTION_FIELDS.filter((field) => field.key === 'dwellSeconds') : MOTION_FIELDS
   // Local text per field so an in-progress edit (e.g. typing "400" one
@@ -780,7 +783,7 @@ export function SettingsModal({
                         </div>
                         <button
                           type="button"
-                          onClick={() => onLoadTemplate(template)}
+                          onClick={() => onLoadTemplate?.(template)}
                           disabled={!slots}
                           className="shrink-0 rounded-md bg-accent px-3 py-1.5 text-sm font-semibold text-btn-fg shadow-[var(--glow-btn)] transition disabled:cursor-not-allowed disabled:opacity-50"
                         >

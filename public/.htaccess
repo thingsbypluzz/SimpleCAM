@@ -1,5 +1,5 @@
 <IfModule mod_headers.c>
-  <FilesMatch "^index\.html$">
+  <FilesMatch "^(index|sculpture)\.html$">
     Header set Cache-Control "no-cache"
   </FilesMatch>
   # Only the hashed build output in /assets/ is immutable — its file names

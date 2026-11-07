@@ -7,6 +7,94 @@ zgodne z [SemVer](https://semver.org/). Ten plik pozostaje głównym, czytelnym
 thingsbypluzz/SimpleCAM), ale to infrastruktura pod izolację pracy
 (branch/worktree per zadanie), nie zamiennik tego changeloga.
 
+## [0.62.0] — 2026-11-02
+
+### Dodano
+
+- **SculptureTool (prototyp)** — osobna strona `/sculpture.html`: model STL
+  cięty na warstwy z płyt, G-code w ZIP-ie. Grubość płyty, dystans między
+  płytami (0 = rzeźba pełna, ażur bez osobnego trybu), płaszczyzna konturu.
+  Program proponuje wspólny zestaw otworów (wybrana liczba prętów w układzie
+  bez symetrii, własne śruby dla wysp) z edytowalnymi współrzędnymi — pręty można też dodawać, przesuwać i
+  usuwać myszą w widoku warstwy, a lista podaje dla każdego otworu, w ilu
+  warstwach mocuje i w ilu ma konflikt; widok Superimposed nakłada wszystkie
+  warstwy jako mapę: od czerwieni (śruba zmieści się w jednej warstwie) do
+  zieleni (we wszystkich). Każdy otwór ma zakres warstw od–do, więc pręt nie
+  musi iść przez całą wysokość (otwory wysp dostają go automatycznie) — i dla
+  każdej warstwy
+  podaje, do których przykręcić płytę; otwór przecinający krawędź warstwy
+  daje jej własny plik otworów. Wyspy: filtr powierzchni, domykanie szczelin,
+  śruba, mostek albo same mostki trzymające. W ZIP-ie gniazda przyrządu, otwory,
+  kontur każdej warstwy i karta mocowań. Podgląd całego stosu i pojedynczej
+  warstwy. Przycisk Demo torso pozwala spróbować bez pliku. Założenia:
+  `design_sculpture_tool.md`.
+- **SculptureTool — cztery kroki.** Panel ustawień ułożony jak w OnlyPaths:
+  Model (plik, orientacja, wysokość, płyta i dystans), Layers (kontur, wyspy,
+  przekładki), Tool (frez, posuwy, mostki), Holes (otwory, przyrząd, lista
+  otworów); zwinięte kroki pokazują kluczowe wartości.
+- **SculptureTool — przekładki w podglądzie.** Przy dystansie między płytami
+  opcjonalne przekładki na każdym obszarze wspólnym sąsiednich warstw: krążek
+  albo ten obszar pomniejszony o margines. Na razie tylko w podglądzie 3D, bez
+  G-code.
+- **SculptureTool — piasta montażowa (Hub).** Krok 4: okrąg o zadanej
+  średnicy i środku w każdej warstwie, z otworami na pręty przez całą
+  wysokość. Gdzie przekrój go nie pokrywa (np. między nogami), piasta jest
+  wycinana jako osobna część za szczeliną i łączona mostkami pełnej grubości
+  (1 albo 2 na kawałek) z każdym kawałkiem warstwy — każda płyta siada na
+  przyrządzie tak samo, a stos piast trzyma nogi przy klejeniu; mostki tnie się
+  po sklejeniu. Przy dystansie między płytami przekładki piasty w osobnych
+  plikach. Ostrzeżenie o zbyt wąskiej piaście, podpowiedź minimalnej
+  średnicy, przełącznik Show hub w podglądzie (przyrząd albo sama rzeźba).
+- **SculptureTool — View up** (`BL-124`). Krok 1: oś pliku pokazywana w
+  podglądzie 3D jako góra, niezależnie od Up axis (osi cięcia), z
+  odwróceniem — rzeźba cięta np. w poprzek X stoi w podglądzie pionowo, z
+  pionowych płyt. Height to wtedy wysokość rzeźby wzdłuż View up; obok
+  długość stosu i liczba warstw. Warstwy i G-code bez zmian.
+- **SculptureTool — obrót płyt i największa płyta.** Krok 1: „Turn every
+  plate” obraca wszystkie warstwy, otwory, G-code i podgląd co 45° (0–315°,
+  przeciwnie do wskazówek zegara), wokół X0 Y0 — istniejące otwory i środek
+  piasty obracają się razem z płytami. Pod spodem największa potrzebna płyta i
+  arkusz mieszczący każdą warstwę, z ostrzeżeniem, gdy nie mieszczą się na
+  maszynie, i podpowiedzią, czy pomoże obrót. Pola Sheet X / Y: rozmiar
+  arkusza ze środkiem w X0 Y0 i z offsetem X / Y — widok warstwy pokazuje go
+  kreskowanym obrysem (czerwonym, gdy płyta bieżącej warstwy wystaje poza
+  niego), a Krok 1 wymienia warstwy, które wystają.
+- **SculptureTool — Z0 na wierzchu płyty.** Pliki warstw, otworów i
+  przekładek piasty mają Z0 na wierzchu ciętej płyty i schodzą w ujemne Z
+  (spód płyty `-grubość`, cięcie na wylot o Cut below plate niżej); wcześniej
+  Z0 było na wierzchu przyrządu. `fixture.gcode` bez zmian (Z0 na wierzchu
+  przyrządu).
+- **SculptureTool — metoda otworów.** Krok 3, sekcja Holes: Helix (jedna
+  helisa, skok ograniczony przez Ramp angle, jak w OnlyPaths, z wyliczonym
+  skokiem) albo Standard (zejście i okrąg co Stepdown) — dla otworów płyt,
+  gniazd przyrządu i otworów wycinanych z konturem.
+- **SculptureTool — Cut przy każdym otworze.** Zaznaczony otwór jest
+  wiercony także w pliku konturu warstwy (`layer-NNN.gcode`, przed konturem),
+  w warstwach swojego zakresu od–do, gdzie leży w warstwie. W tych warstwach
+  nie trzyma śruby — frez by w nią trafił. `holes.gcode` bez zmian. W widoku
+  warstwy kreskowany pierścień, na liście liczba takich warstw, w karcie
+  mocowań zakres otworu i warstwy z otworami w konturze.
+- **SculptureTool — podgląd ścieżek i G-code.** Obok stosu 3D zakładki
+  Toolpath i G-code dla wybranego pliku ZIP-a (warstwa idzie za suwakiem,
+  także jej własne otwory, przyrząd, otwory, przekładki piasty): ścieżka 3D
+  w kolorach palety, tak jak w OnlyPaths — cięcie ciągłą, przejazdy
+  kreskowaną, zejścia kropkowaną linią — nad przezroczystą płytą z obrysem
+  części; tekst programu do 5000 linii i przycisk Copy G-code (cały program
+  wybranego pliku do schowka).
+- **SculptureTool — wspólne Settings.** Ten sam Settings Modal co w OnlyPaths
+  i te same zapisane ustawienia: maszyna, sterownik, mostki, lista frezów,
+  wygląd. Zmiana w jednym narzędziu działa w drugim (otwarta karta
+  SculptureTool przejmuje zmiany z OnlyPaths od razu). Frez wybierany z listy
+  Tool Diameters, liczba i rozmiar mostków z Settings → Tabs (w Kroku 3 tylko
+  włącznik). Settings Modal bez sekcji Templates, gdy nie ma do czego ich
+  wczytać.
+
+### Zmieniono
+
+- Nowa zależność `clipper-lib`, tylko w bundle'u SculptureTool. W silniku
+  OnlyPaths wydzielone `spindleStartLines()` z `buildHeader()`, bez zmiany
+  G-code.
+
 ## [0.61.2] — 2026-10-25
 
 ### Zmieniono

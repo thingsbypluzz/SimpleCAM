@@ -1,4 +1,5 @@
 import { readFileSync } from 'node:fs'
+import { fileURLToPath } from 'node:url'
 import { defineConfig } from 'vitest/config'
 import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
@@ -15,6 +16,16 @@ export default defineConfig({
   plugins: [react(), tailwindcss()],
   define: {
     __APP_VERSION__: JSON.stringify(version),
+  },
+  build: {
+    rollupOptions: {
+      // SculptureTool is a second page on the same origin (src/sculpture/):
+      // it imports from src/lib, OnlyPaths never imports from it.
+      input: {
+        main: fileURLToPath(new URL('./index.html', import.meta.url)),
+        sculpture: fileURLToPath(new URL('./sculpture.html', import.meta.url)),
+      },
+    },
   },
   css: {
     lightningcss: {

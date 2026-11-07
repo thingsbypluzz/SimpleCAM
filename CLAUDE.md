@@ -17,7 +17,7 @@ bez logowania, bez backendu, bez CAD-a.
   `src/components/wizard/CLAUDE.md` (kroki, pola, kolejność pól),
   `src/components/CLAUDE.md` (Settings Modal, Feedrate Calculator UI),
   `src/config/CLAUDE.md` (rejestry, motywy, palety), `scripts/CLAUDE.md`
-  (deploy). Przed zmianą w obszarze przeczytać jego plik; po zmianie
+  (deploy), `src/sculpture/CLAUDE.md` (SculptureTool). Przed zmianą w obszarze przeczytać jego plik; po zmianie
   mechanizmu zaktualizować go (ten plik tylko wtedy, gdy zmienia się
   przegląd albo zasada przekrojowa).
 - **`CHANGELOG.md`** — jedyna historia (co i dlaczego, wersja po wersji).
@@ -77,6 +77,12 @@ Sześć operacji (`WizardParams.operation`):
   szerokości rowka w podglądzie) albo frez walcowy. Fonty (dziś Relief
   SingleLine, komplet polskich znaków) doczytują się przy pierwszym
   użyciu; bez Feedrate Calculator.
+
+**SculptureTool** (`/sculpture.html`, `src/sculpture/`) — osobna strona w tym
+repo, prototyp: model STL → warstwy z płyt → G-code w ZIP-ie. Korzysta z
+`src/lib/` i kolorów motywu, ale nie obowiązują jej zasady tego pliku o
+wizardzie i rejestrach; OnlyPaths nigdy z niej nie importuje. Założenia:
+`design_sculpture_tool.md`.
 
 ## Kluczowe decyzje (przekrojowe)
 
