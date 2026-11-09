@@ -123,7 +123,7 @@ export function useSculpture(raw: Float32Array | null, params: SculptureParams):
       try {
         setComputed({ layers: computeLayers(mesh, params), signature, error: null })
       } catch (err) {
-        console.warn('SculptureTool: could not compute layers', err)
+        console.warn('OnlySculpture: could not compute layers', err)
         setComputed({ layers: [], signature, error: err instanceof Error ? err.message : String(err) })
       }
       setComputing(false)

@@ -1,4 +1,4 @@
-# src/sculpture — SculptureTool (prototyp)
+# src/sculpture — OnlySculpture (prototyp)
 
 Osobna strona w tym samym repo (`/sculpture.html`, drugi punkt wejścia Vite):
 model 3D → warstwy do wycięcia z płyt → G-code w ZIP-ie. Założenia i zakres:
@@ -46,7 +46,7 @@ się Z, skala do Height, środek XY, stoi na Z = 0, mesh na lewą stronę odwrac
   kryciu 0,45, czerwony, gdy płyta bieżącej warstwy wystaje; skala widoku go
   obejmuje. Obrót płyt go nie obraca (arkusz leży na stole).
 - **Ułożenie warstwy na maszynie** (`layerPlacements`, numer warstwy →
-  `LayerPlacement {turn, x, y}`): w wierszu nad widokiem warstwy obrót (dowolny
+  `LayerPlacement {turn, x, y}`): w pasku na górze widoku warstwy obrót (dowolny
   kąt CCW), przesunięcie X / Y i Reset, do układania płyt na arkuszu. Punkt
   najpierw obracany wokół X0 Y0, potem przesuwany (`placePoint()` /
   `placeRegion()` w `geometry.ts`). Tylko wyjście: `placeLayer()` /
@@ -164,16 +164,42 @@ się Z, skala do Height, środek XY, stoi na Z = 0, mesh na lewą stronę odwrac
 
 ## UI
 
-- **Cztery kroki** jak w OnlyPaths (układ szeroki): otwarty krok (320 px) obok
-  trzech zwiniętych kolumn z kluczowymi wartościami; klik w kolumnę ją otwiera,
-  bez kolejności. 1 Model — STL, oś, wysokość, grubość płyty, dystans; 2 Layers
-  — płaszczyzna konturu i tolerancja, wyspy, przekładki; 3 Tool — frez z listy,
-  posuwy, głębokość, mostki wł./wył.; 4 Holes — otwory i przyrząd, lista otworów. Pasek z
-  Generate ZIP i oba podglądy bez zmian.
+- **Układ jak OnlyPaths w układzie szerokim** (tylko ten jeden układ):
+  Header z tymi samymi klasami (`px-6 py-4`, trzy kolumny — wordmark Only +
+  Sculpture w kolorach `--wordmark-*`, linijka sloganu: na razie „Prototype”,
+  `BL-125`; nazwa projektu z Load / Save 44 px; zakres maszyny, ciemny /
+  jasny i Settings 36 px). Akordeon: 42% okna (660–760 px), zwinięte kroki
+  po 80 px z kluczowymi wartościami jako `MiniStat` z OnlyPaths (każda z
+  własną ikoną w kolorze akcentu — Contour, Islands i metoda otworów zmieniają
+  ikonę z wartością), otwarty krok `p-6` z kreską po prawej; części kroku
+  oddzielone poziomą kreską; pola z OnlyPaths (`FieldRow`, `inputClass`, `NumberInput` z
+  przyciskami ˄ ˅ i `useNumberField` — zatwierdzanie po 500 ms, Enter albo
+  wyjściu z pola; pole niezajęte edycją idzie za wartością zmienioną z
+  zewnątrz), `Checkbox`. Wspólne komponenty w `fields.tsx`, własne ikony w
+  `icons.tsx`. Kroki: 1 Model — STL, oś, wysokość, grubość płyty, dystans,
+  obrót, osobno Stock Preview (arkusz, największa płyta); 2 Layers — płaszczyzna konturu i tolerancja, wyspy,
+  przekładki; 3 Tool — frez z listy, posuwy, głębokość, mostki wł./wył.,
+  metoda otworów; 4 Support and Alignment — otwory i śruby, osobno mufy
+  przyrządu (Fixture inserts), piasta, lista otworów (dwa
+  wiersze na otwór: rodzaj, X, Y; Cut, zakres warstw).
+- **Wyjątek OnlySculpture — zwinięcie wszystkich kroków** (przycisk « przy
+  nagłówku otwartego kroku, `activeStep` = 0): zostają cztery kolumny (320
+  px), podgląd bierze resztę; klik w kolumnę otwiera krok.
+- **Pod krokami:** błędy i ostrzeżenia (zwijane, stan w sesji, ramka
+  `status-warn` jak w Kroku 4 OnlyPaths), niżej podsumowanie stosu i
+  Generate ZIP. Przy zwiniętych krokach to samo w wąskiej kolumnie:
+  przełącznik listy i Generate ZIP na całą szerokość.
+- **Wiersz nad podglądami**, dzielony tam, gdzie dzielą się oba podglądy:
+  po lewej zakładki Stack / Toolpath / G-Code (klasy zakładek OnlyPaths),
+  po prawej suwak warstw z ‹ ›, numer warstwy, Superimposed i Add rod.
+  Przyciski widoku leżą na samych podglądach (`previewToolbar.ts` z
+  OnlyPaths): Stack — u góry Whole stack | Single layer, Show / Hide
+  Model, Rods, Hub; Fit View w prawym dolnym rogu każdego podglądu
+  (`frameView.ts`: obecny kąt, odległość od nowa).
 - **Settings Modal wspólny z OnlyPaths** (ten sam komponent, te same klucze:
   `simplecam.machine`, `.appearance`, `.toolDiameters`): przycisk Settings w
   Header. Zmiana w jednym narzędziu działa w drugim — przy odświeżeniu, a w
-  SculptureTool od razu także ze zdarzenia `storage` (zmiana w karcie OnlyPaths).
+  OnlySculpture od razu także ze zdarzenia `storage` (zmiana w karcie OnlyPaths).
   Bez sekcji Templates (`onLoadTemplate` niepodany). Reset kasuje to samo co
   w OnlyPaths (łącznie z presetami), parametry rzeźby zostają. Z ustawień:
   maszyna i dialekt do G-code, motyw, lista frezów (pole Tool diameter to
@@ -220,14 +246,14 @@ się Z, skala do Height, środek XY, stoi na Z = 0, mesh na lewą stronę odwrac
   zawsze 1:1. Kółko przybliża wokół kursora, przeciąganie pustego miejsca (poza
   trybem dodawania) albo środkowym przyciskiem przesuwa. Ręczny widok
   (`View {cx, cy, scale}`, tylko w komponencie) zostaje przy zmianie warstwy i
-  ułożenia; „Fit View” w rogu dopasowuje go do bieżącej warstwy na maszynie
+  ułożenia; „Fit View” w prawym dolnym rogu (jak w OnlyPaths) dopasowuje go do bieżącej warstwy na maszynie
   z otworami, arkuszem i X0 Y0 (w Superimposed wraca do widoku całego stosu).
   Pod spodem siatka milimetrowa (krok 1 / 2 / 5 × 10ⁿ mm, co najmniej 40 px,
   podpisy przy lewej i dolnej krawędzi). Poza Superimposed prostokąt zasięgu
   cięcia w kolorze akcentu: obrys `toolRegion()` bieżącej warstwy na maszynie
   powiększony o promień freza, z rogami (X/Y min i max, do 0,1 mm) i
   wymiarem.
-- **Show hub** (pasek podglądu, tylko przy włączonej piaście, stan w sesji):
+- **Show / Hide Hub** (na podglądzie Stack, tylko przy włączonej piaście, stan w sesji):
   włączony — piasta i mostki w kolorze przyrządu (3D i widok warstwy), okrąg
   piasty kropkowany; wyłączony — sama rzeźba (`section`), bez przekładek
   piasty, a w widoku warstwy bez toru freza. Superimposed liczy pokrycie z
@@ -242,10 +268,13 @@ się Z, skala do Height, środek XY, stoi na Z = 0, mesh na lewą stronę odwrac
   `-thickness` do Z0, master holes na płycie bieżącej warstwy) z obrysem części na
   wierzchu, a dla fixture sama płaszczyzna Z0. Kamera dopasowana przy zmianie
   rodzaju pliku, przy przechodzeniu przez warstwy zostaje. G-code — najwyżej
-  5000 linii, całość w ZIP-ie. **Copy G-code** (obie zakładki) kopiuje cały
-  program pokazywanego pliku do schowka; przez 1,5 s napis „Copied”, błąd
-  schowka — `window.alert()`. Przy błędach parametrów obie zakładki pokazują
-  tylko napis.
+  5000 linii, całość w ZIP-ie, liczba linii w prawym dolnym rogu. Pasek na
+  podglądzie (obie zakładki): File, przy pliku warstwy „follows the layer
+  slider”, na Toolpath Show / Hide Stock (płyta albo płaszczyzna przyrządu,
+  obrys części zostaje; stan w sesji), po prawej **Copy G-code** (cały program pokazywanego pliku do
+  schowka; przez 1,5 s „Copied”, błąd schowka — `window.alert()`) i
+  **Download** (sam ten plik). Przy błędach parametrów obie zakładki
+  pokazują tylko napis.
 - `StackScene.tsx` (Three.js, Z w górę) i `LayerView.tsx` (Canvas 2D) czytają
   kolory z tokenów motywu, więc klasa `dark` i `data-theme` muszą być ustawione w
   `useLayoutEffect`.

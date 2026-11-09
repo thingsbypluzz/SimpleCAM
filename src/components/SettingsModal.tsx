@@ -31,7 +31,7 @@ interface SettingsModalProps {
   onResetAll: () => void
   // BL-113: replaces the preset slots with a built-in template (App asks
   // before overwriting occupied ones and closes the modal). Without it
-  // (SculptureTool, which has no presets) the Templates section is hidden.
+  // (OnlySculpture, which has no presets) the Templates section is hidden.
   onLoadTemplate?: (template: ProjectTemplate) => void
   onClose: () => void
   // BL-8: the whole screen instead of a window.

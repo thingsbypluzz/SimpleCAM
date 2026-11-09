@@ -6,7 +6,7 @@ interface ProjectNameModalProps {
   // Suggested name: the current project's, or empty for an untitled one.
   initialName: string
   presetCount: number
-  // SculptureTool: its own text and file name instead of the presets'.
+  // OnlySculpture: its own text and file name instead of the presets'.
   description?: ReactNode
   filename?: (name: string) => string
   onSave: (name: string) => void

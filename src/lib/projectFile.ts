@@ -25,7 +25,7 @@ export function sanitizeProjectName(name: string): string {
   return name.replace(/\s+/g, ' ').trim().slice(0, MAX_PROJECT_NAME_LENGTH)
 }
 
-// `onlypaths-<name>-<date>.json` (SculptureTool: `sculpture-…`); the name
+// `onlypaths-<name>-<date>.json` (OnlySculpture: `sculpture-…`); the name
 // reduced to what every file system accepts.
 export function projectFilename(name: string, now = new Date(), prefix = 'onlypaths'): string {
   const slug = sanitizeProjectName(name)

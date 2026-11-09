@@ -2,8 +2,10 @@ import { useEffect, useRef } from 'react'
 import * as THREE from 'three'
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js'
 import { MOVE_STYLE, type ToolpathLineStyle, buildTheme, toolpathLineMaterial } from '../components/preview3d/buildScene'
+import { previewBottomBarClass, previewButtonClass } from '../components/preview/previewToolbar'
 import { type Move, movePoints } from '../lib/toolpath'
 import type { AppearanceSettings } from '../types/appearance'
+import { frameBox, refitBox } from './frameView'
 import type { FileKind, FilePlate, GcodeFile } from './gcode'
 import { token } from './holeColors'
 
@@ -14,6 +16,8 @@ interface ToolpathSceneProps {
   plate: FilePlate | null
   appearance: AppearanceSettings
   isDark: boolean
+  // The plate (or the fixture board) under the path; the part's outline stays.
+  stockVisible: boolean
 }
 
 function disposeGroup(group: THREE.Group) {
@@ -64,6 +68,8 @@ function toolpathLines(file: GcodeFile, theme: ReturnType<typeof buildTheme>, sp
   return lines
 }
 
+const FIT_DIRECTION = new THREE.Vector3(0.5, -1.2, 0.9)
+
 function ringLine(ring: { x: number; y: number }[], z: number, material: THREE.Material): THREE.LineLoop {
   return new THREE.LineLoop(new THREE.BufferGeometry().setFromPoints(ring.map((p) => new THREE.Vector3(p.x, p.y, z))), material)
 }
@@ -72,7 +78,7 @@ function ringLine(ring: { x: number; y: number }[], z: number, material: THREE.M
 // color (solid cut, dashed rapid, dotted plunge), over the plate it is cut
 // from with the part's outline on top. Z0 is the top of the plate (of the
 // board, for the fixture).
-export function ToolpathScene({ file, kind, plate, appearance, isDark }: ToolpathSceneProps) {
+export function ToolpathScene({ file, kind, plate, appearance, isDark, stockVisible }: ToolpathSceneProps) {
   const hostRef = useRef<HTMLDivElement>(null)
   const viewRef = useRef<{
     scene: THREE.Scene
@@ -80,6 +86,8 @@ export function ToolpathScene({ file, kind, plate, appearance, isDark }: Toolpat
     controls: OrbitControls
     content: THREE.Group
     fittedTo: string
+    // What Fit View frames: the path, the plate and X0 Y0.
+    box: THREE.Box3
   } | null>(null)
 
   useEffect(() => {
@@ -94,7 +102,7 @@ export function ToolpathScene({ file, kind, plate, appearance, isDark }: Toolpat
     const controls = new OrbitControls(camera, renderer.domElement)
     const content = new THREE.Group()
     scene.add(content)
-    viewRef.current = { scene, camera, controls, content, fittedTo: '' }
+    viewRef.current = { scene, camera, controls, content, fittedTo: '', box: new THREE.Box3() }
 
     let frame = 0
     const loop = () => {
@@ -143,6 +151,7 @@ export function ToolpathScene({ file, kind, plate, appearance, isDark }: Toolpat
       box.expandByPoint(new THREE.Vector3(centerX - width / 2, centerY - height / 2, -plate.thickness))
       box.expandByPoint(new THREE.Vector3(centerX + width / 2, centerY + height / 2, 0))
     }
+    view.box = box
     const size = box.getSize(new THREE.Vector3())
     const span = Math.max(size.x, size.y, 1)
 
@@ -156,10 +165,11 @@ export function ToolpathScene({ file, kind, plate, appearance, isDark }: Toolpat
         new THREE.MeshBasicMaterial({ color: theme.hole, transparent: true, opacity: 0.18, depthWrite: false }),
       )
       stock.position.set(centerX, centerY, -plate.thickness / 2)
-      view.content.add(stock)
       const edges = new THREE.LineSegments(new THREE.EdgesGeometry(stock.geometry), new THREE.LineBasicMaterial({ color: theme.stockEdge }))
       edges.position.copy(stock.position)
-      view.content.add(edges)
+      stock.visible = stockVisible
+      edges.visible = stockVisible
+      view.content.add(stock, edges)
       // The part that stays, outlined on the top face.
       const outline = new THREE.LineBasicMaterial({ color: theme.edit })
       for (const piece of plate.region) {
@@ -175,6 +185,7 @@ export function ToolpathScene({ file, kind, plate, appearance, isDark }: Toolpat
       )
       const center = box.getCenter(new THREE.Vector3())
       board.position.set(center.x, center.y, 0)
+      board.visible = stockVisible
       view.content.add(board)
     }
 
@@ -188,13 +199,23 @@ export function ToolpathScene({ file, kind, plate, appearance, isDark }: Toolpat
     // keeps the viewer's angle and distance.
     if (view.fittedTo !== kind) {
       view.fittedTo = kind
-      const center = box.getCenter(new THREE.Vector3())
-      const radius = Math.max(size.length() / 2, 10)
-      const direction = new THREE.Vector3(0.5, -1.2, 0.9).normalize()
-      view.controls.target.copy(center)
-      view.camera.position.copy(center).addScaledVector(direction, (radius * 1.15) / Math.sin((view.camera.fov * Math.PI) / 360))
+      frameBox(view.camera, view.controls, box, FIT_DIRECTION, 10)
     }
-  }, [file, kind, plate, appearance.palette, appearance.theme, isDark])
+  }, [file, kind, plate, appearance.palette, appearance.theme, isDark, stockVisible])
 
-  return <div ref={hostRef} className="h-full w-full overflow-hidden" />
+  const fitView = () => {
+    const view = viewRef.current
+    if (view) refitBox(view.camera, view.controls, view.box, FIT_DIRECTION, 10)
+  }
+
+  return (
+    <div className="relative h-full w-full">
+      <div ref={hostRef} className="h-full w-full overflow-hidden" />
+      <div className={previewBottomBarClass}>
+        <button type="button" onClick={fitView} className={previewButtonClass}>
+          Fit View
+        </button>
+      </div>
+    </div>
+  )
 }

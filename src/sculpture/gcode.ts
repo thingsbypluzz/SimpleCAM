@@ -483,7 +483,7 @@ export function gcodeFiles(layers: Layer[], analyses: LayerHoles[], holes: Hole[
 
 export function mountingCard(layers: Layer[], analyses: LayerHoles[], holes: Hole[], p: SculptureParams): string {
   const lines = [
-    'SculptureTool mounting card',
+    'OnlySculpture mounting card',
     `${layers.length} layers, plate ${fmt(p.thickness)} mm, gap ${fmt(p.gap)} mm, tool ${fmt(p.toolDiameter)} mm`,
     '',
     'Holes (X0 Y0 = fixture center):',

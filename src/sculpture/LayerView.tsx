@@ -1,4 +1,5 @@
 import { type MouseEvent, type PointerEvent, useEffect, useMemo, useRef, useState } from 'react'
+import { previewBottomBarClass, previewButtonClass } from '../components/preview/previewToolbar'
 import { fmt } from '../lib/format'
 import type { Point2D } from '../types/wizard'
 import { blankOnSheet, layerBlank, layerPlacement, placeLayer } from './gcode'
@@ -551,13 +552,11 @@ export function LayerView({ layers, layer, analysis, holes, params, isDark, addM
           onRemove(hit.id)
         }}
       />
-      <button
-        type="button"
-        onClick={fitView}
-        className="absolute right-2 top-2 rounded border border-border bg-bg/80 px-2 py-1 text-xs text-fg hover:border-accent"
-      >
-        Fit View
-      </button>
+      <div className={previewBottomBarClass}>
+        <button type="button" onClick={fitView} className={previewButtonClass}>
+          Fit View
+        </button>
+      </div>
     </div>
   )
 }

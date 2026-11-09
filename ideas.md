@@ -1318,6 +1318,12 @@ Waga z review w nawiasie kwadratowym.
   **Rozstrzygnięte w `/grill-me`:** Up axis już wybiera oś cięcia; doszło View
   up (+ odwrócenie) — obraca tylko podgląd 3D, a Height mierzy wysokość wzdłuż
   niego. Pełny opis: `CHANGELOG.md`, `[0.62.0]`.
+- **`BL-125`** *(Otwarty)* 🟢 — **OnlySculpture: slogan.** Zgłoszone
+  2026-11-09. Narzędzie dotychczas nazywane SculptureTool to
+  **OnlySculpture**. Do ustalenia slogan — linijka pod wordmarkiem w Header,
+  odpowiednik „Helps you CAM. Every time!” w OnlyPaths (w propozycji UI na
+  razie miejsce zastępcze). Zmiana nazwy w kodzie i dokumentach — przy
+  przebudowie UI według propozycji.
 - **`BL-61`** *(Zrealizowany, 2026-09-27)* 🔴 **[Low, kosztowne w czasie]**
   — **Podglądy duplikują geometrię silnika** — jedna lista ruchów (jak
   Adaptive) dla G-code i podglądu 3D, po jednej operacji na raz. Etapy 1–2

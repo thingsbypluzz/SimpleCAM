@@ -1,6 +1,8 @@
 import { useEffect, useRef } from 'react'
 import * as THREE from 'three'
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js'
+import { previewBottomBarClass, previewButtonClass } from '../components/preview/previewToolbar'
+import { frameBox, refitBox } from './frameView'
 import { type Piece, type Region, type Ring, difference } from './geometry'
 import { token } from './holeColors'
 import { type Hole, holeState } from './holes'
@@ -64,6 +66,8 @@ function layerGeometry(layer: Layer, region: Region, holes: Hole[], params: Scul
   geometry.translate(0, 0, layer.zBottom)
   return geometry
 }
+
+const FIT_DIRECTION = new THREE.Vector3(0.7, -1.3, 0.6)
 
 // How far a drawn rod sticks out past its first and last layer.
 const ROD_PROTRUSION = 10
@@ -228,14 +232,24 @@ export function StackScene({ mesh, layers, holes, spacers, params, selected, mod
     const fitKey = `${mesh?.height}:${mesh?.width}:${mesh?.depth}:${up.join(',')}:${mode}`
     if (view.fittedTo !== fitKey && shown.length > 0) {
       view.fittedTo = fitKey
-      const box = new THREE.Box3().setFromObject(view.content)
-      const center = box.getCenter(new THREE.Vector3())
-      const radius = box.getSize(new THREE.Vector3()).length() / 2
-      const direction = new THREE.Vector3(0.7, -1.3, 0.6).normalize()
-      view.controls.target.copy(center)
-      view.camera.position.copy(center).addScaledVector(direction, (radius * 1.15) / Math.sin((view.camera.fov * Math.PI) / 360))
+      frameBox(view.camera, view.controls, new THREE.Box3().setFromObject(view.content), FIT_DIRECTION)
     }
   }, [mesh, layers, holes, spacers, params, selected, mode, showModel, showRods, showHub])
 
-  return <div ref={hostRef} className="h-full w-full overflow-hidden" />
+  // Everything shown, at the current angle.
+  const fitView = () => {
+    const view = sceneRef.current
+    if (view) refitBox(view.camera, view.controls, new THREE.Box3().setFromObject(view.content), FIT_DIRECTION)
+  }
+
+  return (
+    <div className="relative h-full w-full">
+      <div ref={hostRef} className="h-full w-full overflow-hidden" />
+      <div className={previewBottomBarClass}>
+        <button type="button" onClick={fitView} className={previewButtonClass}>
+          Fit View
+        </button>
+      </div>
+    </div>
+  )
 }

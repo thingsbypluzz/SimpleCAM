@@ -56,8 +56,8 @@ export function buildSculptureProject(project: SculptureProject, appVersion: str
 export type SculptureParseResult = { ok: true; project: SculptureProject } | { ok: false; reason: 'invalid' | 'newer' }
 
 export const SCULPTURE_PROJECT_ERRORS: Record<Extract<SculptureParseResult, { ok: false }>['reason'], string> = {
-  invalid: 'This is not a SculptureTool project file, or it is damaged.',
-  newer: 'This project was saved by a newer version of SculptureTool. Update the page and try again.',
+  invalid: 'This is not a OnlySculpture project file, or it is damaged.',
+  newer: 'This project was saved by a newer version of OnlySculpture. Update the page and try again.',
 }
 
 function finite(value: unknown): value is number {

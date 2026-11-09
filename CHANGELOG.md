@@ -7,6 +7,43 @@ zgodne z [SemVer](https://semver.org/). Ten plik pozostaje głównym, czytelnym
 thingsbypluzz/SimpleCAM), ale to infrastruktura pod izolację pracy
 (branch/worktree per zadanie), nie zamiennik tego changeloga.
 
+## [0.64.0] — 2026-11-09
+
+### Zmieniono
+
+- **SculptureTool nazywa się teraz OnlySculpture** i wygląda jak OnlyPaths
+  (propozycja układu uzgodniona na Artifakcie z komentarzami). Header ma tę
+  samą wysokość i przyciski: wordmark Only + Sculpture, nazwa projektu z
+  Load / Save, zakres maszyny, ciemny / jasny i Settings jako ikony. Slogan
+  jeszcze nieustalony (`BL-125`), na razie „Prototype”.
+- **Kroki jak akordeon OnlyPaths:** 42% okna, zwinięte kroki po 80 px,
+  każda wartość z własną ikoną w kolorze motywu (wysokość jak wymiar na
+  rysunku, płyta, dystans, warstwy, arkusz, obrót, płaszczyzna konturu i
+  tryb wysp zmieniające ikonę z wartością, przekładki, pręty, piasta i inne),
+  otwarty krok szerszy (ok. 520 zamiast 320 px) i oddzielony kreską, pola,
+  listy i checkboxy z OnlyPaths, przy polach liczbowych przyciski ˄ ˅ (także
+  w liście otworów i przy ułożeniu warstwy). Pola zatwierdzają wpisaną
+  liczbę jak w OnlyPaths: po chwili bez pisania, Enterem albo przy wyjściu z
+  pola. Arkusz i największa płyta w Kroku 1 jako osobna część Stock
+  Preview; Krok 4 nazywa się Support and Alignment, mufy przyrządu (Fixture
+  inserts) mają w nim własną część.
+- **Zakładki i suwak warstw w jednym wierszu nad podglądami**, podzielonym
+  tak jak oba podglądy: Stack / Toolpath / G-Code po lewej, warstwa,
+  Superimposed i Add rod po prawej. Przyciski widoku leżą na podglądach:
+  Whole stack | Single layer i Show / Hide Model, Rods, Hub na stosie; File,
+  Copy G-code i nowy Download (sam pokazywany plik) na Toolpath i G-code,
+  na Toolpath także nowy Show / Hide Stock;
+  ułożenie warstwy w pasku na górze widoku warstwy. Fit View w prawym dolnym
+  rogu każdego podglądu (nowy na stosie i na Toolpath).
+- **Ostrzeżenia i Generate ZIP pod krokami** zamiast nad podglądami; lista
+  zwijana, obok Generate ZIP podsumowanie stosu.
+
+### Dodano
+
+- **Zwinięcie wszystkich kroków** (przycisk « przy nagłówku otwartego
+  kroku) — wyjątek względem OnlyPaths, żeby podgląd dostał miejsce; kroki
+  zostają jako cztery wąskie kolumny, klik otwiera krok.
+
 ## [0.63.0] — 2026-11-07
 
 ### Dodano
