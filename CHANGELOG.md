@@ -7,6 +7,53 @@ zgodne z [SemVer](https://semver.org/). Ten plik pozostaje głównym, czytelnym
 thingsbypluzz/SimpleCAM), ale to infrastruktura pod izolację pracy
 (branch/worktree per zadanie), nie zamiennik tego changeloga.
 
+## [0.63.0] — 2026-11-07
+
+### Dodano
+
+- **SculptureTool — projekt w pliku.** W Header nazwa projektu („Untitled”,
+  dopóki żadnego nie zapisano ani nie wczytano), Load project i Save
+  project. Plik `sculpture-<nazwa>-<data>.json` zawiera sam model (trójkąty z
+  pliku STL albo Demo bust), wszystkie ustawienia czterech kroków (z obrotem
+  płyt, View up, arkuszem, piastą) i otwory z zakresami i Cut. Bez ustawień
+  maszyny, listy frezów i wyglądu — jak projekt OnlyPaths. Load zastępuje
+  model, ustawienia i otwory (z potwierdzeniem, gdy model jest wczytany);
+  plik obcy, uszkodzony albo z nowszej wersji jest odrzucany w całości.
+
+- **SculptureTool — ułożenie pojedynczej warstwy na maszynie.** Nad widokiem
+  warstwy obrót (dowolny kąt, przeciwnie do wskazówek zegara, wokół X0 Y0) i
+  przesunięcie X / Y z Reset — do układania płyt na arkuszu. Przenosi G-code
+  warstwy (kontur, otwory wycinane z konturem), jej własny plik otworów,
+  rozmiar i położenie płyty oraz sprawdzenie arkusza; widok warstwy pokazuje
+  ją na miejscu na maszynie, model 3D bez zmian. Otwory przeniesionej warstwy
+  nie trafiają w mufy przyrządu — ostrzeżenie, a w G-code i karcie mocowań
+  brak śrub. Ułożenia zapisują się w pliku projektu.
+
+- **SculptureTool — przybliżanie i przesuwanie widoku warstwy.** Kółko
+  przybliża wokół kursora, przeciąganie pustego miejsca albo środkowym
+  przyciskiem przesuwa; widok zostaje przy zmianie warstwy i ułożenia (skala
+  nie zależy już od ułożeń). Przycisk Fit View dopasowuje widok do bieżącej
+  warstwy. Pod spodem siatka współrzędnych z podpisami, a wokół bieżącej warstwy
+  prostokąt zasięgu cięcia (z promieniem freza) ze współrzędnymi X/Y min i max
+  oraz wymiarem.
+
+### Zmieniono
+
+- **SculptureTool — Demo bust zamiast Demo torso.** Przycisk w Kroku 1
+  wczytuje prawdziwy model popiersia (STL, ok. 17 tys. trójkątów), pobierany
+  dopiero po kliknięciu. Wygenerowany tors zostaje tylko w testach.
+
+- `ProjectNameModal` przyjmuje własny opis i nazwę pliku (SculptureTool),
+  `projectFilename()` — przedrostek nazwy; w OnlyPaths bez zmian.
+
+### Poprawiono
+
+- **SculptureTool — znikający kontur przy powtórzonych trójkątach.** Model z
+  trójkątami powtórzonymi w siatce (Demo bust ma ich 37 w jednym miejscu, na
+  wysokości ud) gubił w części warstw cały kontur, np. jedną nogę w warstwie
+  34. Powtórki są teraz usuwane przy wczytaniu (kopie odwrócone znoszą się),
+  zanim model trafi do slicera.
+
 ## [0.62.0] — 2026-11-02
 
 ### Dodano

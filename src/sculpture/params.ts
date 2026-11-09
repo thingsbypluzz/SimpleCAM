@@ -2,6 +2,14 @@ import type { MachineSettings } from '../types/machine'
 import type { UpAxis, ViewUp } from './mesh'
 import type { SpacerShape } from './spacers'
 
+// Where one layer lies on the machine relative to the rest: turned `turn`
+// degrees CCW about X0 Y0, then shifted by (x, y) mm.
+export interface LayerPlacement {
+  turn: number
+  x: number
+  y: number
+}
+
 export type ContourPlane = 'bottom' | 'middle' | 'top'
 export type IslandMode = 'screw' | 'bridge' | 'none'
 // How a hole (plate hole or fixture insert) goes down: one helix, or a
@@ -25,6 +33,10 @@ export interface SculptureParams {
   sheetY: number
   sheetOffsetX: number
   sheetOffsetY: number
+  // Layers placed on their own on the machine, by layer number: their G-code
+  // and the layer view only (nesting on the sheet). Their holes then miss the
+  // fixture inserts.
+  layerPlacements: Record<string, LayerPlacement>
   height: number
   // Layers
   thickness: number
@@ -89,6 +101,7 @@ export const DEFAULT_PARAMS: SculptureParams = {
   sheetY: 0,
   sheetOffsetX: 0,
   sheetOffsetY: 0,
+  layerPlacements: {},
   height: 600,
   thickness: 18,
   gap: 0,

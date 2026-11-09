@@ -9,9 +9,15 @@ tylko do tego bundle'a. Nie obowiązuje tu wizard ani zasada rejestrów.
 
 ## Przepływ
 
-`parseStl()` / `demoTorso()` → `normalizeMesh()` (Up axis = oś cięcia staje
+`parseStl()` → `normalizeMesh()` (najpierw `dropDuplicateTriangles()`, potem Up axis = oś cięcia staje
 się Z, skala do Height, środek XY, stoi na Z = 0, mesh na lewą stronę odwracany) → `computeLayers()` →
 `proposeHoles()` → `analyzeLayer()` → `gcode.ts` → `buildZip()`.
+
+- **Demo bust** (Krok 1): binarny STL w `assets/demo-bust.stl` (ok. 17 tys.
+  trójkątów, 94 × 94 × 150 mm, oś Z w górę), osobny plik w buildzie
+  (`?url`), pobierany dopiero po kliknięciu i czytany przez `parseStl()` jak
+  wczytany plik. Testy korzystają z syntetycznego torsu (`testTorso.ts`, tylko
+  dla testów — ręce odchodzące od tułowia, więc wyspy są przewidywalne).
 
 - **View up** (`viewUp`, `viewFlip`): oś pliku pokazywana w podglądzie 3D
   jako góra, domyślnie `'same'` (oś cięcia). Inna oś obraca tylko scenę 3D
@@ -39,6 +45,29 @@ się Z, skala do Height, środek XY, stoi na Z = 0, mesh na lewą stronę odwrac
   wymienia warstwy, które wystają. W widoku warstwy kreskowany prostokąt o
   kryciu 0,45, czerwony, gdy płyta bieżącej warstwy wystaje; skala widoku go
   obejmuje. Obrót płyt go nie obraca (arkusz leży na stole).
+- **Ułożenie warstwy na maszynie** (`layerPlacements`, numer warstwy →
+  `LayerPlacement {turn, x, y}`): w wierszu nad widokiem warstwy obrót (dowolny
+  kąt CCW), przesunięcie X / Y i Reset, do układania płyt na arkuszu. Punkt
+  najpierw obracany wokół X0 Y0, potem przesuwany (`placePoint()` /
+  `placeRegion()` w `geometry.ts`). Tylko wyjście: `placeLayer()` /
+  `placeHoles()` w `gcode.ts` przenoszą kontur, otwory Cut, płytę
+  (`layerBlank()` liczy z ułożeniem — komentarze, karta, arkusz, największa
+  płyta) i własny plik otworów (przeniesiona warstwa dostaje go zawsze —
+  `holes.gcode` w nią nie trafia). Silnik, stany otworów, stos 3D i
+  Superimposed zostają w układzie rzeźby. Otwory przeniesionej warstwy mijają
+  mufy przyrządu: w G-code i karcie „Screws: none (moved layer…)”, ostrzeżenie
+  w UI — płytę trzyma się po obrzeżach. Widok warstwy rysuje ją na miejscu na
+  maszynie (arkusz i osie stoją), wskaźnik mapowany z powrotem (przeciąganie
+  otworów działa). Klucz to numer warstwy, więc po zmianie liczby warstw
+  ułożenia zostają przy numerach. `sanitizeParams()` zostawia tylko całkowite
+  numery z czymkolwiek ≠ 0 i czyta stare pole `layerTurns` (sam obrót).
+- **Powtórzone trójkąty** (`dropDuplicateTriangles()` w `mesh.ts`, na
+  początku `normalizeMesh()`; zapisany w projekcie surowy model bez zmian):
+  trójkąty o tych samych trzech wierzchołkach (dokładnie te same liczby)
+  grupowane; kopie odwrócone znoszą się z prostymi, z reszty zostaje jedna
+  w przeważającej orientacji, przy remisie żadna. Inaczej slicer dostaje
+  zdublowane i odwrócone odcinki, łańcuchy się rwą i kontur (np. noga Demo
+  bust w warstwie przy Z ≈ 258 mm) znika.
 - **`slice.ts`:** wierzchołek na płaszczyźnie liczy się jako nad nią, więc bez
   przypadków szczególnych. Odcinki skierowane tak, że materiał jest po lewej;
   łańcuchy chodzą najpierw od odcinków, do których nic nie prowadzi, więc
@@ -152,8 +181,21 @@ się Z, skala do Height, środek XY, stoi na Z = 0, mesh na lewą stronę odwrac
   rozmiar mostków z Settings → Tabs (`withSettings()`; w Kroku 3 tylko
   włącznik `tabs`). Simple / Advanced wpływa tylko na to, co pokazuje modal.
   Ciemny / jasny — jak w OnlyPaths: tylko w sesji, domyślnie ciemny.
-- `useSculpture.ts`: parametry w `simplecam.sculpture`, stos liczony po 150 ms
-  bezczynności, na głównym wątku (milion trójkątów to ok. 0,4 s).
+- `useSculpture.ts`: parametry w `simplecam.sculpture` (`sanitizeParams()` —
+  pola znanego typu, reszta domyślna; to samo przy wczytaniu projektu), stos
+  liczony po 150 ms bezczynności, na głównym wątku (milion trójkątów to ok.
+  0,4 s).
+- **Projekt** (`projectFile.ts`, Header: nazwa, Load project, Save project):
+  jeden plik JSON `sculpture-<nazwa>-<data>.json` (`format:
+  'simplecam-sculpture'`, `version` 1) — nazwa, nazwa modelu, `params` (bez
+  `withSettings()`, czyli bez ustawień maszyny), lista otworów i sam model:
+  surowe trójkąty (oś pliku, przed orientacją i skalą) jako float32 w
+  base64 (ok. 48 bajtów na trójkąt). Save przez `ProjectNameModal` (własny
+  opis i nazwa pliku), nieaktywny bez modelu. Load: plik obcy, uszkodzony
+  model albo otwór, zdublowane id, nowszy format — odrzucony w całości
+  (`window.alert()`); przy wczytanym modelu `window.confirm()`. Otwory wracają
+  jako edycja stosu z wczytanych parametrów (`restoreHoles()`), więc bez
+  flagi „stale”. Nazwa projektu tylko w sesji, bez znacznika zmian.
 - **Ręczne otwory w widoku warstwy:** przy włączonym „Add rod” klik w puste
   miejsce dodaje pręt, przeciąganie przesuwa otwór, prawy klik go usuwa (krok
   0,5 mm, nowy otwór dostaje kolejny wolny numer — numery się nie zmieniają). W
@@ -172,9 +214,19 @@ się Z, skala do Height, środek XY, stoi na Z = 0, mesh na lewą stronę odwrac
   tak są przeliczane. „Re-propose” i zmiana liczby prętów ją kasują.
 - Pręty w podglądzie 3D: każdy otwór rysowany na wysokości warstw, które mocuje
   (`mountRuns()`) — pręty stalowe, otwory wysp mosiężne.
-- `LayerView.tsx`: skala z całego stosu i otworów (przecięcie osi = X0 Y0), więc
-  otwory stoją w miejscu przy przechodzeniu między warstwami; zależy tylko od
-  mniejszego wymiaru widoku, proporcje zawsze 1:1.
+- `LayerView.tsx`: dopóki użytkownik nie ruszył widoku, skala z całego stosu,
+  otworów, piasty i arkusza (przecięcie osi = X0 Y0) — niezależna od ułożeń
+  warstw, więc nic nie skacze przy zmianie warstwy ani ułożenia; proporcje
+  zawsze 1:1. Kółko przybliża wokół kursora, przeciąganie pustego miejsca (poza
+  trybem dodawania) albo środkowym przyciskiem przesuwa. Ręczny widok
+  (`View {cx, cy, scale}`, tylko w komponencie) zostaje przy zmianie warstwy i
+  ułożenia; „Fit View” w rogu dopasowuje go do bieżącej warstwy na maszynie
+  z otworami, arkuszem i X0 Y0 (w Superimposed wraca do widoku całego stosu).
+  Pod spodem siatka milimetrowa (krok 1 / 2 / 5 × 10ⁿ mm, co najmniej 40 px,
+  podpisy przy lewej i dolnej krawędzi). Poza Superimposed prostokąt zasięgu
+  cięcia w kolorze akcentu: obrys `toolRegion()` bieżącej warstwy na maszynie
+  powiększony o promień freza, z rogami (X/Y min i max, do 0,1 mm) i
+  wymiarem.
 - **Show hub** (pasek podglądu, tylko przy włączonej piaście, stan w sesji):
   włączony — piasta i mostki w kolorze przyrządu (3D i widok warstwy), okrąg
   piasty kropkowany; wyłączony — sama rzeźba (`section`), bez przekładek

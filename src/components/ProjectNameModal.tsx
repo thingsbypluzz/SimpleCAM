@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from 'react'
+import { useState, type FormEvent, type ReactNode } from 'react'
 import { MAX_PROJECT_NAME_LENGTH, projectFilename, sanitizeProjectName } from '../lib/projectFile'
 import { useModalFocus } from './useModalFocus'
 
@@ -6,6 +6,9 @@ interface ProjectNameModalProps {
   // Suggested name: the current project's, or empty for an untitled one.
   initialName: string
   presetCount: number
+  // SculptureTool: its own text and file name instead of the presets'.
+  description?: ReactNode
+  filename?: (name: string) => string
   onSave: (name: string) => void
   onClose: () => void
   // BL-8: full screen like Settings and the Feedrate Calculator (a touch
@@ -18,7 +21,7 @@ interface ProjectNameModalProps {
 // field, Escape closes, Enter saves. Full screen: Back on the left and
 // Save file on the right of the top bar, the field right under it — the
 // system keyboard comes up for it and nothing it needs sits at the bottom.
-export function ProjectNameModal({ initialName, presetCount, onSave, onClose, fullScreen = false }: ProjectNameModalProps) {
+export function ProjectNameModal({ initialName, presetCount, description: customDescription, filename = projectFilename, onSave, onClose, fullScreen = false }: ProjectNameModalProps) {
   const { modalRef, initialFocusRef: inputRef } = useModalFocus<HTMLInputElement>(onClose)
   const [name, setName] = useState(initialName)
   const clean = sanitizeProjectName(name)
@@ -28,7 +31,7 @@ export function ProjectNameModal({ initialName, presetCount, onSave, onClose, fu
     if (clean) onSave(clean)
   }
 
-  const description = (
+  const description = customDescription ?? (
     <p className="text-sm text-muted">
       Saves {presetCount === 1 ? 'the 1 preset' : `all ${presetCount} presets`} to one file you can load back later, here or on
       another computer. Machine and tool settings are not included.
@@ -48,7 +51,7 @@ export function ProjectNameModal({ initialName, presetCount, onSave, onClose, fu
           className="rounded-md border border-field-border bg-transparent px-3 py-2 text-sm text-fg outline-none focus:border-accent pointer-coarse:min-h-11 pointer-coarse:text-base"
         />
       </label>
-      <p className="text-xs text-muted">File: {clean ? projectFilename(clean) : '—'}</p>
+      <p className="text-xs text-muted">File: {clean ? filename(clean) : '—'}</p>
     </>
   )
 

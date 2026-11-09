@@ -25,16 +25,16 @@ export function sanitizeProjectName(name: string): string {
   return name.replace(/\s+/g, ' ').trim().slice(0, MAX_PROJECT_NAME_LENGTH)
 }
 
-// `onlypaths-<name>-<date>.json`; the name reduced to what every file system
-// accepts.
-export function projectFilename(name: string, now = new Date()): string {
+// `onlypaths-<name>-<date>.json` (SculptureTool: `sculpture-…`); the name
+// reduced to what every file system accepts.
+export function projectFilename(name: string, now = new Date(), prefix = 'onlypaths'): string {
   const slug = sanitizeProjectName(name)
     .normalize('NFKD')
     .replace(/[̀-ͯ]/g, '')
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-+|-+$/g, '')
-  return `onlypaths-${slug || 'project'}-${now.toISOString().slice(0, 10)}.json`
+  return `${prefix}-${slug || 'project'}-${now.toISOString().slice(0, 10)}.json`
 }
 
 // A project name out of a file name, for a file that carries none:

@@ -4,10 +4,10 @@ import { endOfProgramCode, modalPreamble, spindleStartLines } from '../lib/progr
 import { type Toolpath, ToolpathBuilder, fullTurn, toolpathToGcode } from '../lib/toolpath'
 import type { MachineSettings } from '../types/machine'
 import type { Point2D } from '../types/wizard'
-import { type Region, type Ring, circlePiece, regionBounds, pieceArea, ringLength } from './geometry'
+import { type Region, type Ring, circlePiece, placePoint, placeRegion, regionBounds, pieceArea, ringLength } from './geometry'
 import type { Hole, LayerHoles } from './holes'
 import { type Layer, toolRegion } from './layers'
-import type { SculptureParams } from './params'
+import type { LayerPlacement, SculptureParams } from './params'
 
 function program(comments: string[], safeZ: number, body: string[], machine: MachineSettings): string {
   const lines = comments.map((c) => `; ${c}`)
@@ -152,12 +152,20 @@ export function layerFile(
   holes: Hole[] = [],
 ): GcodeFile {
   const safeZ = safeZFor(p)
-  const bores = holes.filter((h) => analysis.cutIds.includes(h.id))
-  const toolpath = contourPath(layer, safeZ, p, bores)
+  const placement = layerPlacement(p, layer.number)
+  const moved = isPlaced(placement)
+  const cut = placeLayer(layer, placement)
+  const bores = placeHoles(
+    holes.filter((h) => analysis.cutIds.includes(h.id)),
+    placement,
+  )
+  const toolpath = contourPath(cut, safeZ, p, bores)
+  const screws = moved ? 'none (moved layer: hold the plate by its edges)' : analysis.mountIds.length > 0 ? analysis.mountIds.join(', ') : 'none'
   const comments = [
     `Layer ${layer.number} of ${total}`,
-    ...blankComments(layer, p),
-    `Screws: ${analysis.mountIds.length > 0 ? analysis.mountIds.join(', ') : 'none'}`,
+    ...(moved ? [`${placementText(placement)} on the machine; its holes miss the fixture inserts`] : []),
+    ...blankComments(cut, p),
+    `Screws: ${screws}`,
     ...(bores.length > 0 ? [`Holes cut before the contour: ${bores.map((h) => h.id).join(', ')}`] : []),
     PLATE_ZERO,
   ]
@@ -168,7 +176,54 @@ export function layerGcode(layer: Layer, analysis: LayerHoles, total: number, p:
   return layerFile(layer, analysis, total, p, machine, holes).content
 }
 
-export function layerBlank(layer: Layer, p: SculptureParams): { width: number; height: number; centerX: number; centerY: number } {
+const UNPLACED: LayerPlacement = { turn: 0, x: 0, y: 0 }
+
+// Where a layer lies on the machine; unplaced = as in the sculpture.
+export function layerPlacement(p: SculptureParams, layerNumber: number): LayerPlacement {
+  return p.layerPlacements[String(layerNumber)] ?? UNPLACED
+}
+
+export function isPlaced(placement: LayerPlacement): boolean {
+  return placement.turn % 360 !== 0 || placement.x !== 0 || placement.y !== 0
+}
+
+export function placementText(placement: LayerPlacement): string {
+  const parts: string[] = []
+  if (placement.turn % 360 !== 0) parts.push(`turned ${fmt(placement.turn)} deg CCW about X0 Y0`)
+  if (placement.x !== 0 || placement.y !== 0) parts.push(`shifted X${fmt(placement.x)} Y${fmt(placement.y)}`)
+  const text = parts.join(', then ')
+  return text.charAt(0).toUpperCase() + text.slice(1)
+}
+
+// The layer as it lies on the machine: everything that is cut turned about
+// X0 Y0, then shifted.
+export function placeLayer(layer: Layer, placement: LayerPlacement): Layer {
+  if (!isPlaced(placement)) return layer
+  const { turn, x, y } = placement
+  const region = placeRegion(layer.region, turn, x, y)
+  return {
+    ...layer,
+    region,
+    section: placeRegion(layer.section, turn, x, y),
+    hub: placeRegion(layer.hub, turn, x, y),
+    bridges: placeRegion(layer.bridges, turn, x, y),
+    bounds: regionBounds(region) ?? layer.bounds,
+  }
+}
+
+export function placeHoles(holes: Hole[], placement: LayerPlacement): Hole[] {
+  if (!isPlaced(placement)) return holes
+  return holes.map((h) => placePoint(h, placement.turn, placement.x, placement.y))
+}
+
+type Blank = { width: number; height: number; centerX: number; centerY: number }
+
+// The plate a layer needs on the machine, its own placement included.
+export function layerBlank(layer: Layer, p: SculptureParams): Blank {
+  return blankOf(placeLayer(layer, layerPlacement(p, layer.number)), p)
+}
+
+function blankOf(layer: Layer, p: SculptureParams): Blank {
   const bounds = regionBounds(toolRegion(layer, p)) ?? layer.bounds
   // The path plus the tool's other half, plus room to hold the waste together.
   const margin = p.toolDiameter / 2 + 5
@@ -182,7 +237,7 @@ export function layerBlank(layer: Layer, p: SculptureParams): { width: number; h
 
 // True when the layer's plate lies entirely on the sheet given in Step 1;
 // true as well when no sheet is given.
-export function blankOnSheet(blank: ReturnType<typeof layerBlank>, p: SculptureParams): boolean {
+export function blankOnSheet(blank: Blank, p: SculptureParams): boolean {
   if (!(p.sheetX > 0 && p.sheetY > 0)) return true
   const eps = 1e-6
   return (
@@ -193,8 +248,9 @@ export function blankOnSheet(blank: ReturnType<typeof layerBlank>, p: SculptureP
   )
 }
 
+// For a layer already as it lies on the machine.
 function blankComments(layer: Layer, p: SculptureParams): string[] {
-  const blank = layerBlank(layer, p)
+  const blank = blankOf(layer, p)
   return [`Plate: at least ${blank.width} x ${blank.height} mm, centered on X${blank.centerX} Y${blank.centerY}`]
 }
 
@@ -314,7 +370,8 @@ export function hubSpacerHoles(holes: Hole[], p: SculptureParams): Hole[] {
 function hubSpacerLayer(p: SculptureParams): Layer {
   const disc = circlePiece(p.hubX, p.hubY, p.hubDiameter / 2)
   return {
-    number: 1,
+    // Not a layer of the stack, so no layer turn applies to it.
+    number: 0,
     zBottom: 0,
     zPlane: 0,
     region: [disc],
@@ -378,27 +435,36 @@ export interface FileEntry {
 
 export function gcodeFiles(layers: Layer[], analyses: LayerHoles[], holes: Hole[], p: SculptureParams, machine: MachineSettings): FileEntry[] {
   const pad = (n: number) => String(n).padStart(3, '0')
-  const plate = (layer: Layer, q: SculptureParams): FilePlate => ({ region: toolRegion(layer, q), thickness: q.thickness, blank: layerBlank(layer, q) })
+  // `layer` as it lies on the machine.
+  const plate = (layer: Layer, q: SculptureParams): FilePlate => ({ region: toolRegion(layer, q), thickness: q.thickness, blank: blankOf(layer, q) })
   const entries: FileEntry[] = [
     { name: 'fixture.gcode', kind: 'fixture', plate: null, build: () => fixtureFile(holes, p, machine) },
     { name: 'holes.gcode', kind: 'holes', plate: null, build: () => holesFile(holes, 'All holes', p, machine) },
   ]
   layers.forEach((l, i) => {
+    const placement = layerPlacement(p, l.number)
+    const moved = isPlaced(placement)
+    const onMachine = placeLayer(l, placement)
     entries.push({
       name: `layer-${pad(l.number)}.gcode`,
       kind: 'layer',
       layer: l.number,
-      plate: plate(l, p),
+      plate: plate(onMachine, p),
       build: () => layerFile(l, analyses[i], layers.length, p, machine, holes),
     })
-    if (analyses[i].conflictIds.length > 0) {
-      const own = holes.filter((h) => !analyses[i].conflictIds.includes(h.id))
+    // A moved layer's holes move with it, so the master file misses them.
+    if (analyses[i].conflictIds.length > 0 || moved) {
+      const own = placeHoles(
+        holes.filter((h) => !analyses[i].conflictIds.includes(h.id)),
+        placement,
+      )
+      const label = moved ? `Holes for layer ${l.number}, ${placementText(placement).toLowerCase()}` : `Holes for layer ${l.number}`
       entries.push({
         name: `layer-${pad(l.number)}-holes.gcode`,
         kind: 'layerHoles',
         layer: l.number,
-        plate: plate(l, p),
-        build: () => holesFile(own, `Holes for layer ${l.number}`, p, machine),
+        plate: plate(onMachine, p),
+        build: () => holesFile(own, label, p, machine),
       })
     }
   })
@@ -431,12 +497,15 @@ export function mountingCard(layers: Layer[], analyses: LayerHoles[], holes: Hol
   layers.forEach((layer, i) => {
     const blank = layerBlank(layer, p)
     const a = analyses[i]
+    const placement = layerPlacement(p, layer.number)
+    const moved = isPlaced(placement)
     const parts = [
       `  ${String(layer.number).padStart(3, '0')}`,
       `plate ${blank.width}x${blank.height} at X${blank.centerX} Y${blank.centerY}`,
-      `screws ${a.mountIds.length > 0 ? a.mountIds.join(',') : 'none'}`,
+      moved ? `${placementText(placement).toUpperCase()}, no screws: hold by the edges` : `screws ${a.mountIds.length > 0 ? a.mountIds.join(',') : 'none'}`,
     ]
-    if (a.conflictIds.length > 0) parts.push(`OWN HOLES FILE (skips ${a.conflictIds.join(',')})`)
+    if (moved) parts.push('OWN HOLES FILE (moved)')
+    else if (a.conflictIds.length > 0) parts.push(`OWN HOLES FILE (skips ${a.conflictIds.join(',')})`)
     if (a.cutIds.length > 0) parts.push(`holes ${a.cutIds.join(',')} cut with the contour`)
     if (a.unheldPieces.length > 0) parts.push(`${a.unheldPieces.length} piece(s) on tabs only`)
     lines.push(parts.join(' | '))

@@ -1,13 +1,17 @@
 import { describe, expect, it } from 'vitest'
 import { DEFAULT_MACHINE_SETTINGS } from '../types/machine'
 import { offset, regionArea, regionFromRings, ringSignedArea, simplifyRing } from './geometry'
-import { blankOnSheet, fixtureGcode, gcodeFiles, holePitch, holesGcode, hubSpacerGcode, layerGcode, mountingCard, tabSpans } from './gcode'
+import { blankOnSheet, fixtureGcode, gcodeFiles, holePitch, holesGcode, layerBlank, hubSpacerGcode, layerGcode, mountingCard, tabSpans } from './gcode'
 import { addHole, analyzeLayer, canMountRotated, holeState, holeSummary, proposeHoles } from './holes'
 import { computeHubSpacers, computeSpacers } from './spacers'
 import { computeLayers, thinHubPieces, toolRegion, uncutRegion } from './layers'
-import { demoTorso, normalizeMesh, parseStl } from './mesh'
+import demoBust from './assets/demo-bust.stl?inline'
+import { dropDuplicateTriangles, normalizeMesh, parseStl } from './mesh'
+import { demoTorso } from './testTorso'
 import { DEFAULT_PARAMS, type SculptureParams, paramErrors } from './params'
 import { sliceMesh } from './slice'
+import { sanitizeParams } from './useSculpture'
+import { buildSculptureProject, parseSculptureProject, sculptureFilename } from './projectFile'
 import { buildZip, crc32 } from './zip'
 
 // A closed box with outward normals, 12 triangles.
@@ -88,6 +92,25 @@ endsolid t`
 })
 
 describe('mesh normalizing', () => {
+  it('drops repeated triangles; opposite copies cancel out', () => {
+    const a = [0, 0, 0, 1, 0, 0, 0, 1, 0]
+    const flipped = [0, 0, 0, 0, 1, 0, 1, 0, 0]
+    const b = [5, 5, 5, 6, 5, 5, 5, 6, 5]
+    // Same corners in a shifted order: still the same face, same way round.
+    const shifted = [1, 0, 0, 0, 1, 0, 0, 0, 0]
+    expect(Array.from(dropDuplicateTriangles(Float32Array.from([...a, ...shifted, ...b])))).toEqual([...a, ...b])
+    expect(Array.from(dropDuplicateTriangles(Float32Array.from([...a, ...flipped, ...b])))).toEqual(b)
+    expect(Array.from(dropDuplicateTriangles(Float32Array.from([...a, ...flipped, ...flipped])))).toEqual(flipped)
+  })
+
+  it('keeps both legs of the demo bust where its mesh repeats triangles', () => {
+    const bytes = Uint8Array.from(atob(demoBust.slice(demoBust.indexOf(',') + 1)), (c) => c.charCodeAt(0))
+    const mesh = normalizeMesh(parseStl(bytes.buffer), 'z', false, 600)
+    const layers = computeLayers(mesh, { ...DEFAULT_PARAMS, thickness: 7.7, gap: 0, plane: 'middle', minIslandArea: 0 })
+    expect(layers[33].section).toHaveLength(2)
+    expect(regionArea(layers[33].section)).toBeGreaterThan(15000)
+  })
+
   it('centers, scales and stands the model up', () => {
     const mesh = normalizeMesh(box(10, 20, 40), 'y', false, 100)
     expect(mesh.height).toBe(100)
@@ -463,6 +486,58 @@ describe('G-code', () => {
     expect(files[0].plate).toBeNull()
   })
 
+  it('turns one layer on the machine: its contour, its own holes file and its plate', () => {
+    const analyses = layers.map((l) => analyzeLayer(l, holes, p))
+    const q = { ...p, layerPlacements: { '1': { turn: 90, x: 0, y: 0 } } }
+    const files = gcodeFiles(layers, analyses, holes, q, DEFAULT_MACHINE_SETTINGS)
+    const layerOne = files.find((f) => f.name === 'layer-001.gcode')!.build()
+    const plain = files.find((f) => f.name === 'layer-002.gcode')!.build()
+    expect(layerOne.content).toContain('; Turned 90 deg CCW about X0 Y0')
+    expect(layerOne.content).toContain('; Screws: none (moved layer')
+    expect(plain.content).not.toContain('Turned')
+    // The turned contour covers the plain one's extent turned a quarter (Clipper
+    // may start a ring elsewhere, so points are not compared one by one).
+    const straight = layerGcode(layers[0], analyses[0], layers.length, p, DEFAULT_MACHINE_SETTINGS)
+    const extent = (text: string) => {
+      const points = text.split('\n').filter((l) => l.startsWith('G1 X')).map((l) => l.match(/X(-?[\d.]+) Y(-?[\d.]+)/)!.slice(1).map(Number))
+      return { minX: Math.min(...points.map((q) => q[0])), maxX: Math.max(...points.map((q) => q[0])), minY: Math.min(...points.map((q) => q[1])), maxY: Math.max(...points.map((q) => q[1])) }
+    }
+    const before = extent(straight)
+    const after = extent(layerOne.content)
+    expect(after.minX).toBeCloseTo(-before.maxY, 0)
+    expect(after.maxX).toBeCloseTo(-before.minY, 0)
+    expect(after.minY).toBeCloseTo(before.minX, 0)
+    expect(after.maxY).toBeCloseTo(before.maxX, 0)
+    const own = files.find((f) => f.name === 'layer-001-holes.gcode')
+    expect(own).toBeDefined()
+    expect(own!.build().content).toContain('turned 90 deg')
+    const blank = layerBlank(layers[0], p)
+    const turned = layerBlank(layers[0], q)
+    expect(turned.width).toBe(blank.height)
+    expect(turned.height).toBe(blank.width)
+  })
+
+  it('shifts one layer on the machine after turning it', () => {
+    const q = { ...p, layerPlacements: { '1': { turn: 0, x: 120, y: -40 } } }
+    const blank = layerBlank(layers[0], p)
+    const shifted = layerBlank(layers[0], q)
+    expect(shifted.width).toBe(blank.width)
+    expect(shifted.centerX - blank.centerX).toBeCloseTo(120, 0)
+    expect(shifted.centerY - blank.centerY).toBeCloseTo(-40, 0)
+    const analyses = layers.map((l) => analyzeLayer(l, holes, p))
+    const content = gcodeFiles(layers, analyses, holes, q, DEFAULT_MACHINE_SETTINGS).find((f) => f.name === 'layer-001.gcode')!.build().content
+    expect(content).toContain('; Shifted X120 Y-40 on the machine')
+  })
+
+  it('keeps only whole layer numbers that are really moved, and reads the old turn-only field', () => {
+    const clean = sanitizeParams({
+      layerPlacements: { '3': { turn: 30, x: 0, y: 0 }, '0': { turn: 10, x: 0, y: 0 }, x: { turn: 5, x: 0, y: 0 }, '4': { turn: 360, x: 0, y: 0 }, '5': 'a', '7': { turn: 0, x: 5, y: 'b' } },
+    })
+    expect(clean.layerPlacements).toEqual({ '3': { turn: 30, x: 0, y: 0 }, '7': { turn: 0, x: 5, y: 0 } })
+    expect(sanitizeParams({ layerTurns: { '2': -15, '0': 10 } }).layerPlacements).toEqual({ '2': { turn: -15, x: 0, y: 0 } })
+    expect(sanitizeParams({ layerPlacements: [1, 2] }).layerPlacements).toEqual({})
+  })
+
   it('writes one card line per layer', () => {
     const card = mountingCard(layers, layers.map((l) => analyzeLayer(l, holes, p)), holes, p)
     expect(card).toContain('001 | plate')
@@ -573,5 +648,38 @@ describe('hub', () => {
 
   it('needs a slot at least as wide as the tool', () => {
     expect(paramErrors(hubbed({ hubSlot: 4, toolDiameter: 6 }))).toContain('Hub slot must be at least the tool diameter.')
+  })
+})
+
+describe('project file', () => {
+  const raw = box(100, 50, 30)
+  const p = params({ plateTurn: 45, sheetX: 600, rodCount: 2, layerPlacements: { '2': { turn: 12.5, x: 30, y: -10 } } })
+  const holes = [
+    { id: 1, x: 1.5, y: -2, kind: 'rod' as const, cut: true },
+    { id: 3, x: 10, y: 4, kind: 'island' as const, from: 2, to: 5 },
+  ]
+  const text = buildSculptureProject({ name: 'Torso  one ', modelName: 'torso.stl', params: p, holes, raw }, '0.62.0')
+
+  it('brings back the model, the parameters and the holes', () => {
+    const result = parseSculptureProject(text)
+    expect(result.ok).toBe(true)
+    if (!result.ok) return
+    expect(result.project.name).toBe('Torso one')
+    expect(result.project.modelName).toBe('torso.stl')
+    expect(result.project.params).toEqual(p)
+    expect(result.project.holes).toEqual(holes)
+    expect(Array.from(result.project.raw)).toEqual(Array.from(raw))
+  })
+
+  it('refuses a foreign, damaged or newer file', () => {
+    expect(parseSculptureProject('{"format":"onlypaths-project","version":1}')).toEqual({ ok: false, reason: 'invalid' })
+    const data = JSON.parse(text)
+    expect(parseSculptureProject(JSON.stringify({ ...data, version: 99 }))).toEqual({ ok: false, reason: 'newer' })
+    expect(parseSculptureProject(JSON.stringify({ ...data, model: { ...data.model, data: 'AAAA' } })).ok).toBe(false)
+    expect(parseSculptureProject(JSON.stringify({ ...data, holes: [{ id: 1, x: 0, y: 0, kind: 'peg' }] })).ok).toBe(false)
+  })
+
+  it('names the file after the project', () => {
+    expect(sculptureFilename('Torso one', new Date('2026-11-07T10:00:00Z'))).toBe('sculpture-torso-one-2026-11-07.json')
   })
 })

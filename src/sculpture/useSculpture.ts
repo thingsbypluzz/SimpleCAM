@@ -3,22 +3,48 @@ import { type Hole, type LayerHoles, analyzeLayer, proposeHoles } from './holes'
 import { type Layer, computeLayers, thinHubPieces } from './layers'
 import { type Spacer, computeHubSpacers, computeSpacers } from './spacers'
 import { type Mesh, normalizeMesh } from './mesh'
-import { type SculptureParams, DEFAULT_PARAMS, layerSignature, paramErrors } from './params'
+import { type LayerPlacement, type SculptureParams, DEFAULT_PARAMS, layerSignature, paramErrors } from './params'
 
 const STORAGE_KEY = 'simplecam.sculpture'
 
+const isRecord = (v: unknown): v is Record<string, unknown> => typeof v === 'object' && v !== null && !Array.isArray(v)
+const finite = (v: unknown): number => (typeof v === 'number' && Number.isFinite(v) ? v : 0)
+
+// Only whole layer numbers that move the layer at all. `legacy`: turns alone,
+// as saved before a layer could also be shifted.
+function sanitizePlacements(value: unknown, legacy: unknown): Record<string, LayerPlacement> {
+  const out: Record<string, LayerPlacement> = {}
+  const add = (key: string, placement: LayerPlacement) => {
+    if (/^[1-9]\d*$/.test(key) && (placement.turn % 360 !== 0 || placement.x !== 0 || placement.y !== 0)) out[key] = placement
+  }
+  if (isRecord(legacy)) for (const [key, turn] of Object.entries(legacy)) add(key, { turn: finite(turn), x: 0, y: 0 })
+  if (isRecord(value)) {
+    for (const [key, entry] of Object.entries(value)) {
+      if (isRecord(entry)) add(key, { turn: finite(entry.turn), x: finite(entry.x), y: finite(entry.y) })
+    }
+  }
+  return out
+}
+
+// Stored or loaded parameters: every known field of the right type, defaults
+// for the rest.
+export function sanitizeParams(value: unknown): SculptureParams {
+  const parsed = (typeof value === 'object' && value !== null ? value : {}) as Partial<Record<keyof SculptureParams, unknown>>
+  const out: SculptureParams = { ...DEFAULT_PARAMS }
+  for (const key of Object.keys(DEFAULT_PARAMS) as (keyof SculptureParams)[]) {
+    if (typeof parsed[key] === typeof DEFAULT_PARAMS[key]) (out as unknown as Record<string, unknown>)[key] = parsed[key]
+  }
+  // Saved before the turn went to 45° steps: a quarter turn on or off.
+  const legacy = parsed as { turnPlates?: unknown }
+  if (parsed.plateTurn === undefined && legacy.turnPlates === true) out.plateTurn = 90
+  out.plateTurn = ((Math.round(out.plateTurn / 45) * 45) % 360 + 360) % 360
+  out.layerPlacements = sanitizePlacements(parsed.layerPlacements, (parsed as { layerTurns?: unknown }).layerTurns)
+  return out
+}
+
 export function loadParams(): SculptureParams {
   try {
-    const parsed = JSON.parse(localStorage.getItem(STORAGE_KEY) ?? '{}') as Partial<Record<keyof SculptureParams, unknown>>
-    const out: SculptureParams = { ...DEFAULT_PARAMS }
-    for (const key of Object.keys(DEFAULT_PARAMS) as (keyof SculptureParams)[]) {
-      if (typeof parsed[key] === typeof DEFAULT_PARAMS[key]) (out as unknown as Record<string, unknown>)[key] = parsed[key]
-    }
-    // Saved before the turn went to 45° steps: a quarter turn on or off.
-    const legacy = parsed as { turnPlates?: unknown }
-    if (parsed.plateTurn === undefined && legacy.turnPlates === true) out.plateTurn = 90
-    out.plateTurn = ((Math.round(out.plateTurn / 45) * 45) % 360 + 360) % 360
-    return out
+    return sanitizeParams(JSON.parse(localStorage.getItem(STORAGE_KEY) ?? '{}'))
   } catch {
     return DEFAULT_PARAMS
   }
@@ -49,6 +75,8 @@ export interface SculptureState {
   computing: boolean
   // `forSignature`: the stack the edit was made for, when it is not the current one.
   setHoles: (holes: Hole[], forSignature?: string) => void
+  // Holes from a project file, held as an edit of the stack those parameters give.
+  restoreHoles: (holes: Hole[], forParams: SculptureParams) => void
   reproposeHoles: () => void
 }
 
@@ -161,6 +189,8 @@ export function useSculpture(raw: Float32Array | null, params: SculptureParams):
     computeError: computed.error,
     computing,
     setHoles: (next, forSignature) => setEditedHoles({ holes: next, signature: forSignature ?? signature, rodCount: params.rodCount }),
+    restoreHoles: (next, forParams) =>
+      setEditedHoles({ holes: next, signature: layerSignature(forParams), rodCount: forParams.rodCount }),
     reproposeHoles: () => setEditedHoles(null),
   }
 }

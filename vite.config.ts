@@ -14,6 +14,8 @@ const { version } = JSON.parse(readFileSync(new URL('./package.json', import.met
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [react(), tailwindcss()],
+  // SculptureTool ships its demo model as an STL asset.
+  assetsInclude: ['**/*.stl'],
   define: {
     __APP_VERSION__: JSON.stringify(version),
   },

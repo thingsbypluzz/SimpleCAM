@@ -1,4 +1,6 @@
 import { type ReactNode, useEffect, useLayoutEffect, useMemo, useState } from 'react'
+import { OpenFileIcon, SaveFileIcon } from '../components/icons'
+import { ProjectNameModal } from '../components/ProjectNameModal'
 import { SettingsModal } from '../components/SettingsModal'
 import { SimpleModeContext } from '../components/uiModeContext'
 import { useCoarsePointer, useLayoutMode } from '../components/useViewport'
@@ -12,15 +14,17 @@ import { loadToolDiameterOptions, saveToolDiameterOptions } from '../lib/toolDia
 import { DEFAULT_APPEARANCE_SETTINGS, type AppearanceSettings } from '../types/appearance'
 import { DEFAULT_MACHINE_SETTINGS, type MachineSettings } from '../types/machine'
 import { DEFAULT_TOOL_DIAMETER_OPTIONS, type ToolDiameterOption } from '../types/toolDiameters'
-import { type FileEntry, type FileKind, blankOnSheet, gcodeFiles, holePitch, layerBlank, mountingCard } from './gcode'
+import { type FileEntry, type FileKind, blankOnSheet, gcodeFiles, holePitch, isPlaced, layerBlank, layerPlacement, mountingCard } from './gcode'
 import { HOLE_STATE_LABELS, holeStateColor } from './holeColors'
 import { LayerView } from './LayerView'
 import { type Hole, type HoleKind, type HoleState, addHole, canMountRotated, holeSummary, screwClearance } from './holes'
-import { demoTorso, parseStl, type UpAxis, type ViewUp } from './mesh'
-import { type ContourPlane, type HoleMethod, type IslandMode, type SculptureParams, layerSignature, minHubDiameter, withSettings } from './params'
+import demoBustUrl from './assets/demo-bust.stl?url'
+import { parseStl, type UpAxis, type ViewUp } from './mesh'
+import { type ContourPlane, type HoleMethod, type IslandMode, type LayerPlacement, type SculptureParams, layerSignature, minHubDiameter, withSettings } from './params'
 import type { SpacerShape } from './spacers'
 import { type StackMode, StackScene } from './StackScene'
 import { ToolpathScene } from './ToolpathScene'
+import { SCULPTURE_PROJECT_ERRORS, buildSculptureProject, parseSculptureProject, sculptureFilename } from './projectFile'
 import { loadParams, useSculpture } from './useSculpture'
 import { buildZip, type ZipEntry } from './zip'
 
@@ -29,7 +33,7 @@ const fieldClass =
 const buttonClass =
   'rounded border border-border px-2 py-1 text-xs text-fg hover:border-accent disabled:cursor-not-allowed disabled:opacity-40'
 
-function NumberField({ label, value, onChange, unit }: { label: string; value: number; onChange: (v: number) => void; unit?: string }) {
+function NumberField({ label, value, onChange, unit, ariaLabel }: { label: string; value: number; onChange: (v: number) => void; unit?: string; ariaLabel?: string }) {
   // The text is kept apart from the number so "1." or an empty field can pass
   // through while typing; only a real number reaches the parameters.
   const [draft, setDraft] = useState<string | null>(null)
@@ -41,7 +45,8 @@ function NumberField({ label, value, onChange, unit }: { label: string; value: n
       <input
         type="text"
         inputMode="decimal"
-        className={`${fieldClass} mt-0.5 ${valid ? '' : 'border-status-error'}`}
+        aria-label={ariaLabel}
+        className={`${fieldClass} ${label ? 'mt-0.5' : ''} ${valid ? '' : 'border-status-error'}`}
         value={draft ?? String(value)}
         onChange={(e) => {
           const text = e.target.value
@@ -110,8 +115,8 @@ function Toggle({ label, pressed, onClick }: { label: string; pressed: boolean; 
   )
 }
 
-function downloadBlob(filename: string, bytes: Uint8Array<ArrayBuffer>) {
-  const url = URL.createObjectURL(new Blob([bytes], { type: 'application/zip' }))
+function downloadBlob(filename: string, data: BlobPart, type = 'application/zip') {
+  const url = URL.createObjectURL(new Blob([data], { type }))
   const anchor = document.createElement('a')
   anchor.href = url
   anchor.download = filename
@@ -154,6 +159,9 @@ export function SculptureApp() {
   const [stored, setParams] = useState<SculptureParams>(loadParams)
   const [raw, setRaw] = useState<Float32Array | null>(null)
   const [modelName, setModelName] = useState('')
+  // The project's name since it was last saved or loaded; empty = Untitled.
+  const [projectName, setProjectName] = useState('')
+  const [saveOpen, setSaveOpen] = useState(false)
   const [loadError, setLoadError] = useState<string | null>(null)
   const [selected, setSelected] = useState(1)
   const [mode, setMode] = useState<StackMode>('stack')
@@ -243,6 +251,45 @@ export function SculptureApp() {
     }
   }
 
+  // The demo model ships as its own asset, fetched only when asked for.
+  const openDemo = async () => {
+    try {
+      const response = await fetch(demoBustUrl)
+      if (!response.ok) throw new Error('Could not load the demo bust.')
+      setRaw(parseStl(await response.arrayBuffer()))
+      setModelName('Demo bust')
+      setLoadError(null)
+    } catch (err) {
+      setLoadError(err instanceof Error ? err.message : 'Could not load the demo bust.')
+    }
+  }
+
+  // The model, every step's parameters and the holes as they stand, in one file.
+  const saveProject = (name: string) => {
+    if (!raw) return
+    const text = buildSculptureProject({ name, modelName, params: stored, holes, raw }, __APP_VERSION__)
+    downloadBlob(sculptureFilename(name), text, 'application/json')
+    setProjectName(name)
+    setSaveOpen(false)
+  }
+
+  const loadProject = async (file: File) => {
+    const result = parseSculptureProject(await file.text())
+    if (!result.ok) {
+      window.alert(SCULPTURE_PROJECT_ERRORS[result.reason])
+      return
+    }
+    if (raw && !window.confirm('Replace the current model, its settings and holes with this project?')) return
+    const { project } = result
+    setRaw(project.raw)
+    setModelName(project.modelName)
+    setLoadError(null)
+    setParams(project.params)
+    state.restoreHoles(project.holes, withSettings(project.params, machine))
+    setProjectName(project.name || file.name.replace(/\.json$/i, ''))
+    setSelected(1)
+  }
+
   const warnings = useMemo(() => {
     const list: string[] = []
     if (layers.length === 0) return list
@@ -261,6 +308,13 @@ export function SculptureApp() {
     if (open > 0) list.push(`${open} layer(s) cross holes in the mesh: parts of them may be missing. Repair the model in Blender.`)
     const conflict = analyses.filter((a) => a.conflictIds.length > 0).length
     if (conflict > 0) list.push(`${conflict} layer(s) get their own holes file: a master hole would bite into their edge.`)
+    const moved = layers.filter((l) => isPlaced(layerPlacement(params, l.number))).map((l) => l.number)
+    if (moved.length > 0) {
+      const more = moved.length > 8 ? ` and ${moved.length - 8} more` : ''
+      list.push(
+        `Layer(s) ${moved.slice(0, 8).join(', ')}${more} are turned or shifted on the machine: their holes miss the fixture inserts, so hold those plates by their edges.`,
+      )
+    }
     const unheld = analyses.filter((a) => a.unheldPieces.length > 0).length
     if (unheld > 0) list.push(`${unheld} layer(s) have pieces held by tabs only.`)
     const noTabs = params.tabCount === 0 && unheld > 0
@@ -271,7 +325,7 @@ export function SculptureApp() {
       list.push(`The section reaches ${Math.round(reach)} mm from the center; the machine has ${Math.round(limit)} mm (Settings → Machine).`)
     }
     return list
-  }, [layers, holes, analyses, state.hasCommonArea, state.thinHubLayers, params.hub, params.minWall, params.rodCount, params.holeDiameter, params.tabCount, params.toolDiameter, machine])
+  }, [layers, holes, analyses, state.hasCommonArea, state.thinHubLayers, params, machine])
 
   // Every file of the ZIP, built only when shown or generated.
   const files = useMemo(
@@ -326,6 +380,22 @@ export function SculptureApp() {
     const turned = holes.map((h) => ({ ...h, ...turn(h.x, h.y) }))
     // Held as an edit made on the turned stack, so it is not flagged as stale.
     state.setHoles(turned, layerSignature(withSettings(next, machine)))
+  }
+
+  // The current layer's own placement on the machine; all zero removes it.
+  const placement = layer ? layerPlacement(params, layer.number) : { turn: 0, x: 0, y: 0 }
+  const placed = isPlaced(placement)
+  const placedCount = Object.keys(params.layerPlacements).length
+  const setPlacement = (patch: Partial<LayerPlacement> | null) => {
+    if (!layer) return
+    const key = String(layer.number)
+    setParams((p) => {
+      const placements = { ...p.layerPlacements }
+      const next = { ...(placements[key] ?? { turn: 0, x: 0, y: 0 }), ...patch }
+      if (patch !== null && isPlaced(next)) placements[key] = next
+      else delete placements[key]
+      return { ...p, layerPlacements: placements }
+    })
   }
 
   const editHole = (id: number, patch: Partial<Hole>) => state.setHoles(holes.map((h) => (h.id === id ? { ...h, ...patch } : h)))
@@ -401,6 +471,32 @@ export function SculptureApp() {
       <header className="flex items-center gap-3 border-b border-border px-4 py-2">
         <h1 className="text-base font-semibold">SculptureTool</h1>
         <span className="text-xs text-muted">prototype</span>
+        <div className="ml-4 flex items-center gap-1">
+          <span
+            title={projectName || 'Untitled'}
+            className="max-w-40 truncate rounded border border-edit bg-edit-bg px-2 py-1 text-xs text-edit-fg"
+          >
+            {projectName || 'Untitled'}
+          </span>
+          <label className={`${buttonClass} flex cursor-pointer items-center`} title="Load project">
+            <OpenFileIcon className="h-4 w-4" />
+            <span className="sr-only">Load project</span>
+            <input
+              type="file"
+              accept=".json,application/json"
+              className="hidden"
+              onChange={(e) => {
+                const file = e.target.files?.[0]
+                if (file) void loadProject(file)
+                e.target.value = ''
+              }}
+            />
+          </label>
+          <button type="button" className={`${buttonClass} flex items-center`} title="Save project" disabled={!raw} onClick={() => setSaveOpen(true)}>
+            <SaveFileIcon className="h-4 w-4" />
+            <span className="sr-only">Save project</span>
+          </button>
+        </div>
         <div className="ml-auto flex items-center gap-3">
           <span className="text-xs text-muted">
             Machine {machine.travelX} × {machine.travelY}, {machine.dialect}
@@ -443,13 +539,9 @@ export function SculptureApp() {
                         <button
                           type="button"
                           className={buttonClass}
-                          onClick={() => {
-                            setRaw(demoTorso())
-                            setModelName('Demo torso')
-                            setLoadError(null)
-                          }}
+                          onClick={() => void openDemo()}
                         >
-                          Demo torso
+                          Demo bust
                         </button>
                       </div>
                       <p className="mt-2 break-all text-xs text-muted">{modelName || 'No model loaded.'}</p>
@@ -835,7 +927,7 @@ export function SculptureApp() {
           <div className="grid min-h-0 flex-1 grid-cols-2">
             <div className="min-h-0 border-r border-border">
               {!raw ? (
-                <div className="flex h-full items-center justify-center p-6 text-center text-sm text-muted">Load an STL, or try the demo torso.</div>
+                <div className="flex h-full items-center justify-center p-6 text-center text-sm text-muted">Load an STL, or try the demo bust.</div>
               ) : view !== 'stack' && !builtFile ? (
                 <div className="flex h-full items-center justify-center p-6 text-center text-sm text-muted">
                   {state.computing ? 'Calculating…' : 'Fix the errors above to see the toolpath.'}
@@ -878,6 +970,35 @@ export function SculptureApp() {
                   {layers.length > 0 ? `${current} / ${layers.length}` : '–'}
                 </span>
               </div>
+              {layer && (
+                <div className="flex flex-wrap items-center gap-x-2 gap-y-1 border-b border-border px-3 py-1.5 text-xs text-muted">
+                  <span>Layer {layer.number} on the machine: turn</span>
+                  <div className="w-16">
+                    <NumberField
+                      key={`turn-${layer.number}`}
+                      label=""
+                      ariaLabel={`Turn of layer ${layer.number} in degrees`}
+                      value={placement.turn}
+                      onChange={(turn) => setPlacement({ turn })}
+                    />
+                  </div>
+                  <span>° CCW, shift X</span>
+                  <div className="w-16">
+                    <NumberField key={`x-${layer.number}`} label="" ariaLabel={`Shift X of layer ${layer.number} in mm`} value={placement.x} onChange={(x) => setPlacement({ x })} />
+                  </div>
+                  <span>Y</span>
+                  <div className="w-16">
+                    <NumberField key={`y-${layer.number}`} label="" ariaLabel={`Shift Y of layer ${layer.number} in mm`} value={placement.y} onChange={(y) => setPlacement({ y })} />
+                  </div>
+                  <span>mm</span>
+                  <button type="button" className={buttonClass} disabled={!placed} onClick={() => setPlacement(null)}>
+                    Reset
+                  </button>
+                  <span className="ml-auto" title="Turned about X0 Y0, then shifted. G-code and this view only; the 3D model stays as it is.">
+                    {placedCount > 0 ? `${placedCount} layer(s) moved` : 'G-code and this view only'}
+                  </span>
+                </div>
+              )}
               <div className="min-h-0 flex-1">
                 <LayerView
                   layers={layers}
@@ -898,7 +1019,12 @@ export function SculptureApp() {
                 {layer && analysis && blank && (
                   <p className="mb-1">
                     Plate at least {blank.width} × {blank.height} mm at X{blank.centerX} Y{blank.centerY}. Screws:{' '}
-                    {analysis.mountIds.length > 0 ? analysis.mountIds.join(', ') : 'none'}.
+                    {placed
+                      ? 'none: the layer is moved, hold the plate by its edges'
+                      : analysis.mountIds.length > 0
+                        ? analysis.mountIds.join(', ')
+                        : 'none'}
+                    .
                     {analysis.unheldPieces.length > 0 ? ` ${analysis.unheldPieces.length} piece(s) on tabs only.` : ''}
                     {layer.removedPieces > 0 ? ` ${layer.removedPieces} small piece(s) dropped.` : ''}
                   </p>
@@ -926,6 +1052,22 @@ export function SculptureApp() {
           </div>
         </main>
       </div>
+      {saveOpen && (
+        <ProjectNameModal
+          initialName={projectName}
+          presetCount={0}
+          description={
+            <p className="text-sm text-muted">
+              Saves the model, every step's settings, the plate turn and all holes to one file you can load back later, here or on another
+              computer. Machine, tool list and appearance are not included.
+            </p>
+          }
+          filename={(name) => sculptureFilename(name)}
+          onSave={saveProject}
+          onClose={() => setSaveOpen(false)}
+          fullScreen={layout !== 'wide' || touch}
+        />
+      )}
       {settingsOpen && (
         <SettingsModal
           machine={machine}

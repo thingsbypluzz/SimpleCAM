@@ -22,6 +22,25 @@ export interface Bounds {
   maxY: number
 }
 
+// Turned CCW about X0 Y0 by `degrees`. A turn keeps every ring's direction.
+export function turnPoint<T extends Point2D>(p: T, degrees: number): T {
+  const a = (degrees * Math.PI) / 180
+  const cos = Math.cos(a)
+  const sin = Math.sin(a)
+  return { ...p, x: p.x * cos - p.y * sin, y: p.x * sin + p.y * cos }
+}
+
+// Turned about X0 Y0, then shifted by (dx, dy).
+export function placePoint<T extends Point2D>(p: T, degrees: number, dx: number, dy: number): T {
+  const q = turnPoint(p, degrees)
+  return { ...q, x: q.x + dx, y: q.y + dy }
+}
+
+export function placeRegion(region: Region, degrees: number, dx: number, dy: number): Region {
+  const ring = (r: Ring) => r.map((p) => placePoint(p, degrees, dx, dy))
+  return region.map((piece) => ({ outer: ring(piece.outer), holes: piece.holes.map(ring) }))
+}
+
 const SCALE = 1000
 // How far a round join may stray from a true arc, in integer units (50 µm).
 const ARC_TOLERANCE = 50
