@@ -64,6 +64,7 @@ import { adaptiveExceedsLimits } from './pocketAdaptive'
 import { isPocketContour, pocketContourTabsFit, shortestContourLength } from './pocketContour'
 import { cappedRampPitch } from './rampPitch'
 import type { GcodeFeeds } from './toolpath'
+import { tabGapLength } from './tabs'
 
 // Strict (BL-49): a tool exactly as wide as the hole leaves a zero-radius
 // toolpath — `G2/G3 … I0 J0` arcs, or in G1 mode a vertical plunge at
@@ -511,14 +512,15 @@ export function isTabHeightValid(geometry: GeometryParams): boolean {
   return !geometry.tabsEnabled || (geometry.tabHeight > 0 && geometry.tabHeight < geometry.totalDepth)
 }
 
-// tabCount * tabWidth is the total arc length tabs would consume around
+// tabCount * tabGapLength() (Tab Width + tool diameter — the gap each tab
+// leaves in the toolpath) is the total arc length tabs would consume around
 // the toolpath circle — at or past the full circumference, tabs overlap
 // or swallow the whole ring, leaving nothing to cut.
 export function isTabWidthValid(geometry: GeometryParams): boolean {
   if (!geometry.tabsEnabled) return true
   const toolPathRadius = Math.max(0, (geometry.holeDiameter - geometry.toolDiameter) / 2)
   const circumference = 2 * Math.PI * toolPathRadius
-  return geometry.tabCount * geometry.tabWidth < circumference
+  return geometry.tabCount * tabGapLength(geometry.tabWidth, geometry.toolDiameter) < circumference
 }
 
 // Outline validators — same "vacuously valid when not applicable"
@@ -599,7 +601,7 @@ export function isOutlineTabCountValid(outline: OutlineParams): boolean {
   return !outline.tabsEnabled || isValidTabCount(outline.tabCount)
 }
 
-// Circle: same formula as isTabWidthValid (tabCount * tabWidth against the
+// Circle: same formula as isTabWidthValid (tabCount * tab gap against the
 // full circumference — tabCount is total-around-perimeter here, matching
 // Hole(s)' semantics). Rectangle: tabCount is per SIDE (not total around
 // the perimeter — see CLAUDE.md's Outline design notes), so the check is
@@ -608,12 +610,13 @@ export function isOutlineTabCountValid(outline: OutlineParams): boolean {
 // tabCount/tabWidth apply to every side regardless of that side's length.
 export function isOutlineTabWidthValid(outline: OutlineParams): boolean {
   if (!outline.tabsEnabled) return true
+  const gap = tabGapLength(outline.tabWidth, outline.toolDiameter)
   if (outline.shape === 'lobedCircle') {
-    return outline.tabCount * outline.tabWidth < lobedToolPathLength(outline)
+    return outline.tabCount * gap < lobedToolPathLength(outline)
   }
   if (outline.shape === 'circle') {
     const circumference = 2 * Math.PI * Math.max(0, outlineCircleRadius(outline))
-    return outline.tabCount * outline.tabWidth < circumference
+    return outline.tabCount * gap < circumference
   }
   const { toolWidth, toolHeight } = rectToolDimensions(
     outline.width,
@@ -621,7 +624,7 @@ export function isOutlineTabWidthValid(outline: OutlineParams): boolean {
     outline.toolDiameter,
     outline.offsetMode,
   )
-  return outline.tabCount * outline.tabWidth < Math.min(toolWidth, toolHeight)
+  return outline.tabCount * gap < Math.min(toolWidth, toolHeight)
 }
 
 // Outline's counterpart to patternSpan()/zSpan() below, for

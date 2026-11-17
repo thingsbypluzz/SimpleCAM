@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { appendTabbedCirclePass, computeTabRanges } from './tabs'
+import { appendTabbedCirclePass, computeTabRanges, tabGapLength } from './tabs'
 import { ToolpathBuilder, toolpathToGcode } from './toolpath'
 
 // One tabbed pass on its own, formatted as G-code (G1 at `feed`).
@@ -148,5 +148,12 @@ describe('appendTabbedCirclePass', () => {
     const cw = tabbedCirclePass({ ...base, tabRanges, direction: 'cw' })
     expect(cw[cw.length - 1]).toBe(`G1 X${base.startX} Y${base.startY} Z${base.cutZ} F${base.feed}`)
     expect(cw[0]).not.toBe(ccw[0])
+  })
+})
+
+describe('tabGapLength', () => {
+  it('widens the toolpath gap by the tool diameter, so the bridge left is Tab Width', () => {
+    expect(tabGapLength(5, 6)).toBe(11)
+    expect(tabGapLength(3, 0)).toBe(3)
   })
 })

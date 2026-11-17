@@ -655,7 +655,7 @@ export function Step2GeometryPocket({ params, onChange, machine, toolDiameters, 
               {tabHeightInvalid && <p className="text-sm text-status-error">Tab height must be greater than 0 and less than Depth.</p>}
               {tabWidthInvalid && !tabCountInvalid && (
                 <p className="text-sm text-status-error">
-                  The tabs don't fit on a cell's sides — a side with N tabs needs N × width less than its length. Use fewer
+                  The tabs don't fit on a cell's sides — a side with N tabs needs N × (width + tool diameter) less than its length. Use fewer
                   or narrower tabs.
                 </p>
               )}

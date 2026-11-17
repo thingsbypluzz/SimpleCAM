@@ -4,6 +4,7 @@ import { assembleProgram } from './program'
 import { helixCircleToolpath, type CircleToolpathOptions } from './helix'
 import { standardCircleToolpath } from './standardHole'
 import { cappedRampPitch } from './rampPitch'
+import { tabGapLength } from './tabs'
 
 // Circle Outline reuses the exact Helix/Standard math from Hole(s)
 // (helixCircleToolpath/standardCircleToolpath in helix.ts/standardHole.ts) —
@@ -62,7 +63,7 @@ export function circleOutlineOptions(params: WizardParams): CircleToolpathOption
     tabs: outline.tabsEnabled
       ? {
           tabHeight: outline.tabHeight,
-          tabWidth: outline.tabWidth,
+          tabWidth: tabGapLength(outline.tabWidth, outline.toolDiameter),
           tabCount: outline.tabCount,
           startAngle: (outline.tabStartAngle * Math.PI) / 180,
         }

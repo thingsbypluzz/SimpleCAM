@@ -1,7 +1,7 @@
 import { getFixedColors, getPaletteAccents, type PaletteId } from '../../config/palettes'
 import { holeGeometry } from '../../lib/drill'
 import { resolvePoints } from '../../lib/positioning'
-import { computeTabRanges, type TabRange } from '../../lib/tabs'
+import { computeTabRanges, tabGapLength, type TabRange } from '../../lib/tabs'
 import { circleOutlineOptions, circleOutlineRadiusAndDirection, onLineCircleEdges } from '../../lib/outlineCircle'
 import { onLineRectDimensions, rectCorners, rectToolDimensions } from '../../lib/outlineRectangleGeometry'
 import { sideRangesFor, type SideTabRange } from '../../lib/outlineRectangleTabs'
@@ -460,7 +460,7 @@ function resolvePattern(params: WizardParams): ResolvedPattern {
     if (outline.shape === 'circle') {
       const { radius: toolRadius } = circleOutlineRadiusAndDirection(outline)
       const tabRanges = outline.tabsEnabled
-        ? computeTabRanges(outline.tabCount, outline.tabWidth, Math.max(0, toolRadius))
+        ? computeTabRanges(outline.tabCount, tabGapLength(outline.tabWidth, outline.toolDiameter), Math.max(0, toolRadius))
         : []
       return {
         kind: 'outlineCircle',
@@ -502,7 +502,7 @@ function resolvePattern(params: WizardParams): ResolvedPattern {
       'ccw',
     )
     const sideTabRanges = outline.tabsEnabled
-      ? sideRangesFor(toolCorners, outline.tabCount, outline.tabWidth)
+      ? sideRangesFor(toolCorners, outline.tabCount, tabGapLength(outline.tabWidth, outline.toolDiameter))
       : [[], [], [], []]
     return { kind: 'outlineRect', params, nominalCorners, toolCorners, sideTabRanges }
   }
@@ -708,7 +708,7 @@ function drawHolesGeometry(
   // (angle only depends on tabWidth/toolPathRadius, not hole position),
   // so computed once outside the loop below.
   const tabRanges = geometry.tabsEnabled
-    ? computeTabRanges(geometry.tabCount, geometry.tabWidth, toolPathRadius)
+    ? computeTabRanges(geometry.tabCount, tabGapLength(geometry.tabWidth, geometry.toolDiameter), toolPathRadius)
     : []
 
   for (const p of points) {

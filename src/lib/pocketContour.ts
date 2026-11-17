@@ -4,6 +4,7 @@ import { cellLoopSides, isLightenedShape, lightenedCells, type LightCell } from 
 import { pocketCenter } from './pocketGeometry'
 import { cappedRampPitch } from './rampPitch'
 import { ToolpathBuilder, type Point3D, type Toolpath } from './toolpath'
+import { tabGapLength } from './tabs'
 
 // Lightened Pocket with Bottom Open (BL-82): the cells go right through the
 // stock, so each cell's contour is cut on its own — the tool-center loop
@@ -119,7 +120,9 @@ export function cellContour(cell: LightCell, toolRadius: number, tabs: ContourTa
 }
 
 function contourTabs(pocket: PocketParams): ContourTabsOptions | null {
-  return pocket.tabsEnabled ? { tabCount: pocket.tabCount, tabWidth: pocket.tabWidth } : null
+  return pocket.tabsEnabled
+    ? { tabCount: pocket.tabCount, tabWidth: tabGapLength(pocket.tabWidth, pocket.toolDiameter) }
+    : null
 }
 
 // Every cell's contour in cutting order (lightenedCells()), cells the tool
@@ -138,7 +141,8 @@ export function pocketContourTabsFit(pocket: PocketParams): boolean {
   if (!pocket.tabsEnabled) return true
   return pocketContours(pocket).every((c) => {
     const counts = tabsPerSide(c.sideLengths, pocket.tabCount)
-    return counts.every((m, i) => m * pocket.tabWidth < c.sideLengths[i] - 1e-9)
+    const gap = tabGapLength(pocket.tabWidth, pocket.toolDiameter)
+    return counts.every((m, i) => m * gap < c.sideLengths[i] - 1e-9)
   })
 }
 

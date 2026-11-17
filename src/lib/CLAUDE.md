@@ -175,8 +175,14 @@ zaczyna od `zTo('rapid', startZ)`; końcowy retrakt robi `assembleProgram()`.
 
 ## Mostki (Tabs) — Hole(s) i Outline
 
-- Checkbox "Enable Tabs": Tab Height / Tab Width (mm łuku) / Tab Count —
-  jeden zestaw na job; Outline Rectangle liczy mostki **per bok**.
+- Checkbox "Enable Tabs": Tab Height / Tab Width / Tab Count — jeden
+  zestaw na job; Outline Rectangle liczy mostki **per bok**.
+- **Tab Width = szerokość mostka w materiale.** Ścieżka biegnie środkiem
+  freza, który z obu końców przerwy wcina się w mostek na promień, więc
+  przerwa w ścieżce ma `tabGapLength()` = Tab Width + średnica freza
+  (`tabs.ts`) — wszystkie silniki z mostkami (Hole(s), Outline Circle /
+  Rectangle / Lobed, kontur Pocket), podgląd 2D i walidacja „mostki się
+  mieszczą”.
 - Płycej niż `totalDepth − tabHeight` — bez zmian. W paśmie mostków płaskie
   przejścia co Stepdown z pominięciem mostka: podniesienie do góry pasma,
   przejazd, zejście — zawsze pionowo przy stałym XY, nigdy po przekątnej.
@@ -192,7 +198,7 @@ zaczyna od `zTo('rapid', startZ)`; końcowy retrakt robi `assembleProgram()`.
   (`outlineRectangleTabs.ts`) — lista punktów = suma próbkowania i
   dokładnych granic mostków (dokładny rozmiar niezależnie od
   rozdzielczości); defensywny `Math.floor` liczby i zaciśnięcie zakresów.
-- Walidacja: `0 < tabHeight < totalDepth`, `tabCount × tabWidth <` obwód
+- Walidacja: `0 < tabHeight < totalDepth`, `tabCount × tabGapLength() <` obwód
   (Lobed Circle: długość ścieżki),
   liczba całkowita 1–`MAX_TAB_COUNT` (20) (`isValidTabCount()`); prawdziwe
   wprost, gdy mostki wyłączone. Domyślne rozmiary z Settings → Tabs
@@ -430,7 +436,7 @@ zaczyna od `zTo('rapid', startZ)`; końcowy retrakt robi `assembleProgram()`.
   największą długością na mostek (długość / (mostki + 1)), remis — wcześniejszy
   bok. Na boku z m mostkami środki w (k + ½)/m długości (jak Outline
   Rectangle), więc narożnik — i start okrążenia — nigdy nie wpada w
-  mostek, dopóki m × Tab Width < długość boku.
+  mostek, dopóki m × przerwa (`tabGapLength()`) < długość boku.
 - **Metody** (`contourMethod`): **Standard** — zejście pionowe o Stepdown
   + płaskie okrążenie; **Ramp** — okrążenie schodzi o
   `cappedRampPitch(obwód komórki, Stepdown, Ramp Angle)` proporcjonalnie

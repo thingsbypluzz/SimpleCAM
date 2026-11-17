@@ -5,6 +5,15 @@ import type { Point3D, ToolpathBuilder } from './toolpath'
 // approximation as an untabbed one away from the gaps.
 const SEGMENTS_PER_TURN = 72
 
+// Tab Width is the bridge left standing in the material, measured across
+// it. The toolpath runs along the tool's center and the tool bites a radius
+// into the bridge from each end of the gap, so the gap in the toolpath is
+// longer than the bridge by the full tool diameter. Every engine, the 2D
+// preview and the "tabs fit" validation measure tab gaps with this.
+export function tabGapLength(tabWidth: number, toolDiameter: number): number {
+  return tabWidth + Math.max(0, toolDiameter)
+}
+
 export interface TabRange {
   startAngle: number
   endAngle: number
