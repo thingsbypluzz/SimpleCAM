@@ -371,8 +371,8 @@ export function Step2GeometryOutline({ params, onChange, machine, toolDiameters,
             {tabWidthInvalid && (
               <p className="text-sm text-status-error">
                 {isRect
-                  ? "Tab count × width can't reach the shortest side's length."
-                  : "Tab count × width can't reach the toolpath's full length."}
+                  ? "Tab count × (width + tool diameter) can't reach the shortest side's length."
+                  : "Tab count × (width + tool diameter) can't reach the toolpath's full length."}
               </p>
             )}
             {tabCountInvalid && (

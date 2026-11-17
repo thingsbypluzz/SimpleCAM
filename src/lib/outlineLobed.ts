@@ -19,6 +19,7 @@ import { outlineDirectionForOffsetMode } from './outlineRectangle'
 import { assembleProgram } from './program'
 import { cappedRampPitch } from './rampPitch'
 import { ToolpathBuilder, toolpathToGcode, type Point3D, type Toolpath } from './toolpath'
+import { tabGapLength } from './tabs'
 
 // Passes accumulate Z via repeated float subtraction — same tolerance
 // convention as standardHole.ts/outlineRectangle.ts.
@@ -70,11 +71,12 @@ function withTabs(loop: Loop, outline: OutlineParams): { loop: Loop; ranges: Loo
   const length = loopLength(loop)
   if (count <= 0 || !(length > 0)) return { loop, ranges: [] }
   const step = length / count
+  const gap = tabGapLength(outline.tabWidth, outline.toolDiameter)
   const first = loopOutermostOnRay(loop, rad(outline.tabStartAngle))
   const ranges: LoopTabRange[] = []
   for (let k = 0; k < count; k++) {
     const center = step * (k + 0.5)
-    ranges.push({ start: Math.max(0, center - outline.tabWidth / 2), end: Math.min(length, center + outline.tabWidth / 2) })
+    ranges.push({ start: Math.max(0, center - gap / 2), end: Math.min(length, center + gap / 2) })
   }
   return { loop: loopStartingAt(loop, first - step / 2), ranges }
 }

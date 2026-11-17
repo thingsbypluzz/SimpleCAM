@@ -5,6 +5,7 @@ import { computeDepthPasses } from './depthPasses'
 import { cappedRampPitch } from './rampPitch'
 import { longerEdgeIndex, rectCorners, rectToolDimensions } from './outlineRectangleGeometry'
 import { appendTabbedRectanglePass, sideRangesFor } from './outlineRectangleTabs'
+import { tabGapLength } from './tabs'
 import { ToolpathBuilder, toolpathToGcode, type Toolpath } from './toolpath'
 
 // Passes accumulate Z via repeated float subtraction — same tolerance
@@ -171,7 +172,11 @@ export function rectOutlineOptions(params: WizardParams): RectToolpathOptions {
     plungeRate: feeds.plungeRate,
     direction: outlineDirectionForOffsetMode(outline.offsetMode),
     tabs: outline.tabsEnabled
-      ? { tabHeight: outline.tabHeight, tabWidth: outline.tabWidth, tabCount: outline.tabCount }
+      ? {
+          tabHeight: outline.tabHeight,
+          tabWidth: tabGapLength(outline.tabWidth, outline.toolDiameter),
+          tabCount: outline.tabCount,
+        }
       : null,
   }
 }

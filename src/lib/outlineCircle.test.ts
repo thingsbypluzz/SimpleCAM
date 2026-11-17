@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { generateCircleOutlineHelix, generateCircleOutlineStandard, onLineCircleEdges } from './outlineCircle'
+import { circleOutlineOptions, generateCircleOutlineHelix, generateCircleOutlineStandard, onLineCircleEdges } from './outlineCircle'
+import { computeTabRanges } from './tabs'
 import { DEFAULT_MACHINE_SETTINGS } from '../types/machine'
 import { DEFAULT_WIZARD_PARAMS, type WizardParams } from '../types/wizard'
 
@@ -164,12 +165,13 @@ describe('Tab Start (OP-8)', () => {
     expect(start.y).toBeCloseTo(18 * Math.sin(Math.PI / 4), 3)
     const angles = tabAngles(inside)
     expect(angles.length).toBeGreaterThan(0)
-    // Every lifted point lies within half a tab (3 mm on r = 18 → ±4.8°) of 90°, 180°, -90° or 0°.
+    // Every lifted point lies within half a tab gap (3 mm tab + 4 mm tool = 7 mm on r = 18 → ±11.1°)
+    // of 90°, 180°, -90° or 0°.
     for (const a of angles) {
       const nearest = Math.round(a / 90) * 90
-      expect(Math.abs(a - nearest)).toBeLessThan(4.9)
+      expect(Math.abs(a - nearest)).toBeLessThan(11.2)
     }
-    expect(angles.some((a) => Math.abs(a - 90) < 4.9)).toBe(true)
+    expect(angles.some((a) => Math.abs(a - 90) < 11.2)).toBe(true)
 
     // Outside travels clockwise: start half a spacing "before" the tab is at 135°, radius 22.
     const outside = generateCircleOutlineStandard(tabbed('outside', 90), DEFAULT_MACHINE_SETTINGS)
@@ -183,7 +185,36 @@ describe('Tab Start (OP-8)', () => {
     const angles = tabAngles(generateCircleOutlineStandard(tabbed('inside', 30), DEFAULT_MACHINE_SETTINGS))
     for (const a of angles) {
       const offset = ((((a - 30) % 90) + 135) % 90) - 45
-      expect(Math.abs(offset)).toBeLessThan(4.9)
+      expect(Math.abs(offset)).toBeLessThan(11.2)
     }
+  })
+})
+
+describe('tab width is the bridge left in the material', () => {
+  it('leaves Tab Width between the cut walls, not between the tool centers', () => {
+    // ⌀59.5 disc cut Outside with a 6 mm tool, three 5 mm tabs: the path
+    // (r = 32.75) must skip 5 + 6 = 11 mm, so 5 mm of aluminium stays.
+    const p: WizardParams = {
+      ...DEFAULT_WIZARD_PARAMS,
+      operation: 'outline',
+      outline: {
+        ...DEFAULT_WIZARD_PARAMS.outline,
+        shape: 'circle',
+        offsetMode: 'outside',
+        method: 'helix',
+        diameter: 59.5,
+        toolDiameter: 6,
+        totalDepth: 5,
+        tabsEnabled: true,
+        tabHeight: 1,
+        tabWidth: 5,
+        tabCount: 3,
+        tabStartAngle: 0,
+      },
+    }
+    const opts = circleOutlineOptions(p)
+    const ranges = computeTabRanges(opts.tabs!.tabCount, opts.tabs!.tabWidth, opts.radius)
+    expect(ranges).toHaveLength(3)
+    for (const r of ranges) expect((r.endAngle - r.startAngle) * opts.radius).toBeCloseTo(11, 9)
   })
 })

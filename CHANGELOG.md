@@ -7,6 +7,22 @@ zgodne z [SemVer](https://semver.org/). Ten plik pozostaje głównym, czytelnym
 thingsbypluzz/SimpleCAM), ale to infrastruktura pod izolację pracy
 (branch/worktree per zadanie), nie zamiennik tego changeloga.
 
+## [0.61.3] — 2026-11-17
+
+### Naprawiono
+- **Mostki były węższe o średnicę freza.** Tab Width wyznaczało długość
+  przerwy w ścieżce środka freza, a frez z obu końców przerwy wcina się w
+  mostek na swój promień — mostek 5 mm frezem 6 mm praktycznie nie
+  istniał (zgłoszony krążek ⌀59.5 z aluminium, 3 mostki). Teraz przerwa w
+  ścieżce = Tab Width + średnica freza (`tabGapLength()` w `tabs.ts`), więc
+  w materiale zostaje mostek o wpisanej szerokości. Dotyczy wszystkich
+  mostków: Hole(s), Outline Circle / Rectangle / Lobed Circle i kontur
+  Pocket (Bottom Open); podgląd 2D rysuje przerwy tak samo.
+- Walidacja „mostki się mieszczą” liczy tę samą przerwę: Tab Count ×
+  (Tab Width + średnica freza) < obwód / długość boku. Zapisane presety z
+  ciasno upakowanymi mostkami mogą teraz pokazać błąd w Kroku 2 — komunikat
+  mówi wprost o średnicy freza.
+
 ## [0.61.2] — 2026-10-25
 
 ### Zmieniono

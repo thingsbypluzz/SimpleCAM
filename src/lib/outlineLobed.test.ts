@@ -104,7 +104,8 @@ describe('Lobed Circle tabs', () => {
     const length = loopLength(opts.loop)
     expect(opts.tabs!.ranges).toHaveLength(5)
     opts.tabs!.ranges.forEach((range, k) => {
-      expect(range.end - range.start).toBeCloseTo(4, 9)
+      // Tab Width 4 + tool 6: the gap in the path leaves a 4 mm bridge.
+      expect(range.end - range.start).toBeCloseTo(10, 9)
       expect((range.start + range.end) / 2).toBeCloseTo((length / 5) * (k + 0.5), 9)
     })
     expect(opts.tabs!.ranges[0].start).toBeGreaterThan(0)
@@ -118,10 +119,10 @@ describe('Lobed Circle tabs', () => {
     const lifted = points.filter((q, i) => i > 0 && Math.abs(q.z - bandTop) < 1e-9 && points[i - 1].z < bandTop - 1e-9)
     expect(lifted).toHaveLength(5)
     // With 5 tabs from 90° on a 5-lobe shape, every tab is on a lobe tip:
-    // 46 mm from the center.
+    // 46 mm from the center, the 10 mm gap (tab + tool) staying near it.
     const crossings = points.filter((q, i) => i > 0 && Math.abs(q.z - bandTop) < 1e-9 && Math.abs(points[i - 1].z - bandTop) < 1e-9 && points[i - 2]?.z < bandTop)
     expect(crossings.length).toBeGreaterThan(0)
-    for (const q of crossings) expect(Math.hypot(q.x, q.y)).toBeGreaterThan(45.5)
+    for (const q of crossings) expect(Math.hypot(q.x, q.y)).toBeGreaterThan(45)
     expect(Math.min(...points.map((q) => q.z))).toBeCloseTo(-4, 9)
     expect(generateOutline(p, DEFAULT_MACHINE_SETTINGS).some((l) => /^G[23] /.test(l))).toBe(false)
   })
