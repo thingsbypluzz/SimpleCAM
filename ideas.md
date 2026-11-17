@@ -1303,6 +1303,17 @@ Waga z review w nawiasie kwadratowym.
   w Step 4 Summary, przy Generate, w Kroku 3), podpis, że to szacunek bez
   przyspieszeń maszyny (dolna granica), czy doliczać dwell rozkręcenia
   wrzeciona, czy czas także dla presetów (np. tooltip slotu). Po `BL-100`.
+- **`BL-126`** *(Otwarty)* 🟠 — **Facing: slot (rowek) wzdłuż zadanej
+  linii.** Zgłoszone 2026-11-17. Nowa metoda w Facing, nie osobna operacja:
+  zamiast zbierać naddatek z boku detalu frez tnie rowek po linii od
+  punktu A do punktu B (albo start + długość + kąt), poziom Z po poziomie
+  do zadanej głębokości. Do ustalenia: jak zadawać linię (dwa punkty czy
+  start / długość / kąt, origin jak dziś w Facing), szerokość rowka równa
+  średnicy freza czy szersza (dodatkowe przejścia boczne co Stepover),
+  wejście (plunge, rampa wzdłuż linii, tam i z powrotem jak w Text),
+  końce zamknięte w materiale czy wyjście w powietrze jak dziś w Facing,
+  co z polami Facing, które slot pomija (Side, Removal, Lead, Clearance),
+  podgląd i model materiału (rowek jako pustka z dnem). Wymaga `/grill-me`.
 - **`BL-61`** *(Zrealizowany, 2026-09-27)* 🔴 **[Low, kosztowne w czasie]**
   — **Podglądy duplikują geometrię silnika** — jedna lista ruchów (jak
   Adaptive) dla G-code i podglądu 3D, po jednej operacji na raz. Etapy 1–2
