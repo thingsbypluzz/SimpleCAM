@@ -7,6 +7,23 @@ zgodne z [SemVer](https://semver.org/). Ten plik pozostaje głównym, czytelnym
 thingsbypluzz/SimpleCAM), ale to infrastruktura pod izolację pracy
 (branch/worktree per zadanie), nie zamiennik tego changeloga.
 
+## [0.61.4] — 2026-11-18
+
+### Naprawiono
+- **Zejście za mostkiem szło z Feedrate XY zamiast Plunge Rate.** W paśmie
+  mostków frez za każdym mostkiem schodzi pionowo z powrotem w materiał —
+  ten ruch był zapisywany jako `G1 X Y Z F<Feedrate XY>`, więc wchodził
+  czołem freza kilka razy szybciej, niż pozwala Plunge Rate (zgłoszony
+  krążek z aluminium: F357 zamiast F107). Teraz to `G1 Z… F<Plunge Rate>`,
+  jak każde inne zejście. Dotyczy wszystkich mostków: Hole(s), Outline
+  Circle / Rectangle / Lobed Circle i kontur Pocket (Bottom Open) — wspólne
+  `emitTabPass()` w `tabs.ts`. Podniesienie przed mostkiem zostaje na
+  Feedrate XY (frez wychodzi z materiału). Symulacja pokazuje dłuższy czas.
+- Przegląd pozostałych operacji nie znalazł innego zejścia w materiał z
+  posuwem XY. Test właściwościowy (`gcodeInvariants.test.ts`) pilnuje tego
+  teraz dla wszystkich operacji, a `ToolpathBuilder.lineTo()` nie przyjmuje
+  już rodzaju `plunge` (zgubiłby XY w G-code).
+
 ## [0.61.3] — 2026-11-17
 
 ### Naprawiono

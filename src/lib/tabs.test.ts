@@ -3,10 +3,27 @@ import { appendTabbedCirclePass, computeTabRanges, tabGapLength } from './tabs'
 import { ToolpathBuilder, toolpathToGcode } from './toolpath'
 
 // One tabbed pass on its own, formatted as G-code (G1 at `feed`).
+// Distinct from every `feed` used below, so the descent's F word shows it.
+const PLUNGE_FEED = 123
+
 function tabbedCirclePass(p: Parameters<typeof appendTabbedCirclePass>[1] & { feed: number }): string[] {
   const b = new ToolpathBuilder({ x: p.startX, y: p.startY, z: p.cutZ })
   appendTabbedCirclePass(b, p)
-  return toolpathToGcode(b.build(), { feeds: { cut: p.feed }, interpolation: 'linear', leadInRapid: false })
+  return toolpathToGcode(b.build(), { feeds: { cut: p.feed, plunge: PLUNGE_FEED }, interpolation: 'linear', leadInRapid: false })
+}
+
+// Every Z change is vertical: either a bare `G1 Z…` (stays at the current
+// XY by definition) or an X Y Z line at the XY of the line before it.
+function expectNoDiagonalZMoves(lines: string[]) {
+  let xy: string | null = null
+  let z: string | undefined
+  for (const line of lines) {
+    const lineXY = /X(-?[\d.]+) Y(-?[\d.]+)/.exec(line)?.slice(1).join(',') ?? null
+    const lineZ = /Z(-?[\d.]+)/.exec(line)?.[1]
+    if (lineZ !== undefined && z !== undefined && lineZ !== z && lineXY !== null) expect(lineXY).toBe(xy)
+    if (lineXY !== null) xy = lineXY
+    if (lineZ !== undefined) z = lineZ
+  }
 }
 
 describe('computeTabRanges', () => {
@@ -100,17 +117,7 @@ describe('appendTabbedCirclePass', () => {
   it('never emits a diagonal move through a tab (lift/plunge are vertical-only)', () => {
     const tabRanges = computeTabRanges(1, 5, base.radius)
     const lines = tabbedCirclePass({ ...base, tabRanges })
-    for (let i = 1; i < lines.length; i++) {
-      const prevZ = /Z(-?[\d.]+)/.exec(lines[i - 1])?.[1]
-      const curZ = /Z(-?[\d.]+)/.exec(lines[i])?.[1]
-      if (prevZ !== curZ) {
-        // A Z change happened on this line — X/Y must be unchanged from the previous line.
-        const prevXY = lines[i - 1].match(/X(-?[\d.]+) Y(-?[\d.]+)/)
-        const curXY = lines[i].match(/X(-?[\d.]+) Y(-?[\d.]+)/)
-        expect(curXY?.[1]).toBe(prevXY?.[1])
-        expect(curXY?.[2]).toBe(prevXY?.[2])
-      }
-    }
+    expectNoDiagonalZMoves(lines)
   })
 
   it('plunges back to cutZ exactly at the tab\'s own end angle, not the next sample point', () => {
@@ -125,21 +132,16 @@ describe('appendTabbedCirclePass', () => {
 
     const liftLines = lines.map((l, i) => ({ l, i })).filter(({ l }) => l.includes(`Z${base.liftZ} `))
     const lastLiftIdx = liftLines[liftLines.length - 1].i
-    const plungeLine = lines[lastLiftIdx + 1]
-
     const expectedX = base.centerX + base.radius * Math.cos(tabRanges[0].endAngle)
     const expectedY = base.centerY + base.radius * Math.sin(tabRanges[0].endAngle)
-    const plungeMatch = /X(-?[\d.]+) Y(-?[\d.]+) Z(-?[\d.]+)/.exec(plungeLine)
-    // Compared at G-code output precision (fmt() rounds to 4 decimals).
-    expect(Number(plungeMatch?.[1])).toBeCloseTo(expectedX, 3)
-    expect(Number(plungeMatch?.[2])).toBeCloseTo(expectedY, 3)
-    expect(Number(plungeMatch?.[3])).toBeCloseTo(base.cutZ, 3)
-
-    // The lift line right before it must sit at that exact same position
-    // — a pure vertical plunge at the tab boundary, not a lifted detour.
+    // The last lifted move ends exactly at the tab's end angle (compared at
+    // G-code output precision — fmt() rounds to 4 decimals)…
     const liftMatch = /X(-?[\d.]+) Y(-?[\d.]+)/.exec(lines[lastLiftIdx])
-    expect(liftMatch?.[1]).toBe(plungeMatch?.[1])
-    expect(liftMatch?.[2]).toBe(plungeMatch?.[2])
+    expect(Number(liftMatch?.[1])).toBeCloseTo(expectedX, 3)
+    expect(Number(liftMatch?.[2])).toBeCloseTo(expectedY, 3)
+    // …and the tool goes straight down from there at Plunge Rate, not at
+    // Feedrate XY: it enters the material end-first.
+    expect(lines[lastLiftIdx + 1]).toBe(`G1 Z${base.cutZ} F${PLUNGE_FEED}`)
   })
 
   it('cw direction still ends on the start point, but sweeps the opposite way', () => {

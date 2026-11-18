@@ -3,8 +3,8 @@ import { computeDepthPasses } from './depthPasses'
 import { cellLoopSides, isLightenedShape, lightenedCells, type LightCell } from './pocketLightened'
 import { pocketCenter } from './pocketGeometry'
 import { cappedRampPitch } from './rampPitch'
-import { ToolpathBuilder, type Point3D, type Toolpath } from './toolpath'
-import { tabGapLength } from './tabs'
+import { ToolpathBuilder, type Toolpath } from './toolpath'
+import { emitTabPass, tabGapLength, type TabPassPoint } from './tabs'
 
 // Lightened Pocket with Bottom Open (BL-82): the cells go right through the
 // stock, so each cell's contour is cut on its own — the tool-center loop
@@ -188,14 +188,14 @@ function appendTabbedLap(b: ToolpathBuilder, c: CellContour, cutZ: number, liftZ
   const positions = [...new Set([...c.positions, c.length, ...c.tabs.flatMap((r) => [r.start, r.end])])].sort((x, y) => x - y)
   const inTabAt = (s: number) => c.tabs.some((r) => s > r.start && s < r.end)
   const start = c.points[0]
-  const out: Point3D[] = []
+  const out: TabPassPoint[] = []
   let prev: Point2D = start
   let inTab = false // the lap starts at a corner, never inside a tab
   for (let i = 1; i < positions.length; i++) {
     const nextInTab = inTabAt((positions[i - 1] + positions[i]) / 2)
     const p = pointAt(c, positions[i])
     if (nextInTab && !inTab) out.push({ x: prev.x, y: prev.y, z: liftZ }, { x: p.x, y: p.y, z: liftZ })
-    else if (!nextInTab && inTab) out.push({ x: prev.x, y: prev.y, z: cutZ }, { x: p.x, y: p.y, z: cutZ })
+    else if (!nextInTab && inTab) out.push({ x: prev.x, y: prev.y, z: cutZ, plunge: true }, { x: p.x, y: p.y, z: cutZ })
     else out.push({ x: p.x, y: p.y, z: nextInTab ? liftZ : cutZ })
     prev = p
     inTab = nextInTab
@@ -203,7 +203,7 @@ function appendTabbedLap(b: ToolpathBuilder, c: CellContour, cutZ: number, liftZ
   if (out.length === 0) return
   // Close exactly on the lap start (no float drift).
   out[out.length - 1] = { x: start.x, y: start.y, z: cutZ }
-  for (const pt of out) b.lineTo('cut', pt.x, pt.y, pt.z)
+  emitTabPass(b, out)
 }
 
 // Standard: straight plunge, then one flat lap per depth level; laps in the

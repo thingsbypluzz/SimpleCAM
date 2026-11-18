@@ -186,6 +186,9 @@ zaczyna od `zTo('rapid', startZ)`; końcowy retrakt robi `assembleProgram()`.
 - Płycej niż `totalDepth − tabHeight` — bez zmian. W paśmie mostków płaskie
   przejścia co Stepdown z pominięciem mostka: podniesienie do góry pasma,
   przejazd, zejście — zawsze pionowo przy stałym XY, nigdy po przekątnej.
+  Podniesienie idzie z Feedrate XY (frez wychodzi z materiału), zejście
+  za mostkiem z **Plunge Rate** (`TabPassPoint.plunge` → `emitTabPass()`
+  w `tabs.ts`, wspólne dla czterech silników mostków).
   Helix/Ramp: spirala (skok z Ramp Angle) kończy się na górze pasma + jeden
   płaski obrót czyszczący, dopiero potem przejścia z mostkami — te zawsze
   co Stepdown, nie co skok.
@@ -847,7 +850,8 @@ booli 2D na przekrojach (`polygon-clipping`, okręgi po 72 odcinki).
   losowe parametry (`fuzzParams.ts`, deterministyczny PRNG) przechodzące
   `isWizardParamsValid()` muszą dać G-code spełniający niezmienniki (G0 w
   XY tylko na Safe Z, F > 0, brak NaN, najniższe Z = −totalDepth, spójne
-  łuki, brak łuków przy G1 w Kroku 4, ostatnia linia M30/M2, ścieżka w
+  łuki, brak łuków przy G1 w Kroku 4, ostatnia linia M30/M2, zejście
+  pionowe zawsze jako `G1 Z… F<plunge>`, nigdy z posuwem XY, ścieżka w
   granicach Surface/ścian Pocket/przejazdu Facing — Lightened: w którejś komórce, także
   Adaptive; roughing
   Pocket w ścianie roughingu, a finishing dotyka ściany — na liście
