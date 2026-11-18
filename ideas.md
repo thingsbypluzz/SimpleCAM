@@ -1314,6 +1314,21 @@ Waga z review w nawiasie kwadratowym.
   końce zamknięte w materiale czy wyjście w powietrze jak dziś w Facing,
   co z polami Facing, które slot pomija (Side, Removal, Lead, Clearance),
   podgląd i model materiału (rowek jako pustka z dnem). Wymaga `/grill-me`.
+- **`BL-127`** *(Otwarty)* 🟠 — **Łagodniejsze cięcie w paśmie mostków.**
+  Zgłoszone 2026-11-17, temat do przegadania. W paśmie mostków (Hole(s),
+  Outline, kontur Pocket) frez za każdym mostkiem schodzi pionowo o pełny
+  Stepdown i przy metodzie Standard także na start każdego poziomu —
+  w aluminium (krążek ⌀59.5, frez 6 mm, Outline Circle) to bardzo
+  agresywne wejście, szkoda freza. Pomysły: (a) **mostki z rampą** —
+  zejście za mostkiem i wejście na mostek po skosie pod Ramp Angle zamiast
+  pionowo (mostek o trapezowym profilu, przerwa liczona na dole); (b)
+  **spirala od mostka do mostka** — w każdym odcinku między mostkami
+  zejście po rampie / spirali do dna pasma, potem przejazd wstecz
+  czyszczący skos (jak płaski obrót czyszczący helixa). Do ustalenia: czy
+  to nowa metoda, czy domyślne zachowanie pasma mostków; czy dotyczy też
+  Helix / Ramp (dziś pasmo zawsze co Stepdown z pionowymi zejściami);
+  krótkie odcinki między mostkami, na których rampa się nie mieści;
+  wymuszone G1; podgląd i symulacja. Wymaga `/grill-me`.
 - **`BL-61`** *(Zrealizowany, 2026-09-27)* 🔴 **[Low, kosztowne w czasie]**
   — **Podglądy duplikują geometrię silnika** — jedna lista ruchów (jak
   Adaptive) dla G-code i podglądu 3D, po jednej operacji na raz. Etapy 1–2
