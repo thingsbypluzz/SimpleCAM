@@ -1,5 +1,6 @@
 import type { Point2D } from '../types/wizard'
-import type { Point3D, ToolpathBuilder } from './toolpath'
+import type { ToolpathBuilder } from './toolpath'
+import { emitTabPass, type TabPassPoint } from './tabs'
 
 export interface SideTabRange {
   startFrac: number
@@ -77,7 +78,7 @@ export interface TabbedRectanglePassParams {
 // (no tabs on that side).
 export function appendTabbedRectanglePass(b: ToolpathBuilder, p: TabbedRectanglePassParams): void {
   const { corners, sideRanges, cutZ, liftZ } = p
-  const points: Point3D[] = []
+  const points: TabPassPoint[] = []
   let prevX = corners[0].x
   let prevY = corners[0].y
   let inTab = false // corners are guaranteed outside any tab, see computeRectTabRanges
@@ -104,7 +105,7 @@ export function appendTabbedRectanglePass(b: ToolpathBuilder, p: TabbedRectangle
       if (nextInTab && !inTab) {
         points.push({ x: prevX, y: prevY, z: liftZ }, { x, y, z: liftZ })
       } else if (!nextInTab && inTab) {
-        points.push({ x: prevX, y: prevY, z: cutZ }, { x, y, z: cutZ })
+        points.push({ x: prevX, y: prevY, z: cutZ, plunge: true }, { x, y, z: cutZ })
       } else {
         points.push({ x, y, z: nextInTab ? liftZ : cutZ })
       }
@@ -118,5 +119,5 @@ export function appendTabbedRectanglePass(b: ToolpathBuilder, p: TabbedRectangle
   // Snap the last point onto the exact start corner, matching the circle
   // passes' convention (avoids float drift).
   points[points.length - 1] = { x: corners[0].x, y: corners[0].y, z: cutZ }
-  for (const pt of points) b.lineTo('cut', pt.x, pt.y, pt.z)
+  emitTabPass(b, points)
 }

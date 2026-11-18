@@ -112,6 +112,20 @@ function checkProgram(lines: string[], params: WizardParams, machine: MachineSet
       if (movesXY) problems.push(`XY move before any Z is known at ${where}`)
       return
     }
+    // Straight down into the cut goes as a bare `G1 Z… F<Plunge Rate>` —
+    // never as an X Y Z line at the same XY, which carries Feedrate XY.
+    if (
+      line.startsWith('G1') &&
+      movesXY &&
+      z !== undefined &&
+      nz < z - EPS &&
+      x !== undefined &&
+      y !== undefined &&
+      Math.abs((nx ?? x) - x) < EPS &&
+      Math.abs((ny ?? y) - y) < EPS
+    ) {
+      problems.push(`vertical descent at Feedrate XY instead of Plunge Rate at ${where}`)
+    }
 
     if (/^G[23]/.test(line) && x !== undefined && y !== undefined && nx !== undefined && ny !== undefined && z !== undefined) {
       const cx = x + (word(line, 'I') ?? 0)

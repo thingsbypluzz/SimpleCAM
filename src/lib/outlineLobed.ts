@@ -18,8 +18,8 @@ import {
 import { outlineDirectionForOffsetMode } from './outlineRectangle'
 import { assembleProgram } from './program'
 import { cappedRampPitch } from './rampPitch'
-import { ToolpathBuilder, toolpathToGcode, type Point3D, type Toolpath } from './toolpath'
-import { tabGapLength } from './tabs'
+import { ToolpathBuilder, toolpathToGcode, type Toolpath } from './toolpath'
+import { emitTabPass, tabGapLength, type TabPassPoint } from './tabs'
 
 // Passes accumulate Z via repeated float subtraction — same tolerance
 // convention as standardHole.ts/outlineRectangle.ts.
@@ -132,7 +132,7 @@ function appendTabbedLap(b: ToolpathBuilder, loop: Loop, ranges: LoopTabRange[],
   const positions = [...new Set([...loopSamplePositions(loop), ...ranges.flatMap((r) => [r.start, r.end])])].sort((a, c) => a - c)
   const inTabAt = (s: number) => ranges.some((r) => s > r.start && s < r.end)
   const start = arcPoint(loop[0], 0)
-  const points: Point3D[] = []
+  const points: TabPassPoint[] = []
   let prev: Point2D = start
   let inTab = false // the lap start is never inside a tab, see withTabs()
 
@@ -140,7 +140,7 @@ function appendTabbedLap(b: ToolpathBuilder, loop: Loop, ranges: LoopTabRange[],
     const nextInTab = inTabAt((positions[i - 1] + positions[i]) / 2)
     const p = loopPointAtLength(loop, positions[i])
     if (nextInTab && !inTab) points.push({ x: prev.x, y: prev.y, z: liftZ }, { x: p.x, y: p.y, z: liftZ })
-    else if (!nextInTab && inTab) points.push({ x: prev.x, y: prev.y, z: cutZ }, { x: p.x, y: p.y, z: cutZ })
+    else if (!nextInTab && inTab) points.push({ x: prev.x, y: prev.y, z: cutZ, plunge: true }, { x: p.x, y: p.y, z: cutZ })
     else points.push({ x: p.x, y: p.y, z: nextInTab ? liftZ : cutZ })
     prev = p
     inTab = nextInTab
@@ -148,7 +148,7 @@ function appendTabbedLap(b: ToolpathBuilder, loop: Loop, ranges: LoopTabRange[],
   if (points.length === 0) return
   // Close exactly on the lap start (no float drift).
   points[points.length - 1] = { x: start.x, y: start.y, z: cutZ }
-  for (const pt of points) b.lineTo('cut', pt.x, pt.y, pt.z)
+  emitTabPass(b, points)
 }
 
 function startBuilder(loop: Loop, cx: number, cy: number, opts: LobedToolpathOptions): ToolpathBuilder {
