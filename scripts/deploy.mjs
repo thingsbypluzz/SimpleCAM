@@ -16,6 +16,11 @@ const user = process.env.FTP_USER;
 const password = process.env.FTP_PASSWORD;
 const remotePath = process.env.FTP_REMOTE_PATH ?? '/';
 const secure = (process.env.FTP_SECURE ?? 'true') !== 'false';
+// The host's ProFTPD sends a TLS 1.3 session ticket on the data connection
+// that OpenSSL 3 clients reject ("tls_process_new_session_ticket: length
+// mismatch"), failing an upload at random; TLS 1.2 avoids it.
+// FTP_TLS_MAX=TLSv1.3 lifts the cap once the server is fixed.
+const tlsMax = process.env.FTP_TLS_MAX ?? 'TLSv1.2';
 // `--check`: connect, verify the certificate, log in and list the remote
 // directory, then stop — nothing is uploaded or deleted.
 const checkOnly = process.argv.includes('--check');
@@ -57,14 +62,14 @@ async function listRemote(path) {
 }
 
 try {
-  console.log(`Connecting to ${user}@${host}:${port} (${secure ? 'explicit FTPS, verified' : 'plain FTP'}) ...`);
+  console.log(`Connecting to ${user}@${host}:${port} (${secure ? `explicit FTPS up to ${tlsMax}, verified` : 'plain FTP'}) ...`);
   await client.access({
     host,
     port,
     user,
     password,
     secure,
-    secureOptions: secure ? { ca, servername: host } : undefined,
+    secureOptions: secure ? { ca, servername: host, maxVersion: tlsMax } : undefined,
   });
   console.log(`Landed in: ${await client.pwd()}`);
 

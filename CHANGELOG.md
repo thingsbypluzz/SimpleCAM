@@ -7,6 +7,18 @@ zgodne z [SemVer](https://semver.org/). Ten plik pozostaje głównym, czytelnym
 thingsbypluzz/SimpleCAM), ale to infrastruktura pod izolację pracy
 (branch/worktree per zadanie), nie zamiennik tego changeloga.
 
+## [0.64.2] — 2026-11-21
+
+### Naprawiono
+- **Deploy przerywany błędem TLS.** Od ok. 17.11 upload padał w losowym
+  pliku (najczęściej na `index.html`) z `tls_process_new_session_ticket:
+  length mismatch` na połączeniu danych — ProFTPD na hostingu wysyła tam
+  bilet sesji TLS 1.3, którego klienci OpenSSL 3 nie przyjmują (ten sam
+  błąd z Pythona w innych projektach na tym serwerze). `scripts/deploy.mjs`
+  łączy się teraz najwyżej przez TLS 1.2 (certyfikat dalej zawsze
+  weryfikowany); `FTP_TLS_MAX=TLSv1.3` w `.env` przywraca 1.3 po naprawie
+  serwera.
+
 ## [0.64.1] — 2026-11-21
 
 ### Zmieniono
