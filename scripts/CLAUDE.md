@@ -21,8 +21,13 @@ katalog zdalny, niczego nie wysyła. Slash command `/deploy` odpala
   adresu „CA Issuers” w certyfikacie serwera, sprawdzić `openssl verify`
   względem łańcucha już obecnego w pliku (musi schodzić do ISRG Root YR)
   i dopiero wtedy dopisać — nigdy nie wyłączać weryfikacji.
+- TLS najwyżej 1.2 (`maxVersion`, `FTP_TLS_MAX` w `.env` podnosi do
+  `TLSv1.3`): ProFTPD na hostingu wysyła na połączeniu danych bilet sesji
+  TLS 1.3, którego klienci OpenSSL 3 (Node, Python) nie przyjmują
+  (`tls_process_new_session_ticket: length mismatch`) — upload pada w
+  losowym pliku. Po naprawie po stronie serwera można wrócić do 1.3.
 - Kolejność: nowe pliki do `assets/` (obok starych) → reszta roota
-  (`.htaccess`, `robots.txt`, `favicon.svg`) → **`index.html` na końcu** →
+  (`.htaccess`, `robots.txt`, `favicon.svg`, `sculpture.html`) → **`index.html` na końcu** →
   usunięcie z `assets/` plików spoza nowego buildu. Przerwany upload
   zostawia działającą poprzednią wersję.
 - Dotyka wyłącznie plików z `dist/` — **nigdy pełny `clearWorkingDir()`**:
@@ -34,4 +39,4 @@ katalog zdalny, niczego nie wysyła. Slash command `/deploy` odpala
   `node --env-file=.env` (Node ≥ 20.6).
 - `public/robots.txt` (`Disallow: /`) na czas testów; `public/.htaccess` —
   roczny niezmienny cache tylko dla `/assets/`, doba dla `favicon.svg`,
-  `no-cache` dla `index.html`. Brak CI/CD (`BL-4`).
+  `no-cache` dla `index.html` i `sculpture.html`. Brak CI/CD (`BL-4`).

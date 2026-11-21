@@ -15,22 +15,25 @@ export function modalPreamble(dialect: Dialect): string[] {
   return dialect === 'marlin' ? [base] : [base, 'G91.1 G94 G40 G49']
 }
 
+export function spindleStartLines(machine: MachineSettings): string[] {
+  const { dialect, spindleSpeed, dwellSeconds } = machine
+  const lines = [`M3 S${fmt(spindleSpeed)}`]
+  if (dwellSeconds > 0) {
+    // GRBL/Mach3 read G4 P as seconds; Marlin reads P as milliseconds
+    // (its S word means seconds but isn't supported by GRBL/Mach3), so no
+    // single P value is correct on all three — convert to keep the real
+    // dwell time correct regardless of dialect.
+    const dwellValue = dialect === 'marlin' ? dwellSeconds * 1000 : dwellSeconds
+    lines.push(`G4 P${fmt(dwellValue)}`)
+  }
+  return lines
+}
+
 export function buildHeader(params: WizardParams, machine: MachineSettings): string[] {
   const { feeds, output } = params
-  const { dialect, spindleSpeed, dwellSeconds } = machine
-  const lines = modalPreamble(dialect)
+  const lines = modalPreamble(machine.dialect)
 
-  if (output.spindleStart) {
-    lines.push(`M3 S${fmt(spindleSpeed)}`)
-    if (dwellSeconds > 0) {
-      // GRBL/Mach3 read G4 P as seconds; Marlin reads P as milliseconds
-      // (its S word means seconds but isn't supported by GRBL/Mach3), so no
-      // single P value is correct on all three — convert to keep the real
-      // dwell time correct regardless of dialect.
-      const dwellValue = dialect === 'marlin' ? dwellSeconds * 1000 : dwellSeconds
-      lines.push(`G4 P${fmt(dwellValue)}`)
-    }
-  }
+  if (output.spindleStart) lines.push(...spindleStartLines(machine))
 
   lines.push(`G0 Z${fmt(feeds.safeZ)}`)
   return lines

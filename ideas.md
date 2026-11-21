@@ -25,6 +25,10 @@ pass / stock-to-leave) — patrz niżej.
 implementacji (łącznie z korektą modelu zaangażowania po symulacji) w
 `CHANGELOG.md`, `[0.19.0]`.
 
+**SculptureTool** — rzeźby warstwowe z płyt (model 3D → warstwy do wycięcia
+→ złożenie), osobny moduł w tym repo pod `/sculpture.html`. Wnioski z sesji
+`/grill-me` (2026-11-01/02): [`design_sculpture_tool.md`](design_sculpture_tool.md).
+
 ## Backlog (`BL-#`)
 
 Techniczny dług i drobniejsze, jasno zakresowe pomysły — każdy ze stałym
@@ -1303,6 +1307,23 @@ Waga z review w nawiasie kwadratowym.
   w Step 4 Summary, przy Generate, w Kroku 3), podpis, że to szacunek bez
   przyspieszeń maszyny (dolna granica), czy doliczać dwell rozkręcenia
   wrzeciona, czy czas także dla presetów (np. tooltip slotu). Po `BL-100`.
+- **`BL-124`** *(Zrealizowany, 2026-11-05)* 🟠 — **SculptureTool: inna orientacja cięcia
+  (warstwy wzdłuż X albo Y).** Zgłoszone 2026-11-04. Rzeźba nadal stoi
+  pionowo, ale płyty są pionowe — cięte w poprzek osi X albo Y zamiast Z
+  (np. profil na płycie zamiast poziomych plastrów). Samo cięcie to obrót
+  modelu przed slicingiem (dziś Up axis w Kroku 1 obraca model, ale wtedy
+  rzeźba po złożeniu stoi na tej osi); do ustalenia: podgląd i złożenie w
+  orientacji modelu, na czym stos stoi (podstawa, która płyta jest dołem),
+  pręty i piasta poziomo, przekładki przy dystansie, czy oś pochyła.
+  **Rozstrzygnięte w `/grill-me`:** Up axis już wybiera oś cięcia; doszło View
+  up (+ odwrócenie) — obraca tylko podgląd 3D, a Height mierzy wysokość wzdłuż
+  niego. Pełny opis: `CHANGELOG.md`, `[0.62.0]`.
+- **`BL-125`** *(Otwarty)* 🟢 — **OnlySculpture: slogan.** Zgłoszone
+  2026-11-09. Narzędzie dotychczas nazywane SculptureTool to
+  **OnlySculpture**. Do ustalenia slogan — linijka pod wordmarkiem w Header,
+  odpowiednik „Helps you CAM. Every time!” w OnlyPaths (w propozycji UI na
+  razie miejsce zastępcze). Zmiana nazwy w kodzie i dokumentach — przy
+  przebudowie UI według propozycji.
 - **`BL-126`** *(Otwarty)* 🟠 — **Facing: slot (rowek) wzdłuż zadanej
   linii.** Zgłoszone 2026-11-17. Nowa metoda w Facing, nie osobna operacja:
   zamiast zbierać naddatek z boku detalu frez tnie rowek po linii od
