@@ -244,16 +244,23 @@ describe('isTabHeightValid', () => {
 
 describe('isTabWidthValid', () => {
   // toolDiameter 3.175, holeDiameter 8 (defaults) -> toolPathRadius
-  // 2.4125mm -> circumference ~15.16mm.
+  // 2.4125mm -> circumference ~15.16mm. Each tab takes tabWidth + toolDiameter of it.
   it('is vacuously valid when tabs are disabled', () => {
     expect(
       isTabWidthValid({ ...DEFAULT_WIZARD_PARAMS.geometry, tabsEnabled: false, tabCount: 10, tabWidth: 10 }),
     ).toBe(true)
   })
 
-  it('is valid when tabCount * tabWidth stays under the circumference', () => {
+  it('is valid when tabCount * (tabWidth + toolDiameter) stays under the circumference', () => {
+    // 2 * (1 + 3.175) = 8.35 < 15.16; 4 * (1 + 3.175) = 16.7 is not.
     expect(
-      isTabWidthValid({ ...DEFAULT_WIZARD_PARAMS.geometry, tabsEnabled: true, tabCount: 4, tabWidth: 3 }),
+      isTabWidthValid({ ...DEFAULT_WIZARD_PARAMS.geometry, tabsEnabled: true, tabCount: 2, tabWidth: 1 }),
+    ).toBe(true)
+    expect(
+      isTabWidthValid({ ...DEFAULT_WIZARD_PARAMS.geometry, tabsEnabled: true, tabCount: 4, tabWidth: 1 }),
+    ).toBe(false)
+    expect(
+      isTabWidthValid({ ...DEFAULT_WIZARD_PARAMS.geometry, tabsEnabled: true, tabCount: 2, tabWidth: 1 }),
     ).toBe(true)
   })
 
@@ -338,11 +345,12 @@ describe('isOutlineTabWidthValid', () => {
   })
 
   it('rectangle: checked against the shortest tool-corrected side, per side (not total perimeter)', () => {
-    // onLine 50x20 -> toolWidth 50, toolHeight 20 (shortest = 20).
-    // 3 tabs * 6mm = 18 < 20 -> valid; 3 * 7 = 21 >= 20 -> invalid.
-    const base = { ...outline, shape: 'rectCornered' as const, offsetMode: 'onLine' as const, width: 50, height: 20, tabsEnabled: true, tabCount: 3 }
-    expect(isOutlineTabWidthValid({ ...base, tabWidth: 6 })).toBe(true)
-    expect(isOutlineTabWidthValid({ ...base, tabWidth: 7 })).toBe(false)
+    // onLine 50x20 -> toolWidth 50, toolHeight 20 (shortest = 20). Each tab
+    // takes tabWidth + toolDiameter (4) of the side:
+    // 3 * (2 + 4) = 18 < 20 -> valid; 3 * (3 + 4) = 21 >= 20 -> invalid.
+    const base = { ...outline, shape: 'rectCornered' as const, offsetMode: 'onLine' as const, width: 50, height: 20, toolDiameter: 4, tabsEnabled: true, tabCount: 3 }
+    expect(isOutlineTabWidthValid({ ...base, tabWidth: 2 })).toBe(true)
+    expect(isOutlineTabWidthValid({ ...base, tabWidth: 3 })).toBe(false)
   })
 })
 

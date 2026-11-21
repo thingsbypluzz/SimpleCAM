@@ -192,13 +192,12 @@ describe('generateHelix', () => {
           feeds: { stepdown: 1 },
         }),
       )
-      // Each tab-band pass is preceded by its own explicit bare `G1 Z<depth>
-      // F<plungeRate>` plunge line (mirroring the Standard method) — a
-      // stray old finishing pass would add a second one reaching -4, since
-      // that's the only kind of line this shape can come from (the spiral
-      // itself never emits a bare Z-only line).
+      // Bare `G1 Z-4 F<plungeRate>` lines: one entering the tab-band pass
+      // (mirroring the Standard method) plus one back down after each of the
+      // 3 tabs. A stray old finishing pass would add one more — the spiral
+      // itself never emits a bare Z-only line.
       const plungeToFullDepth = lines.filter((l) => l === 'G1 Z-4 F300')
-      expect(plungeToFullDepth).toHaveLength(1)
+      expect(plungeToFullDepth).toHaveLength(1 + 3)
     })
 
     it('squares off the spiral ledge at the tab-band top before descending into tabbed passes', () => {

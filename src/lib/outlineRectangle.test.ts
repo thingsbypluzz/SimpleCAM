@@ -193,10 +193,10 @@ describe('generateRectOutlineRamp — tabs', () => {
     expect(lines.some((l) => l.includes('Z-3 '))).toBe(true)
     // The tab-band loop still reaches exactly -totalDepth on its last pass.
     expect(lines.some((l) => l.startsWith('G1 X') && l.includes('Z-4 '))).toBe(true)
-    // Exactly one bare plunge line reaches the true bottom — a stray
-    // untabbed finishing lap would add a second one (same regression
-    // guard as helix.test.ts's equivalent check).
-    expect(lines.filter((l) => l === 'G1 Z-4 F300')).toHaveLength(1)
+    // Bare plunge lines to the true bottom: one entering the pass plus one
+    // back down after each of the 2 × 4 tabs — a stray untabbed finishing
+    // lap would add one more (same regression guard as helix.test.ts).
+    expect(lines.filter((l) => l === 'G1 Z-4 F300')).toHaveLength(1 + 2 * 4)
   })
 
   it('standard method: tabs force lift/plunge only within the tab band', () => {

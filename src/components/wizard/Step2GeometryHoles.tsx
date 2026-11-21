@@ -461,7 +461,7 @@ export function Step2GeometryHoles({ params, onChange, machine, toolDiameters, f
               )}
               {tabWidthInvalid && (
                 <p className="text-sm text-status-error">
-                  Tab count × width can't reach the toolpath's full circumference.
+                  Tab count × (width + tool diameter) can't reach the toolpath's full circumference.
                 </p>
               )}
               {tabCountInvalid && (

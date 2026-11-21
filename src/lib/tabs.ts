@@ -5,6 +5,29 @@ import type { Point3D, ToolpathBuilder } from './toolpath'
 // approximation as an untabbed one away from the gaps.
 const SEGMENTS_PER_TURN = 72
 
+// Tab Width is the bridge left standing in the material, measured across
+// it. The toolpath runs along the tool's center and the tool bites a radius
+// into the bridge from each end of the gap, so the gap in the toolpath is
+// longer than the bridge by the full tool diameter. Every engine, the 2D
+// preview and the "tabs fit" validation measure tab gaps with this.
+export function tabGapLength(tabWidth: number, toolDiameter: number): number {
+  return tabWidth + Math.max(0, toolDiameter)
+}
+
+// A point of a tabbed pass. `plunge` marks the straight-down move back
+// into the cut at a tab's far end: it goes at Plunge Rate (G1 Z… F<plunge>),
+// never at Feedrate XY — the tool enters material end-first there.
+export interface TabPassPoint extends Point3D {
+  plunge?: true
+}
+
+export function emitTabPass(b: ToolpathBuilder, points: TabPassPoint[]): void {
+  for (const pt of points) {
+    if (pt.plunge) b.zTo('plunge', pt.z)
+    else b.lineTo('cut', pt.x, pt.y, pt.z)
+  }
+}
+
 export interface TabRange {
   startAngle: number
   endAngle: number
@@ -95,7 +118,7 @@ export function appendTabbedCirclePass(b: ToolpathBuilder, p: TabbedCirclePassPa
   const sign = p.direction === 'cw' ? -1 : 1
   const startAngle = p.startAngle ?? 0
 
-  const points: Point3D[] = []
+  const points: TabPassPoint[] = []
   let prevX = p.startX
   let prevY = p.startY
   let inTab = false // angle 0 is guaranteed outside any tab, see computeTabRanges
@@ -116,7 +139,7 @@ export function appendTabbedCirclePass(b: ToolpathBuilder, p: TabbedCirclePassPa
       // own end boundary), then move across to this breakpoint at cutZ,
       // resuming normal cutting immediately instead of only after reaching
       // the next breakpoint.
-      points.push({ x: prevX, y: prevY, z: p.cutZ }, { x, y, z: p.cutZ })
+      points.push({ x: prevX, y: prevY, z: p.cutZ, plunge: true }, { x, y, z: p.cutZ })
     } else {
       points.push({ x, y, z: nextInTab ? p.liftZ : p.cutZ })
     }
@@ -129,5 +152,5 @@ export function appendTabbedCirclePass(b: ToolpathBuilder, p: TabbedCirclePassPa
   // Snap the last point onto the exact start, matching a full turn's own
   // end point (avoids float drift).
   points[points.length - 1] = { x: p.startX, y: p.startY, z: p.cutZ }
-  for (const pt of points) b.lineTo('cut', pt.x, pt.y, pt.z)
+  emitTabPass(b, points)
 }

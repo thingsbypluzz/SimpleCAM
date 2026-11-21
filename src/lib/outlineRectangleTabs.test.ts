@@ -5,10 +5,27 @@ import { rectCorners } from './outlineRectangleGeometry'
 import { fmt } from './format'
 
 // One tabbed pass on its own, formatted as G-code (G1 at `feed`).
+// Distinct from every `feed` used below, so the descent's F word shows it.
+const PLUNGE_FEED = 123
+
 function tabbedRectanglePass(p: Parameters<typeof appendTabbedRectanglePass>[1] & { feed: number }): string[] {
   const b = new ToolpathBuilder({ x: p.corners[0].x, y: p.corners[0].y, z: p.cutZ })
   appendTabbedRectanglePass(b, p)
-  return toolpathToGcode(b.build(), { feeds: { cut: p.feed }, interpolation: 'linear', leadInRapid: false })
+  return toolpathToGcode(b.build(), { feeds: { cut: p.feed, plunge: PLUNGE_FEED }, interpolation: 'linear', leadInRapid: false })
+}
+
+// Every Z change is vertical: either a bare `G1 Z…` (stays at the current
+// XY by definition) or an X Y Z line at the XY of the line before it.
+function expectNoDiagonalZMoves(lines: string[]) {
+  let xy: string | null = null
+  let z: string | undefined
+  for (const line of lines) {
+    const lineXY = /X(-?[\d.]+) Y(-?[\d.]+)/.exec(line)?.slice(1).join(',') ?? null
+    const lineZ = /Z(-?[\d.]+)/.exec(line)?.[1]
+    if (lineZ !== undefined && z !== undefined && lineZ !== z && lineXY !== null) expect(lineXY).toBe(xy)
+    if (lineXY !== null) xy = lineXY
+    if (lineZ !== undefined) z = lineZ
+  }
 }
 
 describe('computeRectTabRanges', () => {
@@ -125,33 +142,23 @@ describe('appendTabbedRectanglePass', () => {
 
     const liftLines = lines.map((l, i) => ({ l, i })).filter(({ l }) => l.includes(`Z${liftZ} `))
     const lastLiftIdx = liftLines[liftLines.length - 1].i
-    const plungeLine = lines[lastLiftIdx + 1]
 
     const p0 = corners[0]
     const p1 = corners[1]
     const endFrac = oneTabOnSide0[0].endFrac
     const expectedX = p0.x + (p1.x - p0.x) * endFrac
     const expectedY = p0.y + (p1.y - p0.y) * endFrac
-    expect(plungeLine).toBe(`G1 X${fmt(expectedX)} Y${fmt(expectedY)} Z${cutZ} F${feed}`)
-
-    // The lift line right before it must sit at that exact same position
-    // — a pure vertical plunge at the tab boundary, not a lifted detour
-    // all the way to the far corner (X40).
+    // The last lifted move ends exactly at the tab's end boundary — not a
+    // lifted detour all the way to the far corner (X40)…
     expect(lines[lastLiftIdx]).toBe(`G1 X${fmt(expectedX)} Y${fmt(expectedY)} Z${liftZ} F${feed}`)
+    // …and the tool goes straight down from there at Plunge Rate, not at
+    // Feedrate XY: it enters the material end-first.
+    expect(lines[lastLiftIdx + 1]).toBe(`G1 Z${cutZ} F${PLUNGE_FEED}`)
   })
 
   it('never emits a diagonal move through a tab (lift/plunge are vertical-only)', () => {
     const ranges = computeRectTabRanges(1, 10, 40)
     const lines = tabbedRectanglePass({ corners, sideRanges: [ranges, [], [], []], cutZ, liftZ, feed })
-    for (let i = 1; i < lines.length; i++) {
-      const prevZ = /Z(-?[\d.]+)/.exec(lines[i - 1])?.[1]
-      const curZ = /Z(-?[\d.]+)/.exec(lines[i])?.[1]
-      if (prevZ !== curZ) {
-        const prevXY = lines[i - 1].match(/X(-?[\d.]+) Y(-?[\d.]+)/)
-        const curXY = lines[i].match(/X(-?[\d.]+) Y(-?[\d.]+)/)
-        expect(curXY?.[1]).toBe(prevXY?.[1])
-        expect(curXY?.[2]).toBe(prevXY?.[2])
-      }
-    }
+    expectNoDiagonalZMoves(lines)
   })
 })

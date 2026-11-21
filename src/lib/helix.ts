@@ -3,7 +3,7 @@ import type { InterpolationMode, WizardParams } from '../types/wizard'
 import { assembleProgram } from './program'
 import { computeDepthPasses } from './depthPasses'
 import { cappedRampPitch } from './rampPitch'
-import { appendTabbedCirclePass, computeTabRanges } from './tabs'
+import { appendTabbedCirclePass, computeTabRanges, tabGapLength } from './tabs'
 import { fullTurn, ToolpathBuilder, toolpathToGcode, type Toolpath } from './toolpath'
 
 export interface CircleTabsOptions {
@@ -184,7 +184,11 @@ export function holeCircleOptions(params: WizardParams): CircleToolpathOptions {
     interpolation: output.interpolation,
     direction: 'ccw',
     tabs: geometry.tabsEnabled
-      ? { tabHeight: geometry.tabHeight, tabWidth: geometry.tabWidth, tabCount: geometry.tabCount }
+      ? {
+          tabHeight: geometry.tabHeight,
+          tabWidth: tabGapLength(geometry.tabWidth, geometry.toolDiameter),
+          tabCount: geometry.tabCount,
+        }
       : null,
   }
 }

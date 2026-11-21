@@ -104,7 +104,9 @@ export class ToolpathBuilder {
     this.skipZeroLength = skipZeroLength
   }
 
-  lineTo(kind: MoveKind, x: number, y: number, z = this.current.z) {
+  // Never 'plunge': a plunge prints as a bare `G1 Z…`, so an XY change on
+  // it would be lost from the G-code. Straight down goes through zTo().
+  lineTo(kind: Exclude<MoveKind, 'plunge'>, x: number, y: number, z = this.current.z) {
     const c = this.current
     if (this.skipZeroLength && Math.abs(x - c.x) < EPS && Math.abs(y - c.y) < EPS && Math.abs(z - c.z) < EPS) return
     const to = { x, y, z }

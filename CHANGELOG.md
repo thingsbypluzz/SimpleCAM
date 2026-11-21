@@ -7,6 +7,15 @@ zgodne z [SemVer](https://semver.org/). Ten plik pozostaje głównym, czytelnym
 thingsbypluzz/SimpleCAM), ale to infrastruktura pod izolację pracy
 (branch/worktree per zadanie), nie zamiennik tego changeloga.
 
+## [0.64.1] — 2026-11-21
+
+### Zmieniono
+- **Połączenie z `main`:** OnlySculpture (0.62.0–0.64.0) i poprawki
+  mostków OnlyPaths z 0.61.3 (szerokość mostka w materiale) i 0.61.4
+  (zejście za mostkiem na Plunge Rate) w jednym buildzie. Deploy samego
+  `main` usunął z serwera pliki OnlySculpture (sprzątanie `assets/`), przez
+  co `sculpture.html` ładował się pusty — ten build przywraca obie strony.
+
 ## [0.64.0] — 2026-11-09
 
 ### Zmieniono
@@ -178,6 +187,38 @@ thingsbypluzz/SimpleCAM), ale to infrastruktura pod izolację pracy
 - Nowa zależność `clipper-lib`, tylko w bundle'u SculptureTool. W silniku
   OnlyPaths wydzielone `spindleStartLines()` z `buildHeader()`, bez zmiany
   G-code.
+## [0.61.4] — 2026-11-18
+
+### Naprawiono
+- **Zejście za mostkiem szło z Feedrate XY zamiast Plunge Rate.** W paśmie
+  mostków frez za każdym mostkiem schodzi pionowo z powrotem w materiał —
+  ten ruch był zapisywany jako `G1 X Y Z F<Feedrate XY>`, więc wchodził
+  czołem freza kilka razy szybciej, niż pozwala Plunge Rate (zgłoszony
+  krążek z aluminium: F357 zamiast F107). Teraz to `G1 Z… F<Plunge Rate>`,
+  jak każde inne zejście. Dotyczy wszystkich mostków: Hole(s), Outline
+  Circle / Rectangle / Lobed Circle i kontur Pocket (Bottom Open) — wspólne
+  `emitTabPass()` w `tabs.ts`. Podniesienie przed mostkiem zostaje na
+  Feedrate XY (frez wychodzi z materiału). Symulacja pokazuje dłuższy czas.
+- Przegląd pozostałych operacji nie znalazł innego zejścia w materiał z
+  posuwem XY. Test właściwościowy (`gcodeInvariants.test.ts`) pilnuje tego
+  teraz dla wszystkich operacji, a `ToolpathBuilder.lineTo()` nie przyjmuje
+  już rodzaju `plunge` (zgubiłby XY w G-code).
+
+## [0.61.3] — 2026-11-17
+
+### Naprawiono
+- **Mostki były węższe o średnicę freza.** Tab Width wyznaczało długość
+  przerwy w ścieżce środka freza, a frez z obu końców przerwy wcina się w
+  mostek na swój promień — mostek 5 mm frezem 6 mm praktycznie nie
+  istniał (zgłoszony krążek ⌀59.5 z aluminium, 3 mostki). Teraz przerwa w
+  ścieżce = Tab Width + średnica freza (`tabGapLength()` w `tabs.ts`), więc
+  w materiale zostaje mostek o wpisanej szerokości. Dotyczy wszystkich
+  mostków: Hole(s), Outline Circle / Rectangle / Lobed Circle i kontur
+  Pocket (Bottom Open); podgląd 2D rysuje przerwy tak samo.
+- Walidacja „mostki się mieszczą” liczy tę samą przerwę: Tab Count ×
+  (Tab Width + średnica freza) < obwód / długość boku. Zapisane presety z
+  ciasno upakowanymi mostkami mogą teraz pokazać błąd w Kroku 2 — komunikat
+  mówi wprost o średnicy freza.
 
 ## [0.61.2] — 2026-10-25
 
